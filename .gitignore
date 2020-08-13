@@ -102,3 +102,7 @@ dist
 
 # TernJS port file
 .tern-port
+sslcert/cert.pem
+sslcert/req.cnf
+sslcert/cert.key
+database/knexfile.js
