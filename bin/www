@@ -10,16 +10,13 @@ const https = require('https');
 const fs = require('fs');
 const privateKey = fs.readFileSync('./sslcert/cert.key', 'utf8');
 const certificate = fs.readFileSync('./sslcert/cert.pem', 'utf8');
-const credentials = {
-  key: privateKey,
-  cert: certificate
-};
+
 
 /**
  * Get port from environment and store in Express.
  */
 
-var port = normalizePort(process.env.PORT || '443');
+var port = normalizePort(process.env.PORT || '80');
 app.set('port', port);
 
 /**

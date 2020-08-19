@@ -11,7 +11,6 @@ const swaggerDocument = require('./docs/documentation.json');
 const options = require('./database/knexfile.js');
 const knex = require('knex')(options);
 const cors = require('cors');
-const helmet = require('helmet');
 
 var app = express();
 
@@ -24,14 +23,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(cors());
-app.use(helmet());
-app.use(helmet.contentSecurityPolicy({
-    directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", 'maxcdn.bootstrapcdn.com']
-    }
-}))
+//app.use(cors());
 
 var accessLog = rfs('access.log', {
     interval: '1d',
@@ -71,5 +63,9 @@ app.use(function(err, req, res, next) {
     res.status(err.status || 500);
     res.render('error');
 });
+
+app.listen(80, () => {
+    console.log(`Example app listening at http://localhost}`)
+  })
 
 module.exports = app;

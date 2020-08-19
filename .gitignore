@@ -106,3 +106,7 @@ sslcert/cert.pem
 sslcert/req.cnf
 sslcert/cert.key
 database/knexfile.js
+dbfiles/Select.sql
+dbfiles/LamingtonSampleData.sql
+dbfiles/lamington.mwb.bak
+dbfiles/lamington.mwb
