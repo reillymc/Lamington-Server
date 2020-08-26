@@ -1,6 +1,28 @@
 var express = require('express');
 var router = express.Router();
+var multer  = require('multer')
+
 const { v4: uuidv4 } = require('uuid');
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/')
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+        cb(null, file.fieldname + '-' + uniqueSuffix)
+    }
+})
+const fileFilter = (req, file, cb) => {
+
+    if (file.mimetype === 'image/jpeg') {
+        cb(null, true)
+    } else {
+        cb(null, true)
+    }
+}
+var upload = multer({ storage: storage })
+
 
 // list all users
 router.get('/users', function (req, res, next) {
@@ -79,7 +101,7 @@ router.get('/meal-ratings', function (req, res, next) {
 
 router.post('/add-chore', (req, res) => {
     if (!req.body.title || !req.body.description || !req.body.createdBy) {
-        console.log(req.body, )
+        console.log(req.body,)
         res.status(400).json({ message: `Error updating chores` });
         console.log(`Error on request body:`, JSON.stringify(req.body));
     } else {
@@ -109,13 +131,13 @@ router.post('/add-meal', (req, res) => {
             "id": uuidv4(),
             "name": req.body.name,
             "recipe": (req.body.recipe != undefined) ? req.body.recipe : "",
-            "ingredients": (req.body.ingredients != undefined) ? req.body.ingredients : "" ,
+            "ingredients": (req.body.ingredients != undefined) ? req.body.ingredients : "",
             "method": (req.body.method != undefined) ? req.body.method : "",
             "notes": (req.body.notes != undefined) ? req.body.notes : "",
+           // "photo": (req.body.photo != undefined) ? req.body.photo : "",
             "created_by": req.body.createdBy,
             "times_cooked": 0
         }
-
         // database insertion
         req.db('meals').insert(meal)
             .then(_ => {
@@ -151,5 +173,13 @@ router.post('/assign-chore', (req, res) => {
             })
     }
 })
+
+
+
+router.post('/upload-image', upload.single('photo'),  (req, res) => {
+    console.log(req.file.filename)
+    res.json(req.file.filename)
+})
+
 
 module.exports = router;
