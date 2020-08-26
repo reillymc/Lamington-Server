@@ -23,9 +23,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-//app.use(cors());
+app.use(cors());
 
-var accessLog = rfs('access.log', {
+var accessLog = rfs.createStream('access.log', {
     interval: '1d',
     path: path.join(__dirname, 'log')
 })

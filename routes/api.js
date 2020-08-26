@@ -28,6 +28,7 @@ router.get('/chores', function (req, res, next) {
 
 // list all meals
 router.get('/meals', function (req, res, next) {
+    //get meal ratings and assign ratings as an array on each meal ratings: {user, value}
     req.db.from('meals').select("id", "name", "recipe", "ingredients", "method", "notes", "created_by", "times_cooked")
         .then((rows) => {
             res.status(200).json({ "Meals": rows });
@@ -77,7 +78,8 @@ router.get('/meal-ratings', function (req, res, next) {
 
 
 router.post('/add-chore', (req, res) => {
-    if (!req.body.title || !req.body.description || !req.body.created_by) {
+    if (!req.body.title || !req.body.description || !req.body.createdBy) {
+        console.log(req.body, )
         res.status(400).json({ message: `Error updating chores` });
         console.log(`Error on request body:`, JSON.stringify(req.body));
     } else {
@@ -85,7 +87,7 @@ router.post('/add-chore', (req, res) => {
             "id": uuidv4(),
             "title": req.body.title,
             "description": req.body.description,
-            "created_by": req.body.created_by
+            "created_by": req.body.createdBy
         }
 
         // database insertion
@@ -99,7 +101,7 @@ router.post('/add-chore', (req, res) => {
 })
 
 router.post('/add-meal', (req, res) => {
-    if (!req.body.name || !req.body.created_by) {
+    if (!req.body.name || !req.body.createdBy) {
         res.status(400).json({ message: `Error updating meals` });
         console.log(`Error on request body:`, JSON.stringify(req.body));
     } else {
@@ -110,7 +112,7 @@ router.post('/add-meal', (req, res) => {
             "ingredients": (req.body.ingredients != undefined) ? req.body.ingredients : "" ,
             "method": (req.body.method != undefined) ? req.body.method : "",
             "notes": (req.body.notes != undefined) ? req.body.notes : "",
-            "created_by": req.body.created_by,
+            "created_by": req.body.createdBy,
             "times_cooked": 0
         }
 
