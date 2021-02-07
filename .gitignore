@@ -110,3 +110,7 @@ dbfiles/Select.sql
 dbfiles/LamingtonSampleData.sql
 dbfiles/lamington.mwb.bak
 dbfiles/lamington.mwb
+
+
+# Server upload files
+uploads/

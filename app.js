@@ -11,6 +11,7 @@ const swaggerDocument = require('./docs/documentation.json');
 const options = require('./database/knexfile.js');
 const knex = require('knex')(options);
 const cors = require('cors');
+const helmet = require('helmet');
 
 var app = express();
 
@@ -25,6 +26,12 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static('uploads'));
 app.use(cors());
+app.use(helmet());
+app.use(helmet.contentSecurityPolicy({
+    directives: {
+        defaultSrc: ["'self'"]
+    }
+}))
 
 var accessLog = rfs.createStream('access.log', {
     interval: '1d',
@@ -50,12 +57,12 @@ app.use('/docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument))
 app.use(swaggerUI.serve, swaggerUI.setup(swaggerDocument))
 
 // catch 404 and forward to error handler
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
     next(createError(404));
 });
 
 // error handler
-app.use(function(err, req, res, next) {
+app.use(function (err, req, res, next) {
     // set locals, only providing error in development
     res.locals.message = err.message;
     res.locals.error = req.app.get('env') === 'development' ? err : {};
@@ -67,6 +74,6 @@ app.use(function(err, req, res, next) {
 
 app.listen(80, () => {
     console.log(`Example app listening at http://localhost}`)
-  })
+})
 
 module.exports = app;

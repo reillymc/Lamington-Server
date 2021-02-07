@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 var multer  = require('multer')
-
+var path = require('path')
 const { v4: uuidv4 } = require('uuid');
 
 const storage = multer.diskStorage({
@@ -10,7 +10,7 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-        cb(null, file.fieldname + '-' + uniqueSuffix)
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
     }
 })
 const fileFilter = (req, file, cb) => {
@@ -40,7 +40,7 @@ router.get('/users', function (req, res, next) {
 router.get('/chores', function (req, res, next) {
     req.db.from('chores').select("id", "title", "description", "created_by")
         .then((rows) => {
-            res.status(200).json({ "chores": rows });
+            res.status(200).json({ "Chores": rows });
         })
         .catch((err) => {
             console.log(err);
@@ -51,7 +51,7 @@ router.get('/chores', function (req, res, next) {
 // list all meals
 router.get('/meals', function (req, res, next) {
     //get meal ratings and assign ratings as an array on each meal ratings: {user, value}
-    req.db.from('meals').select("id", "name", "recipe", "ingredients", "method", "notes", "created_by", "times_cooked")
+    req.db.from('meals').select("id", "name", "recipe", "ingredients", "method", "notes", "photo", "created_by", "times_cooked")
         .then((rows) => {
             res.status(200).json({ "Meals": rows });
         })
@@ -65,7 +65,7 @@ router.get('/meals', function (req, res, next) {
 router.get('/chore-roster', function (req, res, next) {
     req.db.from('chore_roster').select("chore_id", "assignee_id", "assigned_date", "assigner_id", "repeat", "completed")
         .then((rows) => {
-            res.status(200).json({ "roster": rows });
+            res.status(200).json({ "Roster": rows });
         })
         .catch((err) => {
             console.log(err);
@@ -134,16 +134,16 @@ router.post('/add-meal', (req, res) => {
             "ingredients": (req.body.ingredients != undefined) ? req.body.ingredients : "",
             "method": (req.body.method != undefined) ? req.body.method : "",
             "notes": (req.body.notes != undefined) ? req.body.notes : "",
-           // "photo": (req.body.photo != undefined) ? req.body.photo : "",
+            "photo": (req.body.photo != undefined) ? req.body.photo : "",
             "created_by": req.body.createdBy,
             "times_cooked": 0
         }
         // database insertion
         req.db('meals').insert(meal)
             .then(_ => {
-                res.status(201).json({ message: `yay! you've successfully added a chore :)` });
+                res.status(201).json({ message: `yay! you've successfully added a meal :)` });
             }).catch(error => {
-                res.status(400).json({ message: 'oops! It looks like something went wrong adding your chore :(' });
+                res.status(400).json({ message: 'oops! It looks like something went wrong adding your meal :(' });
             })
     }
 })
@@ -177,7 +177,7 @@ router.post('/assign-chore', (req, res) => {
 
 
 router.post('/upload-image', upload.single('photo'),  (req, res) => {
-    console.log(req.file.filename)
+    console.log(req.file)
     res.json(req.file.filename)
 })
 
