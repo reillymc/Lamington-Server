@@ -4,6 +4,18 @@ const auth = require('../authentication/auth');
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
+// list all users
+router.get('/list', function (req, res, next) {
+    req.db.from('users').select("email", "first_name", "last_name", "status")
+        .then((rows) => {
+            res.status(200).json({ "Users": rows });
+        })
+        .catch((err) => {
+            console.log(err);
+            res.json({ "Error": true, "Message": err });
+        })
+})
+
 // register user
 router.post('/register', (req, res) => {
 

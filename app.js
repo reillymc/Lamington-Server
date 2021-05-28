@@ -3,8 +3,10 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var morgan = require('morgan');
-var apiRouter = require('./routes/api');
 var usersRouter = require('./routes/users');
+var choresRouter = require('./routes/chores');
+var mealsRouter = require('./routes/meals');
+var attachmentsRouter = require('./routes/attachments');
 var rfs = require('rotating-file-stream')
 const swaggerUI = require('swagger-ui-express');
 const swaggerDocument = require('./docs/documentation.json');
@@ -51,8 +53,10 @@ app.use((req, res, next) => {
 })
 
 // routers
-app.use('/', apiRouter);
-app.use('/', usersRouter);
+app.use('/users', usersRouter);
+app.use('/chores', choresRouter);
+app.use('/meals', mealsRouter);
+app.use('/attachments', attachmentsRouter);
 app.use('/docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument))
 app.use(swaggerUI.serve, swaggerUI.setup(swaggerDocument))
 
