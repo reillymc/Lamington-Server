@@ -1,11 +1,12 @@
-var express = require('express');
-var router = express.Router();
-const { v4: uuidv4 } = require('uuid');
+import db from '../db-config';
+import express, { Request } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+const router = express.Router();
 
 // list all meals
-router.get('/list', function (req, res, next) {
+router.get('/', (req: Request, res: any) => {
     //get meal ratings and assign ratings as an array on each meal ratings: {user, value}
-    req.db.from('meals').select("id", "name", "recipe", "ingredients", "method", "notes", "photo", "created_by", "times_cooked")//.join on ratings and categories
+    db.from('meals').select("id", "name", "recipe", "ingredients", "method", "notes", "photo", "created_by", "times_cooked")//.join on ratings and categories
         .then((rows) => {
             res.status(200).json({ "Meals": rows });
         })
@@ -16,8 +17,8 @@ router.get('/list', function (req, res, next) {
 })
 
 // list all meal assignments
-router.get('/meal-roster', function (req, res, next) {
-    req.db.from('meal_roster').select("meal_id", "assignee_id", "assigned_date", "assigner_id", "cooked")
+router.get('/meal-roster', (req: Request, res: any) => {
+    db.from('meal_roster').select("meal_id", "assignee_id", "assigned_date", "assigner_id", "cooked")
         .then((rows) => {
             res.status(200).json({ "years": rows });
         })
@@ -28,8 +29,8 @@ router.get('/meal-roster', function (req, res, next) {
 })
 
 // list all meal ratings
-router.get('/meal-ratings', function (req, res, next) {
-    req.db.from('meal_ratings').select("meal_id", "rater_id", "rating")
+router.get('/meal-ratings', (req: Request, res: any) => {
+    db.from('meal_ratings').select("meal_id", "rater_id", "rating")
         .then((rows) => {
             res.status(200).json({ "ratings": rows });
         })
@@ -59,7 +60,7 @@ router.post('/add-meal', (req, res) => {
             "times_cooked": 0
         }
         // database insertion
-        req.db('meals').insert(meal)
+        db('meals').insert(meal)
             .then(_ => {
                 res.status(201).json({ message: `yay! you've successfully added a meal :)` });
             }).catch(error => {
@@ -69,7 +70,7 @@ router.post('/add-meal', (req, res) => {
 })
 
 // edit a meal
-router.post('/update-meal', (req, res) => {
+router.post('/update-meal', (req: Request, res: any) => {
     if (!req.body.id || !req.body.name || !req.body.createdBy) {
         res.status(400).json({ message: `Error updating meals` });
         console.log(`Error on request body:`, JSON.stringify(req.body));
@@ -77,7 +78,7 @@ router.post('/update-meal', (req, res) => {
         const { id, name, recipe, ingredients, method, notes, photo, createdBy } = req.body;
 
         // database update
-        req.db('meals').update({ name, recipe, ingredients, method, notes, photo }).where({ id: id })
+        db('meals').update({ name, recipe, ingredients, method, notes, photo }).where({ id: id })
             .then(_ => {
                 res.status(201).json({ message: `yay! you've successfully added a meal :)` });
             }).catch(error => {
@@ -88,28 +89,29 @@ router.post('/update-meal', (req, res) => {
 
 
 // rate a meal
-router.post('/rate-meal', (req, res) => {
+router.post('/rate-meal', async (req: Request, res: any) => {
     if (!req.body.raterId || !req.body.mealId || !req.body.rating) {
         res.status(400).json({ message: `You haven't given enough information to rate this meal` });
         console.log(`Error on request body:`, JSON.stringify(req.body));
     } else {
         const { raterId, mealId, rating } = req.body;
-        const prevRatings = req.db.from('meal_ratings').select("meal_id", "rater_id", "rating").where({ 'meal_id': mealId, 'raterId': raterId })
+        const prevRatings = await db.from('meal_ratings').select("meal_id", "rater_id", "rating").where({ 'meal_id': mealId, 'raterId': raterId })
         var mealRating = {
             "meal_id": mealId,
             "rater_id": raterId,
             "rating": rating,
         }
         // database insertion
-        if (prevRatings.rows > 1) { // probably need to await
-            req.db('meal_ratings').update(mealRating)
+        // if (prevRatings.rows > 1) { // probably need to await
+        if (true) {
+            db('meal_ratings').update(mealRating)
                 .then(_ => {
                     res.status(201).json({ message: `yay! you've successfully rated this meal :)` });
                 }).catch(error => {
                     res.status(400).json({ message: 'oops! It looks like something went wrong rating this meal :(' });
                 })
         } else {
-            req.db('meal_ratings').insert(mealRating)
+            db('meal_ratings').insert(mealRating)
                 .then(_ => {
                     res.status(201).json({ message: `yay! you've successfully rated this meal :)` });
                 }).catch(error => {

@@ -1,10 +1,11 @@
-var express = require('express');
-var router = express.Router();
-const { v4: uuidv4 } = require('uuid');
+import db from '../db-config';
+import express, { Request } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+const router = express.Router();
 
 // list all chores
-router.get('/list', function (req, res, next) {
-    req.db.from('chores').select("id", "title", "description", "created_by")
+router.get('/', function (req: Request, res: any) {
+    db.from('chores').select("id", "title", "description", "created_by")
         .then((rows) => {
             res.status(200).json({ "Chores": rows });
         })
@@ -15,8 +16,8 @@ router.get('/list', function (req, res, next) {
 })
 
 // list all chore assignments
-router.get('/chore-roster', function (req, res, next) {
-    req.db.from('chore_roster').select("chore_id", "assignee_id", "assigned_date", "assigner_id", "repeat", "completed")
+router.get('/chore-roster', function (req: Request, res: any) {
+    db.from('chore_roster').select("chore_id", "assignee_id", "assigned_date", "assigner_id", "repeat", "completed")
         .then((rows) => {
             res.status(200).json({ "Roster": rows });
         })
@@ -26,8 +27,14 @@ router.get('/chore-roster', function (req, res, next) {
         })
 })
 
+interface Chore {
+    title: string,
+    description: string,
+    createdBy: string
+}
+
 // create new chore
-router.post('/add-chore', (req, res) => {
+router.post('/add-chore', (req: Request<{}, {}, Chore>, res: any) => {
     if (!req.body.title || !req.body.description || !req.body.createdBy) {
         console.log(req.body,)
         res.status(400).json({ message: `Error updating chores` });
@@ -41,7 +48,7 @@ router.post('/add-chore', (req, res) => {
         }
 
         // database insertion
-        req.db('chores').insert(chore)
+        db('chores').insert(chore)
             .then(_ => {
                 res.status(201).json({ message: `yay! you've successfully added a chore :)` });
             }).catch(error => {
@@ -51,7 +58,7 @@ router.post('/add-chore', (req, res) => {
 })
 
 // assign chore to user
-router.post('/assign-chore', (req, res) => {
+router.post('/assign-chore', (req: Request, res: any) => {
     if (!req.body.chore_id || !req.body.assignee_id || !req.body.assigned_date || !req.body.assigner_id || !req.body.repeat) {
         res.status(400).json({ message: `Error updating meals` });
         console.log(`Error on request body:`, JSON.stringify(req.body));
@@ -67,7 +74,7 @@ router.post('/assign-chore', (req, res) => {
         }
         console.log(choreAssignment)
         // database insertion
-        req.db('chore_roster').insert(choreAssignment)
+        db('chore_roster').insert(choreAssignment)
             .then(_ => {
                 res.status(201).json({ message: `yay! you've successfully added a chore :)` });
             }).catch(error => {

@@ -114,3 +114,4 @@ dbfiles/lamington.mwb
 
 # Server upload files
 uploads/
+.vscode/

@@ -1,13 +1,13 @@
 var jwt = require('jsonwebtoken');
-const fs = require('fs');
+import fs from 'fs';
 const privateKey = fs.readFileSync('./sslcert/cert.key', 'utf8');
 const secret = "SecureSecret123"
 
 const createToken = () => {
-    return token = jwt.sign({ foo: secret }, privateKey, { expiresIn: '1d' })
+    return jwt.sign({ foo: secret }, privateKey, { expiresIn: '1d' })
 }
 
-const verifyToken = (token) => {
+const verifyToken = (token: string) => {
     if (!token) {
         return false
     }
@@ -21,7 +21,7 @@ const verifyToken = (token) => {
         return false;
     }
 }
-module.exports = {
+export default {
     createToken,
     verifyToken
 }

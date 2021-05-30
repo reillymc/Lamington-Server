@@ -1,21 +1,29 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var morgan = require('morgan');
-var usersRouter = require('./routes/users');
-var choresRouter = require('./routes/chores');
-var mealsRouter = require('./routes/meals');
-var attachmentsRouter = require('./routes/attachments');
-var rfs = require('rotating-file-stream')
-const swaggerUI = require('swagger-ui-express');
+const createError = require('http-errors');
+import express, { Request, Response, NextFunction } from "express";
+import path from 'path';
+const cookieParser = require('cookie-parser');
+import morgan from 'morgan';
+const usersRouter = require('./routes/users');
+const choresRouter = require('./routes/chores');
+const mealsRouter = require('./routes/meals');
+const attachmentsRouter = require('./routes/attachments');
+const rfs = require('rotating-file-stream')
+import swaggerUI from 'swagger-ui-express';
 const swaggerDocument = require('./docs/documentation.json');
-const options = require('./database/knexfile.js');
-const knex = require('knex')(options);
-const cors = require('cors');
-const helmet = require('helmet');
+import cors from 'cors';
+import helmet from 'helmet';
 
-var app = express();
+class HttpException extends Error {
+    status: number;
+    message: string;
+    constructor(status: number, message: string) {
+        super(message);
+        this.status = status;
+        this.message = message;
+    }
+}
+
+let app = express();
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -35,22 +43,19 @@ app.use(helmet.contentSecurityPolicy({
     }
 }))
 
-var accessLog = rfs.createStream('access.log', {
+let accessLog = rfs.createStream('access.log', {
     interval: '1d',
     path: path.join(__dirname, 'log')
 })
 app.use(morgan('common', { stream: accessLog }));
 morgan.token('req', (req, res) => JSON.stringify(req.headers))
 morgan.token('res', (req, res) => {
-    const headers = {}
+    const headers: { [header: string]: string | number | string[] } = {}
     res.getHeaderNames().map(h => headers[h] = res.getHeader(h))
     return JSON.stringify(headers)
 })
 app.use(morgan('dev'))
-app.use((req, res, next) => {
-    req.db = knex
-    next()
-})
+
 
 // routers
 app.use('/users', usersRouter);
@@ -66,14 +71,14 @@ app.use(function (req, res, next) {
 });
 
 // error handler
-app.use(function (err, req, res, next) {
+app.use((error: HttpException, request: Request, response: Response, next: NextFunction) => {
     // set locals, only providing error in development
-    res.locals.message = err.message;
-    res.locals.error = req.app.get('env') === 'development' ? err : {};
+    response.locals.message = error.message;
+    response.locals.error = request.app.get('env') === 'development' ? error : {};
 
     // render the error page
-    res.status(err.status || 500);
-    res.render('error');
+    response.status(error.status || 500);
+    response.render('error');
 });
 
 app.listen(80, () => {
