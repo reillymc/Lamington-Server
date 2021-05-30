@@ -1,12 +1,12 @@
 import express, { Request } from 'express';
-import db from '../db-config';
+import db from '../database/db-config';
 import auth from '../authentication/auth';
 import bcrypt from 'bcrypt';
 const router = express.Router();
 const saltRounds = 10;
 
 // list all users
-router.get('/', function (req: Request, res: any) {
+router.get('/', function (req, res) {
     db.from('users').select("email", "first_name", "last_name", "status")
         .then((rows) => {
             res.status(200).json({ "Users": rows });
@@ -18,7 +18,7 @@ router.get('/', function (req: Request, res: any) {
 })
 
 // register user
-router.post('/register', (req: Request, res: any) => {
+router.post('/register', (req, res) => {
 
     if (!req.body.email || !req.body.first_name || !req.body.last_name || !req.body.password) {
         res.status(400).json({ message: `Error updating users` });

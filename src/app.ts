@@ -1,4 +1,5 @@
 const createError = require('http-errors');
+require('dotenv').config()
 import express, { Request, Response, NextFunction } from "express";
 import path from 'path';
 const cookieParser = require('cookie-parser');
@@ -25,10 +26,6 @@ class HttpException extends Error {
 
 let app = express();
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'pug');
-
 // app setup
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -50,7 +47,7 @@ let accessLog = rfs.createStream('access.log', {
 app.use(morgan('common', { stream: accessLog }));
 morgan.token('req', (req, res) => JSON.stringify(req.headers))
 morgan.token('res', (req, res) => {
-    const headers: { [header: string]: string | number | string[] } = {}
+    const headers: { [header: string]: string | number | string[] | undefined } = {}
     res.getHeaderNames().map(h => headers[h] = res.getHeader(h))
     return JSON.stringify(headers)
 })

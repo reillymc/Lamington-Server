@@ -1,13 +1,23 @@
-import db from '../db-config';
+import db from '../database/db-config';
 import express, { Request } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 const router = express.Router();
+interface Meal {
+    id: string,
+    name: string,
+    recipe: string,
+    ingredients: string,
+    method: string,
+    notes: string,
+    photo: string,
+    created_by: string
+}
 
 // list all meals
-router.get('/', (req: Request, res: any) => {
+router.get('/', (req, res) => {
     //get meal ratings and assign ratings as an array on each meal ratings: {user, value}
     db.from('meals').select("id", "name", "recipe", "ingredients", "method", "notes", "photo", "created_by", "times_cooked")//.join on ratings and categories
-        .then((rows) => {
+        .then((rows: Meal[]) => {
             res.status(200).json({ "Meals": rows });
         })
         .catch((err) => {
@@ -17,7 +27,7 @@ router.get('/', (req: Request, res: any) => {
 })
 
 // list all meal assignments
-router.get('/meal-roster', (req: Request, res: any) => {
+router.get('/meal-roster', (req, res) => {
     db.from('meal_roster').select("meal_id", "assignee_id", "assigned_date", "assigner_id", "cooked")
         .then((rows) => {
             res.status(200).json({ "years": rows });
@@ -29,7 +39,7 @@ router.get('/meal-roster', (req: Request, res: any) => {
 })
 
 // list all meal ratings
-router.get('/meal-ratings', (req: Request, res: any) => {
+router.get('/meal-ratings', (req, res) => {
     db.from('meal_ratings').select("meal_id", "rater_id", "rating")
         .then((rows) => {
             res.status(200).json({ "ratings": rows });
@@ -70,7 +80,7 @@ router.post('/add-meal', (req, res) => {
 })
 
 // edit a meal
-router.post('/update-meal', (req: Request, res: any) => {
+router.post('/update-meal', (req, res) => {
     if (!req.body.id || !req.body.name || !req.body.createdBy) {
         res.status(400).json({ message: `Error updating meals` });
         console.log(`Error on request body:`, JSON.stringify(req.body));
@@ -89,7 +99,7 @@ router.post('/update-meal', (req: Request, res: any) => {
 
 
 // rate a meal
-router.post('/rate-meal', async (req: Request, res: any) => {
+router.post('/rate-meal', async (req, res) => {
     if (!req.body.raterId || !req.body.mealId || !req.body.rating) {
         res.status(400).json({ message: `You haven't given enough information to rate this meal` });
         console.log(`Error on request body:`, JSON.stringify(req.body));

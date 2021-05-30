@@ -1,6 +1,6 @@
 var jwt = require('jsonwebtoken');
 import fs from 'fs';
-const privateKey = fs.readFileSync('./sslcert/cert.key', 'utf8');
+const privateKey = fs.readFileSync('./src/sslcert/cert.key', 'utf8');
 const secret = "SecureSecret123"
 
 const createToken = () => {

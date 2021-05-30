@@ -1,10 +1,26 @@
-import db from '../db-config';
+import db from '../database/db-config';
 import express, { Request } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 const router = express.Router();
 
+interface Chore {
+    id: string,
+    title: string,
+    description: string,
+    createdBy: string
+}
+interface RosteredChore {
+    choreId: string,
+    assigneeId: string,
+    assignedDate: string,
+    assignerId: string,
+    repeat: Number,
+    completed: Number
+}
+
+
 // list all chores
-router.get('/', function (req: Request, res: any) {
+router.get('/', function (req, res) {
     db.from('chores').select("id", "title", "description", "created_by")
         .then((rows) => {
             res.status(200).json({ "Chores": rows });
@@ -16,7 +32,7 @@ router.get('/', function (req: Request, res: any) {
 })
 
 // list all chore assignments
-router.get('/chore-roster', function (req: Request, res: any) {
+router.get('/chore-roster', function (req, res) {
     db.from('chore_roster').select("chore_id", "assignee_id", "assigned_date", "assigner_id", "repeat", "completed")
         .then((rows) => {
             res.status(200).json({ "Roster": rows });
@@ -27,14 +43,8 @@ router.get('/chore-roster', function (req: Request, res: any) {
         })
 })
 
-interface Chore {
-    title: string,
-    description: string,
-    createdBy: string
-}
-
 // create new chore
-router.post('/add-chore', (req: Request<{}, {}, Chore>, res: any) => {
+router.post('/add-chore', (req: Request<{}, {}, Chore>, res) => {
     if (!req.body.title || !req.body.description || !req.body.createdBy) {
         console.log(req.body,)
         res.status(400).json({ message: `Error updating chores` });
@@ -58,7 +68,7 @@ router.post('/add-chore', (req: Request<{}, {}, Chore>, res: any) => {
 })
 
 // assign chore to user
-router.post('/assign-chore', (req: Request, res: any) => {
+router.post('/assign-chore', (req, res) => {
     if (!req.body.chore_id || !req.body.assignee_id || !req.body.assigned_date || !req.body.assigner_id || !req.body.repeat) {
         res.status(400).json({ message: `Error updating meals` });
         console.log(`Error on request body:`, JSON.stringify(req.body));
