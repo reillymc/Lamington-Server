@@ -131,4 +131,4 @@ router.post('/rate-meal', async (req, res) => {
     }
 })
 
-module.exports = router;
+export default router

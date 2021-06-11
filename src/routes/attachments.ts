@@ -41,4 +41,4 @@ router.post('/upload-image', upload.single('photo'), (req: Request<{}, multerFil
     res.json(req.file.filename)
 })
 
-module.exports = router;
+export default router

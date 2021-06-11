@@ -79,4 +79,4 @@ router.post('/login', (req, res) => {
     }
 })
 
-module.exports = router
+export default router

@@ -1,18 +1,19 @@
-const createError = require('http-errors');
-require('dotenv').config()
+import createError from 'http-errors';
 import express, { Request, Response, NextFunction } from "express";
 import path from 'path';
-const cookieParser = require('cookie-parser');
+import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
-const usersRouter = require('./routes/users');
-const choresRouter = require('./routes/chores');
-const mealsRouter = require('./routes/meals');
-const attachmentsRouter = require('./routes/attachments');
-const rfs = require('rotating-file-stream')
-import swaggerUI from 'swagger-ui-express';
-const swaggerDocument = require('./docs/documentation.json');
+import usersRouter from './routes/users';
+import choresRouter from './routes/chores';
+import mealsRouter from './routes/meals';
+import attachmentsRouter from './routes/attachments';
+import rfs from 'rotating-file-stream';
 import cors from 'cors';
 import helmet from 'helmet';
+import swaggerUI from 'swagger-ui-express';
+
+require('dotenv').config()
+const swaggerDocument = require('./docs/documentation.json');
 
 class HttpException extends Error {
     status: number;
