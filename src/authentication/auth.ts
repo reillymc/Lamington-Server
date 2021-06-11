@@ -1,27 +1,52 @@
-var jwt = require('jsonwebtoken');
-import fs from 'fs';
-const privateKey = fs.readFileSync('./src/sslcert/cert.key', 'utf8');
-const secret = "SecureSecret123"
+import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from 'express';
+const secret = process.env.JWT_SECRET!
 
-const createToken = () => {
-    return jwt.sign({ foo: secret }, privateKey, { expiresIn: '1d' })
+interface AuthenticatedBody {
+    userId: string,
 }
 
-const verifyToken = (token: string) => {
-    if (!token) {
-        return false
-    }
+const createToken = (userId: string) => {
+    let payload = { "userId": userId }
+    return jwt.sign(payload, secret, { noTimestamp: true, expiresIn: process.env.JWT_EXPIRES_IN })
+}
+
+const verifyToken = (req: Request<{}, {}, AuthenticatedBody, {}>, res: Response, next: NextFunction) => {
+    var token = req.headers['authorization'];
+    if (!token)
+        return res.status(403).send({ auth: false, message: 'No token provided.' });
     if (token.startsWith('Bearer ')) {
         token = token.slice(7, token.length);
     }
-    var decrypted = jwt.verify(token, privateKey);
-    if (decrypted.foo === secret) {
-        return true;
+    jwt.verify(token, secret, function (err, decoded: AuthenticatedBody) {
+        if (err)
+            return res.status(500).send({ auth: false, message: 'Failed to authenticate token.' });
+        req.body.userId = decoded.userId;
+        next();
+    });
+}
+
+const checkToken = (req: Request<{}, {}, AuthenticatedBody, {}>, res: Response, next: NextFunction) => {
+    var token = req.headers['authorization'];
+    if (!token) {
+        req.body.userId = "";
+        next();
     } else {
-        return false;
+        if (token.startsWith('Bearer ')) {
+            token = token.slice(7, token.length);
+        }
+        jwt.verify(token, secret, function (err, decoded: AuthenticatedBody) {
+            if (err)
+                return res.status(500).send({ auth: false, message: 'Failed to authenticate token.' });
+            req.body.userId = decoded.userId;
+            next();
+        });
     }
 }
-export default {
+
+export {
+    checkToken,
     createToken,
-    verifyToken
+    verifyToken,
+    AuthenticatedBody
 }

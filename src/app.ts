@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 import createError from 'http-errors';
 import express, { Request, Response, NextFunction } from "express";
 import path from 'path';
@@ -7,12 +9,11 @@ import usersRouter from './routes/users';
 import choresRouter from './routes/chores';
 import mealsRouter from './routes/meals';
 import attachmentsRouter from './routes/attachments';
-import rfs from 'rotating-file-stream';
 import cors from 'cors';
 import helmet from 'helmet';
 import swaggerUI from 'swagger-ui-express';
 
-require('dotenv').config()
+const rfs = require("rotating-file-stream");
 const swaggerDocument = require('./docs/documentation.json');
 
 class HttpException extends Error {
@@ -76,7 +77,6 @@ app.use((error: HttpException, request: Request, response: Response, next: NextF
 
     // render the error page
     response.status(error.status || 500);
-    response.render('error');
 });
 
 app.listen(80, () => {
