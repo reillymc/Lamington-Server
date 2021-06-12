@@ -1,9 +1,9 @@
-import db from '../database/db-config';
 import express, { Request } from 'express';
+import db from '../database/db-config';
 import { v4 as uuidv4 } from 'uuid';
-import { checkToken, verifyToken, AuthenticatedBody } from '../authentication/auth';
-import { lamington_db, meals, meal_ratings, meal_categories } from '../database/definitions'
 import { Meal, Category, MealRating, MealCategory } from '../database/types'
+import { lamington_db, meals, meal_ratings, meal_categories, categories, users, meal_roster } from '../database/definitions'
+import { checkToken, verifyToken, AuthenticatedBody } from '../authentication/auth';
 
 const router = express.Router();
 
@@ -23,10 +23,10 @@ interface MealRatingBody {
  * GET request to fetch all categories
  */
 router.get('/categories', async (req, res) => {
-    db.from('categories')
-        .select("id", "name")
-        .then((rows: Category[]) => {
-            res.status(200).json({ "categories": rows });
+    db.from(lamington_db.categories)
+        .select(categories.id, categories.name)
+        .then((categories: Category[]) => {
+            res.status(200).json({ categories });
         })
         .catch((err) => {
             console.log(err);
@@ -37,8 +37,8 @@ router.get('/categories', async (req, res) => {
 /**
  * GET request to fetch the meal roster
  */
-router.get('/meal-roster', (req, res) => {
-    db.from('meal_roster').select("mealId", "assigneeId", "assignmentDate", "assignerId", "cooked")
+router.get('/roster', (req, res) => {
+    db.from(lamington_db.meal_roster).select(meal_roster.mealId, meal_roster.assigneeId, meal_roster.assignmentDate, meal_roster.assignerId, meal_roster.cooked)
         .then((rows) => {
             res.status(200).json({ "years": rows });
         })
@@ -65,29 +65,33 @@ router.get('/:mealId', checkToken, async (req: Request<GetMealQuery, {}, Authent
     }
 
     // Fetch and return data from database
-    const mealDetails: Meal[] = await db.from('meals')
-        .select("meals.id", "name", "recipe", "ingredients", "method", "notes", "photo", "firstName as createdBy", "timesCooked")
-        .where({ "meals.id": mealId })
-        .avg({ ratingAverage: 'rating' })
-        .leftJoin(lamington_db.meal_ratings, 'meals.id', 'meal_ratings.mealId')
-        .leftJoin('users', 'meals.createdBy', 'users.id')
-        .groupBy('meals.id');
+    const mealDetails: Meal[] = await db.from(lamington_db.meals)
+        .select(meals.id, meals.name, meals.recipe, meals.ingredients, meals.method, meals.notes, meals.photo, `${users.firstName} as createdBy`, meals.timesCooked)
+        .where({ [meals.id]: mealId })
+        .avg({ ratingAverage: meal_ratings.rating })
+        .leftJoin(lamington_db.meal_ratings, meals.id, meal_ratings.mealId)
+        .leftJoin(lamington_db.users, meals.createdBy, users.id)
+        .groupBy(meals.id);
 
-    const mealCategoryList: MealCategory[] = await db.from(lamington_db.meal_categories)
-        .select("name")
-        .leftJoin('categories', 'meal_categories.categoryId', 'categories.id')
-        .where({ 'meal_categories.mealId': mealId });
+    const mealCategoryList: MealCategory[] = await db.from(lamington_db.categories)
+        .select(categories.name)
+        .leftJoin(lamington_db.meal_categories, meal_categories.categoryId, categories.id)
+        .where({ [meal_categories.mealId]: mealId });
 
-    const mealPersonalRating: { rating: number } | undefined = await db.from('meals')
-        .where({ "mealId": mealId, "raterId": userId })
-        .first('meal_ratings.rating')
-        .join(lamington_db.meal_ratings, 'meals.id', 'meal_ratings.mealId')
+    const mealPersonalRating: { rating: number } | undefined = await db.from(lamington_db.meals)
+        .where({ [meal_ratings.mealId]: mealId, [meal_ratings.raterId]: userId })
+        .first(meal_ratings.rating)
+        .join(lamington_db.meal_ratings, meals.id, meal_ratings.mealId)
         .catch(() => undefined)
 
     Promise.all([mealDetails, mealPersonalRating, mealCategoryList])
         .then(([mealDetailsResults, mealPersonalRatingResults, mealCategoryListResults]) => {
-            const finalMeal: Meal = { ...mealDetailsResults[0], ratingPersonal: mealPersonalRatingResults?.rating, categories: mealCategoryListResults.map(category => ({ id: category.mealId, name: category.name })) }
-            res.status(200).json(finalMeal);
+            const meal: Meal = {
+                ...mealDetailsResults[0],
+                ratingPersonal: mealPersonalRatingResults?.rating,
+                categories: mealCategoryListResults.map(category => ({ id: category.mealId, name: category.name }))
+            }
+            res.status(200).json(meal);
         })
         .catch((err) => {
             console.log(err);
@@ -99,21 +103,24 @@ router.get('/:mealId', checkToken, async (req: Request<GetMealQuery, {}, Authent
  * GET request to fetch all meals
  */
 router.get('/', async (req, res) => {
-    const mealList: Meal[] = await db.from('meals')
-        .select("meals.id", "meals.name", "photo", "timesCooked", "firstName as createdBy")
-        .avg({ ratingAverage: 'rating' })
-        .leftJoin(lamington_db.meal_ratings, 'meals.id', 'meal_ratings.mealId')
-        .leftJoin('users', 'meals.createdBy', 'users.id')
-        .groupBy('meals.id');
+    const mealList: Meal[] = await db.from(lamington_db.meals)
+        .select(meals.id, meals.name, meals.photo, meals.timesCooked, `${users.firstName} as createdBy`)
+        .avg({ ratingAverage: meal_ratings.rating })
+        .leftJoin(lamington_db.meal_ratings, meals.id, meal_ratings.mealId)
+        .leftJoin(lamington_db.users, meals.createdBy, users.id)
+        .groupBy(meals.id);
 
     const mealCategoryList: MealCategory[] = await db.from(lamington_db.meal_categories)
-        .select("mealId", "categories.name")
-        .leftJoin('categories', 'meal_categories.categoryId', 'categories.id')
+        .select(meal_categories.mealId, categories.name)
+        .leftJoin(lamington_db.categories, meal_categories.categoryId, categories.id)
 
     Promise.all([mealList, mealCategoryList])
         .then(([mealListResults, mealCategoryListResults]) => {
-            const finalMeals: Meal[] = mealListResults.map(meal => ({ ...meal, categories: mealCategoryListResults.filter(category => category.mealId === meal.id).map(category => ({ id: category.mealId, name: category.name })) }))
-            res.status(200).json({ "Meals": finalMeals })
+            const meals: Meal[] = mealListResults.map(meal => ({
+                ...meal,
+                categories: mealCategoryListResults.filter(category => category.mealId === meal.id).map(category => ({ id: category.mealId, name: category.name }))
+            }))
+            res.status(200).json({ meals })
         })
         .catch((err) => {
             res.json({ "Error": true, "Message": err });

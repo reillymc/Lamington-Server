@@ -18,7 +18,7 @@
       "name": "Authentication"
     },
     {
-      "name": "Data Endpoints"
+      "name": "Meals"
     }
   ],
   "components": {
@@ -92,9 +92,91 @@
           "name",
           "created_by"
         ]
+      },
+      "MealList": {
+        "properties": {
+          "meals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Meal"
+            }
+          }
+        }
+      },
+      "Category": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "default": "000-000-001"
+          },
+          "name": {
+            "type": "string",
+            "default": "Italian"
+          }
+        }
+      },
+      "RosteredMeal": {
+        "properties": {
+          "mealId": {
+            "type": "string",
+            "default": "010-000-000"
+          },
+          "assigneeId": {
+            "type": "string",
+            "default": "100-000-000"
+          },
+          "assigneeName": {
+            "type": "string",
+            "default": "Testificate"
+          },
+          "assignerId": {
+            "type": "string",
+            "default": "200-000-000"
+          },
+          "assignerName": {
+            "type": "string",
+            "default": "Father"
+          },
+          "assigneedDate": {
+            "type": "string",
+            "default": "2021-06-06"
+          },
+          "repeat": {
+            "type": "boolean",
+            "default": false
+          },
+          "completed": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "MealRating": {
+        "properties": {
+          "mealId": {
+            "type": "string",
+            "default": "000-000-001"
+          },
+          "rating": {
+            "type": "number",
+            "default": 5
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
   },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
   "paths": {
     "/users/register": {
       "post": {
@@ -230,14 +312,17 @@
     },
     "/meals": {
       "get": {
-        "summary": "Returns a list of meals.",
+        "tags": [
+          "Meals"
+        ],
+        "summary": "Returns a list of all meals.",
         "responses": {
           "200": {
             "description": "A JSON array of meals",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Meal"
+                  "$ref": "#/components/schemas/MealList"
                 }
               }
             }
@@ -245,7 +330,10 @@
         }
       },
       "post": {
-        "summary": "Create a new meal.",
+        "tags": [
+          "Meals"
+        ],
+        "summary": "Create a new meal or update an existing meal.",
         "requestBody": {
           "required": true,
           "content": {
@@ -258,24 +346,17 @@
         },
         "responses": {
           "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
-                }
-              }
-            }
+            "description": "Created"
           }
         }
       }
     },
     "/meals/{mealId}": {
       "get": {
-        "summary": "Returns a list of meals.",
+        "tags": [
+          "Meals"
+        ],
+        "summary": "Returns a meal.",
         "parameters": [
           {
             "in": "path",
@@ -297,6 +378,69 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/meals/categories": {
+      "get": {
+        "tags": [
+          "Meals"
+        ],
+        "summary": "Returns a list of all categories.",
+        "responses": {
+          "200": {
+            "description": "A JSON array of categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meals/roster": {
+      "get": {
+        "tags": [
+          "Meals"
+        ],
+        "summary": "Returns the meal roster.",
+        "responses": {
+          "200": {
+            "description": "A JSON array of meal assignments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosteredMeal"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meals/rate": {
+      "post": {
+        "tags": [
+          "Meals"
+        ],
+        "summary": "Rate a meal.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealRating"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
           }
         }
       }
