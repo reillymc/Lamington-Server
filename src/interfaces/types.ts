@@ -11,16 +11,16 @@ interface User {
 interface Meal {
     id: string,
     name: string,
-    recipe: string | undefined,
-    ingredients: string | undefined,
-    method: string | undefined,
-    notes?: string | undefined,
-    photo?: string | undefined,
-    ratingAverage?: number | undefined,
-    ratingPersonal?: number | undefined,
+    recipe: string,
+    ingredients?: string,
+    method?: string,
+    notes?: string,
+    photo?: string,
+    ratingAverage?: number,
+    ratingPersonal?: number,
     categories?: Category[],
     createdBy: string,
-    timesCooked: number | undefined
+    timesCooked?: number
 }
 
 interface Category {
@@ -41,4 +41,14 @@ interface MealRating {
     rating: number
 }
 
-export { User, Meal, Category, MealRating, MealCategory }
+interface MealRoster {
+
+}
+
+interface Authentication {
+    token: string,
+    token_type: string
+}
+
+
+export { User, Meal, Category, MealRating, MealCategory, MealRoster, Authentication }

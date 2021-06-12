@@ -1,50 +1,63 @@
-import express, { Request } from 'express';
+import express, { Request, Response } from 'express';
 import db from '../database/db-config';
 import { v4 as uuidv4 } from 'uuid';
-import { Meal, Category, MealRating, MealCategory } from '../database/types'
+import { Meal, Category, MealRating, MealCategory, MealRoster } from '../interfaces/types'
+import { LamingtonDataResponse, LamingtonResponse } from '../interfaces/response';
 import { lamington_db, meals, meal_ratings, meal_categories, categories, users, meal_roster } from '../database/definitions'
-import { checkToken, verifyToken, AuthenticatedBody } from '../authentication/auth';
+import { checkToken, verifyToken, AuthTokenData } from '../authentication/auth';
 
 const router = express.Router();
 
-// Define Request Parameters
-interface GetMealQuery {
-    mealId: string;
-    creatorId: string;
+// Define Request Parameters, Queries and Bodies
+interface GetMealParams {
+    mealId: string,
+    creatorId: string
 };
 
-interface MealRatingBody {
+interface RateMealBody extends AuthTokenData {
     mealId: string,
     rating: number
+}
+
+interface CreateMealBody extends AuthTokenData {
+    id?: string,
+    name: string,
+    recipe?: string,
+    ingredients?: string,
+    method?: string,
+    notes?: string,
+    photo?: string,
+    ratingPersonal?: number,
+    categories?: Category[]
 }
 
 
 /**
  * GET request to fetch all categories
  */
-router.get('/categories', async (req, res) => {
+router.get('/categories', async (req, res: Response<LamingtonDataResponse<Category[]>>) => {
     db.from(lamington_db.categories)
         .select(categories.id, categories.name)
         .then((categories: Category[]) => {
-            res.status(200).json({ categories });
+            return res.status(200).json({ error: false, data: categories });
         })
         .catch((err) => {
             console.log(err);
-            res.json({ "Error": true, "Message": err });
+            return res.json({ error: true, message: err });
         })
 })
 
 /**
  * GET request to fetch the meal roster
  */
-router.get('/roster', (req, res) => {
+router.get('/roster', (req, res: Response<LamingtonDataResponse<MealRoster>>) => {
     db.from(lamington_db.meal_roster).select(meal_roster.mealId, meal_roster.assigneeId, meal_roster.assignmentDate, meal_roster.assignerId, meal_roster.cooked)
         .then((rows) => {
-            res.status(200).json({ "years": rows });
+            return res.status(200).json({ error: false, data: rows });
         })
         .catch((err) => {
             console.log(err);
-            res.json({ "Error": true, "Message": err });
+            return res.json({ error: true, message: err });
         })
 })
 
@@ -53,7 +66,7 @@ router.get('/roster', (req, res) => {
  * Requires meal query params
  * Does not require authentication (authentication is needed to fetch personal meal rating)
  */
-router.get('/:mealId', checkToken, async (req: Request<GetMealQuery, {}, AuthenticatedBody, {}>, res) => {
+router.get('/:mealId', checkToken, async (req: Request<GetMealParams, LamingtonDataResponse<Meal>, AuthTokenData, null>, res: Response<LamingtonDataResponse<Meal>>) => {
 
     // Extract request fields
     const { mealId } = req.params;
@@ -61,7 +74,7 @@ router.get('/:mealId', checkToken, async (req: Request<GetMealQuery, {}, Authent
 
     // Check all required fields are present
     if (!mealId) {
-        res.status(400).json({ message: `Error getting meal` });
+        return res.status(400).json({ error: true, message: `Error getting meal` });
     }
 
     // Fetch and return data from database
@@ -84,25 +97,19 @@ router.get('/:mealId', checkToken, async (req: Request<GetMealQuery, {}, Authent
         .join(lamington_db.meal_ratings, meals.id, meal_ratings.mealId)
         .catch(() => undefined)
 
-    Promise.all([mealDetails, mealPersonalRating, mealCategoryList])
-        .then(([mealDetailsResults, mealPersonalRatingResults, mealCategoryListResults]) => {
-            const meal: Meal = {
-                ...mealDetailsResults[0],
-                ratingPersonal: mealPersonalRatingResults?.rating,
-                categories: mealCategoryListResults.map(category => ({ id: category.mealId, name: category.name }))
-            }
-            res.status(200).json(meal);
-        })
-        .catch((err) => {
-            console.log(err);
-            res.json({ "Error": true, "Message": err });
-        })
+    const data: Meal = {
+        ...mealDetails[0],
+        ratingPersonal: mealPersonalRating?.rating,
+        categories: mealCategoryList.map(category => ({ id: category.mealId, name: category.name }))
+    }
+    return res.status(200).json({ error: false, data });
+
 })
 
 /**
  * GET request to fetch all meals
  */
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response<LamingtonDataResponse<Meal[]>>) => {
     const mealList: Meal[] = await db.from(lamington_db.meals)
         .select(meals.id, meals.name, meals.photo, meals.timesCooked, `${users.firstName} as createdBy`)
         .avg({ ratingAverage: meal_ratings.rating })
@@ -114,16 +121,40 @@ router.get('/', async (req, res) => {
         .select(meal_categories.mealId, categories.name)
         .leftJoin(lamington_db.categories, meal_categories.categoryId, categories.id)
 
-    Promise.all([mealList, mealCategoryList])
-        .then(([mealListResults, mealCategoryListResults]) => {
-            const meals: Meal[] = mealListResults.map(meal => ({
-                ...meal,
-                categories: mealCategoryListResults.filter(category => category.mealId === meal.id).map(category => ({ id: category.mealId, name: category.name }))
-            }))
-            res.status(200).json({ meals })
-        })
-        .catch((err) => {
-            res.json({ "Error": true, "Message": err });
+    const data: Meal[] = mealList.map(meal => ({
+        ...meal,
+        categories: mealCategoryList.filter(category => category.mealId === meal.id).map(category => ({ id: category.mealId, name: category.name }))
+    }))
+    return res.status(200).json({ error: false, data })
+})
+
+/**
+ * POST request to rate a meal
+ * Requires meal rating body
+ * Requires authentication body
+ */
+router.post('/rate', verifyToken, async (req: Request<null, null, RateMealBody, null>, res: Response<LamingtonResponse>) => {
+
+    // Extract request fields
+    const { userId, mealId, rating } = req.body;
+
+    // Check all required fields are present
+    if (!userId || !mealId || !rating) {
+        return res.status(400).json({ error: true, message: `You haven't given enough information to rate this meal` });
+    }
+
+    // Create object
+    const mealRating: MealRating = { mealId, raterId: userId, rating, }
+
+    // Update database and return status
+    db(lamington_db.meal_ratings)
+        .insert(mealRating)
+        .onConflict([meal_ratings.mealId, meal_ratings.raterId])
+        .merge()
+        .then(_ => {
+            return res.status(201).json({ error: false, message: `yay! you've successfully rated this meal :)` });
+        }).catch(error => {
+            return res.status(400).json({ error: true, message: 'oops! It looks like something went wrong rating this meal :(' });
         })
 })
 
@@ -132,7 +163,7 @@ router.get('/', async (req, res) => {
  * Requires meal data body
  * Requires authentication body
  */
-router.post('/', verifyToken, (req: Request<{}, {}, Meal & AuthenticatedBody, {}>, res) => {
+router.post('/', verifyToken, (req: Request<null, null, CreateMealBody, null>, res: Response<LamingtonResponse>) => {
 
     // Extract request fields
     const {
@@ -144,19 +175,18 @@ router.post('/', verifyToken, (req: Request<{}, {}, Meal & AuthenticatedBody, {}
         notes = "",
         photo = "",
         ratingPersonal,
-        timesCooked = 0,
         categories = [],
         userId
     } = req.body;
 
     // Check all required fields are present
     if (!name) {
-        res.status(400).json({ message: `Error creating meal (No name provided)` });
+        return res.status(400).json({ error: true, message: `Error creating meal (No name provided)` });
     }
 
     // Create object
     let meal: Meal = {
-        id,
+        id: id ?? "",
         name,
         recipe,
         ingredients,
@@ -164,7 +194,6 @@ router.post('/', verifyToken, (req: Request<{}, {}, Meal & AuthenticatedBody, {}
         notes,
         photo,
         createdBy: userId,
-        timesCooked
     }
 
     // Update database and return status
@@ -174,7 +203,7 @@ router.post('/', verifyToken, (req: Request<{}, {}, Meal & AuthenticatedBody, {}
             .where({ [meals.id]: id, [meals.createdBy]: userId })
             .then(count => {
                 if (count === 0) {
-                    res.status(403).json({ message: 'Cannot update a meal that does not belong to you! :( ' });
+                    return res.status(403).json({ error: true, message: 'Cannot update a meal that does not belong to you! :( ' });
                 }
                 if (ratingPersonal) {
                     const mealRating: MealRating = { mealId: id, raterId: userId, rating: ratingPersonal, }
@@ -183,7 +212,7 @@ router.post('/', verifyToken, (req: Request<{}, {}, Meal & AuthenticatedBody, {}
                         .onConflict([meal_ratings.mealId, meal_ratings.rating])
                         .merge()
                         .catch(error => {
-                            res.status(400).json({ message: 'Meal Updated but unable to rate :( ' });
+                            return res.status(400).json({ error: true, message: 'Meal Updated but unable to rate :( ' });
                         });
                 }
                 if (categories.length > 0) {
@@ -198,18 +227,19 @@ router.post('/', verifyToken, (req: Request<{}, {}, Meal & AuthenticatedBody, {}
                                     .onConflict([meal_ratings.mealId, meal_ratings.rating])
                                     .merge()
                                     .catch(error => {
-                                        res.status(400).json({ message: 'Meal Created but unable to rate :( ' });
+                                        return res.status(400).json({ error: true, message: 'Meal Created but unable to rate :( ' });
                                     });
                             })
                         })
                 }
-                res.status(201).json({ message: `yay! you've successfully updated a meal :)` });
+                return res.status(201).json({ error: false, message: `yay! you've successfully updated a meal :)` });
             })
             .catch(error => {
-                res.status(400).json({ message: 'oops! It looks like you are trying to update a meal that does not exist :( ' });
+                return res.status(400).json({ error: true, message: 'oops! It looks like you are trying to update a meal that does not exist :( ' });
             })
     } else {
-        meal.id = uuidv4();
+        meal.id = uuidv4()
+        meal.timesCooked = 0;
         db(lamington_db.meals)
             .insert(meal)
             .onConflict([meals.id])
@@ -227,7 +257,7 @@ router.post('/', verifyToken, (req: Request<{}, {}, Meal & AuthenticatedBody, {}
                                     .onConflict([meal_ratings.mealId, meal_ratings.rating])
                                     .merge()
                                     .catch(error => {
-                                        res.status(400).json({ message: 'Meal Created but unable to rate :( ' });
+                                        return res.status(400).json({ error: true, message: 'Meal Created but unable to rate :( ' });
                                     });
                             })
                         })
@@ -240,46 +270,16 @@ router.post('/', verifyToken, (req: Request<{}, {}, Meal & AuthenticatedBody, {}
                             .onConflict([meal_ratings.mealId, meal_ratings.rating])
                             .merge()
                             .catch(error => {
-                                res.status(400).json({ message: 'Meal Created but unable to rate :( ' });
+                                return res.status(400).json({ error: true, message: 'Meal Created but unable to rate :( ' });
                             });
                     })
                 }
-                res.status(201).json({ message: `yay! you've successfully added a meal :)` });
+                return res.status(201).json({ error: false, message: `yay! you've successfully added a meal :)` });
             })
             .catch(error => {
-                res.status(400).json({ message: 'oops! It looks like something went wrong adding your meal :( ', error });
+                return res.status(400).json({ error: true, message: 'oops! It looks like something went wrong adding your meal :( ' });
             })
     }
-})
-
-/**
- * POST request to rate a meal
- * Requires meal rating body
- * Requires authentication body
- */
-router.post('/rate', verifyToken, async (req: Request<{}, {}, MealRatingBody & AuthenticatedBody, {}>, res) => {
-
-    // Extract request fields
-    const { userId, mealId, rating } = req.body;
-
-    // Check all required fields are present
-    if (!userId || !mealId || !rating) {
-        res.status(400).json({ message: `You haven't given enough information to rate this meal` });
-    }
-
-    // Create object
-    const mealRating: MealRating = { mealId, raterId: userId, rating, }
-
-    // Update database and return status
-    db(lamington_db.meal_ratings)
-        .insert(mealRating)
-        .onConflict([meal_ratings.mealId, meal_ratings.raterId])
-        .merge()
-        .then(_ => {
-            res.status(201).json({ message: `yay! you've successfully rated this meal :)` });
-        }).catch(error => {
-            res.status(400).json({ message: 'oops! It looks like something went wrong rating this meal :(' });
-        })
 })
 
 export default router

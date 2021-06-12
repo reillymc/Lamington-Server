@@ -1,121 +1,114 @@
-import express, { Request } from 'express';
+import express, { Request, Response } from 'express';
 import db from '../database/db-config';
-import { v4 as uuidv4 } from 'uuid';
-import { createToken, verifyToken } from '../authentication/auth';
 import bcrypt from 'bcrypt';
-import { User } from '../database/types';
+import { v4 as uuidv4 } from 'uuid';
+import { Authentication, User } from '../interfaces/types';
+import { lamington_db, users } from '../database/definitions';
+import { createToken } from '../authentication/auth';
+import { LamingtonDataResponse } from '../interfaces/response';
+
 const router = express.Router();
 const saltRounds = 10;
 
-
-interface UserRequest {
+// Define Request Parameters
+interface LoginBody {
+    email: string,
     password: string,
 }
-
-interface AuthenticatedBody {
-    userId: string,
+interface RegisterBody extends LoginBody {
+    firstName: string,
+    lastName: string,
 }
 
-// list all users
-router.get('/', function (req, res) {
-    db.from('users').select("email", "firstName", "lastName", "status")
-        .then((rows) => {
-            res.status(200).json({ "Users": rows });
+
+/**
+ * GET request to fetch all users
+ */
+router.get('/', (req, res: Response<LamingtonDataResponse<User[]>>) => {
+    db.from(lamington_db.users).select(users.email, users.firstName, users.lastName, users.status)
+        .then((users: User[]) => {
+            return res.status(200).json({ error: false, data: users });
         })
         .catch((err) => {
-            console.log(err);
-            res.json({ "Error": true, "Message": err });
+            return res.json({ error: true, message: err });
         })
 })
 
-// register user
-router.post('/register', (req: Request<{}, {}, User, {}>, res) => {
+/**
+ * POST request to register a new user
+ */
+router.post('/register', async (req: Request<null, LamingtonDataResponse<Authentication>, RegisterBody, null>, res) => {
 
-    if (!req.body.email || !req.body.firstName || !req.body.lastName || !req.body.password) {
-        res.status(400).json({ message: `Error updating users` });
-        console.log(`Error on request body:`, JSON.stringify(req.body));
-    } else {
-        // encrypt password
-        bcrypt.genSalt(saltRounds, function (err, salt) {
-            bcrypt.hash(req.body.password, salt, function (err, hash) {
+    // Extract request fields
+    const { email, firstName, lastName, password } = req.body;
 
-                const { email, firstName, lastName } = req.body
+    // Check all required fields are present
+    if (!email || !firstName || !lastName || !password) {
+        return res.status(400).json({ error: true, message: `Not enough information to create a user` });
+    }
 
-                //create account based on random id number, email and password, and the current date/time
-                var user = {
-                    id: uuidv4(),
-                    email,
-                    firstName,
-                    lastName,
-                    password: hash,
-                    created: new Date().toISOString().slice(0, 19).replace('T', ' '),
-                    status: 'c'
+    // Create object
+    const user = {
+        id: uuidv4(),
+        email,
+        firstName,
+        lastName,
+        password: await bcrypt.hash(req.body.password, await bcrypt.genSalt(saltRounds)),
+        created: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        status: 'c'
+    }
+
+    // Update database and return status
+    db(lamington_db.users).insert(user)
+        .then(_ => {
+            return res.status(201).json({
+                error: false,
+                data: {
+                    token: createToken(user.id),
+                    token_type: "Bearer"
                 }
-
-                // database insertion
-                db('users').insert(user)
-                    .then(_ => {
-                        res.status(201).json({
-                            token: createToken(user.id),
-                            token_type: "Bearer",
-                        })
-                    })
-                    .catch(error => {
-                        res.status(400).json({ message: `oops! It looks like that user already exists :( ${error}` });
-                    })
-            });
-        });
-    }
+            })
+        })
+        .catch(error => {
+            return res.status(400).json({ error: true, message: `oops! It looks like that user already exists :( ${error}` });
+        })
 })
 
-// user login
-router.post('/login', (req: Request<{}, {}, User, {}>, res) => {
-    if (!req.body.email || !req.body.password) {
-        res.status(401).json({ message: `invalid login - bad password` });
-    } else {
-        db.from('users').select("id", "password").where('email', '=', req.body.email)
-            .then((rows: User[]) => {
+/**
+ * POST request to login an existing user
+ */
+router.post('/login', (req: Request<null, LamingtonDataResponse<Authentication>, LoginBody, null>, res) => {
 
-                // check encrypted password
-                bcrypt.compare(req.body.password, rows[0].password, function (err, result) {
-                    if (result) {
-                        res.status(200).json({
-                            token: createToken(rows[0].id),
-                            token_type: "Bearer",
-                        })
-                    } else {
-                        res.status(401).json({ message: `invalid login - bad password` });
-                    }
-                });
-            })
-            .catch((err) => {
-                console.log(err);
-                res.status(401).json({ message: `invalid login - bad password` });
-            })
+    // Extract request fields
+    const { email, password } = req.body;
+
+    // Check all required fields are present
+    if (!email || !password) {
+        return res.status(401).json({ error: true, message: `invalid login - bad password` });
     }
-})
 
-// profile
-router.post('/profile', verifyToken, (req: Request<{}, {}, UserRequest & AuthenticatedBody, {}>, res) => {
-    db.from('users').select("first_name").where('id', '=', req.body.userId)
-        .then((rows: User[]) => {
+    // Fetch and return data from database
+    db.from(lamington_db.users)
+        .select(users.id, users.password)
+        .where({ [users.email]: email })
+        .then(async (rows: User[]) => {
 
-            // check encrypted password
-            bcrypt.compare(req.body.password, rows[0].password, function (err, result) {
-                if (result) {
-                    res.status(200).json({
+            // Verify Password
+            const result = await bcrypt.compare(req.body.password, rows[0].password);
+
+            if (result) {
+                return res.status(200).json({
+                    error: false,
+                    data: {
                         token: createToken(rows[0].id),
-                        token_type: "Bearer",
-                        expires_in: 86400
-                    })
-                } else {
-                    res.status(401).json({ message: `invalid login - bad password` });
-                }
-            });
+                        token_type: "Bearer"
+                    }
+                })
+            }
+            return res.status(401).json({ error: true, message: `invalid login - bad password` });
         })
-        .catch((err) => {
-            console.log(err);
-            res.status(401).json({ message: `invalid login - bad password` });
+        .catch(() => {
+            return res.status(401).json({ error: true, message: `error` });
         })
 })
 

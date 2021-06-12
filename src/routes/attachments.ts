@@ -1,43 +1,27 @@
-import express, { Request } from 'express';
-import multer from 'multer';
-import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
+import multer, { FileFilterCallback } from 'multer';
+import express, { Request, Response } from 'express';
+import { v4 as uuidv4 } from 'uuid';
 const router = express.Router();
 
-interface multerFile {
-    buffer: Buffer,
-    encoding: string,
-    fieldname: string,
-    mimetype: string,
-    originalname: string,
-    size: number;
-};
+const acceptedExtensions = ['.jpg', '.jpeg', '.png']
+const acceptedMimeTypes = ['image/jpg', 'image/jpeg', 'image/png']
 
 const storage = multer.diskStorage({
-    destination: function (req: Request, file: multerFile, callback: any) {
-        callback(null, 'uploads/')
-    },
-    filename: function (req: Request, file: multerFile, callback: any) {
-        callback(null, uuidv4() + path.extname(file.originalname))
-    }
+    destination: (req: Request, file: Express.Multer.File, callback) => callback(null, 'uploads/'),
+    filename: (req: Request, file: Express.Multer.File, callback) => callback(null, uuidv4() + path.extname(file.originalname))
 })
 
-const fileFilter = (req: Request, file: multerFile, callback: any) => {
+const fileFilter = (req: Request, file: Express.Multer.File, callback: FileFilterCallback) => {
     const extension = path.extname(file.originalname).toLowerCase();
-    const mimetype = file.mimetype;
-    if (
-        extension === '.jpg' || extension === '.jpeg' || extension === '.png' ||
-        mimetype === 'image/png' || mimetype === 'image/jpg' || mimetype === 'image/jpeg'
-    ) {
-        callback(null, true)
-    }
-    callback(null, false, new Error('Incorrect File Type'))
-
+    const validFile = (acceptedExtensions.includes(extension) || acceptedMimeTypes.includes(file.mimetype))
+    callback(null, validFile)
 }
-var upload = multer({ storage: storage, fileFilter: fileFilter })
+
+const upload = multer({ storage: storage, fileFilter: fileFilter })
 
 // upload image
-router.post('/upload-image', upload.single('photo'), (req: Request<{}, multerFile>, res: any) => {
+router.post('/upload-image', upload.single('photo'), (req: Request<{}, Express.Multer.File>, res: Response) => {
     res.json(req.file.filename)
 })
 
