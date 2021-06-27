@@ -19,6 +19,10 @@ interface RateMealBody extends AuthTokenData {
     rating: number
 }
 
+interface DeleteMealBody extends AuthTokenData {
+    mealId: string
+}
+
 interface CreateMealBody extends AuthTokenData {
     id?: string,
     name: string,
@@ -86,8 +90,8 @@ router.get('/:mealId', checkToken, async (req: Request<GetMealParams, LamingtonD
         .leftJoin(lamington_db.users, meals.createdBy, users.id)
         .groupBy(meals.id);
 
-    const mealCategoryList: MealCategory[] = await db.from(lamington_db.categories)
-        .select(categories.name)
+    const mealCategoryList: Category[] = await db.from(lamington_db.categories)
+        .select(categories.id, categories.name)
         .leftJoin(lamington_db.meal_categories, meal_categories.categoryId, categories.id)
         .where({ [meal_categories.mealId]: mealId });
 
@@ -100,7 +104,7 @@ router.get('/:mealId', checkToken, async (req: Request<GetMealParams, LamingtonD
     const data: Meal = {
         ...mealDetails[0],
         ratingPersonal: mealPersonalRating?.rating,
-        categories: mealCategoryList.map(category => ({ id: category.mealId, name: category.name }))
+        categories: mealCategoryList
     }
     return res.status(200).json({ error: false, data });
 
@@ -118,12 +122,12 @@ router.get('/', async (req: Request, res: Response<LamingtonDataResponse<Meal[]>
         .groupBy(meals.id);
 
     const mealCategoryList: MealCategory[] = await db.from(lamington_db.meal_categories)
-        .select(meal_categories.mealId, categories.name)
+        .select(meal_categories.mealId, meal_categories.categoryId, categories.name)
         .leftJoin(lamington_db.categories, meal_categories.categoryId, categories.id)
 
     const data: Meal[] = mealList.map(meal => ({
         ...meal,
-        categories: mealCategoryList.filter(category => category.mealId === meal.id).map(category => ({ id: category.mealId, name: category.name }))
+        categories: mealCategoryList.filter(category => category.mealId === meal.id).map(category => ({ id: category.categoryId, name: category.name }))
     }))
     return res.status(200).json({ error: false, data })
 })
@@ -156,6 +160,51 @@ router.post('/rate', verifyToken, async (req: Request<null, null, RateMealBody, 
         }).catch(error => {
             return res.status(400).json({ error: true, message: 'oops! It looks like something went wrong rating this meal :(' });
         })
+})
+
+/**
+ * POST request to rate a meal
+ * Requires meal rating body
+ * Requires authentication body
+ */
+router.post('/delete', verifyToken, async (req: Request<null, null, DeleteMealBody, null>, res: Response<LamingtonResponse>) => {
+
+    // Extract request fields
+    const { userId, mealId } = req.body;
+
+    // Check all required fields are present
+    if (!userId || !mealId) {
+        return res.status(400).json({ error: true, message: `You haven't given enough information to delete this meal` });
+    }
+
+    // Update database and return status
+    try {
+        // Check if the delete order came from the meal creator
+        const mealDetails: Meal = await db.from(lamington_db.meals)
+            .select(meals.id, meals.createdBy)
+            .where({ [meals.id]: mealId })
+            .first()
+
+        if (mealDetails.createdBy != userId) {
+            return res.status(400).json({ error: true, message: `You are not authorised to delete this meal` });
+        }
+
+        await db(lamington_db.meal_ratings)
+            .where({ [meal_ratings.mealId]: mealId })
+            .del()
+        await db(lamington_db.meal_roster)
+            .where({ [meal_roster.mealId]: mealId })
+            .del()
+        await db(lamington_db.meal_categories)
+            .where({ [meal_categories.mealId]: mealId })
+            .del()
+        await db(lamington_db.meals)
+            .where({ [meals.id]: mealId })
+            .del()
+        return res.status(201).json({ error: false, message: `yay! you've successfully deleted this meal :)` });
+    } catch (error) {
+        return res.status(400).json({ error: true, message: error });
+    }
 })
 
 /**
@@ -201,7 +250,7 @@ router.post('/', verifyToken, (req: Request<null, null, CreateMealBody, null>, r
         db(lamington_db.meals)
             .update(meal)
             .where({ [meals.id]: id, [meals.createdBy]: userId })
-            .then(count => {
+            .then(async count => {
                 if (count === 0) {
                     return res.status(403).json({ error: true, message: 'Cannot update a meal that does not belong to you! :( ' });
                 }
@@ -216,21 +265,19 @@ router.post('/', verifyToken, (req: Request<null, null, CreateMealBody, null>, r
                         });
                 }
                 if (categories.length > 0) {
-                    db(lamington_db.meal_categories)
+                    await db(lamington_db.meal_categories)
                         .del()
                         .where({ [meal_categories.mealId]: meal.id })
-                        .then(_ => {
-                            categories.forEach(category => {
-                                const mealCategory = { [meal_categories.mealId]: meal.id, [meal_categories.categoryId]: category.id }
-                                db(lamington_db.meal_categories)
-                                    .insert(mealCategory)
-                                    .onConflict([meal_ratings.mealId, meal_ratings.rating])
-                                    .merge()
-                                    .catch(error => {
-                                        return res.status(400).json({ error: true, message: 'Meal Created but unable to rate :( ' });
-                                    });
-                            })
-                        })
+                    categories.forEach(category => {
+                        const mealCategory = { [meal_categories.mealId]: meal.id, [meal_categories.categoryId]: category.id }
+                        db(lamington_db.meal_categories)
+                            .insert(mealCategory)
+                            .onConflict([meal_ratings.mealId, meal_ratings.rating])
+                            .ignore()
+                            .catch(error => {
+                                return res.status(400).json({ error: true, message: 'Meal Created but unable to rate :( ' });
+                            });
+                    })
                 }
                 return res.status(201).json({ error: false, message: `yay! you've successfully updated a meal :)` });
             })
@@ -244,31 +291,17 @@ router.post('/', verifyToken, (req: Request<null, null, CreateMealBody, null>, r
             .insert(meal)
             .onConflict([meals.id])
             .merge()
-            .then(_ => {
+            .then(async _ => {
                 if (categories.length > 0) {
-                    db(lamington_db.meal_categories)
+                    await db(lamington_db.meal_categories)
                         .del()
                         .where({ [meal_categories.mealId]: meal.id })
-                        .then(_ => {
-                            categories.forEach(category => {
-                                const mealCategory = { [meal_categories.mealId]: meal.id, [meal_categories.categoryId]: category.id }
-                                db(lamington_db.meal_categories)
-                                    .insert(mealCategory)
-                                    .onConflict([meal_ratings.mealId, meal_ratings.rating])
-                                    .merge()
-                                    .catch(error => {
-                                        return res.status(400).json({ error: true, message: 'Meal Created but unable to rate :( ' });
-                                    });
-                            })
-                        })
-                }
-                if (categories.length > 0) {
                     categories.forEach(category => {
                         const mealCategory = { [meal_categories.mealId]: meal.id, [meal_categories.categoryId]: category.id }
                         db(lamington_db.meal_categories)
                             .insert(mealCategory)
                             .onConflict([meal_ratings.mealId, meal_ratings.rating])
-                            .merge()
+                            .ignore()
                             .catch(error => {
                                 return res.status(400).json({ error: true, message: 'Meal Created but unable to rate :( ' });
                             });

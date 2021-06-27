@@ -20,6 +20,14 @@ interface RegisterBody extends LoginBody {
     lastName: string,
 }
 
+interface LoginResponse {
+    authorization: {
+        token: string,
+        token_type: string
+    },
+    user: User
+}
+
 
 /**
  * GET request to fetch all users
@@ -37,7 +45,7 @@ router.get('/', (req, res: Response<LamingtonDataResponse<User[]>>) => {
 /**
  * POST request to register a new user
  */
-router.post('/register', async (req: Request<null, LamingtonDataResponse<Authentication>, RegisterBody, null>, res) => {
+router.post('/register', async (req: Request<null, LamingtonDataResponse<LoginResponse>, RegisterBody, null>, res) => {
 
     // Extract request fields
     const { email, firstName, lastName, password } = req.body;
@@ -61,11 +69,14 @@ router.post('/register', async (req: Request<null, LamingtonDataResponse<Authent
     // Update database and return status
     db(lamington_db.users).insert(user)
         .then(_ => {
-            return res.status(201).json({
+            return res.status(200).json({
                 error: false,
                 data: {
-                    token: createToken(user.id),
-                    token_type: "Bearer"
+                    authorization: {
+                        token: createToken(user.id),
+                        token_type: "Bearer"
+                    },
+                    user: ({ id: user.id, firstName, lastName, status: user.status })
                 }
             })
         })
@@ -77,7 +88,7 @@ router.post('/register', async (req: Request<null, LamingtonDataResponse<Authent
 /**
  * POST request to login an existing user
  */
-router.post('/login', (req: Request<null, LamingtonDataResponse<Authentication>, LoginBody, null>, res) => {
+router.post('/login', (req: Request<null, LamingtonDataResponse<LoginResponse>, LoginBody, null>, res) => {
 
     // Extract request fields
     const { email, password } = req.body;
@@ -89,19 +100,22 @@ router.post('/login', (req: Request<null, LamingtonDataResponse<Authentication>,
 
     // Fetch and return data from database
     db.from(lamington_db.users)
-        .select(users.id, users.password)
+        .select(users.id, users.email, users.password, users.firstName, users.lastName, users.status)
         .where({ [users.email]: email })
         .then(async (rows: User[]) => {
 
             // Verify Password
-            const result = await bcrypt.compare(req.body.password, rows[0].password);
+            const result = await bcrypt.compare(req.body.password, rows[0].password ?? "");
 
             if (result) {
                 return res.status(200).json({
                     error: false,
                     data: {
-                        token: createToken(rows[0].id),
-                        token_type: "Bearer"
+                        authorization: {
+                            token: createToken(rows[0].id),
+                            token_type: "Bearer"
+                        },
+                        user: ({ id: rows[0].id, firstName: rows[0].firstName, lastName: rows[0].lastName, status: rows[0].status })
                     }
                 })
             }

@@ -1,11 +1,11 @@
 interface User {
     id: string,
-    email: string,
-    firstName: string,
-    lastName: string,
-    password: string,
-    createdAt: string,
-    status: string,
+    email?: string,
+    firstName?: string,
+    lastName?: string,
+    password?: string,
+    createdAt?: string,
+    status?: string,
 }
 
 interface Meal {
@@ -31,6 +31,7 @@ interface Category {
 
 interface MealCategory {
     mealId: string,
+    categoryId: string,
     name: string,
     description?: string
 }
