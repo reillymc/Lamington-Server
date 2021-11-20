@@ -1,13 +1,16 @@
-enum lamington_db {
+export enum lamington {
     users = "users",
     meals = "meals",
-    meal_ratings = "meal_ratings",
-    meal_categories = "meal_categories",
+    mealRatings = "meal_ratings",
+    mealCategories = "meal_categories",
+    mealRoster = "meal_roster",
+    mealIngredients = "meal_ingredients",
+    mealSteps = "meal_steps",
     categories = "categories",
-    meal_roster = "meal_roster"
+    ingredients = "ingredients",
 }
 
-enum users {
+export enum users {
     id = "users.id",
     email = "users.email",
     firstName = "users.firstName",
@@ -17,40 +20,75 @@ enum users {
     status = "users.status",
 }
 
-enum meals {
+export enum meals {
     id = "meals.id",
     name = "meals.name",
-    recipe = "meals.recipe",
+    source = "meals.source",
     ingredients = "meals.ingredients",
     method = "meals.method",
     notes = "meals.notes",
     photo = "meals.photo",
+    servings = "meals.servings",
+    prepTime = "meals.prepTime",
+    cookTime = "meals.cookTime",
     createdBy = "meals.createdBy",
     timesCooked = "meals.timesCooked",
 }
 
-enum meal_ratings {
+export enum mealRatings {
     mealId = "meal_ratings.mealId",
     raterId = "meal_ratings.raterId",
-    rating = "meal_ratings.rating"
+    rating = "meal_ratings.rating",
 }
 
-enum meal_categories {
+/**
+ * Contains the advanced ingredient list recipe, where each ingredient is it's own entity.
+ */
+export enum mealIngredients {
+    id = "meal_ingredients.id",
+    mealId = "meal_ingredients.mealId",
+    ingredientId = "meal_ingredients.ingredientId",
+    unit = "meal_ingredients.unit",
+    quantity = "meal_ingredients.quantity",
+    section = "meal_ingredients.section",
+    notes = "meal_ingredients.notes",
+}
+
+/**
+ * Contains the advanced method for a recipe, where each step in the method is it's own entity.
+ */
+export enum mealSteps {
+    id = "meal_steps.id",
+    mealId = "meal_steps.mealId",
+    number = "meal_steps.number",
+    step = "meal_steps.step",
+    section = "meal_steps.section",
+    notes = "meal_steps.notes",
+}
+
+export enum mealCategories {
     mealId = "meal_categories.mealId",
-    categoryId = "meal_categories.categoryId"
+    categoryId = "meal_categories.categoryId",
 }
 
-enum meal_roster {
+export enum mealRoster {
     mealId = "meal_roster.mealId",
     assigneeId = "meal_roster.assigneeId",
     assignmentDate = "meal_roster.assignmentDate",
     assignerId = "meal_roster.assignerId",
-    cooked = "meal_roster.cooked"
+    cooked = "meal_roster.cooked",
 }
 
-enum categories {
+export enum ingredients {
+    id = "ingredients.id",
+    name = "ingredients.name",
+    notes = "ingredients.notes",
+}
+
+export enum categories {
     id = "categories.id",
-    name = "categories.name"
+    type = "categories.type",
+    name = "categories.name",
+    notes = "categories.notes",
 }
 
-export { lamington_db, users, meals, meal_ratings, meal_categories, meal_roster, categories }

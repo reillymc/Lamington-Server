@@ -3,7 +3,7 @@ import db from '../database/db-config';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { Authentication, User } from '../interfaces/types';
-import { lamington_db, users } from '../database/definitions';
+import { lamington, users } from '../database/definitions';
 import { createToken } from '../authentication/auth';
 import { LamingtonDataResponse } from '../interfaces/response';
 
@@ -33,7 +33,7 @@ interface LoginResponse {
  * GET request to fetch all users
  */
 router.get('/', (req, res: Response<LamingtonDataResponse<User[]>>) => {
-    db.from(lamington_db.users).select(users.email, users.firstName, users.lastName, users.status)
+    db.from(lamington.users).select(users.email, users.firstName, users.lastName, users.status)
         .then((users: User[]) => {
             return res.status(200).json({ error: false, data: users });
         })
@@ -67,7 +67,7 @@ router.post('/register', async (req: Request<null, LamingtonDataResponse<LoginRe
     }
 
     // Update database and return status
-    db(lamington_db.users).insert(user)
+    db(lamington.users).insert(user)
         .then(_ => {
             return res.status(200).json({
                 error: false,
@@ -99,7 +99,7 @@ router.post('/login', (req: Request<null, LamingtonDataResponse<LoginResponse>, 
     }
 
     // Fetch and return data from database
-    db.from(lamington_db.users)
+    db.from(lamington.users)
         .select(users.id, users.email, users.password, users.firstName, users.lastName, users.status)
         .where({ [users.email]: email })
         .then(async (rows: User[]) => {

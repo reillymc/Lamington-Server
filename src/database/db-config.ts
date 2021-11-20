@@ -1,10 +1,10 @@
 import knex from 'knex';
 
 const db = knex({
-    client: 'mysql',
+    client: 'mysql2',
     connection: {
         host: process.env.DB_HOST,
-        database: 'lamington_db',
+        database: 'lamingtondb',
         user: process.env.DB_USER,
         password: process.env.DB_PASS
     }
