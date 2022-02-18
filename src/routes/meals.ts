@@ -1,11 +1,12 @@
 import express, { Request, Response } from "express";
 import db from "../database/db-config";
 import { v4 as uuidv4 } from "uuid";
-import { Meal, Category, MealRating } from "../interfaces/types";
+import { Meal, Category, MealRating, Ingredient } from "../interfaces/types";
 import { LamingtonDataResponse, LamingtonResponse } from "../interfaces/response";
-import { lamington, meals, mealRatings, mealCategories, mealRoster } from "../database/definitions";
+import { lamington, meal, mealRatings, mealCategories, mealRoster } from "../database/definitions";
 import { checkToken, verifyToken, AuthTokenData } from "../authentication/auth";
-import { getMeal, getMeals } from "../api/meals";
+import { addMealCategories, createFullMeal, createMeal, deleteMealCategories, getMeal, getMeals, rateMeal, updateMeal } from "../api/meals";
+import { createCategories } from "../api/category";
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ interface GetMealParams {
 }
 
 type GetMealRequest = Request<GetMealParams, LamingtonDataResponse<Meal>, AuthTokenData, null>;
-type GetMealResponse = Response<LamingtonDataResponse<Meal>>;
+type GetMealResponse = LamingtonDataResponse<Meal>;
 
 /**
  * GET request to fetch a meal by Id
@@ -35,7 +36,6 @@ router.get("/:mealId", checkToken, async (req: GetMealRequest, res: GetMealRespo
     // Fetch and return result
     try {
         const data = await getMeal(mealId, userId);
-
         return res.status(200).json({ error: false, data });
     } catch (exception: unknown) {
         return res.status(500).json({ error: true, message: "Error fetching data." + exception });
@@ -47,7 +47,7 @@ interface GetMealsParams {
 }
 
 type GetMealsRequest = Request<GetMealsParams, LamingtonDataResponse<Meal[]>, AuthTokenData, null>;
-type GetMealsResponse = Response<LamingtonDataResponse<Meal[]>>;
+type GetMealsResponse = LamingtonDataResponse<Meal[]>;
 
 /**
  * GET request to fetch all meals
@@ -73,7 +73,7 @@ interface RateMealBody extends AuthTokenData {
 }
 
 type RateMealRequest = Request<null, null, RateMealBody, null>;
-type RateMealResponse = Response<LamingtonResponse>;
+type RateMealResponse = LamingtonResponse;
 
 /**
  * POST request to rate a meal
@@ -93,18 +93,12 @@ router.post("/rate", verifyToken, async (req: RateMealRequest, res: RateMealResp
     const mealRating: MealRating = { mealId, raterId: userId, rating };
 
     // Update database and return status
-    db(lamington.mealRatings)
-        .insert(mealRating)
-        .onConflict([mealRatings.mealId, mealRatings.raterId])
-        .merge()
-        .then(_ => {
-            return res.status(201).json({ error: false, message: `yay! you've successfully rated this meal :)` });
-        })
-        .catch(error => {
-            return res
-                .status(400)
-                .json({ error: true, message: "oops! It looks like something went wrong rating this meal :(" });
-        });
+    try {
+        await rateMeal(mealRating);
+        return res.status(201).json({ error: false, message: `yay! you've successfully rated this meal :)` });
+    } catch (exception: unknown) {
+        return res.status(500).json({ error: true, message: "Something went wrong rating this meal" + exception });
+    }
 });
 
 interface DeleteMealBody extends AuthTokenData {
@@ -112,7 +106,7 @@ interface DeleteMealBody extends AuthTokenData {
 }
 
 type DeleteMealRequest = Request<null, null, DeleteMealBody, null>;
-type DeleteMealResponse = Response<LamingtonResponse>;
+type DeleteMealResponse = LamingtonResponse;
 
 /**
  * POST request to delete a meal
@@ -134,27 +128,27 @@ router.post("/delete", verifyToken, async (req: DeleteMealRequest, res: DeleteMe
     try {
         // Check if the delete order came from the meal creator
         const mealDetails: Meal = await db
-            .from(lamington.meals)
-            .select(meals.id, meals.createdBy)
-            .where({ [meals.id]: mealId })
+            .from(lamington.meal)
+            .select(meal.id, meal.createdBy)
+            .where({ [meal.id]: mealId })
             .first();
 
         if (mealDetails.createdBy != userId) {
             return res.status(400).json({ error: true, message: `You are not authorised to delete this meal` });
         }
 
-        // should be handled with FK delete policy
-        await db(lamington.mealRatings)
+        //TODO: remove - should be handled with FK delete policy
+        await db(lamington.mealRating)
             .where({ [mealRatings.mealId]: mealId })
             .del();
         await db(lamington.mealRoster)
             .where({ [mealRoster.mealId]: mealId })
             .del();
-        await db(lamington.mealCategories)
+        await db(lamington.mealCategory)
             .where({ [mealCategories.mealId]: mealId })
             .del();
-        await db(lamington.meals)
-            .where({ [meals.id]: mealId })
+        await db(lamington.meal)
+            .where({ [meal.id]: mealId })
             .del();
         return res.status(201).json({ error: false, message: `yay! you've successfully deleted this meal :)` });
     } catch (error) {
@@ -162,39 +156,140 @@ router.post("/delete", verifyToken, async (req: DeleteMealRequest, res: DeleteMe
     }
 });
 
-interface CreateMealBody extends AuthTokenData {
-    id?: string;
-    name: string;
-    recipe?: string;
-    ingredients?: string;
-    method?: string;
-    notes?: string;
-    photo?: string;
-    ratingPersonal?: number;
-    categories?: Category[];
+// interface CreateMealBody
+//     extends AuthTokenData,
+//         Omit<Meal, "ingredients" | "ratingAverage" | "createdBy" | "categories"> {
+//     removedIngredients: string[]; // ids to remove from meal_ingredients
+//     removedCategories: string[]; // ids to remove from meal_categories
+//     newIngredients: Omit<Ingredient, "id">[]; // insert into ingredients - and append id to addIngredients
+//     newCategories: Omit<Category, "id" | "mealId">[]; // insert into categories - and append id to addCategories
+//     addIngredients: string[]; // ids to insert into meal_ingredients
+//     addCategories: string[]; // ids to insert into meal_categories
+// }
+
+// type CreateMealRequest = Request<null, null, CreateMealBody, null>;
+// type CreateMealResponse = LamingtonResponse;
+
+// /**
+//  * POST request to create a new meal or update an existing meal
+//  * Requires meal data body
+//  * Requires authentication body
+//  */
+// router.post("/", verifyToken, async (req: CreateMealRequest, res: CreateMealResponse) => {
+//     // Extract request fields
+//     const {
+//         id,
+//         name,
+//         source = "",
+//         method = {data: {}, schema: 1},
+//         notes = "",
+//         photo = "",
+//         ratingPersonal,
+//         userId,
+//         removedCategories = [],
+//         removedIngredients = [],
+//         newCategories = [],
+//         newIngredients = [],
+//         addCategories = [],
+//         addIngredients = [],
+//     } = req.body;
+
+//     // Check all required fields are present
+//     if (!name) {
+//         return res.status(400).json({ error: true, message: `Error creating meal (No name provided)` });
+//     }
+
+//     try {
+//         let meal: Meal = {
+//             id,
+//             name,
+//             source,
+//             method,
+//             notes,
+//             photo,
+//             createdBy: userId,
+//         };
+
+//         let createdId = "";
+
+//         if (id) {
+//             const existingMeal = await getMeal(id);
+//             if (existingMeal.createdBy !== userId) {
+//                 return res
+//                     .status(401)
+//                     .json({
+//                         error: true,
+//                         message: `Error creating meal (Cannot update meal that doesn't belong to you)`,
+//                     });
+//             }
+
+//             if (removedCategories.length > 0) {
+//                 await deleteMealCategories(id, removedCategories);
+//             }
+    
+//             if (removedIngredients.length > 0) {
+//                 //await deleteMealIngredients(id, removedIngredients);
+//             }
+
+//             await updateMeal(meal);
+//         } else {
+//             createdId = await createMeal(meal);
+//         }
+
+//         if (createCategories.length > 0) {
+//             const createdCategories: string[] = await createCategories(newCategories);
+//             addCategories.push.apply(createdCategories);
+//         }
+
+//         if (newIngredients.length > 0) {
+//             // const newIngredients: string[] = await createIngredients(createIngredients);
+//             // addIngredients.push.apply(newIngredients);
+//         }
+
+//         if (addCategories.length) {
+//             await addMealCategories(id || createdId, addCategories);
+//         }
+
+//         if (addIngredients.length) {
+//             // await addMealIngredients(id || createdId, addIngredients);
+//         }
+
+//         if (ratingPersonal) {
+//             await rateMeal({ mealId: id || createdId, rating: ratingPersonal, raterId: userId });
+//         }
+
+//         return res.status(201).json({ error: false, message: `yay! you've successfully created this meal :)` });
+//     } catch (exception: unknown) {
+//         return res.status(500).json({ error: true, message: `Error creating meal ${exception}` });
+//     }
+// });
+
+interface CreateMealBody
+    extends AuthTokenData,
+        Omit<Meal, "ratingAverage" | "createdBy"> {
 }
 
 type CreateMealRequest = Request<null, null, CreateMealBody, null>;
-type CreateMealResponse = Response<LamingtonResponse>;
+type CreateMealResponse = LamingtonResponse;
 
 /**
  * POST request to create a new meal or update an existing meal
  * Requires meal data body
  * Requires authentication body
  */
-router.post("/", verifyToken, (req: CreateMealRequest, res: CreateMealResponse) => {
+router.post("/", verifyToken, async (req: CreateMealRequest, res: CreateMealResponse) => {
     // Extract request fields
     const {
         id,
         name,
-        recipe = "",
-        ingredients = "",
-        method = "",
+        source = "",
+        ingredients = { data: {}, schema: 1 },
+        method = { data: {}, schema: 1 },
         notes = "",
         photo = "",
         ratingPersonal,
-        categories = [],
         userId,
+
     } = req.body;
 
     // Check all required fields are present
@@ -202,104 +297,43 @@ router.post("/", verifyToken, (req: CreateMealRequest, res: CreateMealResponse) 
         return res.status(400).json({ error: true, message: `Error creating meal (No name provided)` });
     }
 
-    // Create object
-    let meal: Meal = {
-        id: id ?? "",
-        name,
-        recipe,
-        ingredients,
-        method,
-        notes,
-        photo,
-        createdBy: userId,
-    };
+    try {
+        let meal: Meal = {
+            id,
+            name,
+            source,
+            ingredients,
+            method,
+            notes,
+            ratingPersonal,
+            photo,
+            createdBy: userId,
+        };
 
-    // Update database and return status
-    if (id) {
-        db(lamington.meals)
-            .update(meal)
-            .where({ [meals.id]: id, [meals.createdBy]: userId })
-            .then(async count => {
-                if (count === 0) {
-                    return res
-                        .status(403)
-                        .json({ error: true, message: "Cannot update a meal that does not belong to you! :( " });
-                }
-                if (ratingPersonal) {
-                    const mealRating: MealRating = { mealId: id, raterId: userId, rating: ratingPersonal };
-                    db(lamington.mealRatings)
-                        .insert(mealRating)
-                        .onConflict([mealRatings.mealId, mealRatings.rating])
-                        .merge()
-                        .catch(error => {
-                            return res
-                                .status(400)
-                                .json({ error: true, message: "Meal Updated but unable to rate :( " });
-                        });
-                }
-                if (categories.length > 0) {
-                    await db(lamington.mealCategories)
-                        .del()
-                        .where({ [mealCategories.mealId]: meal.id });
-                    categories.forEach(category => {
-                        const mealCategory = {
-                            [mealCategories.mealId]: meal.id,
-                            [mealCategories.categoryId]: category.id,
-                        };
-                        db(lamington.mealCategories)
-                            .insert(mealCategory)
-                            .onConflict([mealRatings.mealId, mealRatings.rating])
-                            .ignore()
-                            .catch(error => {
-                                return res
-                                    .status(400)
-                                    .json({ error: true, message: "Meal Created but unable to rate :( " });
-                            });
-                    });
-                }
-                return res.status(201).json({ error: false, message: `yay! you've successfully updated a meal :)` });
-            })
-            .catch(error => {
-                return res.status(400).json({
+        let createdId = "";
+
+        if (id) {
+            const existingMeal = await getMeal(id);
+            if (!existingMeal) {
+                await createFullMeal(meal, userId);
+            }
+            if (existingMeal.createdBy !== userId) {
+                return res.status(401).json({
                     error: true,
-                    message: "oops! It looks like you are trying to update a meal that does not exist :( ",
+                    message: `Error editing meal (Cannot edit a meal that doesn't belong to you)`,
                 });
-            });
-    } else {
-        meal.id = uuidv4();
-        meal.timesCooked = 0;
-        db(lamington.meals)
-            .insert(meal)
-            .onConflict([meals.id])
-            .merge()
-            .then(async _ => {
-                if (categories.length > 0) {
-                    await db(lamington.mealCategories)
-                        .del()
-                        .where({ [mealCategories.mealId]: meal.id });
-                    categories.forEach(category => {
-                        const mealCategory = {
-                            [mealCategories.mealId]: meal.id,
-                            [mealCategories.categoryId]: category.id,
-                        };
-                        db(lamington.mealCategories)
-                            .insert(mealCategory)
-                            .onConflict([mealRatings.mealId, mealRatings.rating])
-                            .ignore()
-                            .catch(error => {
-                                return res
-                                    .status(400)
-                                    .json({ error: true, message: "Meal Created but unable to rate :( " });
-                            });
-                    });
-                }
-                return res.status(201).json({ error: false, message: `yay! you've successfully added a meal :)` });
-            })
-            .catch(error => {
-                return res
-                    .status(400)
-                    .json({ error: true, message: "oops! It looks like something went wrong adding your meal :( " });
-            });
+            }
+
+            // await updateFullMeal(meal);
+        } else {
+            await createFullMeal(meal, userId);
+        }
+
+        
+
+        return res.status(201).json({ error: false, message: `yay! you've successfully created this meal :)` });
+    } catch (exception: unknown) {
+        return res.status(500).json({ error: true, message: `Error creating meal ${exception}` });
     }
 });
 

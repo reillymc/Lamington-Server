@@ -1,6 +1,6 @@
-import express, { Request, Response } from "express";
+import express from "express";
 import db from "../database/db-config";
-import { lamington, categories } from "../database/definitions";
+import { lamington, category } from "../database/definitions";
 import { LamingtonDataResponse } from "../interfaces/response";
 import { Category } from "../interfaces/types";
 const router = express.Router();
@@ -8,9 +8,9 @@ const router = express.Router();
 /**
  * GET request to fetch all categories
  */
-router.get("/categories", async (req, res: Response<LamingtonDataResponse<Category[]>>) => {
-    db.from(lamington.categories)
-        .select(categories.id, categories.name)
+router.get("/categories", async (req, res: LamingtonDataResponse<Category[]>) => {
+    db.from(lamington.category)
+        .select(category.id, category.name)
         .then((categories: Category[]) => {
             return res.status(200).json({ error: false, data: categories });
         })

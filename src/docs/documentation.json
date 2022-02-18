@@ -1,449 +1,484 @@
 {
-  "openapi": "3.0.0",
-  "info": {
-    "title": "Lamington API",
-    "description": "This is a household database API used as the server-side component to the Lamington app",
-    "version": "1.0.0",
-    "contact": {
-      "email": "reilly@mackenzie-cree.net"
-    }
-  },
-  "servers": [
-    {
-      "url": "http://localhost"
-    }
-  ],
-  "tags": [
-    {
-      "name": "Authentication"
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Lamington API",
+        "description": "This is a household database API used as the server-side component to the Lamington app",
+        "version": "1.0.0",
+        "contact": {
+            "email": "reilly@mackenzie-cree.net"
+        }
     },
-    {
-      "name": "Meals"
-    }
-  ],
-  "components": {
-    "schemas": {
-      "User": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "default": "test@localhost.com"
-          },
-          "firstName": {
-            "type": "string",
-            "default": "Testificate"
-          },
-          "lastName": {
-            "type": "string",
-            "default": "Man"
-          },
-          "password": {
-            "type": "string",
-            "default": "password123"
-          }
+    "servers": [
+        {
+            "url": "http://localhost"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Authentication"
         },
-        "required": [
-          "email",
-          "firstName",
-          "lastName",
-          "password"
-        ]
-      },
-      "Meal": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "default": "Swagger's Homemade Meal"
-          },
-          "recipe": {
-            "type": "string",
-            "default": "Swagger Generated Recipe"
-          },
-          "ingredients": {
-            "type": "string",
-            "default": "Swagger Generated Ingredients"
-          },
-          "method": {
-            "type": "string",
-            "default": "Swagger Generated Method"
-          },
-          "notes": {
-            "type": "string",
-            "default": "Swagger Generated Note"
-          },
-          "photo": {
-            "type": "string",
-            "default": "default.jpg"
-          },
-          "createdBy": {
-            "type": "string",
-            "default": "10000000-0000-0000-0000-000000000000"
-          },
-          "timesCooked": {
-            "type": "number",
-            "default": "1"
-          },
-          "rating": {
-            "type": "number",
-            "default": "3"
-          }
-        },
-        "required": [
-          "name",
-          "created_by"
-        ]
-      },
-      "MealList": {
-        "properties": {
-          "meals": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Meal"
-            }
-          }
+        {
+            "name": "Meals"
         }
-      },
-      "Category": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "default": "000-000-001"
-          },
-          "name": {
-            "type": "string",
-            "default": "Italian"
-          }
-        }
-      },
-      "RosteredMeal": {
-        "properties": {
-          "mealId": {
-            "type": "string",
-            "default": "010-000-000"
-          },
-          "assigneeId": {
-            "type": "string",
-            "default": "100-000-000"
-          },
-          "assigneeName": {
-            "type": "string",
-            "default": "Testificate"
-          },
-          "assignerId": {
-            "type": "string",
-            "default": "200-000-000"
-          },
-          "assignerName": {
-            "type": "string",
-            "default": "Father"
-          },
-          "assigneedDate": {
-            "type": "string",
-            "default": "2021-06-06"
-          },
-          "repeat": {
-            "type": "boolean",
-            "default": false
-          },
-          "completed": {
-            "type": "boolean",
-            "default": false
-          }
-        }
-      },
-      "MealRating": {
-        "properties": {
-          "mealId": {
-            "type": "string",
-            "default": "000-000-001"
-          },
-          "rating": {
-            "type": "number",
-            "default": 5
-          }
-        }
-      }
-    },
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
-      }
-    }
-  },
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ],
-  "paths": {
-    "/users/register": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Registration page",
-        "description": "Registration page to allow for authenticated access to the API",
-        "operationId": "register",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/User"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "format": "string",
-                      "example": "yay! you've successfully registered your user account :)"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "format": "string",
-                      "example": "oops! It looks like that user already exists :("
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/users/login": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Login page",
-        "description": "Login page to allow for authenticated access to the API",
-        "operationId": "login",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
+    ],
+    "components": {
+        "schemas": {
+            "User": {
                 "properties": {
-                  "email": {
-                    "type": "string",
-                    "example": "test@localhost.com"
-                  },
-                  "password": {
-                    "type": "string",
-                    "example": "password123"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Ok.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "access_token": {
-                      "type": "string",
-                      "format": "string",
-                      "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjo1Nzg2LCJlbWFpbCI6ImRlbW8xMjM0QGdtYWlsLmNvbSJ9LCJpYXQiOjE1NTUzMjQ2MDIsImV4cCI6MTU1NTQxMTAwMn0.mo85iKuAQ_h8n8-6pkeNNs5CCnV0G8hScxhi_ml_Q6c"
+                    "email": {
+                        "type": "string",
+                        "default": "test@localhost.com"
                     },
-                    "token_type": {
-                      "type": "string",
-                      "format": "string",
-                      "example": "Bearer"
+                    "firstName": {
+                        "type": "string",
+                        "default": "Testificate"
                     },
-                    "expires_in": {
-                      "type": "integer",
-                      "format": "int32",
-                      "example": 86400
+                    "lastName": {
+                        "type": "string",
+                        "default": "Man"
+                    },
+                    "password": {
+                        "type": "string",
+                        "default": "password123"
                     }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "integer",
-                      "format": "string",
-                      "example": "invalid login - bad password"
+                },
+                "required": ["email", "firstName", "lastName", "password"]
+            },
+            "Meal": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "default": ""
+                    },
+                    "name": {
+                        "type": "string",
+                        "default": "Swagger's Homemade Meal"
+                    },
+                    "source": {
+                        "type": "string",
+                        "default": "Swagger Generated Recipe"
+                    },
+                    "ingredients": {
+                        "type": "string",
+                        "default": "Swagger Generated Ingredients"
+                    },
+                    "method": {
+                        "type": "string",
+                        "default": "Swagger Generated Method"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "default": "Swagger Generated Note"
+                    },
+                    "photo": {
+                        "type": "string",
+                        "default": "default.jpg"
+                    },
+                    "servings": {
+                        "type": "integer",
+                        "default": 1
+                    },
+                    "prepTime": {
+                        "type": "integer",
+                        "default": 30
+                    },
+                    "cookTime": {
+                        "type": "integer",
+                        "default": 60
+                    },
+                    "createdBy": {
+                        "type": "string",
+                        "default": "10000000-0000-0000-0000-000000000000"
+                    },
+                    "timesCooked": {
+                        "type": "number",
+                        "default": "1"
+                    },
+                    "rating": {
+                        "type": "number",
+                        "default": "3"
+                    },
+                    "categories": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Category"
+                        }
                     }
-                  }
+                },
+                "required": ["name", "created_by"]
+            },
+            "MealList": {
+                "properties": {
+                    "meals": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Meal"
+                        }
+                    }
                 }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/meals": {
-      "get": {
-        "tags": [
-          "Meals"
-        ],
-        "summary": "Returns a list of all meals.",
-        "responses": {
-          "200": {
-            "description": "A JSON array of meals",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MealList"
+            },
+            "Category": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "default": ""
+                    },
+                    "type": {
+                        "type": "string",
+                        "default": "Cuisine"
+                    },
+                    "name": {
+                        "type": "string",
+                        "default": "Tasty"
+                    }
                 }
-              }
+            },
+            "RosteredMeal": {
+                "properties": {
+                    "mealId": {
+                        "type": "string",
+                        "default": "010-000-000"
+                    },
+                    "assigneeId": {
+                        "type": "string",
+                        "default": "100-000-000"
+                    },
+                    "assigneeName": {
+                        "type": "string",
+                        "default": "Testificate"
+                    },
+                    "assignerId": {
+                        "type": "string",
+                        "default": "200-000-000"
+                    },
+                    "assignerName": {
+                        "type": "string",
+                        "default": "Father"
+                    },
+                    "assigneedDate": {
+                        "type": "string",
+                        "default": "2021-06-06"
+                    },
+                    "repeat": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "completed": {
+                        "type": "boolean",
+                        "default": false
+                    }
+                }
+            },
+            "MealRating": {
+                "properties": {
+                    "mealId": {
+                        "type": "string",
+                        "default": "000-000-001"
+                    },
+                    "rating": {
+                        "type": "number",
+                        "default": 5
+                    }
+                }
+            },
+            "Ingredient": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "default": "Spinach"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "default": ""
+                    }
+                }
             }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Meals"
-        ],
-        "summary": "Create a new meal or update an existing meal.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Meal"
-              }
-            }
-          }
         },
-        "responses": {
-          "201": {
-            "description": "Created"
-          }
-        }
-      }
-    },
-    "/meals/{mealId}": {
-      "get": {
-        "tags": [
-          "Meals"
-        ],
-        "summary": "Returns a meal.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "mealId",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "default": "8b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
             }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A JSON array of meals",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Meal"
+        }
+    },
+    "security": [
+        {
+            "bearerAuth": []
+        }
+    ],
+    "paths": {
+        "/users/register": {
+            "post": {
+                "tags": ["Authentication"],
+                "summary": "Registration page",
+                "description": "Registration page to allow for authenticated access to the API",
+                "operationId": "register",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/User"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "format": "string",
+                                            "example": "yay! you've successfully registered your user account :)"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "format": "string",
+                                            "example": "oops! It looks like that user already exists :("
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
-              }
             }
-          }
-        }
-      }
-    },
-    "/meals/categories": {
-      "get": {
-        "tags": [
-          "Meals"
-        ],
-        "summary": "Returns a list of all categories.",
-        "responses": {
-          "200": {
-            "description": "A JSON array of categories",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Category"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/meals/roster": {
-      "get": {
-        "tags": [
-          "Meals"
-        ],
-        "summary": "Returns the meal roster.",
-        "responses": {
-          "200": {
-            "description": "A JSON array of meal assignments",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RosteredMeal"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/meals/rate": {
-      "post": {
-        "tags": [
-          "Meals"
-        ],
-        "summary": "Rate a meal.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MealRating"
-              }
-            }
-          }
         },
-        "responses": {
-          "201": {
-            "description": "Created"
-          }
+        "/users/login": {
+            "post": {
+                "tags": ["Authentication"],
+                "summary": "Login page",
+                "description": "Login page to allow for authenticated access to the API",
+                "operationId": "login",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "example": "test@localhost.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Ok.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "access_token": {
+                                            "type": "string",
+                                            "format": "string",
+                                            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjo1Nzg2LCJlbWFpbCI6ImRlbW8xMjM0QGdtYWlsLmNvbSJ9LCJpYXQiOjE1NTUzMjQ2MDIsImV4cCI6MTU1NTQxMTAwMn0.mo85iKuAQ_h8n8-6pkeNNs5CCnV0G8hScxhi_ml_Q6c"
+                                        },
+                                        "token_type": {
+                                            "type": "string",
+                                            "format": "string",
+                                            "example": "Bearer"
+                                        },
+                                        "expires_in": {
+                                            "type": "integer",
+                                            "format": "int32",
+                                            "example": 86400
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "integer",
+                                            "format": "string",
+                                            "example": "invalid login - bad password"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/meals": {
+            "get": {
+                "tags": ["Meals"],
+                "summary": "Returns a list of all meals.",
+                "responses": {
+                    "200": {
+                        "description": "A JSON array of meals",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MealList"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": ["Meals"],
+                "summary": "Create a new meal or update an existing meal.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Meal"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    }
+                }
+            }
+        },
+        "/meals/{mealId}": {
+            "get": {
+                "tags": ["Meals"],
+                "summary": "Returns a meal.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "mealId",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "default": "8b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON array of meals",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Meal"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/meals/categories": {
+            "get": {
+                "tags": ["Meals"],
+                "summary": "Returns a list of all categories.",
+                "responses": {
+                    "200": {
+                        "description": "A JSON array of categories",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Category"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/meals/roster": {
+            "get": {
+                "tags": ["Meals"],
+                "summary": "Returns the meal roster.",
+                "responses": {
+                    "200": {
+                        "description": "A JSON array of meal assignments",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RosteredMeal"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/meals/rate": {
+            "post": {
+                "tags": ["Meals"],
+                "summary": "Rate a meal.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MealRating"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    }
+                }
+            }
+        },
+        "/ingredient": {
+            "post": {
+                "tags": ["Ingredients"],
+                "summary": "Create an ingredient.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Ingredient"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    }
+                }
+            }
         }
-      }
     }
-  }
 }

@@ -1,13 +1,28 @@
+type Table<T> = { [key in keyof T]: string };
+
+export type ReadQuery<T> = T | Array<T>;
+
+export type CreateQuery<T> = T | Array<T>;
+
+export type ReadResponse<T> = Promise<Array<T>>;
+
+export type CreateResponse<T> = Promise<Array<T>>;
+
+interface Lamington {
+    category: Category;
+    ingredient: Ingredient;
+}
+
 export enum lamington {
-    users = "users",
-    meals = "meals",
-    mealRatings = "meal_ratings",
-    mealCategories = "meal_categories",
+    user = "user",
+    meal = "meal",
+    mealRating = "meal_rating",
+    mealCategory = "meal_category",
     mealRoster = "meal_roster",
-    mealIngredients = "meal_ingredients",
-    mealSteps = "meal_steps",
-    categories = "categories",
-    ingredients = "ingredients",
+    mealIngredient = "meal_ingredient",
+    mealStep = "meal_steps",
+    category = "category",
+    ingredient = "ingredient",
 }
 
 export enum users {
@@ -18,21 +33,6 @@ export enum users {
     password = "users.password",
     created = "users.created",
     status = "users.status",
-}
-
-export enum meals {
-    id = "meals.id",
-    name = "meals.name",
-    source = "meals.source",
-    ingredients = "meals.ingredients",
-    method = "meals.method",
-    notes = "meals.notes",
-    photo = "meals.photo",
-    servings = "meals.servings",
-    prepTime = "meals.prepTime",
-    cookTime = "meals.cookTime",
-    createdBy = "meals.createdBy",
-    timesCooked = "meals.timesCooked",
 }
 
 export enum mealRatings {
@@ -48,22 +48,25 @@ export enum mealIngredients {
     id = "meal_ingredients.id",
     mealId = "meal_ingredients.mealId",
     ingredientId = "meal_ingredients.ingredientId",
-    unit = "meal_ingredients.unit",
-    quantity = "meal_ingredients.quantity",
-    section = "meal_ingredients.section",
-    notes = "meal_ingredients.notes",
+}
+
+export interface MealIngredientTable {
+    id: string;
+    mealId: string;
+    ingredientId: string;
 }
 
 /**
  * Contains the advanced method for a recipe, where each step in the method is it's own entity.
  */
 export enum mealSteps {
-    id = "meal_steps.id",
     mealId = "meal_steps.mealId",
-    number = "meal_steps.number",
-    step = "meal_steps.step",
-    section = "meal_steps.section",
-    notes = "meal_steps.notes",
+    stepId = "meal_steps.stepId",
+}
+
+export interface MealStepsTable {
+    mealId: string;
+    stepId: string;
 }
 
 export enum mealCategories {
@@ -79,16 +82,68 @@ export enum mealRoster {
     cooked = "meal_roster.cooked",
 }
 
-export enum ingredients {
-    id = "ingredients.id",
-    name = "ingredients.name",
-    notes = "ingredients.notes",
+/** Category */
+export interface Category {
+    id: string;
+    type: string;
+    name: string;
+    notes: string | undefined;
 }
 
-export enum categories {
-    id = "categories.id",
-    type = "categories.type",
-    name = "categories.name",
-    notes = "categories.notes",
+export const category: Table<Category> = {
+    id: "categories.id",
+    type: "categories.type",
+    name: "categories.name",
+    notes: "categories.notes",
+} as const;
+
+/** Ingredient */
+export interface Ingredient {
+    id: string;
+    name: string;
+    namePlural: string | undefined;
+    notes: string | undefined;
 }
 
+export const ingredient: Table<Ingredient> = {
+    id: "ingredients.id",
+    name: "ingredients.name",
+    namePlural: "ingredients.namePlural",
+    notes: "ingredients.notes",
+} as const;
+
+/** Meal */
+
+export interface Meal {
+    id: string;
+    name: string;
+    ingredients: string | undefined;
+    method: string | undefined;
+    source: string | undefined;
+    photo: string | undefined;
+    servings: number | undefined;
+    prepTime: number | undefined;
+    cookTime: number | undefined;
+    cost: number | undefined;
+    difficulty: number | undefined;
+    notes: string | undefined;
+    timesCooked: number | undefined;
+    createdBy: string;
+}
+
+export const meal: Table<Meal> = {
+    id: "meals.id",
+    name: "meals.name",
+    source: "meals.source",
+    ingredients: "meals.ingredients",
+    method: "meals.method",
+    notes: "meals.notes",
+    photo: "meals.photo",
+    servings: "meals.servings",
+    prepTime: "meals.prepTime",
+    cookTime: "meals.cookTime",
+    createdBy: "meals.createdBy",
+    timesCooked: "meals.timesCooked",
+    difficulty: "meals.difficulty",
+    cost: "meals.cost",
+};

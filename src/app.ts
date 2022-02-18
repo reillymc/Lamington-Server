@@ -8,7 +8,7 @@ import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
 import swaggerUI from "swagger-ui-express";
-import { attachmentsRouter, choresRouter, categoriesRouter, mealsRouter, usersRouter } from "./routes";
+import { attachmentsRouter, choresRouter, categoriesRouter, mealsRouter, usersRouter, ingredientRouter } from "./routes";
 
 const rfs = require("rotating-file-stream");
 const swaggerDocument = require("./docs/documentation.json");
@@ -59,6 +59,7 @@ app.use("/users", usersRouter);
 app.use("/chores", choresRouter);
 app.use("/categories", categoriesRouter);
 app.use("/meals", mealsRouter);
+app.use("/ingredient", ingredientRouter);
 app.use("/attachments", attachmentsRouter);
 app.use("/docs", swaggerUI.serve, swaggerUI.setup(swaggerDocument));
 app.use(swaggerUI.serve, swaggerUI.setup(swaggerDocument));

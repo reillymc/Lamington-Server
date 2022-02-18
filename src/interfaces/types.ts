@@ -8,29 +8,100 @@ export interface User {
     status?: string;
 }
 
+export type Unit =
+    | "Teaspoon"
+    | "Tablespoon"
+    | "Cup"
+    | "Millilitre"
+    | "Litre"
+    | "Milligram"
+    | "Gram"
+    | "Kilogram"
+    | "Pinch"
+    | "Bunch"; //or could be none: e.g. 1 egg
+
+export interface MealIngredientItem {
+    id?: string;
+    name?: string;
+    namePlural?: string;
+    amount?: number;
+    notes?: string;
+    unit?: Unit;
+    multiplier?: number;
+}
+
+export interface MealMethodStepItem {
+    id?: string;
+    step?: string;
+    notes?: string;
+}
+
+interface SchemaV1 {
+    schema: 1; // in client - parse data by schema and then return just data object as ingredients
+}
+
+interface MealIngredientsV1 extends SchemaV1 {
+    data: {
+        [sectionName: string]: Array<MealIngredientItem>;
+    };
+}
+
+export type MealIngredients = MealIngredientsV1;
+
+interface MealMethodV1 {
+    schema: 1; // in client - parse data by schema and then return just data object as ingredients
+    data: {
+        [sectionName: string]: Array<MealMethodStepItem>;
+    };
+}
+
+export type MealMethod = MealMethodV1;
+
+interface MealCategoriesV1 {
+    schema: 1; // in client - parse data by schema and then return just data object as ingredients
+    data: Array<string>;
+}
+
+export type MealCategories = MealCategoriesV1;
+
 export interface Meal {
     id: string;
     name: string;
-    recipe: string;
-    ingredients?: string | MealIngredientsResults[];
-    method?: string | MealStepsResults[];
+    source?: string;
+    ingredients?: MealIngredients;
+    method?: MealMethod;
     notes?: string;
     photo?: string;
     ratingAverage?: number;
     ratingPersonal?: number;
-    categories?: Category[];
-    createdBy: string;
+    categories?: MealCategories;
+    createdBy: User["id"];
+    cookTime?: number;
+    prepTime?: number;
+    servings?: number;
     timesCooked?: number;
+    cost?: Cost;
+    difficulty?: Difficulty
+}
+
+export enum Difficulty {
+    Undefined,
+    Easy,
+    Medium,
+    Hard
+}
+
+export enum Cost {
+    $,
+    $$,
+    $$$,
+    $$$$
 }
 
 export interface MealIngredient {
     id: string;
-    mealId: string;
-    ingredientId: string;
-    unit: string; // enum of supported types?
-    quantity: number;
-    section?: string;
-    notes?: string;
+    mealId: Meal["id"];
+    ingredientId: Ingredient["id"];
 }
 export interface Ingredient {
     id: string;
@@ -66,7 +137,6 @@ export interface Authentication {
     token_type: string;
 }
 
-
 export interface MealIngredientsResults {
     ingredientId: string;
     ingredientName: string;
@@ -82,3 +152,4 @@ export interface MealStepsResults {
     section?: string;
     notes?: string;
 }
+

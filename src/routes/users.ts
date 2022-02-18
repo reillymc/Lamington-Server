@@ -32,8 +32,8 @@ interface LoginResponse {
 /**
  * GET request to fetch all users
  */
-router.get('/', (req, res: Response<LamingtonDataResponse<User[]>>) => {
-    db.from(lamington.users).select(users.email, users.firstName, users.lastName, users.status)
+router.get('/', (req, res: LamingtonDataResponse<User[]>) => {
+    db.from(lamington.user).select(users.email, users.firstName, users.lastName, users.status)
         .then((users: User[]) => {
             return res.status(200).json({ error: false, data: users });
         })
@@ -45,7 +45,7 @@ router.get('/', (req, res: Response<LamingtonDataResponse<User[]>>) => {
 /**
  * POST request to register a new user
  */
-router.post('/register', async (req: Request<null, LamingtonDataResponse<LoginResponse>, RegisterBody, null>, res) => {
+router.post('/register', async (req: Request<null, null, RegisterBody, null>, res: LamingtonDataResponse<LoginResponse>) => {
 
     // Extract request fields
     const { email, firstName, lastName, password } = req.body;
@@ -67,7 +67,7 @@ router.post('/register', async (req: Request<null, LamingtonDataResponse<LoginRe
     }
 
     // Update database and return status
-    db(lamington.users).insert(user)
+    db(lamington.user).insert(user)
         .then(_ => {
             return res.status(200).json({
                 error: false,
@@ -88,10 +88,11 @@ router.post('/register', async (req: Request<null, LamingtonDataResponse<LoginRe
 /**
  * POST request to login an existing user
  */
-router.post('/login', (req: Request<null, LamingtonDataResponse<LoginResponse>, LoginBody, null>, res) => {
+router.post('/login', (req: Request<null, null, LoginBody, null>, res: LamingtonDataResponse<LoginResponse>) => {
 
     // Extract request fields
     const { email, password } = req.body;
+
 
     // Check all required fields are present
     if (!email || !password) {
@@ -99,13 +100,15 @@ router.post('/login', (req: Request<null, LamingtonDataResponse<LoginResponse>, 
     }
 
     // Fetch and return data from database
-    db.from(lamington.users)
+    db.from(lamington.user)
         .select(users.id, users.email, users.password, users.firstName, users.lastName, users.status)
         .where({ [users.email]: email })
-        .then(async (rows: User[]) => {
-
+        .then(async (rows: User[]) => {            
+            if (rows.length === 0) {
+                return res.status(401).json({ error: true, message: `Invalid username of password` });
+            }
             // Verify Password
-            const result = await bcrypt.compare(req.body.password, rows[0].password ?? "");
+            const result = await bcrypt.compare(password, rows[0].password ?? "");
 
             if (result) {
                 return res.status(200).json({
@@ -121,8 +124,8 @@ router.post('/login', (req: Request<null, LamingtonDataResponse<LoginResponse>, 
             }
             return res.status(401).json({ error: true, message: `invalid login - bad password` });
         })
-        .catch(() => {
-            return res.status(401).json({ error: true, message: `error` });
+        .catch((e) => {
+            return res.status(401).json({ error: true, message: `error ${e}` });
         })
 })
 
