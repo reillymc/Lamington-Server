@@ -1,8 +1,8 @@
 import express, { Response } from "express";
-import db from "../database/db-config";
+import db from "../database";
 import { MealRoster } from "../interfaces/types";
 import { LamingtonDataResponse } from "../interfaces/response";
-import { lamington, mealRoster } from "../database/definitions";
+import { lamington, mealRoster } from "../database";
 
 const router = express.Router();
 

@@ -1,29 +1,26 @@
-import { Meal, MealCategories, MealIngredients, MealMethod } from "../src/interfaces/types";
+import { Meal, MealCategories, MealIngredients, MealMethod } from "../src/server/parameters";
 
 const exampleIngredients: MealIngredients = {
     "schema": 1,
     "data": {
-        "default": [{
-                "id": "rrr24567-3333-cccc-9999-996614174ubb",
+        "default": [
+            {
+                "ingredientId": "rrr24567-3333-cccc-9999-996614174ubb",
                 "amount": 4,
                 "unit": "Cup",
                 "notes": "Fresh spinach works best",
             },
             {
-                "id": "rrr24567-3333-cccc-9999-996614174ubc",
+                "ingredientId": "rrr24567-3333-cccc-9999-996614174ubc",
                 "amount": 275,
                 "unit": "Gram",
             },
             {
-                "id": "rrr24567-3333-cccc-9999-996614174ubd",
+                "ingredientId": "rrr24567-3333-cccc-9999-996614174ubd",
                 "amount": 0.5,
                 "unit": "Cup",
                 "multiplier": 0.85
             },
-            {
-                "name": "Egg",
-                "amount": 1
-            }
         ],
     },
 };
@@ -33,11 +30,13 @@ const exampleMethod: MealMethod = {
     "data": {
         "default": [
             {
-                "step": "Mix spinach and cheeses",
+                "id": "aaabbb67-aaa3-cddd-fff9-996614174ubd",
+                "description": "Mix spinach and cheeses",
                 "notes": "Be careful not to over-stir.",
             },
             {
-                "step": "Bake at 275 degrees celsius."
+                "id": "",
+                "description": "Bake at 275 degrees celsius."
             }
         ],
     },
@@ -61,30 +60,28 @@ const exampleMeal: Meal = {
             "14324567-sgbr-rtyu-hljk-426614174ut3"
         ]
     },
-    "cost": 3,
     "ingredients": {
         "schema": 1,
         "data": {
             "default": [{
-                    "id": "rrr24567-3333-cccc-9999-996614174ubb",
+                    "ingredientId": "rrr24567-3333-cccc-9999-996614174ubb",
                     "amount": 4,
                     "unit": "Cup",
                     "notes": "Fresh spinach works best"
                 },
                 {
-                    "id": "rrr24567-3333-cccc-9999-996614174ubc",
+                    "ingredientId": "rrr24567-3333-cccc-9999-996614174ubc",
                     "amount": 275,
                     "unit": "Gram"
                 },
                 {
-                    "id": "rrr24567-3333-cccc-9999-996614174ubd",
+                    "ingredientId": "rrr24567-3333-cccc-9999-996614174ubd",
                     "amount": 0.5,
                     "unit": "Cup",
                     "multiplier": 0.85
                 },
                 {
-                    "id": "4db41776-e5c9-47c9-8e5d-98fb84b47392",
-                    "name": "Egg",
+                    "ingredientId": "4db41776-e5c9-47c9-8e5d-98fb84b47392",
                     "amount": 1
                 }
             ]
@@ -95,13 +92,20 @@ const exampleMeal: Meal = {
         "data": {
             "default": [
                 {
-                    "step": "Mix spinach and cheeses",
+                    "description": "Mix spinach and cheeses",
                     "notes": "Be careful not to over-stir."
                 },
                 {
-                    "step": "Bake at 275 degrees celsius."
+                    "description": "Bake at 275 degrees celsius."
                 }
             ]
         }
-    }
+    },
+    "cookTime": 20,
+    "prepTime": 40,
+    "ratingPersonal": 4,
+    "servings": 4,
+    "timesCooked": 10,
+    "notes": "Make sure to drain the spinach before mixing with ingredients",
+    "photo": "jfasbdh32479ydshkaj"
 };

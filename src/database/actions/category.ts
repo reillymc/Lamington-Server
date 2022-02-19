@@ -1,13 +1,13 @@
-import db, { Category, category } from "../database";
-import { CreateQuery, CreateResponse, lamington, ReadQuery, ReadResponse } from "../database/definitions";
+import db, { Category, category } from "..";
+import { CreateQuery, CreateResponse, lamington, ReadQuery, ReadResponse } from "../definitions";
 import { v4 as Uuid } from "uuid";
 
 /**
  * Get all categories
  * @returns an array of all categories in the database
  */
-export const getAllCategories = async (): ReadResponse<Category> => {
-    const query = db<Category>(lamington.ingredient).select("*");
+export const readAllCategories = async (): ReadResponse<Category> => {
+    const query = db<Category>(lamington.category).select("*");
     return query;
 };
 
@@ -19,7 +19,7 @@ export interface GetCategoryParams {
  * Get categories by id or ids
  * @returns an array of categories matching given ids
  */
-export const getCategories = async (params: ReadQuery<GetCategoryParams>): ReadResponse<Category> => {
+export const readCategories = async (params: ReadQuery<GetCategoryParams>): ReadResponse<Category> => {
     if (!Array.isArray(params)) {
         params = [params];
     }
@@ -46,7 +46,7 @@ const createCategories = async (categories: CreateQuery<CreateCategoryParams>): 
     }
     const data: Category[] = categories.map(({ name, type, notes }) => ({ id: Uuid(), name, type, notes }));
 
-    const result = await db(lamington.category).insert(data);
+    const result = await db(lamington.category).insert(data).onConflict([category.name, category.type]).ignore();
 
     const categoryIds = data.map(({ id }) => id);
 

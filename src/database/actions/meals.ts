@@ -1,30 +1,29 @@
-import db from "../database/db-config";
+import db from "../config";
 import {
     lamington,
     meal,
     users,
-    mealRatings,
+    mealRating,
     category,
-    mealCategories,
-    mealIngredients,
+    mealCategory,
+    mealIngredient,
     ingredient,
-    mealSteps,
+    mealStep,
     Meal as MealTable,
-    MealIngredientTable,
-    MealStepsTable,
-} from "../database/definitions";
+    MealIngredient as MealIngredientRow,
+    MealStep as MealStepRow,
+    MealCategory as MealCategoryRow,
+    MealRating as MealRatingRow,
+    MealStepProperties,
+    MealIngredientProperties,
+} from "..";
 import {
     Meal,
     Category,
     MealRating,
-    MealIngredientsResults,
     MealStepsResults,
-    MealIngredientItem,
-    MealMethodStepItem,
     MealIngredients,
-    MealMethod,
-    Ingredient,
-} from "../interfaces/types";
+} from "../../server/parameters";
 import { v4 as Uuid } from "uuid";
 
 const getAllMeals = async (): Promise<MealTable[]> => {
@@ -37,11 +36,9 @@ const getAllMeals = async (): Promise<MealTable[]> => {
             meal.timesCooked,
             meal.cookTime,
             meal.prepTime,
-            meal.cost,
-            meal.difficulty,
-            `${users.firstName} as createdBy`
+            `${users.firstName} as createdBy`,
         )
-        .leftJoin(lamington.mealRating, meal.id, mealRatings.mealId)
+        .leftJoin(lamington.mealRating, meal.id, mealRating.mealId)
         .leftJoin(lamington.user, meal.createdBy, users.id)
         .groupBy(meal.id);
 
@@ -54,16 +51,14 @@ const getFullMeal = async (mealId: string): Promise<MealTable> => {
             meal.id,
             meal.name,
             meal.source,
-            meal.ingredients,
-            meal.method,
             meal.notes,
             meal.photo,
             `${users.firstName} as createdBy`,
             meal.timesCooked
         )
         .where({ [meal.id]: mealId } as any) //TODO remove any
-        .select(db.raw(`COALESCE(ROUND(AVG(${mealRatings.rating}),1), 0) AS ratingAverage`))
-        .leftJoin(lamington.mealRating, meal.id, mealRatings.mealId)
+        .select(db.raw(`COALESCE(ROUND(AVG(${mealRating.rating}),1), 0) AS ratingAverage`))
+        .leftJoin(lamington.mealRating, meal.id, mealRating.mealId)
         .leftJoin(lamington.user, meal.createdBy, users.id)
         .groupBy(meal.id)
         .first();
@@ -74,12 +69,12 @@ const getFullMeal = async (mealId: string): Promise<MealTable> => {
 const getMealCategories = async (mealId?: string): Promise<Category[]> => {
     const query = db<Category[]>(lamington.category)
         .select(category.id, category.type, category.name, category.notes)
-        .leftJoin(lamington.mealCategory, mealCategories.categoryId, category.id);
+        .leftJoin(lamington.mealCategory, mealCategory.categoryId, category.id);
 
     if (mealId) {
-        query.where({ [mealCategories.mealId]: mealId });
+        query.where({ [mealCategory.mealId]: mealId });
     } else {
-        query.select(mealCategories.mealId);
+        query.select(mealCategory.mealId);
     }
 
     return query;
@@ -87,8 +82,8 @@ const getMealCategories = async (mealId?: string): Promise<Category[]> => {
 
 const getMealsRatings = async (): Promise<MealRating[]> => {
     const query = db<MealRating[]>(lamington.mealRating)
-        .select(mealRatings.mealId, db.raw(`ROUND(AVG(${mealRatings.rating}),1) AS rating`))
-        .groupBy(mealRatings.mealId);
+        .select(mealRating.mealId, db.raw(`ROUND(AVG(${mealRating.rating}),1) AS rating`))
+        .groupBy(mealRating.mealId);
 
     return query;
 };
@@ -96,8 +91,8 @@ const getMealsRatings = async (): Promise<MealRating[]> => {
 // fix any
 const getMealRating = async (mealId?: string): Promise<any> => {
     const query = db<{ rating?: string }>(lamington.mealRating)
-        .select(db.raw(`ROUND(AVG(${mealRatings.rating}),1) AS rating`))
-        .where({ [mealRatings.mealId]: mealId } as any)
+        .select(db.raw(`ROUND(AVG(${mealRating.rating}),1) AS rating`))
+        .where({ [mealRating.mealId]: mealId } as any)
         .first();
 
     return query;
@@ -105,38 +100,53 @@ const getMealRating = async (mealId?: string): Promise<any> => {
 
 const getMealsPersonalRatings = async (userId: string): Promise<MealRating[]> => {
     const query = db<MealRating[]>(lamington.mealRating)
-        .where({ [mealRatings.raterId]: userId } as any)
-        .select(mealRatings.mealId, mealRatings.rating)
-        .groupBy(mealRatings.mealId);
+        .where({ [mealRating.raterId]: userId } as any)
+        .select(mealRating.mealId, mealRating.rating)
+        .groupBy(mealRating.mealId);
 
     return query;
 };
 
 const getMealPersonalRating = async (mealId: string, userId: string): Promise<{ rating?: number }> => {
     const query = db<{ rating?: number }>(lamington.meal)
-        .where({ [mealRatings.mealId]: mealId, [mealRatings.raterId]: userId } as any)
-        .first(mealRatings.rating)
-        .join(lamington.mealRating, meal.id, mealRatings.mealId);
+        .where({ [mealRating.mealId]: mealId, [mealRating.raterId]: userId } as any)
+        .first(mealRating.rating)
+        .join(lamington.mealRating, meal.id, mealRating.mealId);
 
     return query;
 };
 
+export interface MealIngredientsResults {
+    id: string;
+    ingredientId: string;
+    properties: string;
+    name: string;
+    namePlural: string;
+    // unit: string; // enum of supported types?
+    // quantity: number;
+    // section?: string;
+    // notes?: string;
+}
+
 const getMealIngredients = async (mealId: string): Promise<MealIngredientsResults[]> => {
     const query = db(lamington.mealIngredient)
-        .where({ [mealIngredients.mealId]: mealId } as any)
+        .where({ [mealIngredient.mealId]: mealId } as any)
         .select(
-            mealIngredients.ingredientId,
+            mealIngredient.id,
+            mealIngredient.ingredientId,
+            mealIngredient.properties,
             ingredient.name,
+            ingredient.namePlural,
         )
-        .join(lamington.ingredient, mealIngredients.ingredientId, ingredient.id);
+        .join(lamington.ingredient, mealIngredient.ingredientId, ingredient.id);
 
     return query;
 };
 
 const getMealSteps = async (mealId: string): Promise<MealStepsResults[]> => {
     const query = db(lamington.mealStep)
-        .where({ [mealSteps.mealId]: mealId } as any)
-        .select(mealSteps.mealId, mealSteps.stepId)
+        .where({ [mealStep.mealId]: mealId } as any)
+        .select(mealStep.mealId, mealStep.stepId)
 
     return query;
 };
@@ -152,13 +162,17 @@ const getMeal = async (mealId: string, userId?: string) => {
         getMealSteps(mealId),
     ]);
 
+    const ingdata: MealIngredients["data"] = {}
+    // ingredients.map(ingredient => ingredient.)
+
+    const IngredientData: MealIngredients = {schema: 1, data: {} }
+
     // Process results
     const result: Meal = {
         ...meal,
         ratingPersonal: personalRating.rating,
         ratingAverage: parseFloat(averageRating.rating ?? "0"),
-        ingredients: JSON.parse(meal.ingredients ?? "{}"),
-        method: JSON.parse(meal.method ?? "{}"),
+        ingredients: 
         // categories: categories,
     };
 
@@ -191,13 +205,15 @@ const getMeals = async (userId?: string) => {
 
 /**
  * Rate a meal
- * @param mealRating rating details of the meal and user
+ * @param params rating details of the meal and user
  * @returns
  */
-const rateMeal = async (mealRating: MealRating) => {
+const rateMeal = async (params: MealRating) => {
+    if (!params.raterId) return
+    const rating: MealRatingRow = {mealId: params.mealId, raterId: params.raterId, rating: params.rating }
     const result = await db(lamington.mealRating)
-        .insert(mealRating)
-        .onConflict([mealRatings.mealId, mealRatings.raterId])
+        .insert(rating)
+        .onConflict([mealRating.mealId, mealRating.raterId])
         .merge();
 
     return result;
@@ -241,7 +257,7 @@ const addMealCategories = async (mealId: string, categoryIds: string[]) => {
 
     const result = await db(lamington.mealCategory)
         .insert(data)
-        .onConflict([mealCategories.mealId, mealCategories.categoryId])
+        .onConflict([mealCategory.mealId, mealCategory.categoryId])
         .ignore();
 
     return result;
@@ -256,118 +272,99 @@ const addMealCategories = async (mealId: string, categoryIds: string[]) => {
 const deleteMealCategories = async (mealId: string, categoryIds: string[]) => {
     const result = await db(lamington.mealCategory)
         .del()
-        .whereIn(mealCategories.categoryId, categoryIds)
-        .andWhere({ [mealCategories.mealId]: mealId });
+        .whereIn(mealCategory.categoryId, categoryIds)
+        .andWhere({ [mealCategory.mealId]: mealId });
 
     return result;
 };
 
 
-
-
 const createFullMeal = async (meal: Omit<Meal, "id">, userId: string) => {
     const mealId = Uuid();
 
-    // Create new Ingredients
-    let finalMealIngredients: MealIngredientTable[] = [];
-    if (meal.ingredients?.schema === 1 && meal.ingredients.data) {
-
-        const finalIngredients: MealIngredients = { schema: 1, data: Object.fromEntries(Object.keys(meal.ingredients.data).map(sectionName => [sectionName, []])) };
-
-        let newIngredients: MealIngredientItem[] = [];
-        Object.entries(meal.ingredients.data).map(([sectionName, section]) =>
-            section.map(ingredient => {
-                if (!ingredient.id) {
-                    const newIngredient: MealIngredientItem = { ...ingredient, id: Uuid() };
-                    newIngredients.push(newIngredient);
-                    finalIngredients.data[sectionName].push(newIngredient);
-                } else {
-                    finalIngredients.data[sectionName].push(ingredient); // May need to check if sectionName exists?
-                }
-            })
-        );
-
-        // TODO insert rows into mealIngredients
-        // For updating mealIngredients on edit: delete * from MealIngredients where mealId and ingId not in newIngredients
-
-        const newIngredientRows: Ingredient[] = newIngredients
-            .map(ingredient =>
-                ingredient.name ? { id: Uuid(), name: ingredient.name, namePlural: ingredient.namePlural, notes: ingredient.notes } : undefined
-            )
-            .filter(NotUndefined);
-
-        finalMealIngredients = newIngredients
-            .map(ingredient => (ingredient.id ? { id: Uuid(), mealId, ingredientId: ingredient.id } : undefined))
-            .filter(NotUndefined); 
-
-        const result = await db(lamington.ingredient)
-        .insert(newIngredientRows)
-        .onConflict([ingredient.id])
-        .ignore();
-
-        meal.ingredients.data = finalIngredients.data;
-    }
-
-    // Create new Method Steps
-    let finalMealSteps: MealStepsTable[] = [];
-    if (meal.method?.schema === 1 && meal.method.data) {
-        const finalMethod: MealMethod = { schema: 1, data: Object.fromEntries(Object.keys(meal.method.data).map(sectionName => [sectionName, []])) };
-
-        let newSteps: MealMethodStepItem[] = [];
-        Object.entries(meal.method.data).map(([sectionName, section]) =>
-            section.map(methodStep => {
-                if (!methodStep.id) {
-                    const newStep: MealMethodStepItem = { ...methodStep, id: Uuid() };
-                    newSteps.push(newStep);
-                    finalMethod.data[sectionName].push(newStep);
-                }
-                else {
-                    finalMethod.data[sectionName].push(methodStep); // May need to check if sectionName exists?
-                }
-            })
-        );
-
-        finalMealSteps = newSteps.map(step => (step.id ? { mealId, stepId: step.id } : undefined)).filter(NotUndefined);        
-
-        meal.method.data = finalMethod.data;
-    }
-
-    console.log(meal)
     createMeal({
         id: mealId,
         name: meal.name,
         createdBy: userId,
         cookTime: meal.cookTime,
-        ingredients: JSON.stringify(meal.ingredients),
-        method: JSON.stringify(meal.method),
         notes: meal.notes,
         photo: meal.photo,
         prepTime: meal.prepTime,
         servings: meal.servings,
         source: meal.source,
         timesCooked: meal.timesCooked,
-        cost: meal.cost,
-        difficulty: meal.difficulty,
     });
 
-    // Create MealIngredients Rows
-    await db(lamington.mealIngredient)
-        .insert(finalMealIngredients)
-        .onConflict([mealIngredients.id])
-        .merge();
+    // Create MealIngredients rows
+    const mealIngredientsRows: MealIngredientRow[] = [];
+    if (meal.ingredients?.schema === 1 && meal.ingredients.data) {
+        Object.entries(meal.ingredients.data).map(([sectionName, section]) =>
+            section.map((ingredient, index) => {
+                if (!ingredient.ingredientId) return;
+                const properties: MealIngredientProperties = {
+                    index,
+                    section: sectionName,
+                    unit: ingredient.unit,
+                    amount: ingredient.amount,
+                    multiplier: ingredient.multiplier,
+                    notes: ingredient.notes,
+                };
+                mealIngredientsRows.push({
+                    id: ingredient.id ?? Uuid(),
+                    ingredientId: ingredient.ingredientId,
+                    mealId,
+                    properties: JSON.stringify(properties),
+                });
+            })
+        );
 
-    // Create MealSteps Rows
-    await db(lamington.mealStep)
-        .insert(finalMealSteps)
-        .onConflict([mealSteps.mealId, mealSteps.stepId])
-        .merge();
+        // For updating mealIngredients on edit: delete * from MealIngredients where mealId and ingId not in newIngredients
+        // const result = await db(lamington.mealIngredient)
+        // .delete()
+        // .where(mealIngredient.mealId === mealId)
+
+        const result = await db(lamington.mealIngredient)
+            .insert(mealIngredientsRows)
+            .onConflict([ingredient.id])
+            .ignore();
+    }
+
+    // Create MealSteps rows
+    const mealStepsRows: MealStepRow[] = [];
+    if (meal.method?.schema === 1 && meal.method.data) {
+        Object.entries(meal.method.data).map(([sectionName, section]) =>
+            section.map((step, index) => {
+                if (!step.id) return;
+                const properties: MealStepProperties = {
+                    index,
+                    section: sectionName,
+                    description: step.description,
+                    notes: step.notes,
+                };
+                mealStepsRows.push({ mealId, stepId: step.id ?? Uuid(), properties: JSON.stringify(properties) });
+            })
+        );
+
+        // For updating mealSteps on edit: delete * from MealSteps where mealId and ingId not in newSteps
+        // const result = await db(lamington.mealStep)
+        // .delete()
+        // .where(mealStep.mealId === mealId)
+
+        const result = await db(lamington.mealStep).insert(mealStepsRows).onConflict([mealStep.stepId]).ignore();
+    }
 
     // Create MealCategories Data
     if (meal.categories?.schema === 1 && meal.categories.data) {
-        const data = meal.categories.data.map(categoryId => ({ mealId, categoryId })); 
+        const mealCategoriesRows: MealCategoryRow[] = meal.categories.data.map(categoryId => ({ mealId, categoryId }));
+
+        // For updating mealCategories on edit: delete * from MealCategories where mealId and ingId not in newCategories
+        // const result = await db(lamington.mealCategory)
+        // .delete()
+        // .where(mealCategory.mealId === mealId)
+
         await db(lamington.mealCategory)
-            .insert(data)
-            .onConflict([mealCategories.mealId, mealCategories.categoryId])
+            .insert(mealCategoriesRows)
+            .onConflict([mealCategory.mealId, mealCategory.categoryId])
             .ignore();
     }
 

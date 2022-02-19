@@ -1,6 +1,6 @@
 import { v4 as Uuid } from "uuid";
 
-import db, { CreateResponse, ReadResponse, ingredient, Ingredient, lamington, ReadQuery, CreateQuery } from "../database";
+import db, { CreateResponse, ReadResponse, ingredient, Ingredient, lamington, ReadQuery, CreateQuery } from "..";
 
 /**
  * Get all ingredients

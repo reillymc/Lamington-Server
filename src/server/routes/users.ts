@@ -1,11 +1,11 @@
 import express, { Request, Response } from 'express';
-import db from '../database/db-config';
+import db from '../../database/config';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import { Authentication, User } from '../interfaces/types';
-import { lamington, users } from '../database/definitions';
-import { createToken } from '../authentication/auth';
-import { LamingtonDataResponse } from '../interfaces/response';
+import { Authentication, User } from '../parameters';
+import { lamington, users } from '../../database/definitions';
+import { createToken } from '../../authentication/auth';
+import { LamingtonDataResponse } from '../response';
 
 const router = express.Router();
 const saltRounds = 10;

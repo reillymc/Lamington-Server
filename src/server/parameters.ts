@@ -22,17 +22,20 @@ export type Unit =
 
 export interface MealIngredientItem {
     id?: string;
-    name?: string;
-    namePlural?: string;
+    ingredientId?: string;
     amount?: number;
     notes?: string;
     unit?: Unit;
     multiplier?: number;
+
+    //response only
+    name?: string;
+    namePlural?: string;
 }
 
 export interface MealMethodStepItem {
     id?: string;
-    step?: string;
+    description?: string;
     notes?: string;
 }
 
@@ -80,8 +83,6 @@ export interface Meal {
     prepTime?: number;
     servings?: number;
     timesCooked?: number;
-    cost?: Cost;
-    difficulty?: Difficulty
 }
 
 export enum Difficulty {
@@ -137,14 +138,7 @@ export interface Authentication {
     token_type: string;
 }
 
-export interface MealIngredientsResults {
-    ingredientId: string;
-    ingredientName: string;
-    unit: string; // enum of supported types?
-    quantity: number;
-    section?: string;
-    notes?: string;
-}
+
 
 export interface MealStepsResults {
     number: number;

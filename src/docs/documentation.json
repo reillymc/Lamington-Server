@@ -119,10 +119,6 @@
             },
             "Category": {
                 "properties": {
-                    "id": {
-                        "type": "string",
-                        "default": ""
-                    },
                     "type": {
                         "type": "string",
                         "default": "Cuisine"
@@ -130,6 +126,10 @@
                     "name": {
                         "type": "string",
                         "default": "Tasty"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "default": null
                     }
                 }
             },
@@ -187,9 +187,13 @@
                         "type": "string",
                         "default": "Spinach"
                     },
+                    "namePlural": {
+                        "type": "string",
+                        "default": null
+                    },
                     "notes": {
                         "type": "string",
-                        "default": ""
+                        "default": null
                     }
                 }
             }
@@ -402,24 +406,6 @@
                 }
             }
         },
-        "/meals/categories": {
-            "get": {
-                "tags": ["Meals"],
-                "summary": "Returns a list of all categories.",
-                "responses": {
-                    "200": {
-                        "description": "A JSON array of categories",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Category"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/meals/roster": {
             "get": {
                 "tags": ["Meals"],
@@ -459,7 +445,60 @@
                 }
             }
         },
+        "/categories": {
+            "get": {
+                "tags": ["Categories"],
+                "summary": "Returns a list of all categories.",
+                "responses": {
+                    "200": {
+                        "description": "A JSON array of categories",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Category"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": ["Categories"],
+                "summary": "Create a category.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Category"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    }
+                }
+            }
+        },
         "/ingredient": {
+            "get": {
+                "tags": ["Ingredients"],
+                "summary": "Returns a list of all ingredients.",
+                "responses": {
+                    "200": {
+                        "description": "A JSON array of ingredients",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Ingredient"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "tags": ["Ingredients"],
                 "summary": "Create an ingredient.",

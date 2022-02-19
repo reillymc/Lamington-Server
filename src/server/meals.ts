@@ -1,12 +1,12 @@
 import express, { Request, Response } from "express";
-import db from "../database/db-config";
+import db from "../database";
 import { v4 as uuidv4 } from "uuid";
-import { Meal, Category, MealRating, Ingredient } from "../interfaces/types";
-import { LamingtonDataResponse, LamingtonResponse } from "../interfaces/response";
-import { lamington, meal, mealRatings, mealCategories, mealRoster } from "../database/definitions";
+import { Meal, Category, MealRating, Ingredient } from "./parameters";
+import { LamingtonDataResponse, LamingtonResponse } from "./response";
+import { lamington, meal, mealRating, mealCategory, mealRoster } from "../database/definitions";
 import { checkToken, verifyToken, AuthTokenData } from "../authentication/auth";
-import { addMealCategories, createFullMeal, createMeal, deleteMealCategories, getMeal, getMeals, rateMeal, updateMeal } from "../api/meals";
-import { createCategories } from "../api/category";
+import { addMealCategories, createFullMeal, createMeal, deleteMealCategories, getMeal, getMeals, rateMeal, updateMeal } from "../database/actions/meals";
+import { createCategories } from "../database/actions/category";
 
 const router = express.Router();
 
@@ -139,13 +139,13 @@ router.post("/delete", verifyToken, async (req: DeleteMealRequest, res: DeleteMe
 
         //TODO: remove - should be handled with FK delete policy
         await db(lamington.mealRating)
-            .where({ [mealRatings.mealId]: mealId })
+            .where({ [mealRating.mealId]: mealId })
             .del();
         await db(lamington.mealRoster)
             .where({ [mealRoster.mealId]: mealId })
             .del();
         await db(lamington.mealCategory)
-            .where({ [mealCategories.mealId]: mealId })
+            .where({ [mealCategory.mealId]: mealId })
             .del();
         await db(lamington.meal)
             .where({ [meal.id]: mealId })
@@ -280,15 +280,26 @@ type CreateMealResponse = LamingtonResponse;
 router.post("/", verifyToken, async (req: CreateMealRequest, res: CreateMealResponse) => {
     // Extract request fields
     const {
+        // Meal
         id,
         name,
-        source = "",
-        ingredients = { data: {}, schema: 1 },
-        method = { data: {}, schema: 1 },
-        notes = "",
-        photo = "",
-        ratingPersonal,
+        source,
+        notes,
+        photo,
+        servings,
+        prepTime,
+        cookTime,
+        timesCooked,
         userId,
+        
+        // MealRating
+        ratingPersonal,
+
+        // MealIngredients
+        ingredients = { data: {}, schema: 1 },
+
+        // MealSteps
+        method = { data: {}, schema: 1 },
 
     } = req.body;
 
@@ -307,10 +318,12 @@ router.post("/", verifyToken, async (req: CreateMealRequest, res: CreateMealResp
             notes,
             ratingPersonal,
             photo,
+            servings,
+            prepTime,
+            cookTime,
+            timesCooked,
             createdBy: userId,
         };
-
-        let createdId = "";
 
         if (id) {
             const existingMeal = await getMeal(id);
@@ -318,7 +331,7 @@ router.post("/", verifyToken, async (req: CreateMealRequest, res: CreateMealResp
                 await createFullMeal(meal, userId);
             }
             if (existingMeal.createdBy !== userId) {
-                return res.status(401).json({
+                return res.status(403).json({
                     error: true,
                     message: `Error editing meal (Cannot edit a meal that doesn't belong to you)`,
                 });

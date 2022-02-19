@@ -8,7 +8,8 @@ import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
 import swaggerUI from "swagger-ui-express";
-import { attachmentsRouter, choresRouter, categoriesRouter, mealsRouter, usersRouter, ingredientRouter } from "./routes";
+
+import appRouter from "./server";
 
 const rfs = require("rotating-file-stream");
 const swaggerDocument = require("./docs/documentation.json");
@@ -55,12 +56,7 @@ morgan.token("res", (req, res) => {
 app.use(morgan("dev"));
 
 // routers
-app.use("/users", usersRouter);
-app.use("/chores", choresRouter);
-app.use("/categories", categoriesRouter);
-app.use("/meals", mealsRouter);
-app.use("/ingredient", ingredientRouter);
-app.use("/attachments", attachmentsRouter);
+app.use("/", appRouter);
 app.use("/docs", swaggerUI.serve, swaggerUI.setup(swaggerDocument));
 app.use(swaggerUI.serve, swaggerUI.setup(swaggerDocument));
 
