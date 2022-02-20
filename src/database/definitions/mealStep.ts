@@ -7,21 +7,22 @@ import { Table } from "./lamington";
  */
 
 export interface MealStepProperties {
-    index: number;
-    section?: string;
-    description?: string;
-    notes?: string;
+   
 }
 
 export interface MealStep {
     mealId: string;
     stepId: string;
-    properties: string | undefined; // Stringified MealStepProperties
+    section: string;
+    index: number;
+    description: string | undefined;
 }
 
 export const mealStep: Table<MealStep> = {
     mealId: "meal_step.mealId",
     stepId: "meal_step.stepId",
-    properties: "meal_step.properties",
+    section: "meal_step.section",
+    index: "meal_step.index",
+    description: "meal_step.description",
 };
 

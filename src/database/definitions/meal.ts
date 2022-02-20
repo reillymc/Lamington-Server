@@ -5,7 +5,7 @@ import { Table } from "./lamington";
  */
  export interface Meal {
     id: string;
-    name: string;
+    name: string  | undefined;
     source: string | undefined;
     photo: string | undefined;
     servings: number | undefined;
@@ -16,7 +16,9 @@ import { Table } from "./lamington";
     createdBy: string;
 }
 
-export const meal: Table<Meal> = {
+export type MealTable = Table<Meal>;
+
+export const meal: MealTable = {
     id: "meal.id",
     name: "meal.name",
     source: "meal.source",

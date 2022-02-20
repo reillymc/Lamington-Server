@@ -1,73 +1,24 @@
-import { Meal, MealCategories, MealIngredients, MealMethod } from "../src/server/parameters";
+import { Meal, CreateRequestData } from "../src/server/specification"
 
-const exampleIngredients: MealIngredients = {
-    "schema": 1,
-    "data": {
-        "default": [
-            {
-                "ingredientId": "rrr24567-3333-cccc-9999-996614174ubb",
-                "amount": 4,
-                "unit": "Cup",
-                "notes": "Fresh spinach works best",
-            },
-            {
-                "ingredientId": "rrr24567-3333-cccc-9999-996614174ubc",
-                "amount": 275,
-                "unit": "Gram",
-            },
-            {
-                "ingredientId": "rrr24567-3333-cccc-9999-996614174ubd",
-                "amount": 0.5,
-                "unit": "Cup",
-                "multiplier": 0.85
-            },
-        ],
-    },
-};
-
-const exampleMethod: MealMethod = {
-    "schema": 1,
-    "data": {
-        "default": [
-            {
-                "id": "aaabbb67-aaa3-cddd-fff9-996614174ubd",
-                "description": "Mix spinach and cheeses",
-                "notes": "Be careful not to over-stir.",
-            },
-            {
-                "id": "",
-                "description": "Bake at 275 degrees celsius."
-            }
-        ],
-    },
-};
-
-const exampleCategories: MealCategories = {
-    "schema": 1,
-    "data": [
-        "xbcv4567-cbxv-fsad-kljw-4xcbv4174000",
-        "14324567-sgbr-rtyu-hljk-426614174ut3"
-    ],
-};
-
-const exampleMeal: Meal = {
+const exampleMeal: Meal & CreateRequestData = {
+    "format": 1,
+    "id": "eb7a2ab0-0650-4edf-a908-a6a067b4b325",
     "name": "Spinach and Ricotta Lasagne",
     "source": "www.google.com",
-    "categories": {
-        "schema": 1,
-        "data": [
-            "xbcv4567-cbxv-fsad-kljw-4xcbv4174000",
-            "14324567-sgbr-rtyu-hljk-426614174ut3"
-        ]
-    },
+    "categories":  [
+            {
+                "categoryId": "xbcv4567-cbxv-fsad-kljw-4xcbv4174000"
+            },
+            {
+                "categoryId": "14324567-sgbr-rtyu-hljk-426614174ut3"
+            }
+        ],
     "ingredients": {
-        "schema": 1,
-        "data": {
             "default": [{
                     "ingredientId": "rrr24567-3333-cccc-9999-996614174ubb",
                     "amount": 4,
                     "unit": "Cup",
-                    "notes": "Fresh spinach works best"
+                    "description": "Fresh spinach works best"
                 },
                 {
                     "ingredientId": "rrr24567-3333-cccc-9999-996614174ubc",
@@ -85,22 +36,17 @@ const exampleMeal: Meal = {
                     "amount": 1
                 }
             ]
-        }
     },
-    "method": {
-        "schema": 1,
-        "data": {
+    "method":  {
             "default": [
                 {
-                    "description": "Mix spinach and cheeses",
-                    "notes": "Be careful not to over-stir."
+                    "description": "Mix spinach and cheeses"
                 },
                 {
                     "description": "Bake at 275 degrees celsius."
                 }
             ]
-        }
-    },
+        },
     "cookTime": 20,
     "prepTime": 40,
     "ratingPersonal": 4,
@@ -108,4 +54,6 @@ const exampleMeal: Meal = {
     "timesCooked": 10,
     "notes": "Make sure to drain the spinach before mixing with ingredients",
     "photo": "jfasbdh32479ydshkaj"
-};
+}
+
+export { exampleMeal };

@@ -9,7 +9,7 @@ import { Table } from "./lamington";
  export interface MealRating {
     mealId: string;
     raterId: string;
-    rating: number; // Stringified MealStepProperties
+    rating: number;
 }
 
 export const mealRating: Table<MealRating> = {

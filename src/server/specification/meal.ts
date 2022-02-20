@@ -1,18 +1,8 @@
-import { Request, Response } from "express";
-import { AuthTokenData } from "../authentication/auth";
+/**
+ * Create Meal
+ */
 
-interface BaseResponse {
-    error: boolean;
-    schema?: 1; // TODO make mandatory
-    message?: string;
-}
-
-export type LamingtonResponse = Response<BaseResponse>;
-export type LamingtonDataResponse<T> = Response<BaseResponse & { data?: T }>;
-
-export type LamingtonRequest<T> = Request<null, null, Partial<T>, null>;
-export type LamingtonAuthenticatedRequest<T> = Request<null, null, Partial<T> & AuthTokenData, null>;
-
+import { AuthTokenData } from "../../authentication/auth";
 
 interface MealIngredientItem {
     ingredientId?: string;
@@ -20,50 +10,48 @@ interface MealIngredientItem {
     description?: string;
     unit?: string;
     multiplier?: number;
-    name?: string;
-    namePlural?: string;
 }
-
 
 interface MealIngredients {
     [sectionName: string]: Array<MealIngredientItem>;
 }
-
 
 interface MealMethodStep {
     stepId?: string;
     description?: string;
 }
 
-
 interface MealMethod {
     [sectionName: string]: Array<MealMethodStep>;
 }
 interface MealCategoryItem {
     categoryId: string;
-    type?: string;
-    name?: string;
 }
 
 type MealCategories = Array<MealCategoryItem>;
 
+export type CreateRequestData = {
+    format: 1; // Use this instead of schema on each type
+}
 
-export interface Meal {
-    id: string;
+interface MealV1 {
+    id?: string;
     name?: string;
     source?: string;
     ingredients?: MealIngredients;
     method?: MealMethod;
     notes?: string;
     photo?: string;
-    ratingAverage?: number;
     ratingPersonal?: number;
     categories?: MealCategories;
-    createdBy: string;
     cookTime?: number;
     prepTime?: number;
     servings?: number;
     timesCooked?: number;
 }
 
-export { MealIngredients, MealMethod, MealCategories }
+type Meal = MealV1;
+
+type CreateMealBody = AuthTokenData & Meal & CreateRequestData;
+
+export { Meal, CreateMealBody };

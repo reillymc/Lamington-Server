@@ -1,11 +1,12 @@
-import express, { Request, Response } from "express";
+import express, { Request } from "express";
 import db from "../../database";
-import { v4 as uuidv4 } from "uuid";
-import { Meal, Category, MealRating, Ingredient } from "../parameters";
 import { LamingtonDataResponse, LamingtonResponse } from "../response";
-import { lamington, meal, mealRating, mealCategory, mealRoster } from "../../database/definitions";
+import { lamington, meal, mealRating, mealCategory, mealRoster, MealRating as MealRatingRow } from "../../database/definitions";
 import { checkToken, verifyToken, AuthTokenData } from "../../authentication/auth";
-import { addMealCategories, createFullMeal, createMeal, deleteMealCategories, getMeal, getMeals, rateMeal, updateMeal } from "../../database/actions/meals";
+import MealActions, { getMeal, getMealCreator, getMeals } from "../../database/actions/meals";
+import { InternalErrorResponse } from "./helper";
+import { CreateMealBody, Meal } from "../specification";
+import MealRatingActions from "../../database/actions/mealRating";
 
 const router = express.Router();
 
@@ -26,6 +27,8 @@ router.get("/:mealId", checkToken, async (req: GetMealRequest, res: GetMealRespo
     // Extract request fields
     const { mealId } = req.params;
     const { userId } = req.body;
+
+    console.log(mealId, userId)
 
     // Check all required fields are present
     if (!mealId) {
@@ -66,40 +69,6 @@ router.get("/", checkToken, async (req: GetMealsRequest, res: GetMealsResponse) 
     }
 });
 
-interface RateMealBody extends AuthTokenData {
-    mealId: string;
-    rating: number;
-}
-
-type RateMealRequest = Request<null, null, RateMealBody, null>;
-type RateMealResponse = LamingtonResponse;
-
-/**
- * POST request to rate a meal
- * Requires meal rating body
- * Requires authentication body
- */
-router.post("/rate", verifyToken, async (req: RateMealRequest, res: RateMealResponse) => {
-    // Extract request fields
-    const { userId, mealId, rating } = req.body;
-
-    // Check all required fields are present
-    if (!userId || !mealId || !rating) {
-        return res.status(400).json({ error: true, message: `You haven't given enough information to rate this meal` });
-    }
-
-    // Create object
-    const mealRating: MealRating = { mealId, raterId: userId, rating };
-
-    // Update database and return status
-    try {
-        await rateMeal(mealRating);
-        return res.status(201).json({ error: false, message: `yay! you've successfully rated this meal :)` });
-    } catch (exception: unknown) {
-        return res.status(500).json({ error: true, message: "Something went wrong rating this meal" + exception });
-    }
-});
-
 interface DeleteMealBody extends AuthTokenData {
     mealId: string;
 }
@@ -126,15 +95,15 @@ router.post("/delete", verifyToken, async (req: DeleteMealRequest, res: DeleteMe
     // Update database and return status
     try {
         // Check if the delete order came from the meal creator
-        const mealDetails: Meal = await db
-            .from(lamington.meal)
-            .select(meal.id, meal.createdBy)
-            .where({ [meal.id]: mealId })
-            .first();
+        // const mealDetails: Meal = await db
+        //     .from(lamington.meal)
+        //     .select(meal.id, meal.createdBy)
+        //     .where({ [meal.id]: mealId })
+        //     .first();
 
-        if (mealDetails.createdBy != userId) {
-            return res.status(400).json({ error: true, message: `You are not authorised to delete this meal` });
-        }
+        // if (mealDetails.createdBy != userId) {
+        //     return res.status(400).json({ error: true, message: `You are not authorised to delete this meal` });
+        // }
 
         //TODO: remove - should be handled with FK delete policy
         await db(lamington.mealRating)
@@ -156,11 +125,6 @@ router.post("/delete", verifyToken, async (req: DeleteMealRequest, res: DeleteMe
 });
 
 
-interface CreateMealBody
-    extends AuthTokenData,
-        Partial<Omit<Meal, "ratingAverage" | "createdBy">> {
-}
-
 type CreateMealRequest = Request<null, null, CreateMealBody, null>;
 type CreateMealResponse = LamingtonResponse;
 
@@ -169,74 +133,109 @@ type CreateMealResponse = LamingtonResponse;
  * Requires meal data body
  * Requires authentication body
  */
-router.post("/", verifyToken, async (req: CreateMealRequest, res: CreateMealResponse) => {
-    // Extract request fields
-    const {
-        // Meal
-        id,
-        name,
-        source,
-        notes,
-        photo,
-        servings,
-        prepTime,
-        cookTime,
-        timesCooked,
-        userId,
-
-        // MealRating
-        ratingPersonal,
-
-        // MealIngredients
-        ingredients = { data: {}, schema: 1 },
-
-        // MealSteps
-        method = { data: {}, schema: 1 },
-    } = req.body;
-
+router.post("/", verifyToken, async ({ body }: CreateMealRequest, res: CreateMealResponse) => {
     // Check all required fields are present
-    if (!name) {
-        return res.status(400).json({ error: true, message: `Error creating meal (No name provided)` });
+    if (!body.format) {
+        return res.status(400).json({ error: true, message: `No recipe format provided` });
     }
 
-    try {
-        let meal = {
-            id,
-            name,
-            source,
-            ingredients,
-            method,
-            notes,
-            ratingPersonal,
-            photo,
-            servings,
-            prepTime,
-            cookTime,
-            timesCooked,
-            createdBy: userId,
+    if (body.format === 1){
+        const meal: Meal = {
+            id: body.id,
+            name: body.name,
+            source: body.source,
+            ingredients: body.ingredients,
+            method: body.method,
+            notes: body.notes,
+            ratingPersonal: Math.min(Math.max(body.ratingPersonal ?? 0, 0), 5),
+            photo: body.photo,
+            servings: body.servings,
+            prepTime: body.prepTime,
+            cookTime: body.cookTime,
+            timesCooked: body.timesCooked,
+            categories: body.categories,
         };
 
-        if (id) {
-            const existingMeal = await getMeal(id);
-            if (!existingMeal) {
-                await createFullMeal(meal, userId);
+        try {
+            if (!body.id) {
+                await MealActions.insertMeal(meal, body.userId);
+                return res.status(201).json({ error: false, message: `Recipe created` });
+            } else {
+                const existingMeal = await getMealCreator(body.id);
+                if (!existingMeal) {
+                    return res.status(403).json({
+                        error: true,
+                        message: `Cannot find recipe to edit`,
+                    });
+                }
+                if (existingMeal.createdBy !== body.userId) {
+                    return res.status(403).json({
+                        error: true,
+                        message: `Cannot edit a recipe that doesn't belong to you`,
+                    });
+                }
+                await MealActions.insertMeal(meal, body.userId);
+                return res.status(201).json({ error: false, message: `Recipe updated` });
             }
-            if (existingMeal.createdBy !== userId) {
-                return res.status(403).json({
-                    error: true,
-                    message: `Error editing meal (Cannot edit a meal that doesn't belong to you)`,
-                });
-            }
-
-            // await updateFullMeal(meal);
-        } else {
-            await createFullMeal(meal, userId);
+        } catch (exception: unknown) {
+            return InternalErrorResponse(res, exception);
         }
 
-        return res.status(201).json({ error: false, message: `yay! you've successfully created this meal :)` });
-    } catch (exception: unknown) {
-        return res.status(500).json({ error: true, message: `Error creating meal ${exception}` });
     }
+
+    return res.status(400).json({ error: true, message: `Recipe formatted incorrectly` });
 });
 
 export default router;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Move to ratings file? 
+interface RateMealBody extends AuthTokenData {
+    mealId: string;
+    rating: number;
+}
+
+type RateMealRequest = Request<null, null, RateMealBody, null>;
+type RateMealResponse = LamingtonResponse;
+
+/**
+ * POST request to rate a meal
+ * Requires meal rating body
+ * Requires authentication body
+ */
+router.post("/rate", verifyToken, async (req: RateMealRequest, res: RateMealResponse) => {
+    // Extract request fields
+    const { userId, mealId, rating } = req.body;
+
+    // Check all required fields are present
+    if (!userId || !mealId || !rating) {
+        return res.status(400).json({ error: true, message: `You haven't given enough information to rate this meal` });
+    }
+
+    // Create object
+    const mealRating: MealRatingRow = { mealId, raterId: userId, rating };
+
+    // Update database and return status
+    try {
+        await MealRatingActions.insertRows(mealRating);
+        return res.status(201).json({ error: false, message: `yay! you've successfully rated this meal :)` });
+    } catch (exception: unknown) {
+        return res.status(500).json({ error: true, message: "Something went wrong rating this meal" + exception });
+    }
+});

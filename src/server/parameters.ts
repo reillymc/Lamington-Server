@@ -20,89 +20,24 @@ export type Unit =
     | "Pinch"
     | "Bunch"; //or could be none: e.g. 1 egg
 
-export interface MealIngredientItem {
-    id?: string;
-    ingredientId?: string;
-    amount?: number;
-    notes?: string;
-    unit?: Unit;
-    multiplier?: number;
+    export enum Difficulty {
+        Undefined,
+        Easy,
+        Medium,
+        Hard
+    }
 
-    //response only
-    name?: string;
-    namePlural?: string;
-}
-
-export interface MealMethodStepItem {
-    id?: string;
-    description?: string;
-    notes?: string;
-}
-
-interface SchemaV1 {
-    schema: 1; // in client - parse data by schema and then return just data object as ingredients
-}
-
-interface MealIngredientsV1 extends SchemaV1 {
-    data: {
-        [sectionName: string]: Array<MealIngredientItem>;
-    };
-}
-
-export type MealIngredients = MealIngredientsV1;
-
-interface MealMethodV1 {
-    schema: 1; // in client - parse data by schema and then return just data object as ingredients
-    data: {
-        [sectionName: string]: Array<MealMethodStepItem>;
-    };
-}
-
-export type MealMethod = MealMethodV1;
-
-interface MealCategoriesV1 {
-    schema: 1; // in client - parse data by schema and then return just data object as ingredients
-    data: Array<string>;
-}
-
-export type MealCategories = MealCategoriesV1;
-
-export interface Meal {
-    id: string;
-    name: string;
-    source?: string;
-    ingredients?: MealIngredients;
-    method?: MealMethod;
-    notes?: string;
-    photo?: string;
-    ratingAverage?: number;
-    ratingPersonal?: number;
-    categories?: MealCategories;
-    createdBy: User["id"];
-    cookTime?: number;
-    prepTime?: number;
-    servings?: number;
-    timesCooked?: number;
-}
-
-export enum Difficulty {
-    Undefined,
-    Easy,
-    Medium,
-    Hard
-}
-
-export enum Cost {
-    $,
-    $$,
-    $$$,
-    $$$$
-}
+    export enum Cost {
+        $,
+        $$,
+        $$$,
+        $$$$
+    }
 
 export interface MealIngredient {
     id: string;
-    mealId: Meal["id"];
-    ingredientId: Ingredient["id"];
+    mealId: string;
+    ingredientId: string;
 }
 export interface Ingredient {
     id: string;
@@ -136,14 +71,5 @@ export interface MealRoster {}
 export interface Authentication {
     token: string;
     token_type: string;
-}
-
-
-
-export interface MealStepsResults {
-    number: number;
-    step: string;
-    section?: string;
-    notes?: string;
 }
 
