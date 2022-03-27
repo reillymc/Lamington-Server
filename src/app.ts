@@ -47,13 +47,7 @@ let accessLog = rfs.createStream("access.log", {
     path: path.join(__dirname, "log"),
 });
 app.use(morgan("common", { stream: accessLog }));
-morgan.token("req", (req, res) => JSON.stringify(req.headers));
-morgan.token("res", (req, res) => {
-    const headers: { [header: string]: string | number | string[] | undefined } = {};
-    res.getHeaderNames().map(h => (headers[h] = res.getHeader(h)));
-    return JSON.stringify(headers);
-});
-app.use(morgan("dev"));
+app.use(morgan("tiny"));
 
 // routers
 app.use("/", appRouter);

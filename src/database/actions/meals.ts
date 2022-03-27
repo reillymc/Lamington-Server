@@ -19,7 +19,7 @@ import {
 
 // DB Actions
 import MealRatingActions from "./mealRating";
-import MealCategoryActions, { MealCategoryResults } from "./mealCategory";
+import MealCategoryActions, { MealCategoryByMealIdResults } from "./mealCategory";
 import MealIngredientActions, { MealIngredientResults } from "./mealIngredient";
 import MealStepActions, { MealStepResults } from "./mealStep";
 
@@ -111,24 +111,24 @@ const getMealCreator = async (mealId: string): Promise<{ createdBy: string } | u
 
 const getMeal = async (mealId: string, userId?: string) => {
     // Fetch from database
-    const [meal, categories, ingredients, method] = await Promise.all([
+    const [meal, categoryRows, ingredientRows, methodRows] = await Promise.all([
         getFullMeal(mealId, userId),
         MealCategoryActions.selectByMealId(mealId),
         MealIngredientActions.selectByMealId(mealId),
         MealStepActions.selectByMealId(mealId),
     ]);
 
-    const ingredientData = mealIngredientRowsToResponse(ingredients);
-    const methodData = mealStepRowsToResponse(method);
-    const categoryDate = mealCategoryRowsToResponse(categories);
+    const ingredients = mealIngredientRowsToResponse(ingredientRows);
+    const method = mealStepRowsToResponse(methodRows);
+    const categories = mealCategoryRowsToResponse(categoryRows);
 
     // Process results
-    const result: any = { // Update to GetMealResponseItem
+    const result: GetMealResponseItem = {
         ...meal,
         ratingAverage: parseFloat(meal.ratingAverage),
-        ingredients: { schema: 1, data: ingredientData },
-        method: { schema: 1, data: methodData },
-        categories: { schema: 1, data: categoryDate },
+        ingredients,
+        method ,
+        categories ,
     };
 
     return result;
@@ -136,12 +136,13 @@ const getMeal = async (mealId: string, userId?: string) => {
 
 const getMeals = async (userId?: string) => {
     // Fetch from database
-    const mealList = await getAllMeals(userId);
-
+    const [mealList, mealCategoriesList] = await Promise.all([getAllMeals(userId), MealCategoryActions.selectRows()]);
+    
     // Process results
     const data: GetMealResponseItem[] = mealList.map(meal => ({ // TODO: Update GetMealResponseItem naming
         ...meal,
         ratingAverage: parseFloat(meal.ratingAverage),
+        categories: mealCategoryRowsToResponse(mealCategoriesList.filter(cat => cat.mealId === meal.id))
     }));
 
     return data;
@@ -242,35 +243,42 @@ const mealCategoriesRequestToRows = (mealId: string, categories: MealCategories)
     }));
 
 const mealIngredientRowsToResponse = (ingredients: MealIngredientResults): MealIngredients => {
-    const responseData: MealIngredients = {};
-    ingredients.map(ingItem => {
-        responseData[ingItem.section] = responseData[ingItem.section] ?? [];
-        responseData[ingItem.section][ingItem.index] = {
-            ingredientId: ingItem.ingredientId,
-            amount: ingItem.amount,
-            description: ingItem.description,
-            multiplier: ingItem.multiplier,
-            name: ingItem.name,
-            namePlural: ingItem.namePlural,
-            unit: ingItem.unit,
-        };
-    });
+    const responseData: MealIngredients = { default: [] };
+
+    if (ingredients.length) {
+        ingredients.map(ingItem => {
+            responseData[ingItem.section] = responseData[ingItem.section] ?? [];
+            responseData[ingItem.section][ingItem.index] = {
+                ingredientId: ingItem.ingredientId,
+                amount: ingItem.amount,
+                description: ingItem.description,
+                multiplier: ingItem.multiplier,
+                name: ingItem.name,
+                namePlural: ingItem.namePlural,
+                unit: ingItem.unit,
+            };
+        });
+    }
+
     return responseData;
 };
 
 const mealStepRowsToResponse = (method: MealStepResults): MealMethod => {
-    const responseData: MealMethod = {};
-    method.map(metItem => {
-        responseData[metItem.section] = responseData[metItem.section] ?? [];
-        responseData[metItem.section][metItem.index] = {
-            stepId: metItem.stepId,
-            description: metItem.description,
-        };
-    });
+    const responseData: MealMethod = { default: [] };
+
+    if (method.length) {
+        method.map(metItem => {
+            responseData[metItem.section] = responseData[metItem.section] ?? [];
+            responseData[metItem.section][metItem.index] = {
+                stepId: metItem.stepId,
+                description: metItem.description,
+            };
+        });
+    }
     return responseData;
 };
 
-const mealCategoryRowsToResponse = (categories: MealCategoryResults): MealCategories => {
+const mealCategoryRowsToResponse = (categories: MealCategoryByMealIdResults): MealCategories => {
     const responseData: MealCategories = categories.map(catItem => ({
         categoryId: catItem.categoryId,
         name: catItem.name,

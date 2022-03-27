@@ -54,14 +54,26 @@ const updateRows = async (mealId: string, mealCategories: MealCategory[]) => {
     await insertRows(mealCategories);
 };
 
-type MealCategoryResults = Array<Omit<MealCategory, "mealId"> & Pick<Category, "type" | "name">>
+type MealCategoryResults = Array<MealCategory & Pick<Category, "type" | "name">>
 
 /**
  * Get all categories for a meal
  * @param mealId meal to retrieve categories from
  * @returns MealCategoryResults
  */
-const selectByMealId = async (mealId: string): Promise<MealCategoryResults> =>
+const selectRows = async (): Promise<MealCategoryResults> =>
+    db(lamington.category)
+        .select(mealCategory.mealId, mealCategory.categoryId, category.type, category.name)
+        .innerJoin(lamington.mealCategory, mealCategory.categoryId, category.id);
+
+type MealCategoryByMealIdResults = Array<Omit<MealCategory, "mealId"> & Pick<Category, "type" | "name">>
+
+/**
+ * Get all categories for a meal
+ * @param mealId meal to retrieve categories from
+ * @returns MealCategoryResults
+ */
+const selectByMealId = async (mealId: string): Promise<MealCategoryByMealIdResults> =>
     db(lamington.category)
         .select(mealCategory.categoryId, category.type, category.name)
         .where({ [mealCategory.mealId]: mealId })
@@ -69,9 +81,10 @@ const selectByMealId = async (mealId: string): Promise<MealCategoryResults> =>
 
 const MealCategoryActions = {
     selectByMealId,
+    selectRows,
     updateRows,
 };
 
 export default MealCategoryActions;
 
-export { deleteExcessRows, insertRows, selectByMealId, updateRows, MealCategoryResults };
+export { deleteExcessRows, insertRows, selectRows, selectByMealId, updateRows, MealCategoryByMealIdResults };
