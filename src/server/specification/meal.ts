@@ -10,6 +10,9 @@ interface MealIngredientItem {
     description?: string;
     unit?: string;
     multiplier?: number;
+
+    // on create request only
+    name?: string;
 }
 
 interface MealIngredients {

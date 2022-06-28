@@ -28,6 +28,7 @@ import { Meal as CreateMealRequestItem } from "../../server/specification";
 
 // Server Response Specs
 import { MealCategories, MealIngredients, MealMethod, Meal as GetMealResponseItem } from "../../server/response";
+import IngredientActions, { CreateIngredientParams } from "./ingredient";
 
 type GetAllMealsResults = Pick<
     Meal,
@@ -171,6 +172,10 @@ const insertMeal = async (mealItem: CreateMealRequestItem, userId: string) => {
 
     await db(lamington.meal).insert(mealData).onConflict(meal.id).merge();
 
+    // Create new Ingredients rows
+    const ingredientRows = ingredientsRequestToRows(mealItem.ingredients ?? {});
+    IngredientActions.createIngredients(ingredientRows);
+
     // Update MealIngredients rows
     const mealIngredientRows = mealIngredientsRequestToRows(mealId, mealItem.ingredients ?? {});
     await MealIngredientActions.updateRows(mealId, mealIngredientRows);
@@ -199,6 +204,11 @@ export default MealActions;
 export { insertMeal, getMeal, getMeals, getMealCreator };
 
 // Helpers
+const ingredientsRequestToRows = (ingredients: MealIngredients): CreateIngredientParams[] =>
+    Object.values(ingredients ?? {})
+        .flat()
+        .filter(({ ingredientId, name }) => name !== undefined)
+        .map(({ name }) => ({ name: name as string }));
 
 const mealIngredientsRequestToRows = (mealId: string, ingredients: MealIngredients): MealIngredient[] =>
     Object.entries(ingredients)

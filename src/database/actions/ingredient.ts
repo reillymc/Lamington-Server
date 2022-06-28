@@ -6,7 +6,7 @@ import db, { CreateResponse, ReadResponse, ingredient, Ingredient, lamington, Re
  * Get all ingredients
  * @returns an array of all ingredients in the database
  */
-export const readAllIngredients = async (): ReadResponse<Ingredient> => {
+const readAllIngredients = async (): ReadResponse<Ingredient> => {
     const query = db<Ingredient>(lamington.ingredient).select("*");
     return query;
 };
@@ -39,7 +39,7 @@ export interface CreateIngredientParams {
  * Creates a new ingredient from params
  * @returns the newly created ingredients
  */
-export const createIngredients = async (ingredients: CreateQuery<CreateIngredientParams>): CreateResponse<Ingredient> => {
+const createIngredients = async (ingredients: CreateQuery<CreateIngredientParams>): CreateResponse<Ingredient> => {
     if (!Array.isArray(ingredients)) {
         ingredients = [ingredients];
     }
@@ -57,3 +57,12 @@ export const createIngredients = async (ingredients: CreateQuery<CreateIngredien
     const query = db<Ingredient>(lamington.ingredient).select("*").whereIn(ingredient.id, ingredientIds);
     return query;
 };
+
+const IngredientActions = {
+    readAllIngredients,
+    createIngredients,
+};
+
+export default IngredientActions;
+
+export { readAllIngredients, createIngredients };
