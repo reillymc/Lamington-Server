@@ -8,6 +8,7 @@ var app = require('../app');
 var debug = require('debug')('wcaserver:server');
 const https = require('https');
 const fs = require('fs');
+const { default: config } = require('../config');
 const privateKey = fs.readFileSync('./sslcert/cert.key', 'utf8');
 const certificate = fs.readFileSync('./sslcert/cert.pem', 'utf8');
 
@@ -20,7 +21,7 @@ const credentials = {
  * Get port from environment and store in Express.
  */
 
-var port = normalizePort(process.env.PORT || '80');
+var port = normalizePort(config.app.port || '80');
 app.set('port', port);
 
 /**

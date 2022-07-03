@@ -69,11 +69,14 @@ router.post('/register', async (req: Request<null, null, RegisterBody, null>, re
     // Update database and return status
     db(lamington.user).insert(user)
         .then(_ => {
+            const token = createToken(user.id)
+            if (!token) throw "Failed to create token";
+
             return res.status(200).json({
                 error: false,
                 data: {
                     authorization: {
-                        token: createToken(user.id),
+                        token,
                         token_type: "Bearer"
                     },
                     user: ({ id: user.id, firstName, lastName, status: user.status })
@@ -111,11 +114,14 @@ router.post('/login', (req: Request<null, null, LoginBody, null>, res: Lamington
             const result = await bcrypt.compare(password, rows[0].password ?? "");
 
             if (result) {
+                const token = createToken(rows[0].id)
+                if (!token) throw "Failed to create token";
+
                 return res.status(200).json({
                     error: false,
                     data: {
                         authorization: {
-                            token: createToken(rows[0].id),
+                            token,
                             token_type: "Bearer"
                         },
                         user: ({ id: rows[0].id, firstName: rows[0].firstName, lastName: rows[0].lastName, status: rows[0].status })

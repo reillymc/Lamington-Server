@@ -10,6 +10,7 @@ import helmet from "helmet";
 import swaggerUI from "swagger-ui-express";
 
 import appRouter from "./server";
+import config from "./config";
 
 const rfs = require("rotating-file-stream");
 const swaggerDocument = require("./docs/documentation.json");
@@ -47,7 +48,7 @@ let accessLog = rfs.createStream("access.log", {
     path: path.join(__dirname, "log"),
 });
 app.use(morgan("common", { stream: accessLog }));
-app.use(morgan("tiny"));
+app.use(morgan(config.app.logDetail));
 
 // routers
 app.use("/", appRouter);

@@ -1,12 +1,13 @@
 import knex from "knex";
+import config from "../config";
 
 const db = knex({
-    client: "mysql2",
+    client: config.database.client,
     connection: {
-        host: process.env.DB_HOST,
-        database: "lamingtondb",
-        user: process.env.DB_USER,
-        password: process.env.DB_PASS,
+        host: config.database.host,
+        database: config.database.name,
+        user: config.database.user,
+        password: config.database.password,
     },
 });
 

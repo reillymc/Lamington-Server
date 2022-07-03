@@ -1,6 +1,6 @@
 import { v4 as Uuid } from "uuid";
 
-import { Alias, Undefined } from "../helpers";
+import { Alias, ObjectFromEntries, Undefined } from "../helpers";
 
 // DB Specs
 import db from "../config";
@@ -174,7 +174,7 @@ const insertMeal = async (mealItem: CreateMealRequestItem, userId: string) => {
 
     // Create new Ingredients rows
     const ingredientRows = ingredientsRequestToRows(mealItem.ingredients ?? {});
-    IngredientActions.createIngredients(ingredientRows);
+    await IngredientActions.createIngredients(ingredientRows);
 
     // Update MealIngredients rows
     const mealIngredientRows = mealIngredientsRequestToRows(mealId, mealItem.ingredients ?? {});
@@ -208,7 +208,7 @@ const ingredientsRequestToRows = (ingredients: MealIngredients): CreateIngredien
     Object.values(ingredients ?? {})
         .flat()
         .filter(({ ingredientId, name }) => name !== undefined)
-        .map(({ name }) => ({ name: name as string }));
+        .map(({ ingredientId, name }) => ({ id: ingredientId, name }));
 
 const mealIngredientsRequestToRows = (mealId: string, ingredients: MealIngredients): MealIngredient[] =>
     Object.entries(ingredients)
@@ -253,12 +253,12 @@ const mealCategoriesRequestToRows = (mealId: string, categories: MealCategories)
     }));
 
 const mealIngredientRowsToResponse = (ingredients: MealIngredientResults): MealIngredients => {
-    const responseData: MealIngredients = { default: [] };
+    const mealIngredients: MealIngredients = { default: [] };
 
     if (ingredients.length) {
         ingredients.map(ingItem => {
-            responseData[ingItem.section] = responseData[ingItem.section] ?? [];
-            responseData[ingItem.section][ingItem.index] = {
+            mealIngredients[ingItem.section] = mealIngredients[ingItem.section] ?? [];
+            mealIngredients[ingItem.section][ingItem.index] = {
                 ingredientId: ingItem.ingredientId,
                 amount: ingItem.amount,
                 description: ingItem.description,
@@ -270,7 +270,13 @@ const mealIngredientRowsToResponse = (ingredients: MealIngredientResults): MealI
         });
     }
 
-    return responseData;
+    // Ensure that if there are gaps in ingredient indexes for whatever reason that they are
+    // removed so as not to return null in place of an ingredient item. Overall order is still maintained
+    const filteredMealIngredients = ObjectFromEntries(mealIngredients, responseDataItem =>
+        responseDataItem.map(([section, ingredients]) => [section, ingredients.filter(Undefined)])
+    );
+
+    return filteredMealIngredients;
 };
 
 const mealStepRowsToResponse = (method: MealStepResults): MealMethod => {

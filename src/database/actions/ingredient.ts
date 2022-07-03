@@ -1,6 +1,7 @@
 import { v4 as Uuid } from "uuid";
 
 import db, { CreateResponse, ReadResponse, ingredient, Ingredient, lamington, ReadQuery, CreateQuery } from "..";
+import { Undefined } from "../helpers";
 
 /**
  * Get all ingredients
@@ -30,7 +31,8 @@ export const readIngredients = async (params: ReadQuery<GetIngredientParams>): R
 };
 
 export interface CreateIngredientParams {
-    name: string;
+    id?: string;
+    name?: string;
     namePlural?: string;
     notes?: string;
 }
@@ -43,12 +45,12 @@ const createIngredients = async (ingredients: CreateQuery<CreateIngredientParams
     if (!Array.isArray(ingredients)) {
         ingredients = [ingredients];
     }
-    const data: Ingredient[] = ingredients.map(({ name, namePlural, notes }) => ({
-        id: Uuid(),
-        name,
-        namePlural,
-        notes,
-    }));
+    const data: Ingredient[] = ingredients
+        .map(({ id, name, namePlural, notes }) => {
+            if (!name) return;
+            return { id: id ?? Uuid(), name, namePlural, notes };
+        })
+        .filter(Undefined);
 
     const result = await db(lamington.ingredient).insert(data).onConflict([ingredient.id, ingredient.name]).ignore();
 
