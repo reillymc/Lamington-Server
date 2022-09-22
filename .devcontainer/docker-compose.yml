@@ -1,0 +1,27 @@
+version: "3.5"
+
+name: "lamington-server"
+services:
+    app:
+        image: app:latest
+        build: .
+        ports:
+            - 3000:3000
+        volumes:
+            - ./app:/app/
+    db:
+        image: mysql:8.0
+        cap_add:
+            - SYS_NICE
+        restart: always
+        environment:
+            - MYSQL_DATABASE=lamingtondb
+            - MYSQL_ROOT_PASSWORD=Tr@cK.98!
+        ports:
+            - "3306:3306"
+        volumes:
+            - mysql:/var/lib/mysql
+            - mysql_config:/etc/mysql
+volumes:
+    mysql:
+    mysql_config:

@@ -207,7 +207,7 @@ export { insertMeal, getMeal, getMeals, getMealCreator };
 const ingredientsRequestToRows = (ingredients: MealIngredients): CreateIngredientParams[] =>
     Object.values(ingredients ?? {})
         .flat()
-        .filter(({ ingredientId, name }) => name !== undefined)
+        .filter(({ name }) => name !== undefined)
         .map(({ ingredientId, name }) => ({ id: ingredientId, name }));
 
 const mealIngredientsRequestToRows = (mealId: string, ingredients: MealIngredients): MealIngredient[] =>

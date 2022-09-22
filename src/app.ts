@@ -70,8 +70,8 @@ app.use((error: HttpException, request: Request, response: Response, next: NextF
     response.status(error.status || 500);
 });
 
-app.listen(80, () => {
-    console.log(`Example app listening at http://localhost}`);
+app.listen(config.app.port, () => {
+    console.log(`Lamington Server is listening at http://localhost:${config.app.port}`);
 });
 
 module.exports = app;
