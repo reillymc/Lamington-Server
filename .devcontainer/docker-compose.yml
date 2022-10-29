@@ -2,26 +2,36 @@ version: "3.5"
 
 name: "lamington-server"
 services:
+    mariadb:
+        image: mariadb:10.4
+        restart: unless-stopped
+        env_file: ./.env
+        environment:
+            - MYSQL_ROOT_PASSWORD=$DB_PASSWORD
+            - MYSQL_DATABASE=$DB_NAME
+        ports:
+            - $DB_LOCAL_PORT:$DB_DOCKER_PORT
+        volumes:
+            - db:/var/lib/mysql
     app:
         image: app:latest
+        depends_on:
+            - mariadb
         build: .
+        restart: unless-stopped
+        env_file: ./.env
         ports:
-            - 3000:3000
+            - $NODE_LOCAL_PORT:$NODE_DOCKER_PORT
         volumes:
-            - ./app:/app/
-    db:
-        image: mysql:8.0
-        cap_add:
-            - SYS_NICE
-        restart: always
+            - ..:/workspace:cached
         environment:
-            - MYSQL_DATABASE=lamingtondb
-            - MYSQL_ROOT_PASSWORD=Tr@cK.98!
-        ports:
-            - "3306:3306"
-        volumes:
-            - mysql:/var/lib/mysql
-            - mysql_config:/etc/mysql
+            - DB_HOST=mariadb
+            - DB_USER=$DB_USER
+            - DB_PASSWORD=$DB_PASSWORD
+            - DB_NAME=$DB_NAME
+            - DB_PORT=$DB_DOCKER_PORT
+        stdin_open: true
+        tty: true
+
 volumes:
-    mysql:
-    mysql_config:
+    db:

@@ -24,7 +24,11 @@ const verifyToken = (req: Request<null, null, AuthTokenData, null>, res: Respons
         token = token.slice(7, token.length);
     }
     jwt.verify(token, jwtSecret, function (err, decoded: AuthTokenData) {
-        if (err) return res.status(500).send({ auth: false, message: "Failed to authenticate token." });
+        
+        if (err) {
+            console.log(err);
+            return res.status(500).send({ auth: false, message: "Failed to authenticate token." });
+        }
         req.body.userId = decoded.userId;
         return next();
     });

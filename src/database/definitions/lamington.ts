@@ -18,6 +18,9 @@ export enum lamington {
     mealStep = "meal_step",
     category = "category",
     ingredient = "ingredient",
+    list = "list",
+    listItem = "list_item",
+    listMember = "list_member",
 }
 
 // TODO: update definitions

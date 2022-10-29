@@ -4,7 +4,9 @@
   "private": true,
   "main": "src/app.ts",
   "scripts": {
-    "start": "nodemon src/app.ts"
+    "build": "npx tsc && cp -R src/docs dist/docs",
+    "start": "nodemon src/app.ts",
+    "prod": "node dist/app.js"
   },
   "dependencies": {
     "axios": "^0.27.2",

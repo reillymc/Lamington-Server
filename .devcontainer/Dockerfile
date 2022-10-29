@@ -1,7 +1,9 @@
-FROM node:latest
+ARG VARIANT=16-bullseye
+FROM mcr.microsoft.com/vscode/devcontainers/typescript-node:0-${VARIANT}
 
-WORKDIR /app
+# FROM node:latest
 
-RUN npm install -g typescript nodemon
+# WORKDIR /
 
-CMD ["npm", "start"]
+RUN npm install -g nodemon
+

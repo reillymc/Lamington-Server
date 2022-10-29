@@ -11,7 +11,7 @@ export type LamingtonResponse = Response<BaseResponse>;
 export type LamingtonDataResponse<T> = Response<BaseResponse & { data?: T }>;
 
 export type LamingtonRequest<T> = Request<null, null, Partial<T>, null>;
-export type LamingtonAuthenticatedRequest<T> = Request<null, null, Partial<T> & AuthTokenData, null>;
+export type LamingtonAuthenticatedRequest<T, P = null> = Request<P, null, Partial<T> & AuthTokenData, null>;
 
 
 interface MealIngredientItem {

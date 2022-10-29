@@ -2,9 +2,9 @@
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.238.0/containers/typescript-node
 {
 	"name": "Lamington Server",
-	"build": {
-		"dockerfile": "Dockerfile"
-	},
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "app",
+	"workspaceFolder": "/workspace",
 	// Configure tool-specific properties.
 	"customizations": {
 		// Configure properties specific to VS Code.
@@ -19,7 +19,7 @@
 		}
 	},
 	"remoteEnv": {},
-	"appPort": [
+	"forwardPorts": [
 		"3000:3000"
 	]
 }

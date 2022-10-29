@@ -10,5 +10,6 @@ appRouter.use("/categories", Routes.categoriesRouter);
 appRouter.use("/meals", Routes.mealsRouter);
 appRouter.use("/ingredient", Routes.ingredientRouter);
 appRouter.use("/attachments", Routes.attachmentsRouter);
+appRouter.use("/lists", Routes.listsRouter);
 
 export default appRouter;

@@ -10,7 +10,7 @@
     },
     "servers": [
         {
-            "url": "http://localhost"
+            "url": "http://localhost:3000"
         }
     ],
     "tags": [
@@ -194,6 +194,62 @@
                     "notes": {
                         "type": "string",
                         "default": null
+                    }
+                }
+            },
+            "List": {
+                "properties": {
+                    "listId": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "createdBy": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Meal"
+                        }
+                    }
+                }
+            },
+            "ListItem": {
+                "properties": {
+                    "itemId": {
+                        "type": "string"
+                    },
+                    "listId": {
+                        "type": "string"
+                    },
+                    "index": {
+                        "type": "number"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "dateAdded": {
+                        "type": "string"
+                    },
+                    "completed": {
+                        "type": "boolean"
+                    },
+                    "ingredientId": {
+                        "type": "string"
+                    },
+                    "unit": {
+                        "type": "string"
+                    },
+                    "amount": {
+                        "type": "number"
+                    },
+                    "notes": {
+                        "type": "string"
                     }
                 }
             }
@@ -508,6 +564,43 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/Ingredient"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    }
+                }
+            }
+        },
+        "/list": {
+            "get": {
+                "tags": ["List"],
+                "summary": "Returns the desired list information and items.",
+                "responses": {
+                    "200": {
+                        "description": "A list with an array of items",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/List"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": ["List"],
+                "summary": "Create a list.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/List"
                             }
                         }
                     }
