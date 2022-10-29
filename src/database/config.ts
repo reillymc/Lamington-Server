@@ -8,6 +8,7 @@ const db = knex({
         database: config.database.name,
         user: config.database.user,
         password: config.database.password,
+        charset: 'utf8mb4'
     },
 });
 

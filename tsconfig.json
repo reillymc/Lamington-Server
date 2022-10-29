@@ -5,6 +5,7 @@
         "target": "es2019",
         "noImplicitAny": true,
         "strictNullChecks": true,
+        "noUncheckedIndexedAccess": true,
         "moduleResolution": "node",
         "sourceMap": true,
         "outDir": "dist",

@@ -1,54 +1,61 @@
-import express, { Request, Response } from 'express';
-import db from '../../database/config';
-import bcrypt from 'bcrypt';
-import { v4 as uuidv4 } from 'uuid';
-import { Authentication, User } from '../parameters';
-import { lamington, users } from '../../database/definitions';
-import { createToken } from '../../authentication/auth';
-import { LamingtonDataResponse } from '../response';
+import express, { Request, Response } from "express";
+import bcrypt from "bcrypt";
+
+import { createToken } from "../../authentication/auth";
+import { LamingtonAuthenticatedRequest, LamingtonDataResponse } from "../response";
+import UserActions, { createUsers, InternalUserActions } from "../../database/actions/user";
+import { User, Users } from "../specification";
 
 const router = express.Router();
 const saltRounds = 10;
 
 // Define Request Parameters
 interface LoginBody {
-    email: string,
-    password: string,
+    email: string;
+    password: string;
 }
 interface RegisterBody extends LoginBody {
-    firstName: string,
-    lastName: string,
+    userId?: string;
+    firstName: string;
+    lastName: string;
 }
 
-interface LoginResponse {
+interface AuthenticationResponse {
     authorization: {
-        token: string,
-        token_type: string
-    },
-    user: User
+        token: string;
+        tokenType: string;
+    };
+    user: {
+        userId: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        status: string;
+    };
 }
-
 
 /**
  * GET request to fetch all users
  */
-router.get('/', (req, res: LamingtonDataResponse<User[]>) => {
-    db.from(lamington.user).select(users.email, users.firstName, users.lastName, users.status)
-        .then((users: User[]) => {
-            return res.status(200).json({ error: false, data: users });
-        })
-        .catch((err) => {
-            return res.json({ error: true, message: err });
-        })
-})
+router.get("/", async (req, res: LamingtonDataResponse<Users>) => {
+    try {
+        const users = await UserActions.readAllUsers();
+        const data = Object.fromEntries(users.map(user => [user.userId, user]));
+        return res.status(200).json({ error: false, data });
+    } catch (error: unknown) {
+        return res.json({ error: true, message: `Could not fetch users ${error}` });
+    }
+});
+
+type CreateUserRequest = LamingtonAuthenticatedRequest<RegisterBody>;
+type CreateUserResponse = LamingtonDataResponse<AuthenticationResponse>;
 
 /**
  * POST request to register a new user
  */
-router.post('/register', async (req: Request<null, null, RegisterBody, null>, res: LamingtonDataResponse<LoginResponse>) => {
-
+router.post("/register", async (req: CreateUserRequest, res: CreateUserResponse) => {
     // Extract request fields
-    const { email, firstName, lastName, password } = req.body;
+    const { userId, email, firstName, lastName, password } = req.body;
 
     // Check all required fields are present
     if (!email || !firstName || !lastName || !password) {
@@ -57,45 +64,51 @@ router.post('/register', async (req: Request<null, null, RegisterBody, null>, re
 
     // Create object
     const user = {
-        id: uuidv4(),
+        userId,
         email,
         firstName,
         lastName,
-        password: await bcrypt.hash(req.body.password, await bcrypt.genSalt(saltRounds)),
-        created: new Date().toISOString().slice(0, 19).replace('T', ' '),
-        status: 'c'
-    }
+        password: await bcrypt.hash(password, await bcrypt.genSalt(saltRounds)),
+        created: new Date().toISOString().slice(0, 19).replace("T", " "),
+        status: "c",
+    };
 
     // Update database and return status
-    db(lamington.user).insert(user)
-        .then(_ => {
-            const token = createToken(user.id)
-            if (!token) throw "Failed to create token";
+    try {
+        if (!userId) {
+            const [createdUser] = await createUsers(user);
+            const token = createToken(createdUser?.userId);
+            if (!token || !createdUser) throw "Failed to create token";
 
             return res.status(200).json({
                 error: false,
                 data: {
                     authorization: {
                         token,
-                        token_type: "Bearer"
+                        tokenType: "Bearer",
                     },
-                    user: ({ id: user.id, firstName, lastName, status: user.status })
-                }
-            })
-        })
-        .catch(error => {
-            return res.status(400).json({ error: true, message: `oops! It looks like that user already exists :( ${error}` });
-        })
-})
+                    user: createdUser,
+                },
+            });
+        } else {
+            return res.status(400).json({ error: true, message: `Cannot edit existing user :(` });
+        }
+    } catch (error: unknown) {
+        console.log(error);
+
+        return res.status(400).json({ error: true, message: `Error creating user :( ${error}` });
+    }
+});
+
+type LoginUserRequest = LamingtonAuthenticatedRequest<LoginBody>;
+type LoginUserResponse = LamingtonDataResponse<AuthenticationResponse>;
 
 /**
  * POST request to login an existing user
  */
-router.post('/login', (req: Request<null, null, LoginBody, null>, res: LamingtonDataResponse<LoginResponse>) => {
-
+router.post("/login", async (req: LoginUserRequest, res: LoginUserResponse) => {
     // Extract request fields
     const { email, password } = req.body;
-
 
     // Check all required fields are present
     if (!email || !password) {
@@ -103,36 +116,38 @@ router.post('/login', (req: Request<null, null, LoginBody, null>, res: Lamington
     }
 
     // Fetch and return data from database
-    db.from(lamington.user)
-        .select(users.id, users.email, users.password, users.firstName, users.lastName, users.status)
-        .where({ [users.email]: email })
-        .then(async (rows: User[]) => {            
-            if (rows.length === 0) {
-                return res.status(401).json({ error: true, message: `Invalid username of password` });
-            }
-            // Verify Password
-            const result = await bcrypt.compare(password, rows[0].password ?? "");
+    try {
+        const [user] = await InternalUserActions.readUsers({ email });
+        if (!user) {
+            return res.status(401).json({ error: true, message: `Invalid username of password` });
+        }
+        const result = await bcrypt.compare(password, user.password ?? "");
 
-            if (result) {
-                const token = createToken(rows[0].id)
-                if (!token) throw "Failed to create token";
+        if (result) {
+            const token = createToken(user.userId);
+            if (!token) throw "Failed to create token";
 
-                return res.status(200).json({
-                    error: false,
-                    data: {
-                        authorization: {
-                            token,
-                            token_type: "Bearer"
-                        },
-                        user: ({ id: rows[0].id, firstName: rows[0].firstName, lastName: rows[0].lastName, status: rows[0].status })
-                    }
-                })
-            }
-            return res.status(401).json({ error: true, message: `invalid login - bad password` });
-        })
-        .catch((e) => {
-            return res.status(401).json({ error: true, message: `error ${e}` });
-        })
-})
+            return res.status(200).json({
+                error: false,
+                data: {
+                    authorization: {
+                        token,
+                        tokenType: "Bearer",
+                    },
+                    user: {
+                        userId: user.userId,
+                        email: user.email,
+                        firstName: user.firstName,
+                        lastName: user.lastName,
+                        status: user.status,
+                    },
+                },
+            });
+        }
+        return res.status(401).json({ error: true, message: `invalid login - bad password` });
+    } catch (error: unknown) {
+        return res.status(401).json({ error: true, message: `error ${error}` });
+    }
+});
 
-export default router
+export default router;

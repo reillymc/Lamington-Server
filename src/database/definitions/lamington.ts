@@ -24,16 +24,6 @@ export enum lamington {
 }
 
 // TODO: update definitions
-export enum users {
-    id = "user.id",
-    email = "user.email",
-    firstName = "user.firstName",
-    lastName = "user.lastName",
-    password = "user.password",
-    created = "user.created",
-    status = "user.status",
-}
-
 export enum mealRoster {
     mealId = "meal_roster.mealId",
     assigneeId = "meal_roster.assigneeId",

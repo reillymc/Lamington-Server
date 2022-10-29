@@ -8,8 +8,8 @@ interface AuthTokenData {
     userId: string;
 }
 
-const createToken = (userId: string) => {
-    if (!jwtSecret) return;
+const createToken = (userId: string | undefined) => {
+    if (!jwtSecret || !userId) return;
 
     const payload: AuthTokenData = { userId };
     return jwt.sign(payload, jwtSecret, { noTimestamp: true, expiresIn: jwtExpiration });

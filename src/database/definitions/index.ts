@@ -8,8 +8,9 @@ export * from "./mealStep";
 export * from "./list";
 export * from "./listItem";
 export * from "./listMember";
+export * from "./user";
 
-export { lamington, mealRoster, users } from "./lamington";
+export { lamington, mealRoster } from "./lamington";
 
 export type ReadQuery<T> = T | Array<T>;
 

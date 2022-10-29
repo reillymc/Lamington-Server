@@ -14,7 +14,7 @@ import {
     MealRating,
     MealStep,
     ReadResponse,
-    users,
+    user,
 } from "..";
 
 // DB Actions
@@ -51,7 +51,7 @@ const getAllMeals = async (userId?: string): ReadResponse<GetAllMealsResults> =>
             mealAlias.timesCooked,
             mealAlias.cookTime,
             mealAlias.prepTime,
-            `${users.firstName} as createdBy`,
+            `${user.firstName} as createdBy`,
             db.raw(`COALESCE(ROUND(AVG(${mealRating.rating}),1), 0) AS ratingAverage`),
             db.raw(
                 `(${db
@@ -63,7 +63,7 @@ const getAllMeals = async (userId?: string): ReadResponse<GetAllMealsResults> =>
             )
         )
         .leftJoin(lamington.mealRating, mealAlias.id, mealRating.mealId)
-        .leftJoin(lamington.user, mealAlias.createdBy, users.id)
+        .leftJoin(lamington.user, mealAlias.createdBy, user.userId)
         .groupBy(mealAlias.id);
 
     return query;
@@ -83,7 +83,7 @@ const getFullMeal = async (mealId: string, userId?: string): Promise<GetFullMeal
             meal.cookTime,
             meal.notes,
             meal.timesCooked,
-            `${users.firstName} as createdBy`,
+            `${user.firstName} as createdBy`,
             db.raw(`COALESCE(ROUND(AVG(${mealRating.rating}),1), 0) AS ratingAverage`),
             db.raw(
                 `(${db
@@ -94,7 +94,7 @@ const getFullMeal = async (mealId: string, userId?: string): Promise<GetFullMeal
         )
         .where({ [meal.id]: mealId })
         .leftJoin(lamington.mealRating, meal.id, mealRating.mealId)
-        .leftJoin(lamington.user, meal.createdBy, users.id)
+        .leftJoin(lamington.user, meal.createdBy, user.userId)
         .groupBy(meal.id)
         .first();
 
@@ -128,8 +128,8 @@ const getMeal = async (mealId: string, userId?: string) => {
         ...meal,
         ratingAverage: parseFloat(meal.ratingAverage),
         ingredients,
-        method ,
-        categories ,
+        method,
+        categories,
     };
 
     return result;
@@ -138,12 +138,13 @@ const getMeal = async (mealId: string, userId?: string) => {
 const getMeals = async (userId?: string) => {
     // Fetch from database
     const [mealList, mealCategoriesList] = await Promise.all([getAllMeals(userId), MealCategoryActions.selectRows()]);
-    
+
     // Process results
-    const data: GetMealResponseItem[] = mealList.map(meal => ({ // TODO: Update GetMealResponseItem naming
+    const data: GetMealResponseItem[] = mealList.map(meal => ({
+        // TODO: Update GetMealResponseItem naming
         ...meal,
         ratingAverage: parseFloat(meal.ratingAverage),
-        categories: mealCategoryRowsToResponse(mealCategoriesList.filter(cat => cat.mealId === meal.id))
+        categories: mealCategoryRowsToResponse(mealCategoriesList.filter(cat => cat.mealId === meal.id)),
     }));
 
     return data;
@@ -257,8 +258,8 @@ const mealIngredientRowsToResponse = (ingredients: MealIngredientResults): MealI
 
     if (ingredients.length) {
         ingredients.map(ingItem => {
-            mealIngredients[ingItem.section] = mealIngredients[ingItem.section] ?? [];
-            mealIngredients[ingItem.section][ingItem.index] = {
+            const section = mealIngredients[ingItem.section] ?? [];
+            section[ingItem.index] = {
                 ingredientId: ingItem.ingredientId,
                 amount: ingItem.amount,
                 description: ingItem.description,
@@ -267,6 +268,8 @@ const mealIngredientRowsToResponse = (ingredients: MealIngredientResults): MealI
                 namePlural: ingItem.namePlural,
                 unit: ingItem.unit,
             };
+
+            mealIngredients[ingItem.section] = section;
         });
     }
 
@@ -284,11 +287,12 @@ const mealStepRowsToResponse = (method: MealStepResults): MealMethod => {
 
     if (method.length) {
         method.map(metItem => {
-            responseData[metItem.section] = responseData[metItem.section] ?? [];
-            responseData[metItem.section][metItem.index] = {
+            const section = responseData[metItem.section] ?? [];
+            section[metItem.index] = {
                 stepId: metItem.stepId,
                 description: metItem.description,
             };
+            responseData[metItem.section] = section;
         });
     }
     return responseData;

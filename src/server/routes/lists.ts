@@ -12,6 +12,7 @@ import {
     CreateListItemParams,
     InternalListActions,
     deleteListItems,
+    readMyLists,
 } from "../../database/actions/list";
 import { LamingtonAuthenticatedRequest, LamingtonDataResponse } from "../response";
 import { List, Lists } from "../specification";
@@ -26,10 +27,14 @@ type GetListsResponse = LamingtonDataResponse<Lists>;
  * GET request to fetch all Lists
  * Does not require authentication
  */
-router.get("/", checkToken, async (req: GetListsRequest, res: GetListsResponse) => {
+router.get("/", verifyToken, async (req: GetListsRequest, res: GetListsResponse) => {
+    const { userId } = req.body;
+
+    console.log("userId: ", userId);
+
     // Fetch and return result
     try {
-        const results = await readAllLists();
+        const results = await readMyLists({ userId });
         const data = Object.fromEntries(results.map(list => [list.listId, list]));
 
         return res.status(200).json({ error: false, data });
@@ -50,18 +55,22 @@ type GetListResponse = LamingtonDataResponse<List>;
  * GET request to fetch list
  * Does not require authentication
  */
-router.get("/:listId", checkToken, async (req: GetListRequest, res: GetListResponse) => {
+router.get("/:listId", verifyToken, async (req: GetListRequest, res: GetListResponse) => {
     // Extract request fields
     const { listId } = req.params;
     const { userId } = req.body; // TODO only fetch if list is created by userId, or userId is in listMembers
 
     if (!listId) {
-        return res.status(400).json({ error: true, message: "Insufficient data to create list" });
+        return res.status(400).json({ error: true, message: "Insufficient data to fetch list" });
     }
 
     // Fetch and return result
     try {
-        const [list] = await readLists({ listId });
+        const [list] = await readLists({ listId, userId });
+        if (!list) {
+            return res.status(404).json({ error: true, message: "List not found" });
+        }
+
         const listItemsResponse = await readListItems({ listId });
 
         const data: List = { ...list, items: listItemsResponse.filter(item => item.listId === list.listId) };
@@ -78,9 +87,9 @@ type CreateListResponse = LamingtonDataResponse<List>;
 /**
  * POST request to create a list.
  */
-router.post("/", verifyToken, async (req: CreateListRequest, res: CreateListResponse) => {    
+router.post("/", verifyToken, async (req: CreateListRequest, res: CreateListResponse) => {
     // Extract request fields
-    const { userId, name, description, listId } = req.body;
+    const { userId, name, description, listId, members } = req.body;
 
     // Check all required fields are present
     if (!userId) return UnauthenticatedResponse(res);
@@ -94,6 +103,7 @@ router.post("/", verifyToken, async (req: CreateListRequest, res: CreateListResp
         name,
         createdBy: userId,
         description,
+        members: members ?? [],
     };
 
     // Update database and return status
@@ -102,7 +112,7 @@ router.post("/", verifyToken, async (req: CreateListRequest, res: CreateListResp
             await createLists(list);
             return res.status(201).json({ error: false, message: `Recipe created` });
         } else {
-            const [existingList] = await readLists({ listId });
+            const [existingList] = await readLists({ listId, userId });
             const existingListMembers = await getListMembers({ listId });
             if (!existingList) {
                 return res.status(403).json({
@@ -172,7 +182,7 @@ router.post("/:listId/items", verifyToken, async (req: PostListItemRequest, res:
         listId,
         name,
         completed,
-        dateAdded: new Date(dateAdded).toISOString().slice(0, 19).replace('T', ' '),
+        dateAdded: new Date(dateAdded).toISOString().slice(0, 19).replace("T", " "),
         itemId,
         amount,
         ingredientId,
@@ -213,9 +223,7 @@ interface DeleteListItemParams {
     itemId: string;
 }
 
-interface DeleteListItemBody {
-
-}
+interface DeleteListItemBody {}
 
 type DeleteListItemRequest = LamingtonAuthenticatedRequest<DeleteListItemBody, DeleteListItemParams>;
 
@@ -267,6 +275,5 @@ router.delete("/:listId/items/:itemId", verifyToken, async (req: DeleteListItemR
         return InternalErrorResponse(res, exception);
     }
 });
-
 
 export default router;
