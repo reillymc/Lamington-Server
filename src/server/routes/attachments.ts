@@ -22,10 +22,15 @@ const upload = multer({ storage: multer.memoryStorage(), fileFilter: fileFilter 
 
 // upload image
 router.post("/upload-image", upload.single("photo"), async (req: Request<{}, Express.Multer.File>, res: Response) => {
-    if (config.service.imageStorage === "local") {
-        const name = uuidv4() + path.extname(req?.file?.originalname ?? ".jpeg");
+    const { file } = req;
+    if (!file) {
+        return res.status(400).json({ error: true, message: "No file was uploaded." });
+    }
 
-        await sharp(req.file.buffer)
+    if (config.service.imageStorage === "local") {
+        const name = uuidv4() + path.extname(file.originalname ?? ".jpeg");
+
+        await sharp(file.buffer)
             .resize({
                 width: 1280,
                 fit: "cover",
@@ -36,10 +41,10 @@ router.post("/upload-image", upload.single("photo"), async (req: Request<{}, Exp
             .catch(err => {
                 res.send(400);
             });
-        return res.json({imageAddress: `lamington:${name}`});
+        return res.json({ imageAddress: `lamington:${name}` });
     } else {
         const data = new FormData();
-        data.append("image", req.file.buffer.toString("base64"));
+        data.append("image", file.buffer.toString("base64"));
 
         const headers = {
             Authorization: `Client-ID ${config.service.imgurClientId}`,
@@ -53,15 +58,13 @@ router.post("/upload-image", upload.single("photo"), async (req: Request<{}, Exp
             data,
         };
 
-        const image = req.file.buffer.toString("base64");
-
         try {
             const response = await axios(axiosConfig);
 
             const { data } = (await response.data) as any;
             console.log(data);
 
-            return res.json({imageAddress: `imgur:${data.id}${path.extname(req?.file?.originalname ?? ".jpeg")}`});
+            return res.json({ imageAddress: `imgur:${data.id}${path.extname(req?.file?.originalname ?? ".jpeg")}` });
         } catch (e) {
             console.warn(e);
         }

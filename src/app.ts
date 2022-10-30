@@ -11,7 +11,7 @@ import appRouter from "./server";
 import config from "./config";
 import { accessLog, AppError, logger } from "./logging";
 
-let app = express();
+const app = express();
 
 // app setup
 app.use(express.json());
