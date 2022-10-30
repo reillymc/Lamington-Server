@@ -72,7 +72,7 @@ export const readLists = async ({ listId, userId }: GetListParams): ReadResponse
                 .select(listMember.listId)
                 .where({ [listMember.userId]: userId, [listMember.listId]: listId })
         )
-        .orWhere({ [list.createdBy]: userId })
+        .orWhere({ [list.createdBy]: userId, [list.listId]: listId })
         .leftJoin(lamington.user, list.createdBy, user.userId);
 
     return query;

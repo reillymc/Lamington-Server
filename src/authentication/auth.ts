@@ -19,21 +19,25 @@ const verifyToken = (req: Request<null, null, AuthTokenData, null>, res: Respons
     if (!jwtSecret) return;
 
     var token = req.headers["authorization"];
-    if (!token) return res.status(403).send({ auth: false, message: "No token provided." });
+    if (!token) {
+        return res.status(403).send({ auth: false, message: "Authentication required to access this service." });
+    }
     if (token.startsWith("Bearer ")) {
         token = token.slice(7, token.length);
     }
     jwt.verify(token, jwtSecret, function (err, decoded: AuthTokenData) {
-        
         if (err) {
             console.log(err);
-            return res.status(500).send({ auth: false, message: "Failed to authenticate token." });
+            return res.status(403).send({ auth: false, message: "Failed to authenticate token." });
         }
         req.body.userId = decoded.userId;
         return next();
     });
 };
 
+/**
+ * @deprecated Use verifyToken instead
+ */
 const checkToken = (req: Request<null, null, AuthTokenData, null>, res: Response, next: NextFunction) => {
     if (!jwtSecret) return;
 

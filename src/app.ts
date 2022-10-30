@@ -1,29 +1,15 @@
 require("dotenv").config();
 
-import createError from "http-errors";
 import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
-import swaggerUI from "swagger-ui-express";
 
 import appRouter from "./server";
 import config from "./config";
-
-const rfs = require("rotating-file-stream");
-const swaggerDocument = require("./docs/documentation.json");
-
-class HttpException extends Error {
-    status: number;
-    message: string;
-    constructor(status: number, message: string) {
-        super(message);
-        this.status = status;
-        this.message = message;
-    }
-}
+import { accessLog, AppError, logger } from "./logging";
 
 let app = express();
 
@@ -31,43 +17,31 @@ let app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, "public")));
-app.use("/uploads", express.static("uploads"));
 app.use(cors());
-app.use(helmet());
-app.use(
-    helmet.contentSecurityPolicy({
-        directives: {
-            defaultSrc: ["'self'"],
-        },
-    })
-);
-
-let accessLog = rfs.createStream("access.log", {
-    interval: "1d",
-    path: path.join(__dirname, "log"),
-});
+app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"] } } }));
 app.use(morgan("common", { stream: accessLog }));
 app.use(morgan(config.app.logDetail));
 
 // routers
+app.use(express.static(path.join(__dirname, "public")));
+app.use("/uploads", express.static("uploads"));
 app.use("/", appRouter);
-app.use("/docs", swaggerUI.serve, swaggerUI.setup(swaggerDocument));
-app.use(swaggerUI.serve, swaggerUI.setup(swaggerDocument));
-
-// catch 404 and forward to error handler
-app.use(function (req, res, next) {
-    next(createError(404));
-});
 
 // error handler
-app.use((error: HttpException, request: Request, response: Response, next: NextFunction) => {
-    // set locals, only providing error in development
-    response.locals.message = error.message;
-    response.locals.error = request.app.get("env") === "development" ? error : {};
+app.use((error: AppError, request: Request, response: Response, next: NextFunction) => {
+    logger.log({
+        level: "error",
+        message: error.message,
+        request: {
+            params: request.params,
+            query: request.query,
+            body: request.body,
+            route: request.originalUrl,
+        },
+    });
 
-    // render the error page
     response.status(error.status || 500);
+    return response.json({ error: true, message: error.userMessage });
 });
 
 app.listen(config.app.port, () => {

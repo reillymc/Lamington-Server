@@ -5,3 +5,4 @@ export { default as categoriesRouter } from "./categories";
 export { default as choresRouter } from "./chores";
 export { default as attachmentsRouter } from "./attachments";
 export { default as listsRouter } from "./lists";
+export { default as docsRouter } from "./docs";
