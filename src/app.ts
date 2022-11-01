@@ -10,6 +10,8 @@ import helmet from "helmet";
 import appRouter from "./server";
 import config from "./config";
 import { accessLog, AppError, logger } from "./logging";
+import { authRouter, docsRouter } from "./server/routes";
+import { verifyToken } from "./authentication/auth";
 
 const app = express();
 
@@ -25,7 +27,14 @@ app.use(morgan(config.app.logDetail));
 // routers
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static("uploads"));
-app.use("/", appRouter);
+app.use("/auth", authRouter);
+app.use("/v1/", verifyToken, appRouter);
+app.use("/", docsRouter);
+
+/** Catch 404 and forward to error handler */
+app.use((req, res, next) => {
+    next(new AppError({ message: "Not Found", userMessage: "The requested resource could not be found" }));
+});
 
 // error handler
 app.use((error: AppError, request: Request, response: Response, next: NextFunction) => {

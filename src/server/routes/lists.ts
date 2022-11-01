@@ -1,6 +1,5 @@
-import express, { NextFunction, Request } from "express";
+import express from "express";
 
-import { AuthTokenData, verifyToken } from "../../authentication/auth";
 import {
     createLists,
     CreateListParams,
@@ -13,20 +12,22 @@ import {
     deleteListItems,
     readMyLists,
 } from "../../database/actions/list";
-import { AppError } from "../../logging";
-import { LamingtonAuthenticatedRequest, LamingtonDataResponse } from "../response";
+import { AppError, MessageAction, userMessage } from "../../logging";
+import { AuthenticatedBody } from "../../authentication/auth";
+import { ResponseBody } from "../response";
 import { List, Lists } from "../specification";
 
 const router = express.Router();
 
-type GetListsRequest = Request<{}, LamingtonDataResponse<List[]>, AuthTokenData, null>;
-type GetListsResponse = LamingtonDataResponse<Lists>;
+interface ListRouteParams {
+    listId?: string;
+}
 
 /**
  * GET request to fetch all Lists
  * Does not require authentication
  */
-router.get("/", verifyToken, async (req: GetListsRequest, res: GetListsResponse, next: NextFunction) => {
+router.get<never, ResponseBody<Lists>, AuthenticatedBody>("/", async (req, res, next) => {
     const { userId } = req.body;
 
     // Fetch and return result
@@ -36,26 +37,23 @@ router.get("/", verifyToken, async (req: GetListsRequest, res: GetListsResponse,
 
         return res.status(200).json({ error: false, data });
     } catch (e: unknown) {
-        next(new AppError(500, (e as Error)?.message ?? e, "An error occurred when fetching your lists."));
+        next(
+            new AppError({
+                message: (e as Error)?.message ?? e,
+                userMessage: userMessage({ action: MessageAction.Read, entity: "lists" }),
+            })
+        );
     }
 });
-
-interface GetListParams {
-    listId: string;
-    creatorId: string;
-}
-
-type GetListRequest = Request<GetListParams, LamingtonDataResponse<List>, AuthTokenData, null>;
-type GetListResponse = LamingtonDataResponse<List>;
 
 /**
  * GET request to fetch list
  * Does not require authentication
  */
-router.get("/:listId", verifyToken, async (req: GetListRequest, res: GetListResponse, next: NextFunction) => {
+router.get<ListRouteParams, ResponseBody<List>, AuthenticatedBody>("/:listId", async (req, res, next) => {
     // Extract request fields
     const { listId } = req.params;
-    const { userId } = req.body; // TODO only fetch if list is created by userId, or userId is in listMembers
+    const { userId } = req.body;
 
     if (!listId) {
         return res.status(400).json({ error: true, message: "Insufficient data to fetch list." });
@@ -74,17 +72,19 @@ router.get("/:listId", verifyToken, async (req: GetListRequest, res: GetListResp
 
         return res.status(200).json({ error: false, data });
     } catch (e: unknown) {
-        next(new AppError(500, (e as Error)?.message ?? e, "An error occurred when fetching your list."));
+        next(
+            new AppError({
+                message: (e as Error)?.message ?? e,
+                userMessage: userMessage({ action: MessageAction.Read, entity: "list" }),
+            })
+        );
     }
 });
-
-type CreateListRequest = LamingtonAuthenticatedRequest<CreateListParams>;
-type CreateListResponse = LamingtonDataResponse<List>;
 
 /**
  * POST request to create a list.
  */
-router.post("/", verifyToken, async (req: CreateListRequest, res: CreateListResponse, next) => {
+router.post<ListRouteParams, ResponseBody, AuthenticatedBody<CreateListParams>>("/", async (req, res, next) => {
     // Extract request fields
     const { userId, name, description, listId, members } = req.body;
 
@@ -126,21 +126,19 @@ router.post("/", verifyToken, async (req: CreateListRequest, res: CreateListResp
         }
     } catch (e: unknown) {
         next(
-            new AppError(
-                500,
-                (e as Error)?.message ?? e,
-                `An error occurred when ${listId ? "Updating" : "Creating"} your list.`
-            )
+            new AppError({
+                message: (e as Error)?.message ?? e,
+                userMessage: userMessage({
+                    action: listId ? MessageAction.Update : MessageAction.Create,
+                    entity: "list",
+                }),
+            })
         );
     }
 });
 
-interface PostListItemParams {
-    listId: string;
-}
-
 interface PostListItemBody {
-    name: string;
+    name?: string;
     itemId?: string;
     dateAdded?: string;
     completed?: boolean;
@@ -150,107 +148,99 @@ interface PostListItemBody {
     notes?: string;
 }
 
-type PostListItemRequest = LamingtonAuthenticatedRequest<PostListItemBody, PostListItemParams>;
-
 /**
  * POST request to create a list item.
  */
-router.post("/:listId/items", verifyToken, async (req: PostListItemRequest, res: any, next: NextFunction) => {
-    // Extract request fields
-    const { listId } = req.params;
+router.post<ListRouteParams, ResponseBody, AuthenticatedBody<PostListItemBody>>(
+    "/:listId/items",
+    async (req, res, next) => {
+        // Extract request fields
+        const { listId } = req.params;
 
-    const {
-        userId,
-        name,
-        itemId,
-        amount,
-        completed = false,
-        dateAdded = new Date().toISOString(),
-        ingredientId,
-        notes,
-        unit,
-    } = req.body;
+        const {
+            userId,
+            name,
+            itemId,
+            amount,
+            completed = false,
+            dateAdded = new Date().toISOString(),
+            ingredientId,
+            notes,
+            unit,
+        } = req.body;
 
-    // Check all required fields are present
-    if (!name || !listId) {
-        return res.status(400).json({ error: true, message: "Insufficient data to create a list item." });
-    }
-
-    const listItem: CreateListItemParams = {
-        listId,
-        name,
-        completed,
-        dateAdded: new Date(dateAdded).toISOString().slice(0, 19).replace("T", " "),
-        itemId,
-        amount,
-        ingredientId,
-        notes,
-        unit,
-    };
-
-    // Update database and return status
-    try {
-        const [existingList] = await InternalListActions.readLists({ listId });
-        if (!existingList) {
-            return res.status(403).json({
-                error: true,
-                message: "Cannot find list to add item to.",
-            });
+        // Check all required fields are present
+        if (!name || !listId) {
+            return res.status(400).json({ error: true, message: "Insufficient data to create a list item." });
         }
-        if (existingList.createdBy !== userId) {
-            const existingListMembers = await getListMembers({ listId });
-            if (!existingListMembers?.some(member => member.userId === userId && member.canEdit)) {
-                console.log(existingListMembers, userId);
+
+        const listItem: CreateListItemParams = {
+            listId,
+            name,
+            completed,
+            dateAdded: new Date(dateAdded).toISOString().slice(0, 19).replace("T", " "),
+            itemId,
+            amount,
+            ingredientId,
+            notes,
+            unit,
+        };
+
+        // Update database and return status
+        try {
+            const [existingList] = await InternalListActions.readLists({ listId });
+            if (!existingList) {
                 return res.status(403).json({
                     error: true,
-                    message: "You do not have permissions to edit this list.",
+                    message: "Cannot find list to add item to.",
                 });
             }
+            if (existingList.createdBy !== userId) {
+                const existingListMembers = await getListMembers({ listId });
+                if (!existingListMembers?.some(member => member.userId === userId && member.canEdit)) {
+                    console.log(existingListMembers, userId);
+                    return res.status(403).json({
+                        error: true,
+                        message: "You do not have permissions to edit this list.",
+                    });
+                }
+            }
+
+            await createListItems(listItem);
+            return res.status(201).json({ error: false, message: "List item added." });
+        } catch (e: unknown) {
+            next(
+                new AppError({
+                    message: (e as Error)?.message ?? e,
+                    userMessage: userMessage({
+                        action: listId ? MessageAction.Update : MessageAction.Create,
+                        entity: "list item",
+                    }),
+                })
+            );
         }
-
-        await createListItems(listItem);
-        return res.status(201).json({ error: false, message: "List item added." });
-    } catch (e: unknown) {
-        next(
-            new AppError(
-                500,
-                (e as Error)?.message ?? e,
-                `An error occurred when ${itemId ? "Updating" : "Creating"} your list.`
-            )
-        );
     }
-});
+);
 
-interface DeleteListItemParams {
-    listId: string;
-    itemId: string;
+interface DeleteListItemParams extends ListRouteParams {
+    itemId?: string;
 }
-
-interface DeleteListItemBody {}
-
-type DeleteListItemRequest = LamingtonAuthenticatedRequest<DeleteListItemBody, DeleteListItemParams>;
 
 /**
  * DELETE request to delete a list item.
  */
-router.delete(
+router.delete<DeleteListItemParams, ResponseBody, AuthenticatedBody>(
     "/:listId/items/:itemId",
-    verifyToken,
-    async (req: DeleteListItemRequest, res: any, next: NextFunction) => {
+    async (req, res, next) => {
         // Extract request fields
         const { listId, itemId } = req.params;
 
         const { userId } = req.body;
 
         // Check all required fields are present
-        if (!listId || !listId) {
+        if (!listId || !itemId) {
             return res.status(400).json({ error: true, message: "Insufficient data to delete a list item." });
         }
-
-        const listItem: DeleteListItemParams = {
-            listId,
-            itemId,
-        };
 
         // Update database and return status
         try {
@@ -272,10 +262,15 @@ router.delete(
                 }
             }
 
-            await deleteListItems(listItem);
+            await deleteListItems({ listId, itemId });
             return res.status(201).json({ error: false, message: "List item deleted." });
         } catch (e: unknown) {
-            next(new AppError(500, (e as Error)?.message ?? e, "An error occurred when fetching your list."));
+            next(
+                new AppError({
+                    message: (e as Error)?.message ?? e,
+                    userMessage: userMessage({ action: MessageAction.Delete, entity: "list item" }),
+                })
+            );
         }
     }
 );

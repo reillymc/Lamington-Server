@@ -1,42 +1,41 @@
-import express, { Request } from "express";
+import express from "express";
 
-import { AuthTokenData, checkToken, verifyToken } from "../../authentication/auth";
+import { AuthenticatedBody } from "../../authentication/auth";
 import { createIngredients, CreateIngredientParams, readAllIngredients } from "../../database/actions/ingredient";
-import { LamingtonAuthenticatedRequest, LamingtonDataResponse } from "../response";
+import { AppError, userMessage, MessageAction } from "../../logging";
 import { Ingredient } from "../parameters";
-import { UnauthenticatedResponse } from "./helper";
+import { ResponseBody } from "../response";
 
 const router = express.Router();
-
-type GetIngredientsRequest = Request<{}, LamingtonDataResponse<Ingredient[]>, AuthTokenData, null>;
-type GetIngredientsResponse = LamingtonDataResponse<Ingredient[]>;
 
 /**
  * GET request to fetch all Ingredients
  * Does not require authentication
  */
-router.get("/", checkToken, async (req: GetIngredientsRequest, res: GetIngredientsResponse) => {
+router.get<never, ResponseBody<Ingredient[]>, AuthenticatedBody>("/", async (req, res, next) => {
     // Fetch and return result
     try {
         const data = await readAllIngredients();
 
         return res.status(200).json({ error: false, data });
-    } catch (exception: unknown) {
-        return res.status(500).json({ error: true, message: "Error fetching data." + exception });
+    } catch (e: unknown) {
+        next(
+            new AppError({
+                message: (e as Error)?.message ?? e,
+                userMessage: userMessage({ action: MessageAction.Read, entity: "ingredients" }),
+            })
+        );
     }
 });
 
-type CreateIngredientRequest = LamingtonAuthenticatedRequest<CreateIngredientParams>;
-type CreateIngredientResponse = LamingtonDataResponse<Ingredient>;
 /**
  * POST request to create an ingredient.
  */
-router.post("/", verifyToken, async (req: CreateIngredientRequest, res: CreateIngredientResponse) => {
+router.post<never, ResponseBody<Ingredient>, AuthenticatedBody<CreateIngredientParams>>("/", async (req, res, next) => {
     // Extract request fields
-    const { userId, name, namePlural, notes } = req.body;
+    const { name, namePlural, notes } = req.body;
 
     // Check all required fields are present
-    if (!userId) return UnauthenticatedResponse(res);
 
     if (!name) {
         return res.status(400).json({ error: true, message: "Insufficient data to create ingredient" });
@@ -51,10 +50,14 @@ router.post("/", verifyToken, async (req: CreateIngredientRequest, res: CreateIn
         } else {
             return res.status(201).json({ error: false, message: `Ingredient created`, data: result[0] });
         }
-    } catch (exception: unknown) {
-        return res.status(500).json({ error: true, message: "Internal processing error." + exception });
+    } catch (e: unknown) {
+        next(
+            new AppError({
+                message: (e as Error)?.message ?? e,
+                userMessage: userMessage({ action: MessageAction.Create, entity: "ingredient" }),
+            })
+        );
     }
 });
 
 export default router;
-

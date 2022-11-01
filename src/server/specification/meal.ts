@@ -2,7 +2,7 @@
  * Create Meal
  */
 
-import { AuthTokenData } from "../../authentication/auth";
+import { AuthenticatedBody } from "../../authentication/auth";
 
 interface MealIngredientItem {
     ingredientId?: string;
@@ -55,6 +55,6 @@ interface MealV1 {
 
 type Meal = MealV1;
 
-type CreateMealBody = AuthTokenData & Meal & CreateRequestData;
+type CreateMealBody = AuthenticatedBody & Meal & CreateRequestData;
 
 export { Meal, CreateMealBody };

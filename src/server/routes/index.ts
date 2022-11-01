@@ -1,3 +1,4 @@
+export { default as authRouter } from "./auth";
 export { default as mealsRouter } from "./meals";
 export { default as ingredientRouter } from "./ingredient";
 export { default as usersRouter } from "./users";

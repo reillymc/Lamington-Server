@@ -1,17 +1,11 @@
-import { Request, Response } from "express";
-import { AuthTokenData } from "../authentication/auth";
-
-interface BaseResponse {
+interface ResponseBodyBase {
     error: boolean;
     schema?: 1; // TODO make mandatory
     message?: string;
 }
 
-export type LamingtonResponse = Response<BaseResponse>;
-export type LamingtonDataResponse<T> = Response<BaseResponse & { data?: T }>;
 
-export type LamingtonRequest<T> = Request<null, null, Partial<T>, null>;
-export type LamingtonAuthenticatedRequest<T, P = null> = Request<P, null, Partial<T> & AuthTokenData, null>;
+export type ResponseBody<T = null> = T extends null ? ResponseBodyBase : ResponseBodyBase & { data?: T }
 
 
 interface MealIngredientItem {

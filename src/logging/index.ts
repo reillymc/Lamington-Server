@@ -14,10 +14,19 @@ const transportList = [
         : undefined,
 ].filter(Undefined);
 
+interface AppErrorConstructor {
+    status?: number;
+    message?: string;
+    userMessage?: string;
+}
 export class AppError extends Error {
     status: number;
-    userMessage?: string;
-    constructor(status: number, message: string, userMessage?: string) {
+    userMessage: string;
+    constructor({
+        status = 500,
+        message = "Unknown Internal Error",
+        userMessage = "An unknown error occurred",
+    }: AppErrorConstructor) {
         super(message);
         this.status = status;
         this.message = message;
@@ -42,3 +51,16 @@ export const accessLog = rfs.createStream("access.log", {
     interval: "1d",
     path: logPath,
 });
+
+export enum MessageAction {
+    Create = "creating",
+    Read = "reading",
+    Update = "updating",
+    Delete = "deleting",
+}
+
+interface UserMessage {
+    entity: string;
+    action: MessageAction | string;
+}
+export const userMessage = ({action, entity}: UserMessage) => `An error occurred when ${action} your ${entity}.`

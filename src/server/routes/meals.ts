@@ -1,34 +1,37 @@
-import express, { Request } from "express";
+import express from "express";
 import db from "../../database";
-import { LamingtonDataResponse, LamingtonResponse } from "../response";
-import { lamington, meal, mealRating, mealCategory, mealRoster, MealRating as MealRatingRow } from "../../database/definitions";
-import { checkToken, verifyToken, AuthTokenData } from "../../authentication/auth";
+import {
+    lamington,
+    meal,
+    mealRating,
+    mealCategory,
+    mealRoster,
+    MealRating as MealRatingRow,
+} from "../../database/definitions";
+import { ResponseBody } from "../response";
 import MealActions, { getMeal, getMealCreator, getMeals } from "../../database/actions/meals";
-import { InternalErrorResponse } from "./helper";
 import { CreateMealBody, Meal } from "../specification";
 import MealRatingActions from "../../database/actions/mealRating";
+import { AuthenticatedBody } from "../../authentication/auth";
+import { AppError, MessageAction, userMessage } from "../../logging";
 
 const router = express.Router();
 
-interface GetMealParams {
+interface MealRouteParams {
     mealId: string;
-    creatorId: string;
 }
-
-type GetMealRequest = Request<GetMealParams, LamingtonDataResponse<Meal>, AuthTokenData, null>;
-type GetMealResponse = LamingtonDataResponse<Meal>;
 
 /**
  * GET request to fetch a meal by Id
  * Requires meal query params
  * Does not require authentication (authentication is needed to fetch personal meal rating)
  */
-router.get("/:mealId", checkToken, async (req: GetMealRequest, res: GetMealResponse) => {
+router.get<MealRouteParams, ResponseBody<Meal>, AuthenticatedBody>("/:mealId", async (req, res, next) => {
     // Extract request fields
     const { mealId } = req.params;
     const { userId } = req.body;
 
-    console.log(mealId, userId)
+    console.log(mealId, userId);
 
     // Check all required fields are present
     if (!mealId) {
@@ -39,23 +42,21 @@ router.get("/:mealId", checkToken, async (req: GetMealRequest, res: GetMealRespo
     try {
         const data = await getMeal(mealId, userId);
         return res.status(200).json({ error: false, data });
-    } catch (exception: unknown) {
-        return res.status(500).json({ error: true, message: "Error fetching data." + exception });
+    } catch (e: unknown) {
+        next(
+            new AppError({
+                message: (e as Error)?.message ?? e,
+                userMessage: userMessage({ action: MessageAction.Read, entity: "meal" }),
+            })
+        );
     }
 });
-
-interface GetMealsParams {
-    creatorId: string;
-}
-
-type GetMealsRequest = Request<GetMealsParams, LamingtonDataResponse<Meal[]>, AuthTokenData, null>;
-type GetMealsResponse = LamingtonDataResponse<Meal[]>;
 
 /**
  * GET request to fetch all meals
  * Does not require authentication (authentication is only needed to fetch personal meal rating)
  */
-router.get("/", checkToken, async (req: GetMealsRequest, res: GetMealsResponse) => {
+router.get<never, ResponseBody<Meal[]>, AuthenticatedBody>("/", async (req, res, next) => {
     // Extract request fields
     const { userId } = req.body;
 
@@ -64,24 +65,26 @@ router.get("/", checkToken, async (req: GetMealsRequest, res: GetMealsResponse) 
         const data = await getMeals(userId);
 
         return res.status(200).json({ error: false, data });
-    } catch (exception: unknown) {
-        return res.status(500).json({ error: true, message: "Error fetching data." + exception });
+    } catch (e: unknown) {
+        next(
+            new AppError({
+                message: (e as Error)?.message ?? e,
+                userMessage: userMessage({ action: MessageAction.Read, entity: "meals" }),
+            })
+        );
     }
 });
 
-interface DeleteMealBody extends AuthTokenData {
+interface DeleteMealBody {
     mealId: string;
 }
-
-type DeleteMealRequest = Request<null, null, DeleteMealBody, null>;
-type DeleteMealResponse = LamingtonResponse;
 
 /**
  * POST request to delete a meal
  * Requires meal delete body
  * Requires authentication body
  */
-router.post("/delete", verifyToken, async (req: DeleteMealRequest, res: DeleteMealResponse) => {
+router.post<never, ResponseBody, AuthenticatedBody<DeleteMealBody>>("/delete", async (req, res, next) => {
     // Extract request fields
     const { userId, mealId } = req.body;
 
@@ -119,27 +122,28 @@ router.post("/delete", verifyToken, async (req: DeleteMealRequest, res: DeleteMe
             .where({ [meal.id]: mealId })
             .del();
         return res.status(201).json({ error: false, message: `yay! you've successfully deleted this meal :)` });
-    } catch (error) {
-        return res.status(400).json({ error: true, message: error });
+    } catch (e: unknown) {
+        next(
+            new AppError({
+                message: (e as Error)?.message ?? e,
+                userMessage: userMessage({ action: MessageAction.Delete, entity: "meal" }),
+            })
+        );
     }
 });
-
-
-type CreateMealRequest = Request<null, null, CreateMealBody, null>;
-type CreateMealResponse = LamingtonResponse;
 
 /**
  * POST request to create a new meal or update an existing meal
  * Requires meal data body
  * Requires authentication body
  */
-router.post("/", verifyToken, async ({ body }: CreateMealRequest, res: CreateMealResponse) => {
+router.post<never, ResponseBody, AuthenticatedBody<CreateMealBody>>("/", async ({ body }, res, next) => {
     // Check all required fields are present
     if (!body.format) {
         return res.status(400).json({ error: true, message: `No recipe format provided` });
     }
 
-    if (body.format === 1){
+    if (body.format === 1) {
         const meal: Meal = {
             id: body.id,
             name: body.name,
@@ -177,10 +181,17 @@ router.post("/", verifyToken, async ({ body }: CreateMealRequest, res: CreateMea
                 await MealActions.insertMeal(meal, body.userId);
                 return res.status(201).json({ error: false, message: `Recipe updated` });
             }
-        } catch (exception: unknown) {
-            return InternalErrorResponse(res, exception);
+        } catch (e: unknown) {
+            next(
+                new AppError({
+                    message: (e as Error)?.message ?? e,
+                    userMessage: userMessage({
+                        action: body.id ? MessageAction.Update : MessageAction.Read,
+                        entity: "meal",
+                    }),
+                })
+            );
         }
-
     }
 
     return res.status(400).json({ error: true, message: `Recipe formatted incorrectly` });
@@ -188,38 +199,17 @@ router.post("/", verifyToken, async ({ body }: CreateMealRequest, res: CreateMea
 
 export default router;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Move to ratings file? 
-interface RateMealBody extends AuthTokenData {
-    mealId: string;
+// Move to ratings file?
+interface RateMealBody extends MealRouteParams {
     rating: number;
 }
-
-type RateMealRequest = Request<null, null, RateMealBody, null>;
-type RateMealResponse = LamingtonResponse;
 
 /**
  * POST request to rate a meal
  * Requires meal rating body
  * Requires authentication body
  */
-router.post("/rate", verifyToken, async (req: RateMealRequest, res: RateMealResponse) => {
+router.post<never, ResponseBody, AuthenticatedBody<RateMealBody>>("/rate", async (req, res, next) => {
     // Extract request fields
     const { userId, mealId, rating } = req.body;
 
@@ -235,7 +225,15 @@ router.post("/rate", verifyToken, async (req: RateMealRequest, res: RateMealResp
     try {
         await MealRatingActions.insertRows(mealRating);
         return res.status(201).json({ error: false, message: `yay! you've successfully rated this meal :)` });
-    } catch (exception: unknown) {
-        return res.status(500).json({ error: true, message: "Something went wrong rating this meal" + exception });
+    } catch (e: unknown) {
+        next(
+            new AppError({
+                message: (e as Error)?.message ?? e,
+                userMessage: userMessage({
+                    action: "rating",
+                    entity: "list",
+                }),
+            })
+        );
     }
 });
