@@ -1,9 +1,0 @@
-export { default as authRouter } from "./auth";
-export { default as mealsRouter } from "./meals";
-export { default as ingredientRouter } from "./ingredient";
-export { default as usersRouter } from "./users";
-export { default as categoriesRouter } from "./categories";
-export { default as choresRouter } from "./chores";
-export { default as attachmentsRouter } from "./attachments";
-export { default as listsRouter } from "./lists";
-export { default as docsRouter } from "./docs";
