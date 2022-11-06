@@ -16,6 +16,7 @@ export enum lamington {
     mealRoster = "meal_roster",
     mealIngredient = "meal_ingredient",
     mealStep = "meal_step",
+    mealSection = "meal_section",
     category = "category",
     ingredient = "ingredient",
     list = "list",

@@ -9,6 +9,7 @@ export * from "./list";
 export * from "./listItem";
 export * from "./listMember";
 export * from "./user";
+export * from "./mealSection"
 
 export { lamington, mealRoster } from "./lamington";
 

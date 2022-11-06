@@ -48,7 +48,12 @@ type MealStepResults = Array<Omit<MealStep, "mealId">>
 const selectByMealId = async (mealId: string): Promise<MealStepResults> =>
     db(lamington.mealStep)
         .where({ [mealStep.mealId]: mealId })
-        .select(mealStep.stepId, mealStep.section, mealStep.index, mealStep.description);
+        .select(
+            mealStep.stepId,
+            mealStep.sectionId,
+            mealStep.index,
+            mealStep.description
+            );
 
 const MealStepActions = {
     selectByMealId,

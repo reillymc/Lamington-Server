@@ -4,12 +4,12 @@ interface ResponseBodyBase {
     message?: string;
 }
 
-
-export type ResponseBody<T = null> = T extends null ? ResponseBodyBase : ResponseBodyBase & { data?: T }
-
+export type ResponseBody<T = null> = T extends null ? ResponseBodyBase : ResponseBodyBase & { data?: T };
 
 interface MealIngredientItem {
+    id: string;
     ingredientId?: string;
+    recipeId?: string;
     amount?: number;
     description?: string;
     unit?: string;
@@ -18,21 +18,22 @@ interface MealIngredientItem {
     namePlural?: string;
 }
 
-
-interface MealIngredients {
-    [sectionName: string]: Array<MealIngredientItem>;
+interface Section<T> {
+    sectionId: string;
+    name: string;
+    description?: string;
+    items: Array<T>;
 }
 
+type MealIngredients = Array<Section<MealIngredientItem>>;
 
 interface MealMethodStep {
+    id: string;
     stepId?: string;
     description?: string;
 }
 
-
-interface MealMethod {
-    [sectionName: string]: Array<MealMethodStep>;
-}
+type MealMethod = Array<Section<MealMethodStep>>;
 interface MealCategoryItem {
     categoryId: string;
     type?: string;
@@ -40,7 +41,6 @@ interface MealCategoryItem {
 }
 
 type MealCategories = Array<MealCategoryItem>;
-
 
 export interface Meal {
     id: string;
@@ -60,4 +60,4 @@ export interface Meal {
     timesCooked?: number;
 }
 
-export { MealIngredients, MealMethod, MealCategories }
+export { MealIngredients, MealMethod, MealCategories };

@@ -1,6 +1,6 @@
 import { v4 as Uuid } from "uuid";
 
-import { Alias, ObjectFromEntries, Undefined } from "../helpers";
+import { Alias, Undefined } from "../helpers";
 
 // DB Specs
 import db from "../config";
@@ -29,6 +29,7 @@ import { Meal as CreateMealRequestItem } from "../../server/specification";
 // Server Response Specs
 import { MealCategories, MealIngredients, MealMethod, Meal as GetMealResponseItem } from "../../server/response";
 import IngredientActions, { CreateIngredientParams } from "./ingredient";
+import MealSectionActions, { MealSectionResults } from "./mealSection";
 
 type GetAllMealsResults = Pick<
     Meal,
@@ -71,7 +72,7 @@ const getAllMeals = async (userId?: string): ReadResponse<GetAllMealsResults> =>
 
 type GetFullMealResults = Meal & { ratingAverage: string }; // TODO: stop using Table suffix on types here
 
-const getFullMeal = async (mealId: string, userId?: string): Promise<GetFullMealResults> => {
+const getFullMeal = async (mealId: string, userId: string): Promise<GetFullMealResults> => {
     const query = db<Meal>(lamington.meal)
         .select(
             meal.id,
@@ -110,17 +111,19 @@ const getMealCreator = async (mealId: string): Promise<{ createdBy: string } | u
     return query;
 };
 
-const getMeal = async (mealId: string, userId?: string) => {
+const getMeal = async (mealId: string, userId: string) => {
     // Fetch from database
-    const [meal, categoryRows, ingredientRows, methodRows] = await Promise.all([
+    const [meal, categoryRows, ingredientRows, methodRows, sectionRows] = await Promise.all([
         getFullMeal(mealId, userId),
         MealCategoryActions.selectByMealId(mealId),
         MealIngredientActions.selectByMealId(mealId),
         MealStepActions.selectByMealId(mealId),
+        MealSectionActions.selectByMealId(mealId),
     ]);
 
-    const ingredients = mealIngredientRowsToResponse(ingredientRows);
-    const method = mealStepRowsToResponse(methodRows);
+    // TODO convert rows to meal object: {[sectionId]: {name, description, index, ingredients: [], method: []}}
+    const ingredients = mealIngredientRowsToResponse(ingredientRows, sectionRows);
+    const method = mealStepRowsToResponse(methodRows, sectionRows);
     const categories = mealCategoryRowsToResponse(categoryRows);
 
     // Process results
@@ -173,20 +176,22 @@ const insertMeal = async (mealItem: CreateMealRequestItem, userId: string) => {
 
     await db(lamington.meal).insert(mealData).onConflict(meal.id).merge();
 
+    // Create new MealSections rows
+
     // Create new Ingredients rows
-    const ingredientRows = ingredientsRequestToRows(mealItem.ingredients ?? {});
-    await IngredientActions.createIngredients(ingredientRows);
+    const ingredientRows = ingredientsRequestToRows(mealItem.ingredients);
+    if (ingredientRows) await IngredientActions.createIngredients(ingredientRows);
 
     // Update MealIngredients rows
-    const mealIngredientRows = mealIngredientsRequestToRows(mealId, mealItem.ingredients ?? {});
-    await MealIngredientActions.updateRows(mealId, mealIngredientRows);
+    const mealIngredientRows = mealIngredientsRequestToRows(mealId, mealItem.ingredients);
+    if (mealIngredientRows) await MealIngredientActions.updateRows(mealId, mealIngredientRows);
 
     // Update MealSteps rows
-    const mealStepRows = mealMethodRequestToRows(mealId, mealItem.method ?? {});
-    await MealStepActions.updateRows(mealId, mealStepRows);
+    const mealStepRows = mealMethodRequestToRows(mealId, mealItem.method);
+    if (mealStepRows) await MealStepActions.updateRows(mealId, mealStepRows);
 
     // Update MealCategories rows
-    const mealCategoryRows = mealCategoriesRequestToRows(mealId, mealItem.categories ?? []);
+    const mealCategoryRows = mealCategoriesRequestToRows(mealId, mealItem.categories);
     await MealCategoryActions.updateRows(mealId, mealCategoryRows);
 
     // Update Meal Rating row
@@ -205,97 +210,92 @@ export default MealActions;
 export { insertMeal, getMeal, getMeals, getMealCreator };
 
 // Helpers
-const ingredientsRequestToRows = (ingredients: MealIngredients): CreateIngredientParams[] =>
-    Object.values(ingredients ?? {})
-        .flat()
+const ingredientsRequestToRows = (ingredientSections?: MealIngredients): CreateIngredientParams[] | undefined => {
+    if (!ingredientSections?.length) return;
+
+    return ingredientSections
+        .flatMap(({ items }) => items)
         .filter(({ name }) => name !== undefined)
         .map(({ ingredientId, name }) => ({ id: ingredientId, name }));
+};
 
-const mealIngredientsRequestToRows = (mealId: string, ingredients: MealIngredients): MealIngredient[] =>
-    Object.entries(ingredients)
-        .map(([sectionName, section]) =>
-            section
-                .map((ingItem, index) => {
-                    if (!ingItem.ingredientId) return undefined;
-                    return {
-                        mealId,
-                        ingredientId: ingItem.ingredientId,
-                        section: sectionName,
-                        index,
-                        description: ingItem.description,
-                        unit: ingItem.unit,
-                        amount: ingItem.amount,
-                        multiplier: ingItem.multiplier,
-                    };
-                })
-                .filter(Undefined)
-        )
-        .flat();
+const mealIngredientsRequestToRows = (
+    mealId: string,
+    ingredientSections?: MealIngredients
+): MealIngredient[] | undefined => {
+    if (!ingredientSections?.length) return;
 
-const mealMethodRequestToRows = (mealId: string, method: MealMethod): MealStep[] =>
-    Object.entries(method)
-        .map(([sectionName, section]) =>
-            section.map((step, index) => {
+    return ingredientSections.flatMap(({ sectionId, items }) =>
+        items
+            .map((ingItem, index) => {
+                if (!ingItem.ingredientId) return undefined;
                 return {
+                    id: ingItem.id,
                     mealId,
-                    stepId: step.stepId ?? Uuid(),
-                    section: sectionName,
+                    ingredientId: ingItem.ingredientId,
+                    recipeId: ingItem.recipeId,
+                    sectionId,
                     index,
-                    description: step.description,
+                    description: ingItem.description,
+                    unit: ingItem.unit,
+                    amount: ingItem.amount,
+                    multiplier: ingItem.multiplier,
                 };
             })
-        )
-        .flat();
+            .filter(Undefined)
+    );
+};
 
-const mealCategoriesRequestToRows = (mealId: string, categories: MealCategories): MealCategory[] =>
+const mealMethodRequestToRows = (mealId: string, methodSections?: MealMethod): MealStep[] | undefined => {
+    if (!methodSections?.length) return;
+
+    return methodSections.flatMap(({ sectionId, items }) =>
+        items.map((step, index): MealStep => {
+            return {
+                id: step.id,
+                mealId,
+                stepId: step.stepId ?? Uuid(),
+                sectionId,
+                index,
+                description: step.description,
+            };
+        })
+    );
+};
+
+const mealCategoriesRequestToRows = (mealId: string, categories: MealCategories = []): MealCategory[] =>
     categories.map(({ categoryId }) => ({
         mealId,
         categoryId,
     }));
 
-const mealIngredientRowsToResponse = (ingredients: MealIngredientResults): MealIngredients => {
-    const mealIngredients: MealIngredients = { default: [] };
+const mealIngredientRowsToResponse = (
+    ingredients: MealIngredientResults,
+    sections: MealSectionResults
+): MealIngredients => {
+    const mealIngredients: MealIngredients = sections
+        .sort((a, b) => a.index - b.index)
+        .map(({ sectionId, name, description }) => ({
+            sectionId,
+            name,
+            description,
+            items: ingredients.filter(ingredient => ingredient.sectionId === sectionId),
+        }));
 
-    if (ingredients.length) {
-        ingredients.map(ingItem => {
-            const section = mealIngredients[ingItem.section] ?? [];
-            section[ingItem.index] = {
-                ingredientId: ingItem.ingredientId,
-                amount: ingItem.amount,
-                description: ingItem.description,
-                multiplier: ingItem.multiplier,
-                name: ingItem.name,
-                namePlural: ingItem.namePlural,
-                unit: ingItem.unit,
-            };
-
-            mealIngredients[ingItem.section] = section;
-        });
-    }
-
-    // Ensure that if there are gaps in ingredient indexes for whatever reason that they are
-    // removed so as not to return null in place of an ingredient item. Overall order is still maintained
-    const filteredMealIngredients = ObjectFromEntries(mealIngredients, responseDataItem =>
-        responseDataItem.map(([section, ingredients]) => [section, ingredients.filter(Undefined)])
-    );
-
-    return filteredMealIngredients;
+    return mealIngredients;
 };
 
-const mealStepRowsToResponse = (method: MealStepResults): MealMethod => {
-    const responseData: MealMethod = { default: [] };
+const mealStepRowsToResponse = (method: MealStepResults, sections: MealSectionResults): MealMethod => {
+    const mealMethod: MealMethod = sections
+        .sort((a, b) => a.index - b.index)
+        .map(({ sectionId, name, description }) => ({
+            sectionId,
+            name,
+            description,
+            items: method.filter(method => method.sectionId === sectionId),
+        }));
 
-    if (method.length) {
-        method.map(metItem => {
-            const section = responseData[metItem.section] ?? [];
-            section[metItem.index] = {
-                stepId: metItem.stepId,
-                description: metItem.description,
-            };
-            responseData[metItem.section] = section;
-        });
-    }
-    return responseData;
+    return mealMethod;
 };
 
 const mealCategoryRowsToResponse = (categories: MealCategoryByMealIdResults): MealCategories => {

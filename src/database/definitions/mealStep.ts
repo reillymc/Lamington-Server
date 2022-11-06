@@ -6,23 +6,22 @@ import { Table } from "./lamington";
  * Contains the mapping of each of the meal's steps in its method to a unique id with its associated properties
  */
 
-export interface MealStepProperties {
-   
-}
+export interface MealStepProperties {}
 
 export interface MealStep {
+    id: string;
     mealId: string;
     stepId: string;
-    section: string;
     index: number;
+    sectionId: string | undefined;
     description: string | undefined;
 }
 
 export const mealStep: Table<MealStep> = {
+    id: "meal_step.id",
     mealId: "meal_step.mealId",
     stepId: "meal_step.stepId",
-    section: "meal_step.section",
+    sectionId: "meal_step.sectionId",
     index: "meal_step.index",
     description: "meal_step.description",
 };
-

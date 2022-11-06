@@ -1,6 +1,7 @@
 import { lamington, mealIngredient, ingredient } from "..";
 import db from "../config";
 import { Ingredient, MealIngredient } from "../definitions";
+import { Undefined } from "../helpers";
 
 /**
  * Delete all MealIngredient rows for specified mealId EXCEPT for the list of ingredient ids provided
@@ -31,14 +32,11 @@ const insertRows = async (mealIngredients: MealIngredient[]) =>
  * @param mealIngredients ingredients to include in meal
  */
 const updateRows = async (mealId: string, mealIngredients: MealIngredient[]) => {
-    await deleteExcessRows(
-        mealId,
-        mealIngredients.map(({ ingredientId }) => ingredientId)
-    );
+    await deleteExcessRows(mealId, mealIngredients.map(({ ingredientId }) => ingredientId).filter(Undefined));
     await insertRows(mealIngredients);
 };
 
-type MealIngredientResults = Array<Omit<MealIngredient, "mealId"> & Pick<Ingredient, "name" | "namePlural">>
+type MealIngredientResults = Array<Omit<MealIngredient, "mealId"> & Pick<Ingredient, "name" | "namePlural">>;
 
 /**
  * Get all ingredients for a meal
@@ -52,7 +50,7 @@ const selectByMealId = async (mealId: string): Promise<MealIngredientResults> =>
             mealIngredient.ingredientId,
             ingredient.name,
             ingredient.namePlural,
-            mealIngredient.section,
+            mealIngredient.sectionId,
             mealIngredient.index,
             mealIngredient.description,
             mealIngredient.unit,
