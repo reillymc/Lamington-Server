@@ -55,7 +55,7 @@ const selectByMealId = async (mealId: string): Promise<MealIngredientResults> =>
             mealIngredient.amount,
             mealIngredient.multiplier
         )
-        .join(lamington.ingredient, mealIngredient.ingredientId, ingredient.id);
+        .join(lamington.ingredient, mealIngredient.ingredientId, ingredient.ingredientId);
 
 const MealIngredientActions = {
     selectByMealId,

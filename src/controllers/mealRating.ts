@@ -32,7 +32,7 @@ const selectPersonalByMealId = async (mealId: string, userId?: string): Promise<
     return db(lamington.meal)
         .where({ [mealRating.mealId]: mealId, [mealRating.raterId]: userId })
         .first(mealRating.rating)
-        .join(lamington.mealRating, meal.id, mealRating.mealId);
+        .join(lamington.mealRating, meal.mealId, mealRating.mealId);
 };
 
 type MealRatingPersonalResults = Pick<MealRating, "mealId" | "rating">;

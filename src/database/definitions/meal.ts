@@ -4,7 +4,7 @@ import { Table } from "./lamington";
  * Meal
  */
  export interface Meal {
-    id: string;
+    mealId: string;
     name: string  | undefined;
     source: string | undefined;
     photo: string | undefined;
@@ -19,7 +19,7 @@ import { Table } from "./lamington";
 export type MealTable = Table<Meal>;
 
 export const meal: MealTable = {
-    id: "meal.id",
+    mealId: "meal.mealId",
     name: "meal.name",
     source: "meal.source",
     notes: "meal.notes",

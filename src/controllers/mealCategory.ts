@@ -61,7 +61,7 @@ type MealCategoryResults = Array<MealCategory & Pick<Category, "type" | "name">>
 const selectRows = async (): Promise<MealCategoryResults> =>
     db(lamington.category)
         .select(mealCategory.mealId, mealCategory.categoryId, category.type, category.name)
-        .innerJoin(lamington.mealCategory, mealCategory.categoryId, category.id);
+        .innerJoin(lamington.mealCategory, mealCategory.categoryId, category.categoryId);
 
 type MealCategoryByMealIdResults = Array<Omit<MealCategory, "mealId"> & Pick<Category, "type" | "name">>;
 
@@ -74,7 +74,7 @@ const selectByMealId = async (mealId: string): Promise<MealCategoryByMealIdResul
     db(lamington.category)
         .select(mealCategory.categoryId, category.type, category.name)
         .where({ [mealCategory.mealId]: mealId })
-        .leftJoin(lamington.mealCategory, mealCategory.categoryId, category.id);
+        .leftJoin(lamington.mealCategory, mealCategory.categoryId, category.categoryId);
 
 const MealCategoryActions = {
     selectByMealId,

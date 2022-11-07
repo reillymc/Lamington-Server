@@ -25,7 +25,7 @@ export const readCategories = async (params: ReadQuery<GetCategoryParams>): Read
     }
     const categoryIds = params.map(({ id }) => id);
 
-    const query = db<Category>(lamington.category).select("*").whereIn(category.id, categoryIds);
+    const query = db<Category>(lamington.category).select("*").whereIn(category.categoryId, categoryIds);
     return query;
 };
 
@@ -44,13 +44,13 @@ const createCategories = async (categories: CreateQuery<CreateCategoryParams>): 
     if (!Array.isArray(categories)) {
         categories = [categories];
     }
-    const data: Category[] = categories.map(({ name, type, notes }) => ({ id: Uuid(), name, type, notes }));
+    const data: Category[] = categories.map(({ name, type, notes }) => ({ categoryId: Uuid(), name, type, notes }));
 
     const result = await db(lamington.category).insert(data).onConflict([category.name, category.type]).ignore();
 
-    const categoryIds = data.map(({ id }) => id);
+    const categoryIds = data.map(({ categoryId }) => categoryId);
 
-    const query = db<Category>(lamington.category).select("*").whereIn(category.id, categoryIds);
+    const query = db<Category>(lamington.category).select("*").whereIn(category.categoryId, categoryIds);
     return query;
 };
 

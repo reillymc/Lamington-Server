@@ -20,10 +20,10 @@ export interface MealIngredient {
      */
     recipeId: string | undefined;
     index: number | undefined;
-    description: string | undefined;
     unit: string | undefined;
     amount: number | undefined;
     multiplier: number | undefined;
+    description: string | undefined;
 }
 
 export const mealIngredient: Table<MealIngredient> = {
@@ -33,8 +33,8 @@ export const mealIngredient: Table<MealIngredient> = {
     ingredientId: "meal_ingredient.ingredientId",
     recipeId: "meal_ingredient.recipeId",
     index: "meal_ingredient.index",
-    description: "meal_ingredient.description",
     unit: "meal_ingredient.unit",
     amount: "meal_ingredient.amount",
     multiplier: "meal_ingredient.multiplier",
+    description: "meal_ingredient.description",
 } as const;

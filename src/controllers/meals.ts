@@ -33,7 +33,7 @@ import MealSectionActions, { MealSectionResults } from "./mealSection";
 
 type GetAllMealsResults = Pick<
     Meal,
-    "id" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime" | "createdBy"
+    "mealId" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime" | "createdBy"
 > & { ratingAverage: string };
 
 const getAllMeals = async (userId?: string): ReadResponse<GetAllMealsResults> => {
@@ -46,7 +46,7 @@ const getAllMeals = async (userId?: string): ReadResponse<GetAllMealsResults> =>
     const query = db
         .from(`${lamington.meal} as ${mealAliasName}`)
         .select(
-            mealAlias.id,
+            mealAlias.mealId,
             mealAlias.name,
             mealAlias.photo,
             mealAlias.timesCooked,
@@ -58,14 +58,14 @@ const getAllMeals = async (userId?: string): ReadResponse<GetAllMealsResults> =>
                 `(${db
                     .select(mealRatingAlias.rating)
                     .from(`${lamington.mealRating} as ${mealRatingAliasName}`)
-                    .where({ [mealAlias.id]: db.raw(mealRatingAlias.mealId), [mealRatingAlias.raterId]: userId })
-                    .join(lamington.meal, mealAlias.id, mealRatingAlias.mealId)
-                    .groupBy(mealAlias.id)}) as ratingPersonal`
+                    .where({ [mealAlias.mealId]: db.raw(mealRatingAlias.mealId), [mealRatingAlias.raterId]: userId })
+                    .join(lamington.meal, mealAlias.mealId, mealRatingAlias.mealId)
+                    .groupBy(mealAlias.mealId)}) as ratingPersonal`
             )
         )
-        .leftJoin(lamington.mealRating, mealAlias.id, mealRating.mealId)
+        .leftJoin(lamington.mealRating, mealAlias.mealId, mealRating.mealId)
         .leftJoin(lamington.user, mealAlias.createdBy, user.userId)
-        .groupBy(mealAlias.id);
+        .groupBy(mealAlias.mealId);
 
     return query;
 };
@@ -75,7 +75,7 @@ type GetFullMealResults = Meal & { ratingAverage: string }; // TODO: stop using 
 const getFullMeal = async (mealId: string, userId: string): Promise<GetFullMealResults> => {
     const query = db<Meal>(lamington.meal)
         .select(
-            meal.id,
+            meal.mealId,
             meal.name,
             meal.source,
             meal.photo,
@@ -93,10 +93,10 @@ const getFullMeal = async (mealId: string, userId: string): Promise<GetFullMealR
                     .where({ [mealRating.mealId]: mealId, [mealRating.raterId]: userId })}) as ratingPersonal`
             )
         )
-        .where({ [meal.id]: mealId })
-        .leftJoin(lamington.mealRating, meal.id, mealRating.mealId)
+        .where({ [meal.mealId]: mealId })
+        .leftJoin(lamington.mealRating, meal.mealId, mealRating.mealId)
         .leftJoin(lamington.user, meal.createdBy, user.userId)
-        .groupBy(meal.id)
+        .groupBy(meal.mealId)
         .first();
 
     return query;
@@ -105,7 +105,7 @@ const getFullMeal = async (mealId: string, userId: string): Promise<GetFullMealR
 const getMealCreator = async (mealId: string): Promise<{ createdBy: string } | undefined> => {
     const query = db(lamington.meal)
         .select(meal.createdBy)
-        .where({ [meal.id]: mealId })
+        .where({ [meal.mealId]: mealId })
         .first();
 
     return query;
@@ -147,7 +147,7 @@ const getMeals = async (userId?: string) => {
         // TODO: Update GetMealResponseItem naming
         ...meal,
         ratingAverage: parseFloat(meal.ratingAverage),
-        categories: mealCategoryRowsToResponse(mealCategoriesList.filter(cat => cat.mealId === meal.id)),
+        categories: mealCategoryRowsToResponse(mealCategoriesList.filter(cat => cat.mealId === meal.mealId)),
     }));
 
     return data;
@@ -159,10 +159,10 @@ const getMeals = async (userId?: string) => {
  * @param userId
  */
 const insertMeal = async (mealItem: CreateMealRequestItem, userId: string) => {
-    const mealId = mealItem.id ?? Uuid();
+    const mealId = mealItem.mealId ?? Uuid();
 
     const mealData: Meal = {
-        id: mealId,
+        mealId: mealId,
         name: mealItem.name,
         createdBy: userId,
         cookTime: mealItem.cookTime,
@@ -174,7 +174,7 @@ const insertMeal = async (mealItem: CreateMealRequestItem, userId: string) => {
         timesCooked: mealItem.timesCooked,
     };
 
-    await db(lamington.meal).insert(mealData).onConflict(meal.id).merge();
+    await db(lamington.meal).insert(mealData).onConflict(meal.mealId).merge();
 
     // Create new MealSections rows
 
@@ -258,6 +258,7 @@ const mealMethodRequestToRows = (mealId: string, methodSections?: MealMethod): M
                 sectionId,
                 index,
                 description: step.description,
+                photo: undefined,
             };
         })
     );

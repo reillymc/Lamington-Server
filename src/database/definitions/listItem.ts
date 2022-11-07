@@ -30,6 +30,7 @@ export type ListItemModel = {
 export const listItem: Table<ListItem> = {
     itemId: `${lamington.listItem}.itemId`,
     listId: `${lamington.listItem}.listId`,
+    // index : `${lamington.listItem}.index`,
     name: `${lamington.listItem}.name`,
     dateAdded: `${lamington.listItem}.dateAdded`,
     completed: `${lamington.listItem}.completed`,

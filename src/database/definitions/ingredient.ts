@@ -4,15 +4,17 @@ import { Table } from "./lamington";
  * Ingredient
  */
 export interface Ingredient {
-    id: string;
+    ingredientId: string;
     name: string;
     namePlural: string | undefined;
-    notes: string | undefined;
+    description: string | undefined;
+    photo: string | undefined;
 }
 
 export const ingredient: Table<Ingredient> = {
-    id: "ingredient.id",
+    ingredientId: "ingredient.ingredientId",
     name: "ingredient.name",
     namePlural: "ingredient.namePlural",
-    notes: "ingredient.notes",
+    description: "ingredient.description",
+    photo: "ingredient.photo",
 } as const;

@@ -36,14 +36,15 @@ export interface GetMyListsParams {
  */
 export const readMyLists = async ({ userId }: GetMyListsParams): ReadResponse<List> => {
     const query = db<List>(lamington.list)
-        .select(list.listId, list.name, list.description, list.createdBy)
+        .select(list.listId, list.name, list.description, `${user.firstName} as createdBy`)
         .whereIn(
             list.listId,
             db<string[]>(lamington.listMember)
                 .select(listMember.listId)
                 .where({ [listMember.userId]: userId })
         )
-        .orWhere({ [list.createdBy]: userId });
+        .orWhere({ [list.createdBy]: userId })
+        .leftJoin(lamington.user, list.createdBy, user.userId);
 
     return query;
 };

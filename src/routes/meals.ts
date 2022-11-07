@@ -50,12 +50,8 @@ interface MealCategoryItem {
 
 type MealCategories = Array<MealCategoryItem>;
 
-type CreateRequestData = {
-    format: 1; // Use this instead of schema on each type
-};
-
-interface MealV1 {
-    id?: string;
+export interface Meal {
+    mealId?: string;
     name?: string;
     source?: string;
     ingredients?: MealIngredients;
@@ -70,9 +66,9 @@ interface MealV1 {
     timesCooked?: number;
 }
 
-export type Meal = MealV1;
-
-type CreateMealBody = AuthenticatedBody & Meal & CreateRequestData;
+interface Meals {
+    [mealId: string]: Meal;
+}
 
 interface MealRouteParams {
     mealId: string;
@@ -113,14 +109,14 @@ router.get<MealRouteParams, ResponseBody<Meal>, AuthenticatedBody>("/:mealId", a
  * GET request to fetch all meals
  * Does not require authentication (authentication is only needed to fetch personal meal rating)
  */
-router.get<never, ResponseBody<Meal[]>, AuthenticatedBody>("/", async (req, res, next) => {
+router.get<never, ResponseBody<Meals>, AuthenticatedBody>("/", async (req, res, next) => {
     // Extract request fields
     const { userId } = req.body;
 
     // Fetch and return result
     try {
-        const data = await getMeals(userId);
-
+        const result = await getMeals(userId);
+        const data = Object.fromEntries(result.map((row) => [row.mealId, row]));
         return res.status(200).json({ error: false, data });
     } catch (e: unknown) {
         next(
@@ -176,7 +172,7 @@ router.post<never, ResponseBody, AuthenticatedBody<DeleteMealBody>>("/delete", a
             .where({ [mealCategory.mealId]: mealId })
             .del();
         await db(lamington.meal)
-            .where({ [meal.id]: mealId })
+            .where({ [meal.mealId]: mealId })
             .del();
         return res.status(201).json({ error: false, message: `yay! you've successfully deleted this meal :)` });
     } catch (e: unknown) {
@@ -194,61 +190,55 @@ router.post<never, ResponseBody, AuthenticatedBody<DeleteMealBody>>("/delete", a
  * Requires meal data body
  * Requires authentication body
  */
-router.post<never, ResponseBody, AuthenticatedBody<CreateMealBody>>("/", async ({ body }, res, next) => {
+router.post<never, ResponseBody, AuthenticatedBody<Meal>>("/", async ({ body }, res, next) => {
     // Check all required fields are present
-    if (!body.format) {
-        return res.status(400).json({ error: true, message: `No recipe format provided` });
-    }
+    const meal: Meal = {
+        mealId: body.mealId,
+        name: body.name,
+        source: body.source,
+        ingredients: body.ingredients,
+        method: body.method,
+        notes: body.notes,
+        ratingPersonal: Math.min(Math.max(body.ratingPersonal ?? 0, 0), 5),
+        photo: body.photo,
+        servings: body.servings,
+        prepTime: body.prepTime,
+        cookTime: body.cookTime,
+        timesCooked: body.timesCooked,
+        categories: body.categories,
+    };
 
-    if (body.format === 1) {
-        const meal: Meal = {
-            id: body.id,
-            name: body.name,
-            source: body.source,
-            ingredients: body.ingredients,
-            method: body.method,
-            notes: body.notes,
-            ratingPersonal: Math.min(Math.max(body.ratingPersonal ?? 0, 0), 5),
-            photo: body.photo,
-            servings: body.servings,
-            prepTime: body.prepTime,
-            cookTime: body.cookTime,
-            timesCooked: body.timesCooked,
-            categories: body.categories,
-        };
-
-        try {
-            if (!body.id) {
-                await MealActions.insertMeal(meal, body.userId);
-                return res.status(201).json({ error: false, message: `Recipe created` });
-            } else {
-                const existingMeal = await getMealCreator(body.id);
-                if (!existingMeal) {
-                    return res.status(403).json({
-                        error: true,
-                        message: `Cannot find recipe to edit`,
-                    });
-                }
-                if (existingMeal.createdBy !== body.userId) {
-                    return res.status(403).json({
-                        error: true,
-                        message: `Cannot edit a recipe that doesn't belong to you`,
-                    });
-                }
-                await MealActions.insertMeal(meal, body.userId);
-                return res.status(201).json({ error: false, message: `Recipe updated` });
+    try {
+        if (!body.mealId) {
+            await MealActions.insertMeal(meal, body.userId);
+            return res.status(201).json({ error: false, message: `Recipe created` });
+        } else {
+            const existingMeal = await getMealCreator(body.mealId);
+            if (!existingMeal) {
+                return res.status(403).json({
+                    error: true,
+                    message: `Cannot find recipe to edit`,
+                });
             }
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    message: (e as Error)?.message ?? e,
-                    userMessage: userMessage({
-                        action: body.id ? MessageAction.Update : MessageAction.Read,
-                        entity: "meal",
-                    }),
-                })
-            );
+            if (existingMeal.createdBy !== body.userId) {
+                return res.status(403).json({
+                    error: true,
+                    message: `Cannot edit a recipe that doesn't belong to you`,
+                });
+            }
+            await MealActions.insertMeal(meal, body.userId);
+            return res.status(201).json({ error: false, message: `Recipe updated` });
         }
+    } catch (e: unknown) {
+        next(
+            new AppError({
+                message: (e as Error)?.message ?? e,
+                userMessage: userMessage({
+                    action: body.mealId ? MessageAction.Update : MessageAction.Read,
+                    entity: "meal",
+                }),
+            })
+        );
     }
 
     return res.status(400).json({ error: true, message: `Recipe formatted incorrectly` });

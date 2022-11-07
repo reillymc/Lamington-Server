@@ -1,6 +1,14 @@
 import { v4 as Uuid } from "uuid";
 
-import db, { CreateResponse, ReadResponse, ingredient, Ingredient, lamington, ReadQuery, CreateQuery } from "../database";
+import db, {
+    CreateResponse,
+    ReadResponse,
+    ingredient,
+    Ingredient,
+    lamington,
+    ReadQuery,
+    CreateQuery,
+} from "../database";
 import { Undefined } from "../utils";
 
 /**
@@ -26,15 +34,16 @@ export const readIngredients = async (params: ReadQuery<GetIngredientParams>): R
     }
     const ingredientIds = params.map(({ id }) => id);
 
-    const query = db<Ingredient>(lamington.ingredient).select("*").whereIn(ingredient.id, ingredientIds);
+    const query = db<Ingredient>(lamington.ingredient).select("*").whereIn(ingredient.ingredientId, ingredientIds);
     return query;
 };
 
 export interface CreateIngredientParams {
-    id?: string;
+    ingredientId?: string;
     name?: string;
     namePlural?: string;
-    notes?: string;
+    description?: string;
+    photo?: string;
 }
 
 /**
@@ -46,17 +55,20 @@ const createIngredients = async (ingredients: CreateQuery<CreateIngredientParams
         ingredients = [ingredients];
     }
     const data: Ingredient[] = ingredients
-        .map(({ id, name, namePlural, notes }) => {
+        .map(({ ingredientId = Uuid(), name, namePlural, description, photo }) => {
             if (!name) return;
-            return { id: id ?? Uuid(), name, namePlural, notes };
+            return { ingredientId, name, namePlural, description, photo };
         })
         .filter(Undefined);
 
-    const result = await db(lamington.ingredient).insert(data).onConflict([ingredient.id, ingredient.name]).ignore();
+    const result = await db(lamington.ingredient)
+        .insert(data)
+        .onConflict([ingredient.ingredientId, ingredient.name])
+        .ignore();
 
-    const ingredientIds = data.map(({ id }) => id);
+    const ingredientIds = data.map(({ ingredientId }) => ingredientId);
 
-    const query = db<Ingredient>(lamington.ingredient).select("*").whereIn(ingredient.id, ingredientIds);
+    const query = db<Ingredient>(lamington.ingredient).select("*").whereIn(ingredient.ingredientId, ingredientIds);
     return query;
 };
 

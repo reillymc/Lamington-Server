@@ -43,7 +43,7 @@ interface MealCategoryItem {
 type MealCategories = Array<MealCategoryItem>;
 
 export interface Meal {
-    id: string;
+    mealId: string;
     name?: string;
     source?: string;
     ingredients?: MealIngredients;

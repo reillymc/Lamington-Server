@@ -8,7 +8,7 @@ import { AppError, userMessage, MessageAction } from "../services";
 const router = express.Router();
 
 export interface Category {
-    id: string;
+    categoryId: string;
     type: string;
     name: string;
     description?: string;

@@ -11,17 +11,19 @@ export interface MealStepProperties {}
 export interface MealStep {
     id: string;
     mealId: string;
+    sectionId: string | undefined;
     stepId: string;
     index: number;
-    sectionId: string | undefined;
     description: string | undefined;
+    photo: string | undefined;
 }
 
 export const mealStep: Table<MealStep> = {
     id: "meal_step.id",
     mealId: "meal_step.mealId",
-    stepId: "meal_step.stepId",
     sectionId: "meal_step.sectionId",
+    stepId: "meal_step.stepId",
     index: "meal_step.index",
     description: "meal_step.description",
+    photo: "meal_step.photo",
 };

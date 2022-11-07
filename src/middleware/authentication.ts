@@ -41,7 +41,7 @@ type AuthenticatedBody<T = null> = T extends null ? { userId: string } : { userI
 // };
 
 const authenticationMiddleware = (req: Request<null, null, AuthenticatedBody, null>, res: Response, next: NextFunction) => {
-        req.body.userId = "10000000-0000-0000-0000-000000000000"//decoded.userId;
+        req.body.userId = "10000000-0000-0000-0000-000000000000"
         return next();
 };
 

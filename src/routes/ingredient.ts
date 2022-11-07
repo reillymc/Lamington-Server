@@ -8,7 +8,7 @@ import { ResponseBody } from "../spec";
 const router = express.Router();
 
 export interface Ingredient {
-    id: string;
+    ingredientId: string;
     name: string;
     notes?: string;
 }
@@ -38,7 +38,7 @@ router.get<never, ResponseBody<Ingredient[]>, AuthenticatedBody>("/", async (req
  */
 router.post<never, ResponseBody<Ingredient>, AuthenticatedBody<CreateIngredientParams>>("/", async (req, res, next) => {
     // Extract request fields
-    const { name, namePlural, notes } = req.body;
+    const { name, namePlural, description } = req.body;
 
     // Check all required fields are present
 
@@ -48,7 +48,7 @@ router.post<never, ResponseBody<Ingredient>, AuthenticatedBody<CreateIngredientP
 
     // Update database and return status
     try {
-        const result = await createIngredients({ name, namePlural, notes });
+        const result = await createIngredients({ name, namePlural, description });
 
         if (result.length === 0) {
             return res.status(500).json({ error: true, message: "An unknown error occurred when creating ingredient" });
