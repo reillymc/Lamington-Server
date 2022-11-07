@@ -82,12 +82,7 @@ router.post<never, ResponseBody<AuthenticationResponse>, AuthenticatedBody<Regis
                 return res.status(400).json({ error: true, message: `Cannot edit existing user :(` });
             }
         } catch (e: unknown) {
-            next(
-                new AppError({
-                    message: (e as Error)?.message ?? e,
-                    userMessage: userMessage({ action: "registering", entity: "account" }),
-                })
-            );
+            next(new AppError({ innerError: e, message: userMessage({ action: "registering", entity: "account" }) }));
         }
     }
 );
@@ -137,12 +132,7 @@ router.post<never, ResponseBody<AuthenticationResponse>, AuthenticatedBody<Login
             }
             return res.status(401).json({ error: true, message: `invalid login - bad password` });
         } catch (e: unknown) {
-            next(
-                new AppError({
-                    message: (e as Error)?.message ?? e,
-                    userMessage: userMessage({ action: "logging in to", entity: "account" }),
-                })
-            );
+            next(new AppError({ innerError: e, message: userMessage({ action: "logging in to", entity: "account" }) }));
         }
     }
 );

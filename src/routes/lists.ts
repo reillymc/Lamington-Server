@@ -70,8 +70,8 @@ router.get<never, ResponseBody<Lists>, AuthenticatedBody>("/", async (req, res, 
     } catch (e: unknown) {
         next(
             new AppError({
-                message: (e as Error)?.message ?? e,
-                userMessage: userMessage({ action: MessageAction.Read, entity: "lists" }),
+                innerError: e,
+                message: userMessage({ action: MessageAction.Read, entity: "lists" }),
             })
         );
     }
@@ -103,12 +103,7 @@ router.get<ListRouteParams, ResponseBody<List>, AuthenticatedBody>("/:listId", a
 
         return res.status(200).json({ error: false, data });
     } catch (e: unknown) {
-        next(
-            new AppError({
-                message: (e as Error)?.message ?? e,
-                userMessage: userMessage({ action: MessageAction.Read, entity: "list" }),
-            })
-        );
+        next(new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "list" }) }));
     }
 });
 
@@ -158,11 +153,8 @@ router.post<ListRouteParams, ResponseBody, AuthenticatedBody<CreateListParams>>(
     } catch (e: unknown) {
         next(
             new AppError({
-                message: (e as Error)?.message ?? e,
-                userMessage: userMessage({
-                    action: listId ? MessageAction.Update : MessageAction.Create,
-                    entity: "list",
-                }),
+                innerError: e,
+                message: userMessage({ action: listId ? MessageAction.Update : MessageAction.Create, entity: "list" }),
             })
         );
     }
@@ -242,8 +234,8 @@ router.post<ListRouteParams, ResponseBody, AuthenticatedBody<PostListItemBody>>(
         } catch (e: unknown) {
             next(
                 new AppError({
-                    message: (e as Error)?.message ?? e,
-                    userMessage: userMessage({
+                    innerError: e,
+                    message: userMessage({
                         action: listId ? MessageAction.Update : MessageAction.Create,
                         entity: "list item",
                     }),
@@ -298,8 +290,8 @@ router.delete<DeleteListItemParams, ResponseBody, AuthenticatedBody>(
         } catch (e: unknown) {
             next(
                 new AppError({
-                    message: (e as Error)?.message ?? e,
-                    userMessage: userMessage({ action: MessageAction.Delete, entity: "list item" }),
+                    innerError: e,
+                    message: userMessage({ action: MessageAction.Delete, entity: "list item" }),
                 })
             );
         }

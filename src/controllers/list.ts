@@ -139,10 +139,13 @@ const createLists = async (lists: CreateQuery<CreateListParams>): CreateResponse
     );
 
     const result = await db(lamington.list).insert(listData).onConflict(list.listId).merge();
-    const result2 = await db(lamington.listMember)
-        .insert(memberData)
-        .onConflict([listMember.listId, listMember.userId])
-        .merge();
+
+    if (memberData.length > 0) {
+        const result2 = await db(lamington.listMember)
+            .insert(memberData)
+            .onConflict([listMember.listId, listMember.userId])
+            .merge();
+    }
 
     const listIds = data.map(({ listId }) => listId);
 

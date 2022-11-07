@@ -11,9 +11,14 @@ export const errorMiddleware = (error: AppError, request: Request, response: Res
             query: request.query,
             body: request.body,
             route: request.originalUrl,
+            method: request.method,
+        },
+        stackTrace: {
+            message: (error.innerError as Error)?.message,
+            stack: (error.innerError as Error)?.stack,
         },
     });
 
     response.status(error.status || 500);
-    return response.json({ error: true, message: error.userMessage });
+    return response.json({ error: true, message: error.message });
 };

@@ -27,12 +27,7 @@ router.post<never, ResponseBody<UploadResponse>>("/upload-image", uploadImageMid
             await storeLocalImage(file.buffer);
             return res.json({ error: false, data: { imageAddress: `lamington:${name}` } });
         } catch (e: unknown) {
-            next(
-                new AppError({
-                    message: (e as Error)?.message ?? e,
-                    userMessage: "An error occurred when uploading image",
-                })
-            );
+            next(new AppError({ innerError: e, message: "An error occurred when uploading image" }));
         }
     } else {
         try {
@@ -44,12 +39,7 @@ router.post<never, ResponseBody<UploadResponse>>("/upload-image", uploadImageMid
                 },
             });
         } catch (e: unknown) {
-            next(
-                new AppError({
-                    message: (e as Error)?.message ?? e,
-                    userMessage: "An error occurred when uploading image",
-                })
-            );
+            next(new AppError({ innerError: e, message: "An error occurred when uploading image" }));
         }
     }
 });

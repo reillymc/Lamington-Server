@@ -17,20 +17,20 @@ const transportList = [
 interface AppErrorConstructor {
     status?: number;
     message?: string;
-    userMessage?: string;
+    innerError?: unknown;
 }
-export class AppError extends Error {
+export class AppError {
     status: number;
-    userMessage: string;
+    message: string;
+    innerError: unknown;
     constructor({
         status = 500,
-        message = "Unknown Internal Error",
-        userMessage = "An unknown error occurred",
+        message = "An unknown error occurred",
+        innerError,
     }: AppErrorConstructor) {
-        super(message);
         this.status = status;
         this.message = message;
-        this.userMessage = userMessage;
+        this.innerError = innerError;
     }
 }
 

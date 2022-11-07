@@ -25,10 +25,7 @@ router.get<never, ResponseBody<Ingredient[]>, AuthenticatedBody>("/", async (req
         return res.status(200).json({ error: false, data });
     } catch (e: unknown) {
         next(
-            new AppError({
-                message: (e as Error)?.message ?? e,
-                userMessage: userMessage({ action: MessageAction.Read, entity: "ingredients" }),
-            })
+            new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "ingredients" }) })
         );
     }
 });
@@ -58,8 +55,8 @@ router.post<never, ResponseBody<Ingredient>, AuthenticatedBody<CreateIngredientP
     } catch (e: unknown) {
         next(
             new AppError({
-                message: (e as Error)?.message ?? e,
-                userMessage: userMessage({ action: MessageAction.Create, entity: "ingredient" }),
+                innerError: e,
+                message: userMessage({ action: MessageAction.Create, entity: "ingredient" }),
             })
         );
     }

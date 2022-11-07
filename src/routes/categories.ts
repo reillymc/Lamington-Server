@@ -27,10 +27,7 @@ router.get<never, ResponseBody<Category[]>, AuthenticatedBody>("/", async (req, 
         return res.status(200).json({ error: false, data });
     } catch (e: unknown) {
         next(
-            new AppError({
-                message: (e as Error)?.message ?? e,
-                userMessage: userMessage({ action: MessageAction.Read, entity: "categories" }),
-            })
+            new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "categories" }) })
         );
     }
 });
@@ -57,10 +54,7 @@ router.post<never, ResponseBody<Category>, AuthenticatedBody<CreateCategoryParam
         }
     } catch (e: unknown) {
         next(
-            new AppError({
-                message: (e as Error)?.message ?? e,
-                userMessage: userMessage({ action: MessageAction.Create, entity: "category" }),
-            })
+            new AppError({ innerError: e, message: userMessage({ action: MessageAction.Create, entity: "category" }) })
         );
     }
 });

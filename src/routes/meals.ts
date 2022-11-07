@@ -96,12 +96,7 @@ router.get<MealRouteParams, ResponseBody<Meal>, AuthenticatedBody>("/:mealId", a
         const data = await getMeal(mealId, userId);
         return res.status(200).json({ error: false, data });
     } catch (e: unknown) {
-        next(
-            new AppError({
-                message: (e as Error)?.message ?? e,
-                userMessage: userMessage({ action: MessageAction.Read, entity: "meal" }),
-            })
-        );
+        next(new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "meal" }) }));
     }
 });
 
@@ -116,15 +111,10 @@ router.get<never, ResponseBody<Meals>, AuthenticatedBody>("/", async (req, res, 
     // Fetch and return result
     try {
         const result = await getMeals(userId);
-        const data = Object.fromEntries(result.map((row) => [row.mealId, row]));
+        const data = Object.fromEntries(result.map(row => [row.mealId, row]));
         return res.status(200).json({ error: false, data });
     } catch (e: unknown) {
-        next(
-            new AppError({
-                message: (e as Error)?.message ?? e,
-                userMessage: userMessage({ action: MessageAction.Read, entity: "meals" }),
-            })
-        );
+        next(new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "meals" }) }));
     }
 });
 
@@ -176,12 +166,7 @@ router.post<never, ResponseBody, AuthenticatedBody<DeleteMealBody>>("/delete", a
             .del();
         return res.status(201).json({ error: false, message: `yay! you've successfully deleted this meal :)` });
     } catch (e: unknown) {
-        next(
-            new AppError({
-                message: (e as Error)?.message ?? e,
-                userMessage: userMessage({ action: MessageAction.Delete, entity: "meal" }),
-            })
-        );
+        next(new AppError({ innerError: e, message: userMessage({ action: MessageAction.Delete, entity: "meal" }) }));
     }
 });
 
@@ -232,8 +217,8 @@ router.post<never, ResponseBody, AuthenticatedBody<Meal>>("/", async ({ body }, 
     } catch (e: unknown) {
         next(
             new AppError({
-                message: (e as Error)?.message ?? e,
-                userMessage: userMessage({
+                innerError: e,
+                message: userMessage({
                     action: body.mealId ? MessageAction.Update : MessageAction.Read,
                     entity: "meal",
                 }),
@@ -273,14 +258,6 @@ router.post<never, ResponseBody, AuthenticatedBody<RateMealBody>>("/rate", async
         await MealRatingActions.insertRows(mealRating);
         return res.status(201).json({ error: false, message: `yay! you've successfully rated this meal :)` });
     } catch (e: unknown) {
-        next(
-            new AppError({
-                message: (e as Error)?.message ?? e,
-                userMessage: userMessage({
-                    action: "rating",
-                    entity: "list",
-                }),
-            })
-        );
+        next(new AppError({ innerError: e, message: userMessage({ action: "rating", entity: "list" }) }));
     }
 });
