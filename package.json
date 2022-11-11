@@ -4,7 +4,7 @@
   "private": true,
   "main": "src/app.ts",
   "scripts": {
-    "build": "npx tsc && cp -R src/docs dist/docs",
+    "build": "tsc && cp -R src/docs dist/docs",
     "start": "nodemon src/app.ts",
     "prod": "node dist/app.js"
   },
