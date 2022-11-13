@@ -14,6 +14,7 @@ import db, {
     ListMember,
     List,
     ListItemModel,
+    DeleteResponse,
 } from "../database";
 import { Undefined } from "../utils";
 
@@ -198,7 +199,7 @@ export interface DeleteListItemParams {
  * Creates a new list from params
  * @returns the newly created lists
  */
-export const deleteListItems = async (listItems: CreateQuery<DeleteListItemParams>): CreateResponse<ListItem> => {
+export const deleteListItems = async (listItems: CreateQuery<DeleteListItemParams>): DeleteResponse => {
     if (!Array.isArray(listItems)) {
         listItems = [listItems];
     }
@@ -209,12 +210,29 @@ export const deleteListItems = async (listItems: CreateQuery<DeleteListItemParam
     return db(lamington.listItem).whereIn(listItem.listId, listIds).whereIn(listItem.itemId, itemIds).delete();
 };
 
+export interface DeleteListParams {
+    listId: string;
+}
+
+/**
+ * Deletes lists by list ids
+ */
+export const deleteLists = async (lists: CreateQuery<DeleteListParams>): DeleteResponse => {
+    if (!Array.isArray(lists)) {
+        lists = [lists];
+    }
+
+    const listIds = lists.map(({ listId }) => listId);
+
+    return db(lamington.list).whereIn(list.listId, listIds).delete();
+};
+
 const ListActions = {
     readLists,
     readAllLists,
     createLists,
     readListItems,
-    // deleteLists,
+    deleteLists,
 };
 
 export default ListActions;

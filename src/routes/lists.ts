@@ -11,6 +11,7 @@ import {
     InternalListActions,
     deleteListItems,
     readMyLists,
+    deleteLists,
 } from "../controllers/list";
 import { AppError, MessageAction, userMessage } from "../services";
 import { AuthenticatedBody } from "../middleware";
@@ -134,17 +135,10 @@ router.post<ListRouteParams, ResponseBody, AuthenticatedBody<CreateListParams>>(
             return res.status(201).json({ error: false, message: `List created.` });
         } else {
             const [existingList] = await readLists({ listId, userId });
-            const existingListMembers = await getListMembers({ listId });
             if (!existingList) {
                 return res.status(403).json({
                     error: true,
                     message: "Cannot find list to edit.",
-                });
-            }
-            if (!existingListMembers?.some(member => member.userId === userId && member.canEdit)) {
-                return res.status(403).json({
-                    error: true,
-                    message: "Cannot edit a list that doesn't belong to you.",
                 });
             }
             await createLists(list);
@@ -244,6 +238,53 @@ router.post<ListRouteParams, ResponseBody, AuthenticatedBody<PostListItemBody>>(
         }
     }
 );
+
+/**
+ * DELETE request to delete a list.
+ */
+router.delete<ListRouteParams, ResponseBody, AuthenticatedBody>("/:listId", async (req, res, next) => {
+    // Extract request fields
+    const {
+        params: { listId },
+        body: { userId },
+    } = req;
+
+    // Check all required fields are present
+    if (!listId) {
+        return res.status(400).json({ error: true, message: "Insufficient data to delete a list." });
+    }
+
+    // Update database and return status
+    try {
+        const [existingList] = await InternalListActions.readLists({ listId });
+        if (!existingList) {
+            return res.status(403).json({
+                error: true,
+                message: "Cannot find list to delete.",
+            });
+        }
+        if (existingList.createdBy !== userId) {
+            const existingListMembers = await getListMembers({ listId });
+            if (!existingListMembers?.some(member => member.userId === userId && member.canEdit)) {
+                console.log(existingListMembers, userId);
+                return res.status(403).json({
+                    error: true,
+                    message: "You do not have permissions to delete this list",
+                });
+            }
+        }
+
+        await deleteLists({ listId });
+        return res.status(201).json({ error: false, message: "List deleted." });
+    } catch (e: unknown) {
+        next(
+            new AppError({
+                innerError: e,
+                message: userMessage({ action: MessageAction.Delete, entity: "list item" }),
+            })
+        );
+    }
+});
 
 interface DeleteListItemParams extends ListRouteParams {
     itemId?: string;

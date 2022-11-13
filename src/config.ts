@@ -1,11 +1,11 @@
 const config: LamingtonConfig = {
     app: {
-        port: 3000,
+        port: parseInt(process.env.NODE_LOCAL_PORT ?? "3000", 0),
         logDetail: "dev",
     },
     database: {
         client: "mysql2",
-        name: "lamingtondb",
+        name: process.env.DB_NAME ?? "",
         host: process.env.DB_HOST,
         user: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
