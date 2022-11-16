@@ -241,7 +241,6 @@ export { readAllLists, createLists };
 
 export interface ReadListInternalParams {
     listId: string;
-    userId?: string;
 }
 
 /**
@@ -252,7 +251,12 @@ export const readListsInternal = async (params: ReadQuery<ReadListInternalParams
     if (!Array.isArray(params)) {
         params = [params];
     }
-    const query = db<List>(lamington.list).select(list.listId, list.name, list.description, list.createdBy);
+
+    const listIds = params.map(({ listId }) => listId);
+
+    const query = db<List>(lamington.list)
+        .select(list.listId, list.name, list.description, list.createdBy)
+        .whereIn(list.listId, listIds);
     return query;
 };
 
