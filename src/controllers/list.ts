@@ -15,6 +15,7 @@ import db, {
     List,
     ListItemModel,
     DeleteResponse,
+    User,
 } from "../database";
 import { Undefined } from "../utils";
 
@@ -31,13 +32,18 @@ export interface GetMyListsParams {
     userId: string;
 }
 
+interface ReadListRow extends Pick<List, "listId" | "name" | "description"> {
+    createdBy: User["userId"];
+    createdByName: User["firstName"];
+}
+
 /**
  * Get all lists
  * @returns an array of all lists in the database
  */
-export const readMyLists = async ({ userId }: GetMyListsParams): ReadResponse<List> => {
-    const query = db<List>(lamington.list)
-        .select(list.listId, list.name, list.description, `${user.firstName} as createdBy`)
+export const readMyLists = async ({ userId }: GetMyListsParams): ReadResponse<ReadListRow> => {
+    const query = db<ReadListRow>(lamington.list)
+        .select(list.listId, list.name, list.description, list.createdBy, `${user.firstName} as createdByName`)
         .whereIn(
             list.listId,
             db<string[]>(lamington.listMember)
@@ -59,14 +65,14 @@ export interface GetListParams {
  * Get lists by id or ids
  * @returns an array of lists matching given ids
  */
-export const readLists = async ({ listId, userId }: GetListParams): ReadResponse<List> => {
+export const readLists = async ({ listId, userId }: GetListParams): ReadResponse<ReadListRow> => {
     // if (!Array.isArray(params)) {
     //     params = [params];
     // }
     // const listIds = params.map(({ listId }) => listId);
 
-    const query = db<List>(lamington.list)
-        .select(list.listId, list.name, list.description, `${user.firstName} as createdBy`)
+    const query = db<ReadListRow>(lamington.list)
+        .select(list.listId, list.name, list.description, list.createdBy, `${user.firstName} as createdByName`)
         .whereIn(
             list.listId,
             db<string[]>(lamington.listMember)
@@ -121,7 +127,7 @@ export interface CreateListParams {
     description: string | undefined;
     name: string;
     createdBy: string;
-    members?: string[];
+    memberIds?: string[];
 }
 
 /**
@@ -134,15 +140,22 @@ const createLists = async (lists: CreateQuery<CreateListParams>): CreateResponse
     }
     const data = lists.map(({ listId, ...params }) => ({ listId: listId ?? Uuid(), ...params })).filter(Undefined);
 
-    const listData: List[] = data.map(({ members, ...listItem }) => listItem);
+    const listData: List[] = data.map(({ memberIds, ...listItem }) => listItem);
     const memberData: ListMember[] = data.flatMap(
-        ({ listId, members }) => members?.map(userId => ({ listId, userId, canEdit: "1" })) ?? []
+        ({ listId, memberIds }) => memberIds?.map(userId => ({ listId, userId, canEdit: "1" })) ?? []
     );
 
     const result = await db(lamington.list).insert(listData).onConflict(list.listId).merge();
 
+    const result2 = await db(lamington.listMember)
+        .whereNotIn(
+            listMember.userId,
+            memberData.map(({ userId }) => userId)
+        )
+        .delete();
+
     if (memberData.length > 0) {
-        const result2 = await db(lamington.listMember)
+        const result3 = await db(lamington.listMember)
             .insert(memberData)
             .onConflict([listMember.listId, listMember.userId])
             .merge();
@@ -227,12 +240,61 @@ export const deleteLists = async (lists: CreateQuery<DeleteListParams>): DeleteR
     return db(lamington.list).whereIn(list.listId, listIds).delete();
 };
 
+export interface DeleteListMemberParams {
+    listId: string;
+    userId: string;
+}
+
+/**
+ * Creates a new list from params
+ * @returns the newly created lists
+ */
+export const deleteListMembers = async (listMembers: CreateQuery<DeleteListMemberParams>): DeleteResponse => {
+    if (!Array.isArray(listMembers)) {
+        listMembers = [listMembers];
+    }
+
+    const listIds = listMembers.map(({ listId }) => listId);
+    const userIds = listMembers.map(({ userId }) => userId);
+
+    return db(lamington.listMember).whereIn(listMember.listId, listIds).whereIn(listMember.userId, userIds).delete();
+};
+
+export interface GetListMembersParams {
+    listId: string;
+}
+
+export interface GetListMembersResponse
+    extends Pick<ListMember, "userId" | "canEdit">,
+        Pick<User, "firstName" | "lastName"> {}
+
+/**
+ * Get lists by id or ids
+ * @returns an array of lists matching given ids
+ */
+export const readListMembers = async (
+    params: ReadQuery<GetListMembersParams>
+): ReadResponse<GetListMembersResponse> => {
+    if (!Array.isArray(params)) {
+        params = [params];
+    }
+    const listIds = params.map(({ listId }) => listId);
+
+    const query = db<ListItem>(lamington.listMember)
+        .select(listMember.userId, listMember.canEdit, user.firstName, user.lastName)
+        .whereIn(listMember.listId, listIds)
+        .leftJoin(lamington.user, listMember.userId, user.userId);
+    return query;
+};
+
 const ListActions = {
     readLists,
     readAllLists,
     createLists,
     readListItems,
     deleteLists,
+    deleteListMembers,
+    readListMembers,
 };
 
 export default ListActions;

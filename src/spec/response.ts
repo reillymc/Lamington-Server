@@ -1,6 +1,7 @@
 interface ResponseBodyBase {
     error: boolean;
     schema?: 1; // TODO make mandatory
+    code?: string;
     message?: string;
 }
 
