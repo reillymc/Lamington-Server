@@ -6,7 +6,6 @@ import { default as mealsRouter } from "./meals";
 import { default as ingredientRouter } from "./ingredient";
 import { default as usersRouter } from "./users";
 import { default as categoriesRouter } from "./categories";
-import { default as choresRouter } from "./chores";
 import { default as attachmentsRouter } from "./attachments";
 import { default as listsRouter } from "./lists";
 import { default as docsRouter } from "./docs";
@@ -14,7 +13,6 @@ import { default as docsRouter } from "./docs";
 const appRouter = express.Router();
 
 appRouter.use("/users", usersRouter);
-appRouter.use("/chores", choresRouter);
 appRouter.use("/categories", categoriesRouter);
 appRouter.use("/meals", mealsRouter);
 appRouter.use("/ingredient", ingredientRouter);
@@ -28,7 +26,6 @@ export {
     attachmentsRouter,
     authRouter,
     categoriesRouter,
-    choresRouter,
     docsRouter,
     ingredientRouter,
     listsRouter,

@@ -1,4 +1,4 @@
-import { lamington, Table } from "./lamington";
+import { lamington, Table } from ".";
 
 /**
  * ListItem

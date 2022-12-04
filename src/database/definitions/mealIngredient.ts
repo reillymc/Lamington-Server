@@ -1,4 +1,4 @@
-import { Table } from "./lamington";
+import { Table } from ".";
 
 /**
  * MealIngredient
