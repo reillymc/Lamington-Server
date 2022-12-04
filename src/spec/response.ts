@@ -26,7 +26,7 @@ interface Section<T> {
     items: Array<T>;
 }
 
-type MealIngredients = Array<Section<MealIngredientItem>>;
+export type MealIngredients = Array<Section<MealIngredientItem>>;
 
 interface MealMethodStep {
     id: string;
@@ -34,14 +34,14 @@ interface MealMethodStep {
     description?: string;
 }
 
-type MealMethod = Array<Section<MealMethodStep>>;
+export type MealMethod = Array<Section<MealMethodStep>>;
 interface MealCategoryItem {
     categoryId: string;
     type?: string;
     name?: string;
 }
 
-type MealCategories = Array<MealCategoryItem>;
+export type MealCategories = Array<MealCategoryItem>;
 
 export interface Meal {
     mealId: string;
@@ -61,4 +61,6 @@ export interface Meal {
     timesCooked?: number;
 }
 
-export { MealIngredients, MealMethod, MealCategories };
+export interface Meals {
+    [mealId: string]: Meal;
+}

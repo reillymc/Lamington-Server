@@ -1,4 +1,4 @@
-import { lamington, Table } from "./definitions/lamington";
+import { lamington, Table } from "./definitions";
 import { ObjectFromEntries } from "../utils";
 
 export const Alias = <T>(table: Table<T>, tableName: lamington, tableAlias: string) =>
