@@ -28,7 +28,7 @@ const readAllLists = async (): ReadResponse<List> => {
     return query;
 };
 
-export interface GetMyListsParams {
+interface GetMyListsParams {
     userId: string;
 }
 
@@ -41,7 +41,7 @@ interface ReadListRow extends Pick<List, "listId" | "name" | "description"> {
  * Get all lists
  * @returns an array of all lists in the database
  */
-export const readMyLists = async ({ userId }: GetMyListsParams): ReadResponse<ReadListRow> => {
+const readMyLists = async ({ userId }: GetMyListsParams): ReadResponse<ReadListRow> => {
     const query = db<ReadListRow>(lamington.list)
         .select(list.listId, list.name, list.description, list.createdBy, `${user.firstName} as createdByName`)
         .whereIn(
@@ -56,7 +56,7 @@ export const readMyLists = async ({ userId }: GetMyListsParams): ReadResponse<Re
     return query;
 };
 
-export interface GetListParams {
+interface GetListParams {
     listId: string;
     userId: string;
 }
@@ -65,7 +65,7 @@ export interface GetListParams {
  * Get lists by id or ids
  * @returns an array of lists matching given ids
  */
-export const readLists = async ({ listId, userId }: GetListParams): ReadResponse<ReadListRow> => {
+const readLists = async ({ listId, userId }: GetListParams): ReadResponse<ReadListRow> => {
     // if (!Array.isArray(params)) {
     //     params = [params];
     // }
@@ -85,7 +85,7 @@ export const readLists = async ({ listId, userId }: GetListParams): ReadResponse
     return query;
 };
 
-export interface GetListItemsParams {
+interface GetListItemsParams {
     listId: string;
 }
 
@@ -93,7 +93,7 @@ export interface GetListItemsParams {
  * Get lists by id or ids
  * @returns an array of lists matching given ids
  */
-export const readListItems = async (params: ReadQuery<GetListItemsParams>): ReadResponse<ListItem> => {
+const readListItems = async (params: ReadQuery<GetListItemsParams>): ReadResponse<ListItem> => {
     if (!Array.isArray(params)) {
         params = [params];
     }
@@ -103,7 +103,7 @@ export const readListItems = async (params: ReadQuery<GetListItemsParams>): Read
     return query;
 };
 
-export interface GetListAuthParams {
+interface GetListAuthParams {
     listId: string;
 }
 
@@ -112,7 +112,7 @@ export interface GetListAuthParams {
  * @param listId
  * @returns
  */
-export const getListMembers = async ({
+const getListMembers = async ({
     listId,
 }: GetListAuthParams): Promise<[{ userId: string; canEdit: number }] | undefined> => {
     const query = db<ListMember>(lamington.listMember)
@@ -122,7 +122,7 @@ export const getListMembers = async ({
     return query as any;
 };
 
-export interface CreateListParams {
+interface CreateListParams {
     listId?: string;
     description: string | undefined;
     name: string;
@@ -167,7 +167,7 @@ const createLists = async (lists: CreateQuery<CreateListParams>): CreateResponse
     return query;
 };
 
-export interface CreateListItemParams {
+interface CreateListItemParams {
     itemId: string | undefined;
     listId: string;
     name: string;
@@ -177,13 +177,14 @@ export interface CreateListItemParams {
     unit?: string;
     amount?: number;
     notes?: string;
+    createdBy: string;
 }
 
 /**
  * Creates a new list from params
  * @returns the newly created lists
  */
-export const createListItems = async (listItems: CreateQuery<CreateListItemParams>): CreateResponse<ListItem> => {
+const createListItems = async (listItems: CreateQuery<CreateListItemParams>): CreateResponse<ListItem> => {
     if (!Array.isArray(listItems)) {
         listItems = [listItems];
     }
@@ -203,7 +204,7 @@ export const createListItems = async (listItems: CreateQuery<CreateListItemParam
     return query;
 };
 
-export interface DeleteListItemParams {
+interface DeleteListItemParams {
     itemId: string;
     listId: string;
 }
@@ -212,7 +213,7 @@ export interface DeleteListItemParams {
  * Creates a new list from params
  * @returns the newly created lists
  */
-export const deleteListItems = async (listItems: CreateQuery<DeleteListItemParams>): DeleteResponse => {
+const deleteListItems = async (listItems: CreateQuery<DeleteListItemParams>): DeleteResponse => {
     if (!Array.isArray(listItems)) {
         listItems = [listItems];
     }
@@ -223,14 +224,14 @@ export const deleteListItems = async (listItems: CreateQuery<DeleteListItemParam
     return db(lamington.listItem).whereIn(listItem.listId, listIds).whereIn(listItem.itemId, itemIds).delete();
 };
 
-export interface DeleteListParams {
+interface DeleteListParams {
     listId: string;
 }
 
 /**
  * Deletes lists by list ids
  */
-export const deleteLists = async (lists: CreateQuery<DeleteListParams>): DeleteResponse => {
+const deleteLists = async (lists: CreateQuery<DeleteListParams>): DeleteResponse => {
     if (!Array.isArray(lists)) {
         lists = [lists];
     }
@@ -240,7 +241,7 @@ export const deleteLists = async (lists: CreateQuery<DeleteListParams>): DeleteR
     return db(lamington.list).whereIn(list.listId, listIds).delete();
 };
 
-export interface DeleteListMemberParams {
+interface DeleteListMemberParams {
     listId: string;
     userId: string;
 }
@@ -249,7 +250,7 @@ export interface DeleteListMemberParams {
  * Creates a new list from params
  * @returns the newly created lists
  */
-export const deleteListMembers = async (listMembers: CreateQuery<DeleteListMemberParams>): DeleteResponse => {
+const deleteListMembers = async (listMembers: CreateQuery<DeleteListMemberParams>): DeleteResponse => {
     if (!Array.isArray(listMembers)) {
         listMembers = [listMembers];
     }
@@ -260,21 +261,17 @@ export const deleteListMembers = async (listMembers: CreateQuery<DeleteListMembe
     return db(lamington.listMember).whereIn(listMember.listId, listIds).whereIn(listMember.userId, userIds).delete();
 };
 
-export interface GetListMembersParams {
+interface GetListMembersParams {
     listId: string;
 }
 
-export interface GetListMembersResponse
-    extends Pick<ListMember, "userId" | "canEdit">,
-        Pick<User, "firstName" | "lastName"> {}
+interface GetListMembersResponse extends Pick<ListMember, "userId" | "canEdit">, Pick<User, "firstName" | "lastName"> {}
 
 /**
  * Get lists by id or ids
  * @returns an array of lists matching given ids
  */
-export const readListMembers = async (
-    params: ReadQuery<GetListMembersParams>
-): ReadResponse<GetListMembersResponse> => {
+const readListMembers = async (params: ReadQuery<GetListMembersParams>): ReadResponse<GetListMembersResponse> => {
     if (!Array.isArray(params)) {
         params = [params];
     }
@@ -287,21 +284,20 @@ export const readListMembers = async (
     return query;
 };
 
-const ListActions = {
-    readLists,
-    readAllLists,
-    createLists,
-    readListItems,
-    deleteLists,
-    deleteListMembers,
-    readListMembers,
+export const ListActions = {
+    create: createLists,
+    createItems: createListItems,
+    delete: deleteLists,
+    deleteItems: deleteListItems,
+    deleteMembers: deleteListMembers,
+    read: readLists,
+    readAll: readAllLists,
+    readItems: readListItems,
+    readMembers: readListMembers,
+    readMy: readMyLists,
 };
 
-export default ListActions;
-
-export { readAllLists, createLists };
-
-export interface ReadListInternalParams {
+interface ReadListInternalParams {
     listId: string;
 }
 
@@ -309,7 +305,7 @@ export interface ReadListInternalParams {
  * Get lists by id or ids
  * @returns an array of lists matching given ids
  */
-export const readListsInternal = async (params: ReadQuery<ReadListInternalParams>): ReadResponse<List> => {
+const readListsInternal = async (params: ReadQuery<ReadListInternalParams>): ReadResponse<List> => {
     if (!Array.isArray(params)) {
         params = [params];
     }
@@ -322,8 +318,6 @@ export const readListsInternal = async (params: ReadQuery<ReadListInternalParams
     return query;
 };
 
-const InternalListActions = {
+export const InternalListActions = {
     readLists: readListsInternal,
 };
-
-export { InternalListActions };

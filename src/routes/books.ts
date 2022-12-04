@@ -4,7 +4,7 @@ import { BookActions, CreateBookParams } from "../controllers/book";
 import { AppError, MessageAction, userMessage } from "../services";
 import { AuthenticatedBody } from "../middleware";
 import { Recipe, ResponseBody } from "../spec";
-import { User } from "./users";
+import { User } from "./spec";
 
 const router = express.Router();
 

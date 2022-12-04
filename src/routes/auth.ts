@@ -1,7 +1,7 @@
 import express from "express";
 
 import { AuthenticatedBody } from "../middleware";
-import { createUsers, InternalUserActions } from "../controllers/user";
+import { InternalUserActions } from "../controllers";
 import { AppError, comparePassword, createToken, hashPassword, userMessage } from "../services";
 import { ResponseBody } from "../spec";
 
@@ -64,7 +64,7 @@ router.post<never, ResponseBody<AuthenticationResponse>, AuthenticatedBody<Regis
         // Update database and return status
         try {
             if (!userId) {
-                const [createdUser] = await createUsers(user);
+                const [createdUser] = await InternalUserActions.create(user);
                 const token = createToken(createdUser?.userId);
                 if (!token || !createdUser) throw "Failed to create token";
 

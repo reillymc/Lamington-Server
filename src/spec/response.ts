@@ -1,3 +1,4 @@
+// TODO remove ===
 interface ResponseBodyBase {
     error: boolean;
     schema?: 1; // TODO make mandatory
@@ -7,6 +8,7 @@ interface ResponseBodyBase {
 
 export type ResponseBody<T = null> = T extends null ? ResponseBodyBase : ResponseBodyBase & { data?: T };
 
+// ===
 interface RecipeIngredientItem {
     id: string;
     ingredientId?: string;

@@ -37,7 +37,7 @@ app.use(notFoundMiddleware);
 app.use(errorMiddleware);
 
 app.listen(config.app.port, () => {
-    console.log(`Lamington Server is listening at http://localhost:${config.app.port}`);
+    console.info(`Lamington Server is listening at http://localhost:${config.app.port}`);
 });
 
 module.exports = app;

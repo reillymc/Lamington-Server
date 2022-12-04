@@ -84,8 +84,6 @@ router.get<RecipeRouteParams, ResponseBody<Recipe>, AuthenticatedBody>("/:recipe
     const { recipeId } = req.params;
     const { userId } = req.body;
 
-    console.log(recipeId, userId);
-
     // Check all required fields are present
     if (!recipeId) {
         return res.status(400).json({ error: true, message: `Error getting recipe: Recipe ID not provided.` });

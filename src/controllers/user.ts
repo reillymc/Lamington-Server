@@ -7,12 +7,12 @@ import { Undefined } from "../utils";
  * Get all users
  * @returns an array of all users in the database
  */
-const readAllUsers = async (): ReadResponse<User> => {
-    const query = db<User>(lamington.user).select(user.userId, user.email, user.firstName, user.lastName, user.status);
+const readAllUsers = async (): ReadResponse<Pick<User, "userId" | "firstName" | "lastName">> => {
+    const query = db<User>(lamington.user).select(user.userId, user.firstName, user.lastName);
     return query;
 };
 
-export interface GetUserParams {
+interface GetUserParams {
     userId: string;
 }
 
@@ -20,19 +20,21 @@ export interface GetUserParams {
  * Get users by id or ids
  * @returns an array of users matching given ids
  */
-export const readUsers = async (params: ReadQuery<GetUserParams>): ReadResponse<User> => {
+const readUsers = async (
+    params: ReadQuery<GetUserParams>
+): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "status" | "created">> => {
     if (!Array.isArray(params)) {
         params = [params];
     }
     const userIds = params.map(({ userId }) => userId);
 
     const query = db<User>(lamington.user)
-        .select(user.userId, user.firstName, user.lastName, user.email, user.status, user.created)
+        .select(user.userId, user.firstName, user.lastName, user.status, user.created)
         .whereIn(user.userId, userIds);
     return query;
 };
 
-export type CreateUserParams = {
+type CreateUserParams = {
     userId: string | undefined;
     email: string;
     firstName: string;
@@ -62,7 +64,7 @@ const createUsers = async (users: CreateQuery<CreateUserParams>): CreateResponse
     return query;
 };
 
-export interface CreateUserItemParams {
+interface CreateUserItemParams {
     itemId: string | undefined;
     userId: string;
     name: string;
@@ -74,17 +76,13 @@ export interface CreateUserItemParams {
     notes?: string;
 }
 
-const UserActions = {
-    readUsers,
-    readAllUsers,
-    createUsers,
+export const UserActions = {
+    read: readUsers,
+    readAll: readAllUsers,
+    create: createUsers,
 };
 
-export default UserActions;
-
-export { readAllUsers, createUsers };
-
-export interface ReadUserInternalParams {
+interface ReadUserInternalParams {
     email: string;
 }
 
@@ -92,7 +90,7 @@ export interface ReadUserInternalParams {
  * Get users by id or ids
  * @returns an array of users matching given ids
  */
-export const readUsersInternal = async (params: ReadQuery<ReadUserInternalParams>): ReadResponse<User> => {
+const readUsersInternal = async (params: ReadQuery<ReadUserInternalParams>): ReadResponse<User> => {
     if (!Array.isArray(params)) {
         params = [params];
     }
@@ -104,8 +102,7 @@ export const readUsersInternal = async (params: ReadQuery<ReadUserInternalParams
     return query;
 };
 
-const InternalUserActions = {
+export const InternalUserActions = {
     readUsers: readUsersInternal,
+    create: createUsers,
 };
-
-export { InternalUserActions };
