@@ -7,10 +7,10 @@ interface ResponseBodyBase {
 
 export type ResponseBody<T = null> = T extends null ? ResponseBodyBase : ResponseBodyBase & { data?: T };
 
-interface MealIngredientItem {
+interface RecipeIngredientItem {
     id: string;
     ingredientId?: string;
-    recipeId?: string;
+    subrecipeId?: string;
     amount?: number;
     description?: string;
     unit?: string;
@@ -26,34 +26,34 @@ interface Section<T> {
     items: Array<T>;
 }
 
-export type MealIngredients = Array<Section<MealIngredientItem>>;
+export type RecipeIngredients = Array<Section<RecipeIngredientItem>>;
 
-interface MealMethodStep {
+interface RecipeMethodStep {
     id: string;
     stepId?: string;
     description?: string;
 }
 
-export type MealMethod = Array<Section<MealMethodStep>>;
-interface MealCategoryItem {
+export type RecipeMethod = Array<Section<RecipeMethodStep>>;
+interface RecipeCategoryItem {
     categoryId: string;
     type?: string;
     name?: string;
 }
 
-export type MealCategories = Array<MealCategoryItem>;
+export type RecipeCategories = Array<RecipeCategoryItem>;
 
-export interface Meal {
-    mealId: string;
+export interface Recipe {
+    recipeId: string;
     name?: string;
     source?: string;
-    ingredients?: MealIngredients;
-    method?: MealMethod;
+    ingredients?: RecipeIngredients;
+    method?: RecipeMethod;
     notes?: string;
     photo?: string;
     ratingAverage?: number;
     ratingPersonal?: number;
-    categories?: MealCategories;
+    categories?: RecipeCategories;
     createdBy: string;
     cookTime?: number;
     prepTime?: number;
@@ -61,6 +61,6 @@ export interface Meal {
     timesCooked?: number;
 }
 
-export interface Meals {
-    [mealId: string]: Meal;
+export interface Recipes {
+    [recipeId: string]: Recipe;
 }

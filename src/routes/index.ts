@@ -8,7 +8,7 @@ import { default as categoriesRouter } from "./categories";
 import { default as docsRouter } from "./docs";
 import { default as ingredientRouter } from "./ingredient";
 import { default as listsRouter } from "./lists";
-import { default as mealsRouter } from "./meals";
+import { default as recipesRouter } from "./recipes";
 import { default as usersRouter } from "./users";
 
 const appRouter = express.Router();
@@ -18,7 +18,7 @@ appRouter.use("/books", booksRouter);
 appRouter.use("/categories", categoriesRouter);
 appRouter.use("/ingredient", ingredientRouter);
 appRouter.use("/lists", listsRouter);
-appRouter.use("/meals", mealsRouter);
+appRouter.use("/recipes", recipesRouter);
 appRouter.use("/users", usersRouter);
 
 appRouter.use("/", notFoundMiddleware);
@@ -31,6 +31,6 @@ export {
     docsRouter,
     ingredientRouter,
     listsRouter,
-    mealsRouter,
+    recipesRouter,
     usersRouter,
 };

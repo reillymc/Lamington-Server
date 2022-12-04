@@ -11,8 +11,8 @@ import db, {
     Book,
     DeleteResponse,
     User,
-    BookMeal,
-    bookMeal,
+    BookRecipe,
+    bookRecipe,
 } from "../database";
 import { Undefined } from "../utils";
 
@@ -69,7 +69,7 @@ const readBooks = async (params: ReadQuery<GetBookParams>): ReadResponse<ReadBoo
     return query;
 };
 
-interface GetBookMealsParams {
+interface GetBookRecipesParams {
     bookId: string;
 }
 
@@ -77,15 +77,15 @@ interface GetBookMealsParams {
  * Get books by id or ids
  * @returns an array of books matching given ids
  */
-const readBookMeals = async (params: ReadQuery<GetBookMealsParams>): ReadResponse<BookMeal> => {
+const readBookRecipes = async (params: ReadQuery<GetBookRecipesParams>): ReadResponse<BookRecipe> => {
     if (!Array.isArray(params)) {
         params = [params];
     }
     const bookIds = params.map(({ bookId }) => bookId);
 
-    const query = db<BookMeal>(lamington.bookMeal)
-        .select(bookMeal.bookId, bookMeal.mealId)
-        .whereIn(bookMeal.bookId, bookIds);
+    const query = db<BookRecipe>(lamington.bookRecipe)
+        .select(bookRecipe.bookId, bookRecipe.recipeId)
+        .whereIn(bookRecipe.bookId, bookIds);
     return query;
 };
 
@@ -116,14 +116,14 @@ const createBooks = async (books: CreateQuery<CreateBookParams>): CreateResponse
  * Creates a new book from params
  * @returns the newly created books
  */
-const createBookMeals = async (bookMeals: CreateQuery<BookMeal>): CreateResponse<number> => {
-    if (!Array.isArray(bookMeals)) {
-        bookMeals = [bookMeals];
+const createBookRecipes = async (bookRecipes: CreateQuery<BookRecipe>): CreateResponse<number> => {
+    if (!Array.isArray(bookRecipes)) {
+        bookRecipes = [bookRecipes];
     }
 
-    const result = await db(lamington.bookMeal)
-        .insert(bookMeals)
-        .onConflict([bookMeal.bookId, bookMeal.mealId])
+    const result = await db(lamington.bookRecipe)
+        .insert(bookRecipes)
+        .onConflict([bookRecipe.bookId, bookRecipe.recipeId])
         .merge();
 
     return result;
@@ -133,15 +133,15 @@ const createBookMeals = async (bookMeals: CreateQuery<BookMeal>): CreateResponse
  * Creates a new book from params
  * @returns the newly created books
  */
-const deleteBookMeals = async (bookMeals: CreateQuery<BookMeal>): DeleteResponse => {
-    if (!Array.isArray(bookMeals)) {
-        bookMeals = [bookMeals];
+const deleteBookRecipes = async (bookRecipes: CreateQuery<BookRecipe>): DeleteResponse => {
+    if (!Array.isArray(bookRecipes)) {
+        bookRecipes = [bookRecipes];
     }
 
-    const bookIds = bookMeals.map(({ bookId }) => bookId);
-    const mealIds = bookMeals.map(({ mealId }) => mealId);
+    const bookIds = bookRecipes.map(({ bookId }) => bookId);
+    const recipeIds = bookRecipes.map(({ recipeId }) => recipeId);
 
-    return db(lamington.bookMeal).whereIn(bookMeal.bookId, bookIds).and.whereIn(bookMeal.mealId, mealIds).delete();
+    return db(lamington.bookRecipe).whereIn(bookRecipe.bookId, bookIds).and.whereIn(bookRecipe.recipeId, recipeIds).delete();
 };
 
 interface DeleteBookParams {
@@ -162,12 +162,12 @@ const deleteBooks = async (books: CreateQuery<DeleteBookParams>): DeleteResponse
 };
 
 export const BookActions = {
-    addRecipes: createBookMeals,
+    addRecipes: createBookRecipes,
     create: createBooks,
     delete: deleteBooks,
-    deleteRecipes: deleteBookMeals,
+    deleteRecipes: deleteBookRecipes,
     read: readBooks,
     readAll: readAllBooks,
     readMy: readMyBooks,
-    readRecipes: readBookMeals,
+    readRecipes: readBookRecipes,
 };

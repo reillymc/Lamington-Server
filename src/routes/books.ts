@@ -3,7 +3,7 @@ import express from "express";
 import { BookActions, CreateBookParams } from "../controllers/book";
 import { AppError, MessageAction, userMessage } from "../services";
 import { AuthenticatedBody } from "../middleware";
-import { Meal, ResponseBody } from "../spec";
+import { Recipe, ResponseBody } from "../spec";
 import { User } from "./users";
 
 const router = express.Router();
@@ -23,7 +23,7 @@ export type Book = {
     name: string;
     createdBy: Pick<User, "userId" | "firstName">;
     description: string | undefined;
-    meals?: Array<Meal["mealId"]>;
+    recipes?: Array<Recipe["recipeId"]>;
 };
 
 interface BookRouteParams {
@@ -103,7 +103,7 @@ router.get<BookRouteParams, ResponseBody<GetBookResponse>, AuthenticatedBody>("/
         const data: GetBookResponse = {
             ...book,
             createdBy: { userId: book.createdBy, firstName: book.createdByName },
-            meals: bookRecipesResponse.filter(item => item.bookId === book.bookId).map(({ mealId }) => mealId),
+            recipes: bookRecipesResponse.filter(item => item.bookId === book.bookId).map(({ recipeId }) => recipeId),
         };
 
         return res.status(200).json({ error: false, data });
@@ -208,23 +208,23 @@ router.delete<BookRouteParams, ResponseBody, AuthenticatedBody>("/:bookId", asyn
     }
 });
 
-interface PostBookMealBody {
-    mealId?: string;
+interface PostBookRecipeBody {
+    recipeId?: string;
 }
 
 /**
  * POST request to create a book item.
  */
-router.post<BookRouteParams, ResponseBody, AuthenticatedBody<PostBookMealBody>>(
+router.post<BookRouteParams, ResponseBody, AuthenticatedBody<PostBookRecipeBody>>(
     "/:bookId/recipes",
     async (req, res, next) => {
         // Extract request fields
         const { bookId } = req.params;
 
-        const { mealId, userId } = req.body;
+        const { recipeId, userId } = req.body;
 
         // Check all required fields are present
-        if (!mealId || !bookId) {
+        if (!recipeId || !bookId) {
             return res.status(400).json({
                 error: true,
                 code: "BOOK_INSUFFICIENT_DATA",
@@ -234,7 +234,7 @@ router.post<BookRouteParams, ResponseBody, AuthenticatedBody<PostBookMealBody>>(
 
         const bookRecipe = {
             bookId,
-            mealId,
+            recipeId,
         };
 
         // Update database and return status
@@ -273,23 +273,23 @@ router.post<BookRouteParams, ResponseBody, AuthenticatedBody<PostBookMealBody>>(
     }
 );
 
-interface DeleteBookMealParams extends BookRouteParams {
-    mealId?: string;
+interface DeleteBookRecipeParams extends BookRouteParams {
+    recipeId?: string;
 }
 
 /**
  * DELETE request to delete a book recipe.
  */
-router.delete<DeleteBookMealParams, ResponseBody, AuthenticatedBody>(
-    "/:bookId/recipes/:mealId",
+router.delete<DeleteBookRecipeParams, ResponseBody, AuthenticatedBody>(
+    "/:bookId/recipes/:recipeId",
     async (req, res, next) => {
         // Extract request fields
-        const { bookId, mealId } = req.params;
+        const { bookId, recipeId } = req.params;
 
         const { userId } = req.body;
 
         // Check all required fields are present
-        if (!bookId || !mealId) {
+        if (!bookId || !recipeId) {
             return next(
                 new AppError({
                     status: 400,
@@ -321,7 +321,7 @@ router.delete<DeleteBookMealParams, ResponseBody, AuthenticatedBody>(
                 );
             }
 
-            await BookActions.deleteRecipes({ bookId, mealId });
+            await BookActions.deleteRecipes({ bookId, recipeId });
             return res.status(201).json({ error: false, message: "Book item deleted." });
         } catch (e: unknown) {
             next(

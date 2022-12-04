@@ -1,18 +1,18 @@
 export enum lamington {
     book = "book",
-    bookMeal = "book_meal",
+    bookRecipe = "book_recipe",
     category = "category",
     ingredient = "ingredient",
     list = "list",
     listItem = "list_item",
     listMember = "list_member",
-    meal = "meal",
-    mealCategory = "meal_category",
-    mealIngredient = "meal_ingredient",
-    mealRating = "meal_rating",
-    mealRoster = "meal_roster",
-    mealSection = "meal_section",
-    mealStep = "meal_step",
+    recipe = "recipe",
+    recipeCategory = "recipe_category",
+    recipeIngredient = "recipe_ingredient",
+    recipeRating = "recipe_rating",
+    recipeRoster = "recipe_roster",
+    recipeSection = "recipe_section",
+    recipeStep = "recipe_step",
     user = "user",
 }
 
@@ -29,17 +29,17 @@ export type CreateResponse<T> = Promise<Array<T>>;
 export type DeleteResponse = Promise<number>;
 
 export * from "./book";
-export * from "./bookMeal";
+export * from "./bookRecipe";
 export * from "./category";
 export * from "./ingredient";
 export * from "./list";
 export * from "./listItem";
 export * from "./listMember";
-export * from "./meal";
-export * from "./mealCategory";
-export * from "./mealIngredient";
-export * from "./mealRating";
-export * from "./mealRoster";
-export * from "./mealSection";
-export * from "./mealStep";
+export * from "./recipe";
+export * from "./recipeCategory";
+export * from "./recipeIngredient";
+export * from "./recipeRating";
+export * from "./recipeRoster";
+export * from "./recipeSection";
+export * from "./recipeStep";
 export * from "./user";

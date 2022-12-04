@@ -12,7 +12,7 @@ export interface Category {
     type: string;
     name: string;
     description?: string;
-    mealId?: string;
+    recipeId?: string;
 }
 
 /**

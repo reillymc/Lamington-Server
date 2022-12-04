@@ -26,27 +26,27 @@ export type Unit =
         $$$$
     }
 
-export interface MealIngredient {
+export interface RecipeIngredient {
     id: string;
-    mealId: string;
+    recipeId: string;
     ingredientId: string;
 }
 
 
-export interface MealCategory {
-    mealId: string;
+export interface RecipeCategory {
+    recipeId: string;
     categoryId: string;
     name: string;
     description?: string;
 }
 
-export interface MealRating {
-    mealId: string;
+export interface RecipeRating {
+    recipeId: string;
     rating: number; // can be string when using AVG
     raterId?: string;
 }
 
-export interface MealRoster {}
+export interface RecipeRoster {}
 
 export interface Authentication {
     token: string;

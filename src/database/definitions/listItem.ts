@@ -13,6 +13,7 @@ export type ListItem = {
     unit?: string;
     amount?: number;
     notes?: string;
+    createdBy: string;
 };
 
 export type ListItemModel = {
@@ -38,4 +39,5 @@ export const listItem: Table<ListItem> = {
     unit: `${lamington.listItem}.unit`,
     amount: `${lamington.listItem}.amount`,
     notes: `${lamington.listItem}.notes`,
+    createdBy: `${lamington.listItem}.createdBy`,
 } as const;
