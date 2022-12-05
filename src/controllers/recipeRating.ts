@@ -50,11 +50,7 @@ const selectPersonalByUserId = async (userId?: string): ReadResponse<RecipeRatin
         .groupBy(recipeRating.recipeId);
 };
 
-const RecipeRatingActions = {
-    insertRows,
-    selectPersonalByUserId,
+export const RecipeRatingActions = {
+    save: insertRows,
+    readMy: selectPersonalByUserId,
 };
-
-export default RecipeRatingActions;
-
-export { insertRows };

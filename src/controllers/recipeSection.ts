@@ -1,4 +1,4 @@
-import db, { lamington, recipeSection, RecipeSection } from "../database";
+import db, { lamington, ReadResponse, recipeSection, RecipeSection } from "../database";
 
 /**
  * Delete all RecipeSection rows for specified recipeId EXCEPT for the list of section ids provided
@@ -18,7 +18,10 @@ const deleteExcessRows = async (recipeId: string, retainedSectionIds: string[]) 
  * @returns
  */
 const insertRows = async (recipeSections: RecipeSection[]) =>
-    db(lamington.recipeSection).insert(recipeSections).onConflict([recipeSection.recipeId, recipeSection.sectionId]).merge();
+    db(lamington.recipeSection)
+        .insert(recipeSections)
+        .onConflict([recipeSection.recipeId, recipeSection.sectionId])
+        .merge();
 
 /**
  * Update RecipeSections for recipeId, by deleting all steps not in step list and then creating / updating provided steps in list
@@ -33,23 +36,19 @@ const updateRows = async (recipeId: string, recipeSections: RecipeSection[]) => 
     await insertRows(recipeSections);
 };
 
-type RecipeSectionResults = Array<Omit<RecipeSection, "recipeId">>;
+export type SectionsReadByRecipeIdResponse = Omit<RecipeSection, "recipeId">;
 
 /**
  * Get all method steps for a recipe
  * @param recipeId recipe to retrieve steps from
  * @returns RecipeSection array
  */
-const selectByRecipeId = async (recipeId: string): Promise<RecipeSectionResults> =>
+const selectByRecipeId = async (recipeId: string): ReadResponse<SectionsReadByRecipeIdResponse> =>
     db(lamington.recipeSection)
         .where({ [recipeSection.recipeId]: recipeId })
         .select(recipeSection.sectionId, recipeSection.index, recipeSection.name, recipeSection.description);
 
-const RecipeSectionActions = {
-    selectByRecipeId,
-    updateRows,
+export const RecipeSectionActions = {
+    readByRecipeId: selectByRecipeId,
+    save: updateRows,
 };
-
-export default RecipeSectionActions;
-
-export { deleteExcessRows, insertRows, selectByRecipeId, updateRows, RecipeSectionResults };

@@ -1,4 +1,4 @@
-import db, { lamington, recipeStep, RecipeStep } from "../database";
+import db, { lamington, ReadResponse, recipeStep, RecipeStep } from "../database";
 
 /**
  * Delete all RecipeStep rows for specified recipeId EXCEPT for the list of step ids provided
@@ -33,23 +33,19 @@ const updateRows = async (recipeId: string, recipeSteps: RecipeStep[]) => {
     await insertRows(recipeSteps);
 };
 
-type RecipeStepResults = Array<Omit<RecipeStep, "recipeId">>;
+export type StepReadByIdResponse = Omit<RecipeStep, "recipeId">;
 
 /**
  * Get all method steps for a recipe
  * @param recipeId recipe to retrieve steps from
  * @returns RecipeStep array
  */
-const selectByRecipeId = async (recipeId: string): Promise<RecipeStepResults> =>
+const selectByRecipeId = async (recipeId: string): ReadResponse<StepReadByIdResponse> =>
     db(lamington.recipeStep)
         .where({ [recipeStep.recipeId]: recipeId })
         .select(recipeStep.stepId, recipeStep.sectionId, recipeStep.index, recipeStep.description);
 
-const RecipeStepActions = {
-    selectByRecipeId,
-    updateRows,
+export const RecipeStepActions = {
+    readByRecipeId: selectByRecipeId,
+    save: updateRows,
 };
-
-export default RecipeStepActions;
-
-export { deleteExcessRows, insertRows, selectByRecipeId, updateRows, RecipeStepResults };

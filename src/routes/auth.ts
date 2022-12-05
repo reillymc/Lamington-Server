@@ -3,7 +3,7 @@ import express from "express";
 import { AuthenticatedBody } from "../middleware";
 import { InternalUserActions } from "../controllers";
 import { AppError, comparePassword, createToken, hashPassword, userMessage } from "../services";
-import { ResponseBody } from "../spec";
+import { BaseResponse } from "./spec";
 
 const router = express.Router();
 
@@ -39,7 +39,7 @@ interface AuthenticationResponse {
 /**
  * POST request to register a new user
  */
-router.post<never, ResponseBody<AuthenticationResponse>, AuthenticatedBody<RegisterBody>>(
+router.post<never, BaseResponse<AuthenticationResponse>, AuthenticatedBody<RegisterBody>>(
     "/register",
     async (req, res, next) => {
         // Extract request fields
@@ -64,7 +64,7 @@ router.post<never, ResponseBody<AuthenticationResponse>, AuthenticatedBody<Regis
         // Update database and return status
         try {
             if (!userId) {
-                const [createdUser] = await InternalUserActions.create(user);
+                const [createdUser] = await InternalUserActions.save(user);
                 const token = createToken(createdUser?.userId);
                 if (!token || !createdUser) throw "Failed to create token";
 
@@ -90,7 +90,7 @@ router.post<never, ResponseBody<AuthenticationResponse>, AuthenticatedBody<Regis
 /**
  * POST request to login an existing user
  */
-router.post<never, ResponseBody<AuthenticationResponse>, AuthenticatedBody<LoginBody>>(
+router.post<never, BaseResponse<AuthenticationResponse>, AuthenticatedBody<LoginBody>>(
     "/login",
     async (req, res, next) => {
         // Extract request fields
@@ -103,7 +103,7 @@ router.post<never, ResponseBody<AuthenticationResponse>, AuthenticatedBody<Login
 
         // Fetch and return data from database
         try {
-            const [user] = await InternalUserActions.readUsers({ email });
+            const [user] = await InternalUserActions.read({ email });
             if (!user) {
                 return res.status(401).json({ error: true, message: `Invalid username of password` });
             }

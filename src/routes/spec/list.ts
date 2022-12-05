@@ -59,7 +59,7 @@ export type GetListsRequest = BaseRequest<GetListsRequestBody & GetListsRequestP
 export type GetListsResponse = BaseResponse<Lists>;
 export type GetListsService = (request: GetListsRequest) => GetListsResponse;
 
-// Get List
+// Get list
 export type GetListRequestParams = BaseRequestParams<{ [listIdParam]: List["listId"] }>;
 export type GetListRequestBody = BaseRequestBody;
 
@@ -67,12 +67,12 @@ export type GetListRequest = BaseRequest<GetListRequestParams & GetListRequestBo
 export type GetListResponse = BaseResponse<List>;
 export type GetListService = (request: GetListRequest) => GetListResponse;
 
-// Post List
+// Post list
 export type PostListRequestParams = BaseRequestParams;
 export type PostListRequestBody = BaseRequestBody<{
-    name: string;
-    listId?: string;
-    description?: string;
+    name?: List["name"];
+    listId?: List["listId"];
+    description?: List["description"];
     memberIds?: string[];
 }>;
 
@@ -80,17 +80,17 @@ export type PostListRequest = BaseRequest<PostListRequestBody & PostListRequestP
 export type PostListResponse = BaseResponse;
 export type PostListService = (request: PostListRequest) => PostListResponse;
 
-// Post List Item
+// Post list item
 export type PostListItemRequestParams = BaseRequestParams<{ [listIdParam]: List["listId"] }>;
 export type PostListItemRequestBody = BaseRequestBody<{
-    name?: string;
-    itemId?: string;
-    dateAdded?: string;
-    completed?: boolean;
-    ingredientId?: string;
-    unit?: string;
-    amount?: number;
-    notes?: string;
+    name?: ListItem["name"];
+    itemId?: ListItem["itemId"];
+    dateAdded?: ListItem["dateAdded"];
+    completed?: ListItem["completed"];
+    ingredientId?: ListItem["ingredientId"];
+    unit?: ListItem["unit"];
+    amount?: ListItem["amount"];
+    notes?: ListItem["notes"];
 }>;
 
 export type PostListItemRequest = BaseRequest<PostListItemRequestParams & PostListItemRequestBody>;

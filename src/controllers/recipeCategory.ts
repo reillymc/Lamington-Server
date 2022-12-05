@@ -63,25 +63,21 @@ const selectRows = async (): Promise<RecipeCategoryResults> =>
         .select(recipeCategory.recipeId, recipeCategory.categoryId, category.type, category.name)
         .innerJoin(lamington.recipeCategory, recipeCategory.categoryId, category.categoryId);
 
-type RecipeCategoryByRecipeIdResults = Array<Omit<RecipeCategory, "recipeId"> & Pick<Category, "type" | "name">>;
+export type CategoryReadByRecipeIdResults = Array<Omit<RecipeCategory, "recipeId"> & Pick<Category, "type" | "name">>;
 
 /**
  * Get all categories for a recipe
  * @param recipeId recipe to retrieve categories from
  * @returns RecipeCategoryResults
  */
-const selectByRecipeId = async (recipeId: string): Promise<RecipeCategoryByRecipeIdResults> =>
+const selectByRecipeId = async (recipeId: string): Promise<CategoryReadByRecipeIdResults> =>
     db(lamington.category)
         .select(recipeCategory.categoryId, category.type, category.name)
         .where({ [recipeCategory.recipeId]: recipeId })
         .leftJoin(lamington.recipeCategory, recipeCategory.categoryId, category.categoryId);
 
-const RecipeCategoryActions = {
-    selectByRecipeId,
-    selectRows,
-    updateRows,
+export const RecipeCategoryActions = {
+    readByRecipeId: selectByRecipeId,
+    readAll: selectRows,
+    save: updateRows,
 };
-
-export default RecipeCategoryActions;
-
-export { deleteExcessRows, insertRows, selectRows, selectByRecipeId, updateRows, RecipeCategoryByRecipeIdResults };

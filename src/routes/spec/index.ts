@@ -1,9 +1,12 @@
 import { AuthenticatedBody } from "../../middleware";
+import { bookIdParam, BookServices, recipeSubpath } from "./book";
 import { itemIdParam, itemSubpath, listIdParam, ListServices, memberIdParam, memberSubpath } from "./list";
+import { rateSubpath, recipeIdParam, RecipeServices } from "./recipe";
+import { UserServices } from "./user";
 
 export type BaseRequest<T = null> = T extends null ? {} : T;
 
-export type BaseRequestParams<T = null> = T extends null ? never : T;
+export type BaseRequestParams<T = null> = T extends null ? {} : T;
 
 export type BaseRequestBody<T = null> = AuthenticatedBody<T>;
 
@@ -16,7 +19,7 @@ interface ResponseBodyBase {
 
 export type BaseResponse<T = null> = T extends null ? ResponseBodyBase : ResponseBodyBase & { data?: T };
 
-export const ListEndpoints = {
+export const ListEndpoint = {
     deleteList: `/:${listIdParam}`,
     deleteListItem: `/:${listIdParam}/${itemSubpath}/:${itemIdParam}`,
     deleteListMember: `/:${listIdParam}/${memberSubpath}/:${memberIdParam}`,
@@ -26,5 +29,28 @@ export const ListEndpoints = {
     postListItem: `/:${listIdParam}/${itemSubpath}`,
 } as const satisfies Record<keyof ListServices, string>;
 
+export const BookEndpoint = {
+    deleteBook: `/:${bookIdParam}`,
+    deleteBookRecipe: `/:${bookIdParam}/${recipeSubpath}/:${recipeIdParam}`,
+    getBook: `/:${bookIdParam}`,
+    getBooks: `/`,
+    postBook: `/`,
+    postBookRecipe: `/:${bookIdParam}/${recipeSubpath}`,
+} as const satisfies Record<keyof BookServices, string>;
+
+export const RecipeEndpoint = {
+    deleteRecipe: `/:${recipeIdParam}`,
+    getRecipe: `/:${recipeIdParam}`,
+    getRecipes: `/`,
+    postRecipe: `/`,
+    postRecipeRating: `/:${recipeIdParam}/${rateSubpath}`,
+} as const satisfies Record<keyof RecipeServices, string>;
+
+export const UserEndpoint = {
+    getUsers: `/`,
+} as const satisfies Record<keyof UserServices, string>;
+
+export * from "./book";
 export * from "./list";
+export * from "./recipe";
 export * from "./user";

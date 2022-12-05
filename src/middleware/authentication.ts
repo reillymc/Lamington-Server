@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 import config from "../config";
-import { ResponseBody } from "../spec/response";
+import { BaseResponse } from "../routes/spec";
 import { logger } from "../services";
 
 const { jwtSecret } = config.authentication;
@@ -18,7 +18,7 @@ const authenticationMiddleware = (
 
     var token = req.headers["authorization"];
     if (!token) {
-        const response: ResponseBody = { error: true, message: "Authentication required to access this service." };
+        const response: BaseResponse = { error: true, message: "Authentication required to access this service." };
         return res.status(403).send(response);
     }
     if (token.startsWith("Bearer ")) {
@@ -36,7 +36,7 @@ const authenticationMiddleware = (
                     route: req.originalUrl,
                 },
             });
-            const response: ResponseBody = { error: true, message: "Failed to authenticate token." };
+            const response: BaseResponse = { error: true, message: "Failed to authenticate token." };
             return res.status(400).send(response);
         }
         req.body.userId = decoded.userId;

@@ -1,7 +1,7 @@
 import express from "express";
 
 import { AppError, MessageAction, userMessage } from "../services";
-import { ListActions, InternalListActions } from "../controllers";
+import { ListActions, InternalListActions, ListItemActions, ListMemberActions } from "../controllers";
 import {
     DeleteListItemRequestBody,
     DeleteListItemRequestParams,
@@ -19,7 +19,7 @@ import {
     GetListsRequestParams,
     GetListsResponse,
     List,
-    ListEndpoints,
+    ListEndpoint,
     Lists,
     PostListItemRequestBody,
     PostListItemRequestParams,
@@ -34,7 +34,7 @@ const router = express.Router();
 /**
  * GET request to fetch all lists for a user
  */
-router.get<GetListsRequestParams, GetListsResponse, GetListsRequest>(ListEndpoints.getLists, async (req, res, next) => {
+router.get<GetListsRequestParams, GetListsResponse, GetListsRequest>(ListEndpoint.getLists, async (req, res, next) => {
     const { userId } = req.body;
 
     // Fetch and return result
@@ -61,7 +61,7 @@ router.get<GetListsRequestParams, GetListsResponse, GetListsRequest>(ListEndpoin
 /**
  * GET request to fetch list
  */
-router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(ListEndpoints.getList, async (req, res, next) => {
+router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(ListEndpoint.getList, async (req, res, next) => {
     // Extract request fields
     const { listId } = req.params;
     const { userId } = req.body;
@@ -89,8 +89,8 @@ router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(ListEndpoi
             );
         }
 
-        const listItemsResponse = await ListActions.readItems({ listId });
-        const listMembersResponse = await ListActions.readMembers({ listId });
+        const listItemsResponse = await ListItemActions.read({ listId });
+        const listMembersResponse = await ListMemberActions.read({ listId });
 
         const data: List = {
             ...list,
@@ -114,7 +114,7 @@ router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(ListEndpoi
  * POST request to create a list.
  */
 router.post<PostListRequestParams, PostListResponse, PostListRequestBody>(
-    ListEndpoints.postList,
+    ListEndpoint.postList,
     async (req, res, next) => {
         // Extract request fields
         const { userId, name, description, listId, memberIds = [] } = req.body;
@@ -144,7 +144,7 @@ router.post<PostListRequestParams, PostListResponse, PostListRequestBody>(
                 }
             }
 
-            await ListActions.create({
+            await ListActions.save({
                 listId,
                 name,
                 createdBy: userId,
@@ -170,7 +170,7 @@ router.post<PostListRequestParams, PostListResponse, PostListRequestBody>(
  * POST request to create a list item.
  */
 router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequestBody>(
-    ListEndpoints.postListItem,
+    ListEndpoint.postListItem,
     async (req, res, next) => {
         // Extract request fields
         const { listId } = req.params;
@@ -198,7 +198,7 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
 
         // Update database and return status
         try {
-            const [existingList] = await InternalListActions.readLists({ listId });
+            const [existingList] = await InternalListActions.read({ listId });
 
             if (!existingList) {
                 return res.status(403).json({
@@ -209,7 +209,7 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
             }
 
             if (existingList.createdBy !== userId) {
-                const existingListMembers = await ListActions.readMembers({ listId });
+                const existingListMembers = await ListMemberActions.read({ listId });
 
                 if (!existingListMembers?.some(member => member.userId === userId && member.canEdit)) {
                     return res.status(403).json({
@@ -220,7 +220,7 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
                 }
             }
 
-            await ListActions.createItems({
+            await ListItemActions.save({
                 listId,
                 name,
                 completed,
@@ -251,7 +251,7 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
  * DELETE request to delete a list.
  */
 router.delete<DeleteListRequestParams, DeleteListResponse, DeleteListRequestBody>(
-    ListEndpoints.deleteList,
+    ListEndpoint.deleteList,
     async (req, res, next) => {
         // Extract request fields
         const {
@@ -266,7 +266,7 @@ router.delete<DeleteListRequestParams, DeleteListResponse, DeleteListRequestBody
 
         // Update database and return status
         try {
-            const [existingList] = await InternalListActions.readLists({ listId });
+            const [existingList] = await InternalListActions.read({ listId });
 
             if (!existingList) {
                 return res.status(403).json({
@@ -299,7 +299,7 @@ router.delete<DeleteListRequestParams, DeleteListResponse, DeleteListRequestBody
  * DELETE request to delete a list item.
  */
 router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListItemRequestBody>(
-    ListEndpoints.deleteListItem,
+    ListEndpoint.deleteListItem,
     async (req, res, next) => {
         // Extract request fields
         const { listId, itemId } = req.params;
@@ -319,7 +319,7 @@ router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListIte
 
         // Update database and return status
         try {
-            const [existingList] = await InternalListActions.readLists({ listId });
+            const [existingList] = await InternalListActions.read({ listId });
             if (!existingList) {
                 return next(
                     new AppError({
@@ -329,7 +329,7 @@ router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListIte
                 );
             }
             if (existingList.createdBy !== userId) {
-                const existingListMembers = await ListActions.readMembers({ listId });
+                const existingListMembers = await ListMemberActions.read({ listId });
                 if (!existingListMembers?.some(member => member.userId === userId && member.canEdit)) {
                     return next(
                         new AppError({
@@ -340,7 +340,7 @@ router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListIte
                 }
             }
 
-            await ListActions.deleteItems({ listId, itemId });
+            await ListItemActions.delete({ listId, itemId });
             return res.status(201).json({ error: false, message: "List item deleted." });
         } catch (e: unknown) {
             next(
@@ -357,7 +357,7 @@ router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListIte
  * DELETE request to delete a list member.
  */
 router.delete<DeleteListMemberRequestParams, DeleteListMemberResponse, DeleteListMemberRequestBody>(
-    ListEndpoints.deleteListMember,
+    ListEndpoint.deleteListMember,
     async (req, res, next) => {
         // Extract request fields
         const { listId, userId: userIdReq } = req.params;
@@ -379,7 +379,7 @@ router.delete<DeleteListMemberRequestParams, DeleteListMemberResponse, DeleteLis
 
         // Update database and return status
         try {
-            const [existingList] = await InternalListActions.readLists({ listId });
+            const [existingList] = await InternalListActions.read({ listId });
             if (!existingList) {
                 return next(
                     new AppError({
@@ -410,7 +410,7 @@ router.delete<DeleteListMemberRequestParams, DeleteListMemberResponse, DeleteLis
                 );
             }
 
-            await ListActions.deleteMembers({ listId, userId: userToDelete });
+            await ListMemberActions.delete({ listId, userId: userToDelete });
             return res.status(201).json({ error: false, message: "List member removed." });
         } catch (e: unknown) {
             next(

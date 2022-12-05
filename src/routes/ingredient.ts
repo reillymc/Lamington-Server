@@ -1,9 +1,9 @@
 import express from "express";
 
 import { AuthenticatedBody } from "../middleware";
-import { createIngredients, CreateIngredientParams, readAllIngredients } from "../controllers/ingredient";
+import { IngredientActions, IngredientSaveRequest } from "../controllers/ingredient";
 import { AppError, userMessage, MessageAction } from "../services";
-import { ResponseBody } from "../spec";
+import { BaseResponse } from "./spec";
 
 const router = express.Router();
 
@@ -17,10 +17,10 @@ export interface Ingredient {
  * GET request to fetch all Ingredients
  * Does not require authentication
  */
-router.get<never, ResponseBody<Ingredient[]>, AuthenticatedBody>("/", async (req, res, next) => {
+router.get<never, BaseResponse<Ingredient[]>, AuthenticatedBody>("/", async (req, res, next) => {
     // Fetch and return result
     try {
-        const data = await readAllIngredients();
+        const data = await IngredientActions.readAll();
 
         return res.status(200).json({ error: false, data });
     } catch (e: unknown) {
@@ -33,7 +33,7 @@ router.get<never, ResponseBody<Ingredient[]>, AuthenticatedBody>("/", async (req
 /**
  * POST request to create an ingredient.
  */
-router.post<never, ResponseBody<Ingredient>, AuthenticatedBody<CreateIngredientParams>>("/", async (req, res, next) => {
+router.post<never, BaseResponse<Ingredient>, AuthenticatedBody<IngredientSaveRequest>>("/", async (req, res, next) => {
     // Extract request fields
     const { name, namePlural, description } = req.body;
 
@@ -45,7 +45,7 @@ router.post<never, ResponseBody<Ingredient>, AuthenticatedBody<CreateIngredientP
 
     // Update database and return status
     try {
-        const result = await createIngredients({ name, namePlural, description });
+        const result = await IngredientActions.save({ name, namePlural, description });
 
         if (result.length === 0) {
             return res.status(500).json({ error: true, message: "An unknown error occurred when creating ingredient" });

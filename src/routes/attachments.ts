@@ -4,8 +4,8 @@ import { v4 as uuidv4 } from "uuid";
 
 import config from "../config";
 import { AppError, storeLocalImage, uploadImageToImgur } from "../services";
-import { ResponseBody } from "../spec";
 import { uploadImageMiddleware } from "../middleware";
+import { BaseResponse } from "./spec";
 
 const router = express.Router();
 
@@ -14,7 +14,7 @@ interface UploadResponse {
 }
 
 // upload image
-router.post<never, ResponseBody<UploadResponse>>("/upload-image", uploadImageMiddleware, async (req, res, next) => {
+router.post<never, BaseResponse<UploadResponse>>("/upload-image", uploadImageMiddleware, async (req, res, next) => {
     const { file } = req;
     if (!file) {
         return res.status(400).json({ error: true, message: "No file was uploaded." });

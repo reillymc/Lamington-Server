@@ -103,6 +103,6 @@ const readUsersInternal = async (params: ReadQuery<ReadUserInternalParams>): Rea
 };
 
 export const InternalUserActions = {
-    readUsers: readUsersInternal,
-    create: createUsers,
+    read: readUsersInternal,
+    save: createUsers,
 };

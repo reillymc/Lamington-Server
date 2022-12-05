@@ -1,5 +1,6 @@
 import { v4 as Uuid } from "uuid";
 
+import { Undefined } from "../utils";
 import db, {
     CreateResponse,
     ReadResponse,
@@ -11,10 +12,7 @@ import db, {
     Book,
     DeleteResponse,
     User,
-    BookRecipe,
-    bookRecipe,
 } from "../database";
-import { Undefined } from "../utils";
 
 /**
  * Get all books
@@ -69,26 +67,6 @@ const readBooks = async (params: ReadQuery<GetBookParams>): ReadResponse<ReadBoo
     return query;
 };
 
-interface GetBookRecipesParams {
-    bookId: string;
-}
-
-/**
- * Get books by id or ids
- * @returns an array of books matching given ids
- */
-const readBookRecipes = async (params: ReadQuery<GetBookRecipesParams>): ReadResponse<BookRecipe> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
-    const bookIds = params.map(({ bookId }) => bookId);
-
-    const query = db<BookRecipe>(lamington.bookRecipe)
-        .select(bookRecipe.bookId, bookRecipe.recipeId)
-        .whereIn(bookRecipe.bookId, bookIds);
-    return query;
-};
-
 export interface CreateBookParams {
     bookId?: string;
     description: string | undefined;
@@ -112,38 +90,6 @@ const createBooks = async (books: CreateQuery<CreateBookParams>): CreateResponse
     return result;
 };
 
-/**
- * Creates a new book from params
- * @returns the newly created books
- */
-const createBookRecipes = async (bookRecipes: CreateQuery<BookRecipe>): CreateResponse<number> => {
-    if (!Array.isArray(bookRecipes)) {
-        bookRecipes = [bookRecipes];
-    }
-
-    const result = await db(lamington.bookRecipe)
-        .insert(bookRecipes)
-        .onConflict([bookRecipe.bookId, bookRecipe.recipeId])
-        .merge();
-
-    return result;
-};
-
-/**
- * Creates a new book from params
- * @returns the newly created books
- */
-const deleteBookRecipes = async (bookRecipes: CreateQuery<BookRecipe>): DeleteResponse => {
-    if (!Array.isArray(bookRecipes)) {
-        bookRecipes = [bookRecipes];
-    }
-
-    const bookIds = bookRecipes.map(({ bookId }) => bookId);
-    const recipeIds = bookRecipes.map(({ recipeId }) => recipeId);
-
-    return db(lamington.bookRecipe).whereIn(bookRecipe.bookId, bookIds).and.whereIn(bookRecipe.recipeId, recipeIds).delete();
-};
-
 interface DeleteBookParams {
     bookId: string;
 }
@@ -162,12 +108,9 @@ const deleteBooks = async (books: CreateQuery<DeleteBookParams>): DeleteResponse
 };
 
 export const BookActions = {
-    addRecipes: createBookRecipes,
-    create: createBooks,
+    save: createBooks,
     delete: deleteBooks,
-    deleteRecipes: deleteBookRecipes,
     read: readBooks,
     readAll: readAllBooks,
     readMy: readMyBooks,
-    readRecipes: readBookRecipes,
 };

@@ -1,4 +1,4 @@
-import db, { Ingredient, RecipeIngredient, lamington, recipeIngredient, ingredient } from "../database";
+import db, { Ingredient, RecipeIngredient, lamington, recipeIngredient, ingredient, ReadResponse } from "../database";
 import { Undefined } from "../utils";
 
 /**
@@ -34,14 +34,15 @@ const updateRows = async (recipeId: string, recipeIngredients: RecipeIngredient[
     await insertRows(recipeIngredients);
 };
 
-type RecipeIngredientResults = Array<Omit<RecipeIngredient, "recipeId"> & Pick<Ingredient, "name" | "namePlural">>;
+export type IngredientReadByRecipeIdResponse = Omit<RecipeIngredient, "recipeId"> &
+    Pick<Ingredient, "name" | "namePlural">;
 
 /**
  * Get all ingredients for a recipe
  * @param recipeId recipe to retrieve ingredients from
  * @returns RecipeIngredientsResults
  */
-const selectByRecipeId = async (recipeId: string): Promise<RecipeIngredientResults> =>
+const selectByRecipeId = async (recipeId: string): ReadResponse<IngredientReadByRecipeIdResponse> =>
     db(lamington.recipeIngredient)
         .where({ [recipeIngredient.recipeId]: recipeId })
         .select(
@@ -57,11 +58,7 @@ const selectByRecipeId = async (recipeId: string): Promise<RecipeIngredientResul
         )
         .join(lamington.ingredient, recipeIngredient.ingredientId, ingredient.ingredientId);
 
-const RecipeIngredientActions = {
-    selectByRecipeId,
-    updateRows,
+export const RecipeIngredientActions = {
+    readByRecipeId: selectByRecipeId,
+    save: updateRows,
 };
-
-export default RecipeIngredientActions;
-
-export { deleteExcessRows, insertRows, selectByRecipeId, updateRows, RecipeIngredientResults };

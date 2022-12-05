@@ -1,5 +1,6 @@
 import { v4 as Uuid } from "uuid";
 
+import { Undefined } from "../utils";
 import db, {
     CreateResponse,
     ReadResponse,
@@ -9,7 +10,6 @@ import db, {
     ReadQuery,
     CreateQuery,
 } from "../database";
-import { Undefined } from "../utils";
 
 /**
  * Get all ingredients
@@ -20,7 +20,7 @@ const readAllIngredients = async (): ReadResponse<Ingredient> => {
     return query;
 };
 
-export interface GetIngredientParams {
+interface GetIngredientParams {
     id: string;
 }
 
@@ -38,7 +38,7 @@ export const readIngredients = async (params: ReadQuery<GetIngredientParams>): R
     return query;
 };
 
-export interface CreateIngredientParams {
+export interface IngredientSaveRequest {
     ingredientId?: string;
     name?: string;
     namePlural?: string;
@@ -50,7 +50,7 @@ export interface CreateIngredientParams {
  * Creates a new ingredient from params
  * @returns the newly created ingredients
  */
-const createIngredients = async (ingredients: CreateQuery<CreateIngredientParams>): CreateResponse<Ingredient> => {
+const createIngredients = async (ingredients: CreateQuery<IngredientSaveRequest>): CreateResponse<Ingredient> => {
     if (!Array.isArray(ingredients)) {
         ingredients = [ingredients];
     }
@@ -72,11 +72,7 @@ const createIngredients = async (ingredients: CreateQuery<CreateIngredientParams
     return query;
 };
 
-const IngredientActions = {
-    readAllIngredients,
-    createIngredients,
+export const IngredientActions = {
+    readAll: readAllIngredients,
+    save: createIngredients,
 };
-
-export default IngredientActions;
-
-export { readAllIngredients, createIngredients };

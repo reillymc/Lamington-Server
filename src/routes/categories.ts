@@ -2,8 +2,8 @@ import express from "express";
 
 import { createCategories, CreateCategoryParams, readAllCategories } from "../controllers/category";
 import { AuthenticatedBody } from "../middleware";
-import { ResponseBody } from "../spec";
 import { AppError, userMessage, MessageAction } from "../services";
+import { BaseResponse } from "./spec";
 
 const router = express.Router();
 
@@ -19,7 +19,7 @@ export interface Category {
  * GET request to fetch all categories
  * Does not require authentication
  */
-router.get<never, ResponseBody<Category[]>, AuthenticatedBody>("/", async (req, res, next) => {
+router.get<never, BaseResponse<Category[]>, AuthenticatedBody>("/", async (req, res, next) => {
     // Fetch and return result
     try {
         const data = await readAllCategories();
@@ -35,7 +35,7 @@ router.get<never, ResponseBody<Category[]>, AuthenticatedBody>("/", async (req, 
 /**
  * POST request to create a category.
  */
-router.post<never, ResponseBody<Category>, AuthenticatedBody<CreateCategoryParams>>("/", async (req, res, next) => {
+router.post<never, BaseResponse<Category>, AuthenticatedBody<CreateCategoryParams>>("/", async (req, res, next) => {
     // Extract request fields
     const { name, notes, type } = req.body;
 
