@@ -192,7 +192,7 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
                 new AppError({
                     innerError: e,
                     message: userMessage({
-                        action: body.recipeId ? MessageAction.Update : MessageAction.Read,
+                        action: body.recipeId ? MessageAction.Update : MessageAction.Create,
                         entity: "recipe",
                     }),
                 })

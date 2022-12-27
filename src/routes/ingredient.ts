@@ -1,65 +1,92 @@
 import express from "express";
 
-import { AuthenticatedBody } from "../middleware";
-import { IngredientActions, IngredientSaveRequest } from "../controllers/ingredient";
 import { AppError, userMessage, MessageAction } from "../services";
-import { BaseResponse } from "./spec";
+import { IngredientActions } from "../controllers";
+import {
+    GetIngredientsRequestBody,
+    GetIngredientsRequestParams,
+    GetIngredientsResponse,
+    IngredientEndpoint,
+    PostIngredientRequestBody,
+    PostIngredientRequestParams,
+    PostIngredientResponse,
+} from "./spec";
 
 const router = express.Router();
-
-export interface Ingredient {
-    ingredientId: string;
-    name: string;
-    notes?: string;
-}
 
 /**
  * GET request to fetch all Ingredients
  * Does not require authentication
  */
-router.get<never, BaseResponse<Ingredient[]>, AuthenticatedBody>("/", async (req, res, next) => {
-    // Fetch and return result
-    try {
-        const data = await IngredientActions.readAll();
+router.get<GetIngredientsRequestParams, GetIngredientsResponse, GetIngredientsRequestBody>(
+    IngredientEndpoint.getIngredients,
+    async (req, res, next) => {
+        // Fetch and return result
+        try {
+            const result = await IngredientActions.readAll();
 
-        return res.status(200).json({ error: false, data });
-    } catch (e: unknown) {
-        next(
-            new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "ingredients" }) })
-        );
+            const data = Object.fromEntries(result.map(row => [row.ingredientId, row]));
+
+            return res.status(200).json({ error: false, data });
+        } catch (e: unknown) {
+            next(
+                new AppError({
+                    innerError: e,
+                    message: userMessage({ action: MessageAction.Read, entity: "ingredients" }),
+                })
+            );
+        }
     }
-});
+);
 
 /**
  * POST request to create an ingredient.
  */
-router.post<never, BaseResponse<Ingredient>, AuthenticatedBody<IngredientSaveRequest>>("/", async (req, res, next) => {
-    // Extract request fields
-    const { name, namePlural, description } = req.body;
+router.post<PostIngredientRequestParams, PostIngredientResponse, PostIngredientRequestBody>(
+    IngredientEndpoint.postIngredient,
+    async (req, res, next) => {
+        // Extract request fields
+        const { name, namePlural, description, userId } = req.body;
 
-    // Check all required fields are present
+        // Check all required fields are present
 
-    if (!name) {
-        return res.status(400).json({ error: true, message: "Insufficient data to create ingredient" });
-    }
-
-    // Update database and return status
-    try {
-        const result = await IngredientActions.save({ name, namePlural, description });
-
-        if (result.length === 0) {
-            return res.status(500).json({ error: true, message: "An unknown error occurred when creating ingredient" });
-        } else {
-            return res.status(201).json({ error: false, message: `Ingredient created`, data: result[0] });
+        if (!name) {
+            next(
+                new AppError({
+                    message: userMessage({
+                        action: "Insufficient data to create ingredient",
+                        entity: "ingredient",
+                    }),
+                })
+            );
         }
-    } catch (e: unknown) {
-        next(
-            new AppError({
-                innerError: e,
-                message: userMessage({ action: MessageAction.Create, entity: "ingredient" }),
-            })
-        );
+
+        // Update database and return status
+        try {
+            const [result] = await IngredientActions.save({ name, namePlural, description, createdBy: userId });
+
+            if (!result) {
+                next(
+                    new AppError({
+                        message: userMessage({
+                            action: "An unknown error occurred when creating ingredient",
+                            entity: "ingredient",
+                        }),
+                        status: 500,
+                    })
+                );
+            }
+
+            return res.status(201).json({ error: false, message: `Ingredient created`, data: result });
+        } catch (e: unknown) {
+            next(
+                new AppError({
+                    innerError: e,
+                    message: userMessage({ action: MessageAction.Create, entity: "ingredient" }),
+                })
+            );
+        }
     }
-});
+);
 
 export default router;

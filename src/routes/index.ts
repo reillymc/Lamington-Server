@@ -9,17 +9,17 @@ import { default as docsRouter } from "./docs";
 import { default as ingredientRouter } from "./ingredient";
 import { default as listsRouter } from "./lists";
 import { default as recipesRouter } from "./recipes";
-import { listEndpoint, usersEndpoint } from "./spec";
+import { bookEndpoint, ingredientEndpoint, listEndpoint, usersEndpoint, recipeEndpoint } from "./spec";
 import { default as usersRouter } from "./users";
 
 const appRouter = express.Router();
 
 appRouter.use("/attachments", attachmentsRouter);
-appRouter.use("/books", booksRouter);
+appRouter.use(bookEndpoint, booksRouter);
 appRouter.use("/categories", categoriesRouter);
-appRouter.use("/ingredient", ingredientRouter);
+appRouter.use(ingredientEndpoint, ingredientRouter);
 appRouter.use(listEndpoint, listsRouter);
-appRouter.use("/recipes", recipesRouter);
+appRouter.use(recipeEndpoint, recipesRouter);
 appRouter.use(usersEndpoint, usersRouter);
 
 appRouter.use("/", notFoundMiddleware);

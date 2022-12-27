@@ -9,6 +9,7 @@ export interface Ingredient {
     namePlural: string | undefined;
     description: string | undefined;
     photo: string | undefined;
+    createdBy: string | undefined;
 }
 
 export const ingredient: Table<Ingredient> = {
@@ -17,4 +18,5 @@ export const ingredient: Table<Ingredient> = {
     namePlural: "ingredient.namePlural",
     description: "ingredient.description",
     photo: "ingredient.photo",
+    createdBy: "ingredient.createdBy",
 } as const;

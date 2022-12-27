@@ -42,7 +42,7 @@ export type IngredientReadByRecipeIdResponse = Omit<RecipeIngredient, "recipeId"
  * @param recipeId recipe to retrieve ingredients from
  * @returns RecipeIngredientsResults
  */
-const selectByRecipeId = async (recipeId: string): ReadResponse<IngredientReadByRecipeIdResponse> =>
+const readByRecipeId = async (recipeId: string): ReadResponse<IngredientReadByRecipeIdResponse> =>
     db(lamington.recipeIngredient)
         .where({ [recipeIngredient.recipeId]: recipeId })
         .select(
@@ -59,6 +59,6 @@ const selectByRecipeId = async (recipeId: string): ReadResponse<IngredientReadBy
         .join(lamington.ingredient, recipeIngredient.ingredientId, ingredient.ingredientId);
 
 export const RecipeIngredientActions = {
-    readByRecipeId: selectByRecipeId,
+    readByRecipeId,
     save: updateRows,
 };

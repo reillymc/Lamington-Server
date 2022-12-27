@@ -44,6 +44,7 @@ export interface IngredientSaveRequest {
     namePlural?: string;
     description?: string;
     photo?: string;
+    createdBy?: string;
 }
 
 /**
@@ -55,9 +56,9 @@ const createIngredients = async (ingredients: CreateQuery<IngredientSaveRequest>
         ingredients = [ingredients];
     }
     const data: Ingredient[] = ingredients
-        .map(({ ingredientId = Uuid(), name, namePlural, description, photo }) => {
-            if (!name) return;
-            return { ingredientId, name, namePlural, description, photo };
+        .map(({ ingredientId = Uuid(), name, namePlural, description, photo, createdBy }) => {
+            if (!name || !createdBy) return;
+            return { ingredientId, name, namePlural, description, photo, createdBy };
         })
         .filter(Undefined);
 
