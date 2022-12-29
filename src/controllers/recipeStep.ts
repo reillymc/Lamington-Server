@@ -9,7 +9,7 @@ import db, { lamington, ReadResponse, recipeStep, RecipeStep } from "../database
 const deleteExcessRows = async (recipeId: string, retainedStepIds: string[]) =>
     db(lamington.recipeStep)
         .where({ [recipeStep.recipeId]: recipeId })
-        .whereNotIn(recipeStep.stepId, retainedStepIds)
+        .whereNotIn(recipeStep.id, retainedStepIds)
         .del();
 
 /**
@@ -18,7 +18,7 @@ const deleteExcessRows = async (recipeId: string, retainedStepIds: string[]) =>
  * @returns
  */
 const insertRows = async (recipeSteps: RecipeStep[]) =>
-    db(lamington.recipeStep).insert(recipeSteps).onConflict([recipeStep.recipeId, recipeStep.stepId]).merge();
+    db(lamington.recipeStep).insert(recipeSteps).onConflict([recipeStep.recipeId, recipeStep.id]).merge();
 
 /**
  * Update RecipeSteps for recipeId, by deleting all steps not in step list and then creating / updating provided steps in list
@@ -28,7 +28,7 @@ const insertRows = async (recipeSteps: RecipeStep[]) =>
 const updateRows = async (recipeId: string, recipeSteps: RecipeStep[]) => {
     await deleteExcessRows(
         recipeId,
-        recipeSteps.map(({ stepId }) => stepId)
+        recipeSteps.map(({ id }) => id)
     );
     await insertRows(recipeSteps);
 };
@@ -43,7 +43,7 @@ export type StepReadByIdResponse = Omit<RecipeStep, "recipeId">;
 const selectByRecipeId = async (recipeId: string): ReadResponse<StepReadByIdResponse> =>
     db(lamington.recipeStep)
         .where({ [recipeStep.recipeId]: recipeId })
-        .select(recipeStep.stepId, recipeStep.sectionId, recipeStep.index, recipeStep.description);
+        .select(recipeStep.id, recipeStep.sectionId, recipeStep.index, recipeStep.description);
 
 export const RecipeStepActions = {
     readByRecipeId: selectByRecipeId,

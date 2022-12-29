@@ -1,4 +1,5 @@
 import { AuthenticatedBody } from "../../middleware";
+import { AttachmentServices, imageSubpath } from "./attachment";
 import { bookIdParam, BookServices, recipeSubpath } from "./book";
 import { IngredientServices } from "./ingredient";
 import { itemIdParam, itemSubpath, listIdParam, ListServices, memberIdParam, memberSubpath } from "./list";
@@ -19,6 +20,10 @@ interface ResponseBodyBase {
 }
 
 export type BaseResponse<T = null> = T extends null ? ResponseBodyBase : ResponseBodyBase & { data?: T };
+
+export const AttachmentEndpoint = {
+    postImage: `/${imageSubpath}`,
+} as const satisfies Record<keyof AttachmentServices, string>;
 
 export const BookEndpoint = {
     deleteBook: `/:${bookIdParam}`,
@@ -56,6 +61,7 @@ export const UserEndpoint = {
     getUsers: `/`,
 } as const satisfies Record<keyof UserServices, string>;
 
+export * from "./attachment";
 export * from "./book";
 export * from "./ingredient";
 export * from "./list";

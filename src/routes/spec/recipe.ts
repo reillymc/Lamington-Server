@@ -55,10 +55,10 @@ interface Section<T> {
 
 export type RecipeIngredients = Array<Section<RecipeIngredientItem>>;
 
-interface RecipeMethodStep {
+export interface RecipeMethodStep {
     id: string;
-    stepId?: string;
     description?: string;
+    photo?: string;
 }
 
 export type RecipeMethod = Array<Section<RecipeMethodStep>>;

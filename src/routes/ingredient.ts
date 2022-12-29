@@ -51,7 +51,7 @@ router.post<PostIngredientRequestParams, PostIngredientResponse, PostIngredientR
         // Check all required fields are present
 
         if (!name) {
-            next(
+            return next(
                 new AppError({
                     message: userMessage({
                         action: "Insufficient data to create ingredient",

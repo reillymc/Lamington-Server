@@ -15,7 +15,7 @@ import db, {
  * Get all ingredients
  * @returns an array of all ingredients in the database
  */
-const readAllIngredients = async (): ReadResponse<Ingredient> => {
+const readAll = async (): ReadResponse<Ingredient> => {
     const query = db<Ingredient>(lamington.ingredient).select("*");
     return query;
 };
@@ -38,20 +38,11 @@ export const readIngredients = async (params: ReadQuery<GetIngredientParams>): R
     return query;
 };
 
-export interface IngredientSaveRequest {
-    ingredientId?: string;
-    name?: string;
-    namePlural?: string;
-    description?: string;
-    photo?: string;
-    createdBy?: string;
-}
-
 /**
  * Creates a new ingredient from params
  * @returns the newly created ingredients
  */
-const createIngredients = async (ingredients: CreateQuery<IngredientSaveRequest>): CreateResponse<Ingredient> => {
+const save = async (ingredients: CreateQuery<Partial<Ingredient>>): CreateResponse<Ingredient> => {
     if (!Array.isArray(ingredients)) {
         ingredients = [ingredients];
     }
@@ -61,6 +52,8 @@ const createIngredients = async (ingredients: CreateQuery<IngredientSaveRequest>
             return { ingredientId, name, namePlural, description, photo, createdBy };
         })
         .filter(Undefined);
+
+    if (data.length === 0) return [];
 
     const result = await db(lamington.ingredient)
         .insert(data)
@@ -74,6 +67,6 @@ const createIngredients = async (ingredients: CreateQuery<IngredientSaveRequest>
 };
 
 export const IngredientActions = {
-    readAll: readAllIngredients,
-    save: createIngredients,
+    readAll,
+    save,
 };

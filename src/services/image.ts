@@ -35,14 +35,12 @@ export const uploadImageToImgur = async (file: Buffer) => {
         ...formData.getHeaders(),
     };
 
-    var axiosConfig = {
+    const response = await axios({
         method: "post",
         url: "https://api.imgur.com/3/image",
         headers,
-        formData,
-    };
-
-    const response = await axios(axiosConfig);
+        data: formData,
+    });
 
     const { data } = (await response.data) as { data: { id: string } };
     return data;

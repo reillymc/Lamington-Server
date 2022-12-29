@@ -1,7 +1,5 @@
-import { v4 as Uuid } from "uuid";
-
 import { Undefined } from "../../utils";
-import { RecipeCategory, RecipeIngredient, RecipeStep } from "../../database";
+import { Ingredient, RecipeCategory, RecipeIngredient, RecipeSection, RecipeStep } from "../../database";
 
 // DB Actions
 import { CategoryReadByRecipeIdResults } from "../recipeCategory";
@@ -11,17 +9,51 @@ import { StepReadByIdResponse } from "../recipeStep";
 
 // Server Response Specs
 import { RecipeCategories, RecipeIngredients, RecipeMethod } from "../../routes/spec";
-import { IngredientSaveRequest } from "..";
+
+export const recipeSectionRequestToRows = (
+    recipeId: string,
+    ingredientSections: RecipeIngredients = [],
+    methodSections: RecipeMethod = []
+): Array<RecipeSection> | undefined => {
+    const ingSectionRequests: Array<RecipeSection> = ingredientSections.map(
+        ({ sectionId, name, description }, index) => ({
+            sectionId,
+            recipeId,
+            name,
+            description,
+            index,
+        })
+    );
+    const methodSectionRequests: Array<RecipeSection> = methodSections.map(
+        ({ sectionId, name, description }, index) => ({
+            sectionId,
+            recipeId,
+            name,
+            description,
+            index,
+        })
+    );
+
+    const sectionRequests = [...ingSectionRequests, ...methodSectionRequests];
+
+    if (!sectionRequests.length) return;
+
+    return sectionRequests;
+};
 
 export const ingredientsRequestToRows = (
-    ingredientSections?: RecipeIngredients
-): Array<IngredientSaveRequest> | undefined => {
+    ingredientSections?: RecipeIngredients,
+    createdBy?: string
+): Array<Partial<Ingredient>> | undefined => {
     if (!ingredientSections?.length) return;
 
     return ingredientSections
         .flatMap(({ items }) => items)
-        .filter(({ name }) => name !== undefined)
-        .map(({ ingredientId, name }) => ({ id: ingredientId, name }));
+        .map(item => ({
+            ...item,
+            createdBy,
+        }))
+        .filter(Undefined);
 };
 
 export const recipeIngredientsRequestToRows = (
@@ -59,15 +91,7 @@ export const recipeMethodRequestToRows = (
 
     return methodSections.flatMap(({ sectionId, items }) =>
         items.map(
-            (step, index): RecipeStep => ({
-                id: step.id,
-                recipeId,
-                stepId: step.stepId ?? Uuid(),
-                sectionId,
-                index,
-                description: step.description,
-                photo: undefined,
-            })
+            ({ id, description, photo }, index): RecipeStep => ({ id, recipeId, sectionId, index, description, photo })
         )
     );
 };

@@ -4,14 +4,14 @@ import { Undefined } from "../utils";
 /**
  * Delete all RecipeIngredient rows for specified recipeId EXCEPT for the list of ingredient ids provided
  * @param recipeId recipe to run operation on
- * @param retainedIngredientIds ingredients to keep
+ * @param retainedIds ingredients to keep
  * @returns
  */
-const deleteExcessRows = async (recipeId: string, retainedIngredientIds: string[]) =>
+const deleteExcessRows = async (recipeId: string, retainedIds: string[]) =>
     db(lamington.recipeIngredient)
         .where({ [recipeIngredient.recipeId]: recipeId })
-        .whereNotIn(recipeIngredient.ingredientId, retainedIngredientIds)
-        .del();
+        .whereNotIn(recipeIngredient.id, retainedIds)
+        .delete();
 
 /**
  * Create RecipeIngredients provided
@@ -19,18 +19,18 @@ const deleteExcessRows = async (recipeId: string, retainedIngredientIds: string[
  * @returns
  */
 const insertRows = async (recipeIngredients: RecipeIngredient[]) =>
-    db(lamington.recipeIngredient)
-        .insert(recipeIngredients)
-        .onConflict([recipeIngredient.recipeId, recipeIngredient.ingredientId])
-        .merge();
+    db(lamington.recipeIngredient).insert(recipeIngredients).onConflict([recipeIngredient.id]).merge();
 
 /**
  * Update RecipeIngredients for recipeId, by deleting all ingredients not in ingredient list and then creating / updating provided ingredients in list
  * @param recipeId recipe to modify
  * @param recipeIngredients ingredients to include in recipe
  */
-const updateRows = async (recipeId: string, recipeIngredients: RecipeIngredient[]) => {
-    await deleteExcessRows(recipeId, recipeIngredients.map(({ ingredientId }) => ingredientId).filter(Undefined));
+const save = async (recipeId: string, recipeIngredients: RecipeIngredient[]) => {
+    const ingredientIds = recipeIngredients.map(({ id }) => id).filter(Undefined);
+    console.log(ingredientIds);
+
+    await deleteExcessRows(recipeId, ingredientIds);
     await insertRows(recipeIngredients);
 };
 
@@ -46,6 +46,7 @@ const readByRecipeId = async (recipeId: string): ReadResponse<IngredientReadByRe
     db(lamington.recipeIngredient)
         .where({ [recipeIngredient.recipeId]: recipeId })
         .select(
+            recipeIngredient.id,
             recipeIngredient.ingredientId,
             ingredient.name,
             ingredient.namePlural,
@@ -60,5 +61,5 @@ const readByRecipeId = async (recipeId: string): ReadResponse<IngredientReadByRe
 
 export const RecipeIngredientActions = {
     readByRecipeId,
-    save: updateRows,
+    save,
 };
