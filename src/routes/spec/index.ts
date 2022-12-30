@@ -4,6 +4,7 @@ import { bookIdParam, BookServices, recipeSubpath } from "./book";
 import { IngredientServices } from "./ingredient";
 import { itemIdParam, itemSubpath, listIdParam, ListServices, memberIdParam, memberSubpath } from "./list";
 import { rateSubpath, recipeIdParam, RecipeServices } from "./recipe";
+import { TagServices } from "./tag";
 import { UserServices } from "./user";
 
 export type BaseRequest<T = null> = T extends null ? {} : T;
@@ -57,6 +58,10 @@ export const RecipeEndpoint = {
     postRecipeRating: `/:${recipeIdParam}/${rateSubpath}`,
 } as const satisfies Record<keyof RecipeServices, string>;
 
+export const TagEndpoint = {
+    getTags: `/`,
+} as const satisfies Record<keyof TagServices, string>;
+
 export const UserEndpoint = {
     getUsers: `/`,
 } as const satisfies Record<keyof UserServices, string>;
@@ -66,4 +71,5 @@ export * from "./book";
 export * from "./ingredient";
 export * from "./list";
 export * from "./recipe";
+export * from "./tag";
 export * from "./user";

@@ -4,22 +4,22 @@ import db, { Alias, lamington, recipe, Recipe, recipeRating, RecipeRating, ReadR
 
 import { Recipe as GetRecipeResponseItem, PostRecipeRequest } from "../routes/spec";
 
-import { RecipeCategoryActions } from "./recipeCategory";
+import { IngredientActions } from "./ingredient";
 import { RecipeIngredientActions } from "./recipeIngredient";
 import { RecipeRatingActions } from "./recipeRating";
 import { RecipeSectionActions } from "./recipeSection";
 import { RecipeStepActions } from "./recipeStep";
-import { IngredientActions } from "./ingredient";
+import { RecipeTagActions } from "./recipeTag";
 
 import {
     ingredientsRequestToRows,
-    recipeCategoriesRequestToRows,
-    recipeCategoryRowsToResponse,
     recipeIngredientRowsToResponse,
     recipeIngredientsRequestToRows,
     recipeMethodRequestToRows,
     recipeSectionRequestToRows,
     recipeStepRowsToResponse,
+    recipeTagRowsToResponse,
+    recipeTagsRequestToRows,
 } from "./helpers";
 
 type GetAllRecipesResults = Pick<
@@ -107,26 +107,25 @@ const readCreatedByUser = async (recipeId: string): Promise<{ createdBy: string 
 
 const read = async (recipeId: string, userId: string) => {
     // Fetch from database
-    const [recipe, categoryRows, ingredientRows, methodRows, sectionRows] = await Promise.all([
+    const [recipe, tagRows, ingredientRows, methodRows, sectionRows] = await Promise.all([
         getFullRecipe(recipeId, userId),
-        RecipeCategoryActions.readByRecipeId(recipeId),
+        RecipeTagActions.readByRecipeId(recipeId),
         RecipeIngredientActions.readByRecipeId(recipeId),
         RecipeStepActions.readByRecipeId(recipeId),
         RecipeSectionActions.readByRecipeId(recipeId),
     ]);
 
-    // TODO convert rows to recipe object: {[sectionId]: {name, description, index, ingredients: [], method: []}}
+    // Process results
     const ingredients = recipeIngredientRowsToResponse(ingredientRows, sectionRows);
     const method = recipeStepRowsToResponse(methodRows, sectionRows);
-    const categories = recipeCategoryRowsToResponse(categoryRows);
+    const tags = recipeTagRowsToResponse(tagRows);
 
-    // Process results
     const result: GetRecipeResponseItem = {
         ...recipe,
         ratingAverage: parseFloat(recipe.ratingAverage),
         ingredients,
         method,
-        categories,
+        tags,
     };
 
     return result;
@@ -136,7 +135,7 @@ const readMy = async (userId?: string) => {
     // Fetch from database
     const [recipeList, recipeCategoriesList] = await Promise.all([
         getAllRecipes(userId),
-        RecipeCategoryActions.readAll(), // TODO revisit and handle in one SQL query
+        RecipeTagActions.readAll(), // TODO revisit and handle in one SQL query
     ]);
 
     // Process results
@@ -144,7 +143,7 @@ const readMy = async (userId?: string) => {
         // TODO: Update GetRecipeResponseItem naming
         ...recipe,
         ratingAverage: parseFloat(recipe.ratingAverage),
-        categories: recipeCategoryRowsToResponse(recipeCategoriesList.filter(cat => cat.recipeId === recipe.recipeId)),
+        tags: recipeTagRowsToResponse(recipeCategoriesList.filter(cat => cat.recipeId === recipe.recipeId)),
     }));
 
     return data;
@@ -188,9 +187,9 @@ const save = async (recipeItem: Omit<PostRecipeRequest, "userId">) => {
     const recipeStepRows = recipeMethodRequestToRows(recipeId, recipeItem.method);
     if (recipeStepRows?.length) await RecipeStepActions.save(recipeId, recipeStepRows);
 
-    // Update RecipeCategories rows
-    // const recipeCategoryRows = recipeCategoriesRequestToRows(recipeId, recipeItem.categories);
-    // await RecipeCategoryActions.save(recipeId, recipeCategoryRows);
+    // Update RecipeTags rows
+    const recipeTagRows = recipeTagsRequestToRows(recipeId, recipeItem.tags);
+    if (recipeTagRows?.length) await RecipeTagActions.save(recipeId, recipeTagRows);
 
     // Update Recipe Rating row
     if (recipeItem.ratingPersonal) {

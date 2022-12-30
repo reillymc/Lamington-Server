@@ -34,8 +34,7 @@ const save = async (recipeId: string, recipeIngredients: RecipeIngredient[]) => 
     await insertRows(recipeIngredients);
 };
 
-export type IngredientReadByRecipeIdResponse = Omit<RecipeIngredient, "recipeId"> &
-    Pick<Ingredient, "name" | "namePlural">;
+export type IngredientReadByRecipeIdResponse = Omit<RecipeIngredient, "recipeId"> & Pick<Ingredient, "name">;
 
 /**
  * Get all ingredients for a recipe
@@ -49,7 +48,6 @@ const readByRecipeId = async (recipeId: string): ReadResponse<IngredientReadByRe
             recipeIngredient.id,
             recipeIngredient.ingredientId,
             ingredient.name,
-            ingredient.namePlural,
             recipeIngredient.sectionId,
             recipeIngredient.index,
             recipeIngredient.description,

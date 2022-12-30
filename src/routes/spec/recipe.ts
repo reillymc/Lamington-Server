@@ -1,4 +1,5 @@
 import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
+import { Tag } from "./tag";
 
 export const recipeEndpoint = "/recipes" as const;
 
@@ -26,7 +27,7 @@ export interface Recipe {
     photo?: string;
     ratingAverage?: number;
     ratingPersonal?: number;
-    categories?: RecipeCategories;
+    tags?: RecipeTags;
     createdBy: string;
     cookTime?: number;
     prepTime?: number;
@@ -43,7 +44,6 @@ export interface RecipeIngredientItem {
     unit?: string;
     multiplier?: number;
     name?: string;
-    namePlural?: string;
 }
 
 interface Section<T> {
@@ -62,13 +62,8 @@ export interface RecipeMethodStep {
 }
 
 export type RecipeMethod = Array<Section<RecipeMethodStep>>;
-interface RecipeCategoryItem {
-    categoryId: string;
-    type?: string;
-    name?: string;
-}
 
-export type RecipeCategories = Array<RecipeCategoryItem>;
+export type RecipeTags = Array<Tag>;
 
 // Get recipes
 export type GetRecipesRequestParams = BaseRequestParams;
@@ -98,7 +93,7 @@ export type PostRecipeRequestBody = BaseRequestBody<{
     photo?: string;
     ratingAverage?: number;
     ratingPersonal?: number;
-    categories?: RecipeCategories;
+    tags?: RecipeTags;
     createdBy: string;
     cookTime?: number;
     prepTime?: number;

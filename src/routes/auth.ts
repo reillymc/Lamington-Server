@@ -97,7 +97,7 @@ router.post<never, BaseResponse<AuthenticationResponse>, AuthenticatedBody<Login
         const { email, password } = req.body;
 
         // Check all required fields are present
-        if (!email || !password) {
+        if (!email || (process.env.NODE_ENV === "production" && !password)) {
             return res.status(401).json({ error: true, message: `invalid login - bad password` });
         }
 

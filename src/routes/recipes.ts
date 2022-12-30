@@ -26,7 +26,6 @@ const router = express.Router();
 /**
  * GET request to fetch a recipe by Id
  * Requires recipe query params
- * Does not require authentication (authentication is needed to fetch personal recipe rating)
  */
 router.get<GetRecipeRequestParams, GetRecipeResponse, GetRecipeRequestBody>(
     RecipeEndpoint.getRecipe,
@@ -54,7 +53,6 @@ router.get<GetRecipeRequestParams, GetRecipeResponse, GetRecipeRequestBody>(
 
 /**
  * GET request to fetch all recipes
- * Does not require authentication (authentication is only needed to fetch personal recipe rating)
  */
 router.get<GetRecipesRequestParams, GetRecipesResponse, GetRecipesRequestBody>(
     RecipeEndpoint.getRecipes,
@@ -78,7 +76,6 @@ router.get<GetRecipesRequestParams, GetRecipesResponse, GetRecipesRequestBody>(
 /**
  * POST request to delete a recipe
  * Requires recipe delete body
- * Requires authentication body
  */
 router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeRequestBody>(
     RecipeEndpoint.deleteRecipe,
@@ -135,7 +132,6 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
 /**
  * POST request to create a new recipe or update an existing recipe
  * Requires recipe data body
- * Requires authentication body
  */
 router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
     RecipeEndpoint.postRecipe,
@@ -183,7 +179,7 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
                 prepTime: body.prepTime,
                 cookTime: body.cookTime,
                 timesCooked: body.timesCooked,
-                categories: body.categories,
+                tags: body.tags,
                 createdBy: body.userId,
             });
             return res.status(201).json({ error: false, message: `Recipe ${body.recipeId ? "updated" : "created"}` });
@@ -206,7 +202,6 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
 /**
  * POST request to rate a recipe
  * Requires recipe rating body
- * Requires authentication body
  */
 router.post<PostRecipeRatingRequestParams, PostRecipeRatingResponse, PostRecipeRatingRequestBody>(
     RecipeEndpoint.postRecipeRating,

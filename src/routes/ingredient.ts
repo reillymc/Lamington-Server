@@ -16,7 +16,6 @@ const router = express.Router();
 
 /**
  * GET request to fetch all Ingredients
- * Does not require authentication
  */
 router.get<GetIngredientsRequestParams, GetIngredientsResponse, GetIngredientsRequestBody>(
     IngredientEndpoint.getIngredients,
@@ -46,7 +45,7 @@ router.post<PostIngredientRequestParams, PostIngredientResponse, PostIngredientR
     IngredientEndpoint.postIngredient,
     async (req, res, next) => {
         // Extract request fields
-        const { name, namePlural, description, userId } = req.body;
+        const { name, description, userId } = req.body;
 
         // Check all required fields are present
 
@@ -63,7 +62,7 @@ router.post<PostIngredientRequestParams, PostIngredientResponse, PostIngredientR
 
         // Update database and return status
         try {
-            const [result] = await IngredientActions.save({ name, namePlural, description, createdBy: userId });
+            const [result] = await IngredientActions.save({ name, description, createdBy: userId });
 
             if (!result) {
                 next(

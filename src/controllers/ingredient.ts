@@ -47,9 +47,9 @@ const save = async (ingredients: CreateQuery<Partial<Ingredient>>): CreateRespon
         ingredients = [ingredients];
     }
     const data: Ingredient[] = ingredients
-        .map(({ ingredientId = Uuid(), name, namePlural, description, photo, createdBy }) => {
+        .map(({ ingredientId = Uuid(), name, description, photo, createdBy }) => {
             if (!name || !createdBy) return;
-            return { ingredientId, name, namePlural, description, photo, createdBy };
+            return { ingredientId, name, description, photo, createdBy };
         })
         .filter(Undefined);
 
