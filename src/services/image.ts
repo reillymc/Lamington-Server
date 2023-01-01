@@ -3,6 +3,7 @@ import sharp from "sharp";
 import FormData from "form-data";
 import { FileFilterCallback } from "multer";
 import { Request } from "express";
+import { v4 as Uuid } from "uuid";
 
 import config from "../config";
 import path from "path";
@@ -16,15 +17,10 @@ export const imageFilter = (req: Request, file: Express.Multer.File, callback: F
     callback(null, validFile);
 };
 
-export const storeLocalImage = (file: Buffer) =>
-    sharp(file)
-        .resize({
-            width: 1280,
-            fit: "cover",
-        })
-        .jpeg({ progressive: true, force: false, mozjpeg: true, quality: 50 })
-        .png({ progressive: true, force: false, compressionLevel: 8, quality: 50 })
-        .toFile("uploads/" + name);
+export const compressImage = (file: Buffer) => sharp(file).jpeg({ force: true, mozjpeg: true, quality: 80 }).toBuffer();
+
+export const storeLocalImage = (file: Buffer, name: string) =>
+    sharp(file).jpeg({ force: true, mozjpeg: true, quality: 50 }).toFile(`uploads/${name}`);
 
 export const uploadImageToImgur = async (file: Buffer) => {
     const formData = new FormData();

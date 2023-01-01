@@ -93,31 +93,24 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
 
         // Update database and return status
         try {
-            // Check if the delete order came from the recipe creator
-            // const recipeDetails: Recipe = await db
-            //     .from(lamington.recipe)
-            //     .select(recipe.id, recipe.createdBy)
-            //     .where({ [recipe.id]: recipeId })
-            //     .first();
+            const existingRecipe = await InternalRecipeActions.readCreatedByUser(recipeId);
 
-            // if (recipeDetails.createdBy != userId) {
-            //     return res.status(400).json({ error: true, message: `You are not authorised to delete this recipe` });
-            // }
+            if (!existingRecipe) {
+                return res.status(403).json({
+                    error: true,
+                    message: `Cannot find recipe to delete`,
+                });
+            }
 
-            //TODO: remove - should be handled with FK delete policy
-            // await db(lamington.recipeRating)
-            //     .where({ [recipeRating.recipeId]: recipeId })
-            //     .del();
-            // await db(lamington.recipeRoster)
-            //     .where({ [recipeRoster.recipeId]: recipeId })
-            //     .del();
-            // await db(lamington.recipeCategory)
-            //     .where({ [recipeCategory.recipeId]: recipeId })
-            //     .del();
-            // await db(lamington.recipe)
-            //     .where({ [recipe.recipeId]: recipeId })
-            //     .del();
-            return res.status(201).json({ error: false, message: `yay! you've successfully deleted this recipe :)` });
+            if (existingRecipe.createdBy !== userId) {
+                return res.status(403).json({
+                    error: true,
+                    message: `Cannot delete a recipe that doesn't belong to you`,
+                });
+            }
+
+            const data = await RecipeActions.delete(recipeId);
+            return res.status(200).json({ error: false });
         } catch (e: unknown) {
             next(
                 new AppError({
@@ -180,7 +173,7 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
                 cookTime: body.cookTime,
                 timesCooked: body.timesCooked,
                 tags: body.tags,
-                createdBy: body.userId,
+                userId: body.userId,
             });
             return res.status(201).json({ error: false, message: `Recipe ${body.recipeId ? "updated" : "created"}` });
         } catch (e: unknown) {

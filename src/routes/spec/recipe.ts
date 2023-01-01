@@ -1,5 +1,6 @@
 import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
 import { Tag } from "./tag";
+import { User } from "./user";
 
 export const recipeEndpoint = "/recipes" as const;
 
@@ -28,7 +29,7 @@ export interface Recipe {
     ratingAverage?: number;
     ratingPersonal?: number;
     tags?: RecipeTags;
-    createdBy: string;
+    createdBy: Pick<User, "userId" | "firstName">;
     cookTime?: number;
     prepTime?: number;
     servings?: number;
@@ -94,7 +95,6 @@ export type PostRecipeRequestBody = BaseRequestBody<{
     ratingAverage?: number;
     ratingPersonal?: number;
     tags?: RecipeTags;
-    createdBy: string;
     cookTime?: number;
     prepTime?: number;
     servings?: number;

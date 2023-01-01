@@ -3,7 +3,7 @@ import express from "express";
 import { v4 as Uuid } from "uuid";
 
 import config from "../config";
-import { AppError, storeLocalImage, uploadImageToImgur } from "../services";
+import { AppError, compressImage, storeLocalImage, uploadImageToImgur } from "../services";
 import { uploadImageMiddleware } from "../middleware";
 import {
     AttachmentEndpoint,
@@ -25,17 +25,18 @@ router.post<PostImageAttachmentRequestParams, PostImageAttachmentResponse, PostI
         }
 
         if (config.service.imageStorage === "local") {
-            const name = Uuid() + path.extname(file.originalname ?? ".jpeg");
+            const name = `${Uuid()}$.jpeg`;
 
             try {
-                await storeLocalImage(file.buffer);
+                await storeLocalImage(file.buffer, name);
                 return res.json({ error: false, data: { address: `lamington:${name}` } });
             } catch (e: unknown) {
                 next(new AppError({ innerError: e, message: "An error occurred when uploading image" }));
             }
         } else {
             try {
-                const uploadResponse = await uploadImageToImgur(file.buffer);
+                const resizedFile = await compressImage(file.buffer);
+                const uploadResponse = await uploadImageToImgur(resizedFile);
                 console.log(`imgur:${uploadResponse.id}${path.extname(req?.file?.originalname ?? ".jpeg")}`);
 
                 return res.json({

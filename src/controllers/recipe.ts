@@ -1,6 +1,16 @@
 import { v4 as Uuid } from "uuid";
 
-import db, { Alias, lamington, recipe, Recipe, recipeRating, RecipeRating, ReadResponse, user } from "../database";
+import db, {
+    Alias,
+    lamington,
+    recipe,
+    Recipe,
+    recipeRating,
+    RecipeRating,
+    ReadResponse,
+    user,
+    User,
+} from "../database";
 
 import { Recipe as GetRecipeResponseItem, PostRecipeRequest } from "../routes/spec";
 
@@ -25,7 +35,7 @@ import {
 type GetAllRecipesResults = Pick<
     Recipe,
     "recipeId" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime" | "createdBy"
-> & { ratingAverage: string };
+> & { ratingAverage: string; createdByName: User["firstName"] };
 
 const getAllRecipes = async (userId?: string): ReadResponse<GetAllRecipesResults> => {
     const recipeAliasName = "m1";
@@ -43,7 +53,8 @@ const getAllRecipes = async (userId?: string): ReadResponse<GetAllRecipesResults
             recipeAlias.timesCooked,
             recipeAlias.cookTime,
             recipeAlias.prepTime,
-            `${user.firstName} as createdBy`,
+            recipeAlias.createdBy,
+            `${user.firstName} as createdByName`,
             db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ratingAverage`),
             db.raw(
                 `(${db
@@ -64,7 +75,7 @@ const getAllRecipes = async (userId?: string): ReadResponse<GetAllRecipesResults
     return query;
 };
 
-type GetFullRecipeResults = Recipe & { ratingAverage: string }; // TODO: stop using Table suffix on types here
+type GetFullRecipeResults = Recipe & { ratingAverage: string; createdByName: User["firstName"] }; // TODO: stop using Table suffix on types here
 
 const getFullRecipe = async (recipeId: string, userId: string): Promise<GetFullRecipeResults> => {
     const query = db<Recipe>(lamington.recipe)
@@ -78,7 +89,8 @@ const getFullRecipe = async (recipeId: string, userId: string): Promise<GetFullR
             recipe.cookTime,
             recipe.notes,
             recipe.timesCooked,
-            `${user.firstName} as createdBy`,
+            recipe.createdBy,
+            `${user.firstName} as createdByName`,
             db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ratingAverage`),
             db.raw(
                 `(${db
@@ -126,6 +138,7 @@ const read = async (recipeId: string, userId: string) => {
         ingredients,
         method,
         tags,
+        createdBy: { userId: recipe.createdBy, firstName: recipe.createdByName },
     };
 
     return result;
@@ -144,6 +157,7 @@ const readMy = async (userId?: string) => {
         tags: recipeTagRowsToResponse(
             recipeCategoriesList.filter(cat => !cat.parentId || cat.recipeId === recipe.recipeId)
         ),
+        createdBy: { userId: recipe.createdBy, firstName: recipe.createdByName },
     }));
 
     return data;
@@ -153,13 +167,13 @@ const readMy = async (userId?: string) => {
  * Create a new recipe or update an existing recipe by recipeId
  * @param recipeItem
  */
-const save = async (recipeItem: Omit<PostRecipeRequest, "userId">) => {
+const save = async (recipeItem: PostRecipeRequest) => {
     const recipeId = recipeItem.recipeId ?? Uuid();
 
     const recipeData: Recipe = {
         recipeId: recipeId,
         name: recipeItem.name,
-        createdBy: recipeItem.createdBy,
+        createdBy: recipeItem.userId,
         cookTime: recipeItem.cookTime,
         notes: recipeItem.notes,
         photo: recipeItem.photo,
@@ -176,7 +190,7 @@ const save = async (recipeItem: Omit<PostRecipeRequest, "userId">) => {
     if (recipeSectionRows?.length) await RecipeSectionActions.save(recipeId, recipeSectionRows);
 
     // Create new Ingredients rows
-    const ingredientRows = ingredientsRequestToRows(recipeItem.ingredients, recipeItem.createdBy);
+    const ingredientRows = ingredientsRequestToRows(recipeItem.ingredients, recipeItem.userId);
     if (ingredientRows?.length) await IngredientActions.save(ingredientRows);
 
     // Update RecipeIngredients rows
@@ -195,17 +209,23 @@ const save = async (recipeItem: Omit<PostRecipeRequest, "userId">) => {
     if (recipeItem.ratingPersonal) {
         const recipeRatingRow: RecipeRating = {
             recipeId,
-            raterId: recipeItem.createdBy,
+            raterId: recipeItem.userId,
             rating: recipeItem.ratingPersonal,
         };
         await RecipeRatingActions.save(recipeRatingRow);
     }
 };
 
+const deleteRecipe = async (recipeId: string) =>
+    db(lamington.recipe)
+        .where({ [recipe.recipeId]: recipeId })
+        .del();
+
 export const RecipeActions = {
     read,
     readMy,
     save,
+    delete: deleteRecipe,
 };
 
 export const InternalRecipeActions = {
