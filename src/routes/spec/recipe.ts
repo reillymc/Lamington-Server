@@ -63,7 +63,7 @@ export interface RecipeMethodStep {
 
 export type RecipeMethod = Array<Section<RecipeMethodStep>>;
 
-export type RecipeTags = Array<Tag>;
+export type RecipeTags = { [tagGroup: string]: Partial<Tag> & { tags?: Array<Tag> } };
 
 // Get recipes
 export type GetRecipesRequestParams = BaseRequestParams;

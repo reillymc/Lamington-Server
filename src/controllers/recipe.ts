@@ -133,17 +133,17 @@ const read = async (recipeId: string, userId: string) => {
 
 const readMy = async (userId?: string) => {
     // Fetch from database
-    const [recipeList, recipeCategoriesList] = await Promise.all([
-        getAllRecipes(userId),
-        RecipeTagActions.readAll(), // TODO revisit and handle in one SQL query
-    ]);
+    const recipeList = await getAllRecipes(userId);
+    const recipeCategoriesList = await RecipeTagActions.readByRecipeId(recipeList.map(({ recipeId }) => recipeId));
 
     // Process results
     const data: GetRecipeResponseItem[] = recipeList.map(recipe => ({
         // TODO: Update GetRecipeResponseItem naming
         ...recipe,
         ratingAverage: parseFloat(recipe.ratingAverage),
-        tags: recipeTagRowsToResponse(recipeCategoriesList.filter(cat => cat.recipeId === recipe.recipeId)),
+        tags: recipeTagRowsToResponse(
+            recipeCategoriesList.filter(cat => !cat.parentId || cat.recipeId === recipe.recipeId)
+        ),
     }));
 
     return data;
