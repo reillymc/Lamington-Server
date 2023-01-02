@@ -37,7 +37,6 @@ router.post<PostImageAttachmentRequestParams, PostImageAttachmentResponse, PostI
             try {
                 const resizedFile = await compressImage(file.buffer);
                 const uploadResponse = await uploadImageToImgur(resizedFile);
-                console.log(`imgur:${uploadResponse.id}${path.extname(req?.file?.originalname ?? ".jpeg")}`);
 
                 return res.json({
                     error: false,

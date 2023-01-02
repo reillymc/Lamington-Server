@@ -2,6 +2,7 @@ import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".
 
 export const attachmentEndpoint = "/attachments" as const;
 export const imageSubpath = "image" as const;
+export const uploadDirectory = "uploads" as const;
 
 /**
  * ImageAttachment
@@ -20,4 +21,5 @@ export type PostImageAttachmentService = (request: PostImageAttachmentRequest) =
 
 export interface AttachmentServices {
     postImage: PostImageAttachmentService;
+    downloadImage: unknown;
 }

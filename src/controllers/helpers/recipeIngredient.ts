@@ -21,7 +21,7 @@ export const recipeIngredientRowsToResponse = (
             items: ingredients.filter(ingredient => ingredient.sectionId === sectionId),
         }));
 
-    return recipeIngredients;
+    return recipeIngredients.filter(({ items }) => items.length);
 };
 
 export const recipeIngredientsRequestToRows = (

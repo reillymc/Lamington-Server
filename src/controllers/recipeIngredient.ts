@@ -28,7 +28,6 @@ const insertRows = async (recipeIngredients: RecipeIngredient[]) =>
  */
 const save = async (recipeId: string, recipeIngredients: RecipeIngredient[]) => {
     const ingredientIds = recipeIngredients.map(({ id }) => id).filter(Undefined);
-    console.log(ingredientIds);
 
     await deleteExcessRows(recipeId, ingredientIds);
     await insertRows(recipeIngredients);

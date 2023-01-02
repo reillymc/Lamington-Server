@@ -1,4 +1,4 @@
-import { BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
+import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
 
 export const usersEndpoint = "/users" as const;
 
@@ -26,7 +26,7 @@ export type User = {
 export type GetUsersRequestParams = BaseRequestParams;
 export type GetUsersRequestBody = BaseRequestBody;
 
-export type GetUsersRequest = GetUsersRequestBody & GetUsersRequestParams;
+export type GetUsersRequest = BaseRequest<GetUsersRequestBody & GetUsersRequestParams>;
 export type GetUsersResponse = BaseResponse<Users>;
 export type GetUsersService = (request: GetUsersRequest) => GetUsersResponse;
 

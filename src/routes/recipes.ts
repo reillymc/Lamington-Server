@@ -42,6 +42,7 @@ router.get<GetRecipeRequestParams, GetRecipeResponse, GetRecipeRequestBody>(
         // Fetch and return result
         try {
             const data = await RecipeActions.read(recipeId, userId);
+
             return res.status(200).json({ error: false, data });
         } catch (e: unknown) {
             next(

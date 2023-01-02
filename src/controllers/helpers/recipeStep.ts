@@ -19,7 +19,7 @@ export const recipeStepRowsToResponse = (
             items: method.filter(method => method.sectionId === sectionId),
         }));
 
-    return recipeMethod;
+    return recipeMethod.filter(({ items }) => items.length);
 };
 
 export const recipeMethodRequestToRows = (

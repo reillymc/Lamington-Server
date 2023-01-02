@@ -11,6 +11,7 @@ import config from "./config";
 import { accessLog } from "./services";
 import appRouter, { authRouter, docsRouter } from "./routes";
 import { authenticationMiddleware, errorMiddleware, notFoundMiddleware } from "./middleware";
+import { attachmentEndpoint, authEndpoint, uploadDirectory } from "./routes/spec";
 
 const app = express();
 
@@ -25,8 +26,8 @@ app.use(morgan(config.app.logDetail));
 
 // routers
 app.use(express.static(path.join(__dirname, "public")));
-app.use("/uploads", express.static("uploads"));
-app.use("/auth", authRouter);
+app.use(`${attachmentEndpoint}/${uploadDirectory}`, express.static(uploadDirectory)); // TODO: enforce authentication
+app.use(`/v1${authEndpoint}`, authRouter);
 app.use("/v1/", authenticationMiddleware, appRouter);
 app.use("/", docsRouter);
 

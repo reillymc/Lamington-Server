@@ -1,5 +1,6 @@
 import { AuthenticatedBody } from "../../middleware";
-import { AttachmentServices, imageSubpath } from "./attachment";
+import { AttachmentServices, imageSubpath, uploadDirectory } from "./attachment";
+import { AuthServices, loginSubpath, registerSubpath } from "./auth";
 import { bookIdParam, BookServices, recipeSubpath } from "./book";
 import { IngredientServices } from "./ingredient";
 import { itemIdParam, itemSubpath, listIdParam, ListServices, memberIdParam, memberSubpath } from "./list";
@@ -24,7 +25,13 @@ export type BaseResponse<T = null> = T extends null ? ResponseBodyBase : Respons
 
 export const AttachmentEndpoint = {
     postImage: `/${imageSubpath}`,
+    downloadImage: `/${uploadDirectory}`,
 } as const satisfies Record<keyof AttachmentServices, string>;
+
+export const AuthEndpoint = {
+    login: `/${loginSubpath}`,
+    register: `/${registerSubpath}`,
+} as const satisfies Record<keyof AuthServices, string>;
 
 export const BookEndpoint = {
     deleteBook: `/:${bookIdParam}`,
@@ -67,6 +74,7 @@ export const UserEndpoint = {
 } as const satisfies Record<keyof UserServices, string>;
 
 export * from "./attachment";
+export * from "./auth";
 export * from "./book";
 export * from "./ingredient";
 export * from "./list";
