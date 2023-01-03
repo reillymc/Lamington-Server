@@ -2,7 +2,7 @@
 import { RecipeMethod } from "../../routes/spec";
 
 // DB Specs
-import { RecipeStep } from "../../database";
+import { DefaultSection, RecipeStep } from "../../database";
 import { SectionsReadByRecipeIdResponse } from "../recipeSection";
 import { StepReadByIdResponse } from "../recipeStep";
 
@@ -11,15 +11,18 @@ export const recipeStepRowsToResponse = (
     sections: Array<SectionsReadByRecipeIdResponse>
 ): RecipeMethod => {
     const recipeMethod: RecipeMethod = sections
-        .sort((a, b) => a.index - b.index)
+        .sort((a, b) => (a.name === DefaultSection ? -1 : a.index - b.index))
         .map(({ sectionId, name, description }) => ({
             sectionId,
             name,
             description,
-            items: method.filter(method => method.sectionId === sectionId),
-        }));
+            items: method
+                .filter(method => method.sectionId === sectionId)
+                .sort((a, b) => (a.index ?? 0) - (b.index ?? 0)),
+        }))
+        .filter(({ items, name }) => (name === DefaultSection ? true : items.length));
 
-    return recipeMethod.filter(({ items }) => items.length);
+    return recipeMethod;
 };
 
 export const recipeMethodRequestToRows = (

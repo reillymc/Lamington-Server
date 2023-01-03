@@ -2,8 +2,8 @@
     "openapi": "3.0.0",
     "info": {
         "title": "Lamington API",
-        "description": "This is a household database API used as the server-side component to the Lamington app",
-        "version": "1.0.1",
+        "description": "API for data used by the Lamington app.",
+        "version": "1.0.2",
         "contact": {
             "email": "reilly@mackenzie-cree.net"
         }
