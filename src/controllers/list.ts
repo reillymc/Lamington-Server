@@ -35,8 +35,8 @@ interface ReadListRow extends Pick<List, "listId" | "name" | "description"> {
 }
 
 /**
- * Get all lists
- * @returns an array of all lists in the database
+ * Get users lists
+ * @returns an array of users lists in the database
  */
 const readMyLists = async ({ userId }: GetMyListsParams): ReadResponse<ReadListRow> => {
     const query = db<ReadListRow>(lamington.list)

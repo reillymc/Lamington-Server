@@ -31,6 +31,34 @@ const readListItems = async (params: ReadQuery<GetListItemsParams>): ReadRespons
     return query;
 };
 
+interface CountListItemsParams {
+    listId: string;
+}
+
+interface CountListItemsResponse {
+    listId: string;
+    count: number;
+}
+
+/**
+ * Get outstanding item count for list
+ * @returns count of items not marked as completed
+ */
+const countOutstandingItems = async (params: ReadQuery<CountListItemsParams>): ReadResponse<CountListItemsResponse> => {
+    if (!Array.isArray(params)) {
+        params = [params];
+    }
+    const listIds = params.map(({ listId }) => listId);
+
+    const query = db(lamington.listItem)
+        .select(listItem.listId)
+        .count<CountListItemsResponse[]>(listItem.listId, { as: "count" })
+        .whereIn(listItem.listId, listIds)
+        .andWhere({ [listItem.completed]: false })
+        .groupBy(listItem.listId);
+    return query;
+};
+
 interface CreateListItemParams {
     itemId: string | undefined;
     listId: string;
@@ -92,4 +120,5 @@ export const ListItemActions = {
     delete: deleteListItems,
     read: readListItems,
     save: saveListItems,
+    countOutstandingItems,
 };

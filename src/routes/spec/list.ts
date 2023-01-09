@@ -25,8 +25,8 @@ export type List = {
     name: string;
     createdBy: Pick<User, "userId" | "firstName">;
     description: string | undefined;
+    outstandingItemCount?: number;
     items?: Array<ListItem>;
-
     members?: {
         [userId: User["userId"]]: {
             userId: User["userId"];

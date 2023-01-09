@@ -40,10 +40,18 @@ router.get<GetListsRequestParams, GetListsResponse, GetListsRequest>(ListEndpoin
     // Fetch and return result
     try {
         const results = await ListActions.readMy({ userId });
+        const outstandingItemCounts = await ListItemActions.countOutstandingItems(
+            results.map(({ listId }) => ({ listId }))
+        );
+
         const data: Lists = Object.fromEntries(
             results.map(list => [
                 list.listId,
-                { ...list, createdBy: { userId: list.createdBy, firstName: list.createdByName } },
+                {
+                    ...list,
+                    outstandingItemCount: outstandingItemCounts.find(({ listId }) => listId === list.listId)?.count,
+                    createdBy: { userId: list.createdBy, firstName: list.createdByName },
+                },
             ])
         );
 
