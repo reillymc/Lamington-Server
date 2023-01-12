@@ -24,6 +24,9 @@ import {
     PostListItemRequestBody,
     PostListItemRequestParams,
     PostListItemResponse,
+    PostListMemberRequestBody,
+    PostListMemberRequestParams,
+    PostListMemberResponse,
     PostListRequestBody,
     PostListRequestParams,
     PostListResponse,
@@ -51,6 +54,7 @@ router.get<GetListsRequestParams, GetListsResponse, GetListsRequest>(ListEndpoin
                     ...list,
                     outstandingItemCount: outstandingItemCounts.find(({ listId }) => listId === list.listId)?.count,
                     createdBy: { userId: list.createdBy, firstName: list.createdByName },
+                    accepted: list.createdBy === userId ? true : !!list.accepted,
                 },
             ])
         );
@@ -110,6 +114,10 @@ router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(ListEndpoi
                     { userId, permissions: canEdit, firstName, lastName },
                 ])
             ),
+            accepted:
+                list.createdBy === userId
+                    ? true
+                    : !!listMembersResponse.find(({ userId }) => userId === userId)?.accepted,
         };
 
         return res.status(200).json({ error: false, data });
@@ -248,6 +256,69 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
                     message: userMessage({
                         action: listId ? MessageAction.Update : MessageAction.Create,
                         entity: "list item",
+                    }),
+                })
+            );
+        }
+    }
+);
+
+/**
+ * POST request to update a list member.
+ */
+router.post<PostListMemberRequestParams, PostListMemberResponse, PostListMemberRequestBody>(
+    ListEndpoint.postListMember,
+    async (req, res, next) => {
+        // Extract request fields
+        const { listId } = req.params;
+
+        const { userId, accepted } = req.body;
+
+        // Check all required fields are present
+        if (!listId) {
+            return next(
+                new AppError({
+                    status: 400,
+                    code: "INSUFFICIENT_DATA",
+                    message: "Insufficient data to update list member.",
+                })
+            );
+        }
+
+        // Update database and return status
+        try {
+            const [existingList] = await InternalListActions.read({ listId });
+            if (!existingList) {
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "NOT_FOUND",
+                        message: "Cannot find list to edit membership for.",
+                    })
+                );
+            }
+
+            const listMembers = await ListMemberActions.read({ listId });
+
+            if (!listMembers?.some(member => member.userId === userId)) {
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "NO_PERMISSIONS",
+                        message: "You are not a member of this list.",
+                    })
+                );
+            }
+
+            await ListMemberActions.update({ listId, userId, accepted });
+            return res.status(201).json({ error: false, message: "List member removed." });
+        } catch (e: unknown) {
+            next(
+                new AppError({
+                    innerError: e,
+                    message: userMessage({
+                        action: MessageAction.Delete,
+                        entity: "list member",
                     }),
                 })
             );

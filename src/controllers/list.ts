@@ -32,6 +32,7 @@ interface GetMyListsParams {
 interface ReadListRow extends Pick<List, "listId" | "name" | "description"> {
     createdBy: User["userId"];
     createdByName: User["firstName"];
+    accepted: ListMember["accepted"];
 }
 
 /**
@@ -40,7 +41,14 @@ interface ReadListRow extends Pick<List, "listId" | "name" | "description"> {
  */
 const readMyLists = async ({ userId }: GetMyListsParams): ReadResponse<ReadListRow> => {
     const query = db<ReadListRow>(lamington.list)
-        .select(list.listId, list.name, list.description, list.createdBy, `${user.firstName} as createdByName`)
+        .select(
+            list.listId,
+            list.name,
+            list.description,
+            list.createdBy,
+            `${user.firstName} as createdByName`,
+            listMember.accepted
+        )
         .whereIn(
             list.listId,
             db<string[]>(lamington.listMember)
@@ -48,7 +56,8 @@ const readMyLists = async ({ userId }: GetMyListsParams): ReadResponse<ReadListR
                 .where({ [listMember.userId]: userId })
         )
         .orWhere({ [list.createdBy]: userId })
-        .leftJoin(lamington.user, list.createdBy, user.userId);
+        .leftJoin(lamington.user, list.createdBy, user.userId)
+        .leftJoin(lamington.listMember, list.listId, listMember.listId);
 
     return query;
 };
@@ -102,7 +111,7 @@ const createLists = async (lists: CreateQuery<CreateListParams>): CreateResponse
 
     const listData: List[] = data.map(({ memberIds, ...listItem }) => listItem);
     const memberData: ListMember[] = data.flatMap(
-        ({ listId, memberIds }) => memberIds?.map(userId => ({ listId, userId, canEdit: "1" })) ?? []
+        ({ listId, memberIds }) => memberIds?.map(userId => ({ listId, userId, canEdit: "1", accepted: 0 })) ?? []
     );
 
     const result = await db(lamington.list).insert(listData).onConflict(list.listId).merge();

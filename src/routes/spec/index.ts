@@ -55,6 +55,7 @@ export const ListEndpoint = {
     getLists: `/`,
     postList: `/`,
     postListItem: `/:${listIdParam}/${itemSubpath}`,
+    postListMember: `/:${listIdParam}/${memberSubpath}`,
 } as const satisfies Record<keyof ListServices, string>;
 
 export const RecipeEndpoint = {

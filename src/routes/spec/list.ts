@@ -26,6 +26,7 @@ export type List = {
     createdBy: Pick<User, "userId" | "firstName">;
     description: string | undefined;
     outstandingItemCount?: number;
+    accepted?: boolean;
     items?: Array<ListItem>;
     members?: {
         [userId: User["userId"]]: {
@@ -116,6 +117,18 @@ export type DeleteListItemRequest = BaseRequest<DeleteListItemRequestParams & De
 export type DeleteListItemResponse = BaseResponse;
 export type DeleteListItemService = (request: DeleteListItemRequest) => DeleteListItemResponse;
 
+// Post list member
+export type PostListMemberRequestParams = BaseRequestParams<{
+    [listIdParam]: List["listId"];
+}>;
+export type PostListMemberRequestBody = BaseRequestBody<{
+    accepted?: boolean;
+}>;
+
+export type PostListMemberRequest = BaseRequest<PostListMemberRequestParams & PostListMemberRequestBody>;
+export type PostListMemberResponse = BaseResponse;
+export type PostListMemberService = (request: PostListMemberRequest) => PostListMemberResponse;
+
 // Delete list member
 export type DeleteListMemberRequestParams = BaseRequestParams<{
     [listIdParam]: List["listId"];
@@ -135,4 +148,5 @@ export interface ListServices {
     getLists: GetListsService;
     postList: PostListService;
     postListItem: PostListItemService;
+    postListMember: PostListMemberService;
 }
