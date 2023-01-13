@@ -98,6 +98,7 @@ export type PostRecipeRequestBody = BaseRequestBody<{
     cookTime?: number;
     prepTime?: number;
     servings?: number;
+    public?: boolean;
     timesCooked?: number;
 }>;
 

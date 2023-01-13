@@ -4,11 +4,11 @@ import { User } from "./user";
 export const listEndpoint = "/lists" as const;
 
 export const itemSubpath = "items" as const;
-export const memberSubpath = "members" as const;
+export const listMemberSubpath = "members" as const;
 
 export const listIdParam = "listId" as const;
 export const itemIdParam = "itemId" as const;
-export const memberIdParam = "userId" as const;
+export const listMemberIdParam = "userId" as const;
 
 /**
  * Lists
@@ -132,7 +132,7 @@ export type PostListMemberService = (request: PostListMemberRequest) => PostList
 // Delete list member
 export type DeleteListMemberRequestParams = BaseRequestParams<{
     [listIdParam]: List["listId"];
-    [memberIdParam]: User["userId"];
+    [listMemberIdParam]: User["userId"];
 }>;
 export type DeleteListMemberRequestBody = BaseRequestBody;
 

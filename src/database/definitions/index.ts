@@ -1,18 +1,19 @@
 export enum lamington {
     book = "book",
+    bookMember = "book_member",
     bookRecipe = "book_recipe",
-    tag = "tag",
     ingredient = "ingredient",
     list = "list",
     listItem = "list_item",
     listMember = "list_member",
     recipe = "recipe",
-    recipeTag = "recipe_tag",
     recipeIngredient = "recipe_ingredient",
     recipeRating = "recipe_rating",
     recipeRoster = "recipe_roster",
     recipeSection = "recipe_section",
     recipeStep = "recipe_step",
+    recipeTag = "recipe_tag",
+    tag = "tag",
     user = "user",
 }
 
@@ -30,16 +31,17 @@ export type DeleteResponse = Promise<number>;
 
 export * from "./book";
 export * from "./bookRecipe";
-export * from "./tag";
+export * from "./bookMember";
 export * from "./ingredient";
 export * from "./list";
 export * from "./listItem";
 export * from "./listMember";
 export * from "./recipe";
-export * from "./recipeTag";
 export * from "./recipeIngredient";
 export * from "./recipeRating";
 export * from "./recipeRoster";
 export * from "./recipeSection";
 export * from "./recipeStep";
+export * from "./recipeTag";
+export * from "./tag";
 export * from "./user";

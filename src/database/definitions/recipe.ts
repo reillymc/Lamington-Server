@@ -12,6 +12,7 @@ export interface Recipe {
     prepTime: number | undefined;
     cookTime: number | undefined;
     notes: string | undefined;
+    public: number;
     timesCooked: number | undefined;
     createdBy: string;
 }
@@ -27,6 +28,7 @@ export const recipe: RecipeTable = {
     servings: `${lamington.recipe}.servings`,
     prepTime: `${lamington.recipe}.prepTime`,
     cookTime: `${lamington.recipe}.cookTime`,
+    public: `${lamington.recipe}.public`,
     createdBy: `${lamington.recipe}.createdBy`,
     timesCooked: `${lamington.recipe}.timesCooked`,
 } as const;

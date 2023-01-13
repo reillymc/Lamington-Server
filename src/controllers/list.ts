@@ -107,6 +107,7 @@ const createLists = async (lists: CreateQuery<CreateListParams>): CreateResponse
     if (!Array.isArray(lists)) {
         lists = [lists];
     }
+
     const data = lists.map(({ listId, ...params }) => ({ listId: listId ?? Uuid(), ...params })).filter(Undefined);
 
     const listData: List[] = data.map(({ memberIds, ...listItem }) => listItem);
@@ -132,8 +133,7 @@ const createLists = async (lists: CreateQuery<CreateListParams>): CreateResponse
 
     const listIds = data.map(({ listId }) => listId);
 
-    const query = db<List>(lamington.list).select("*").whereIn(list.listId, listIds);
-    return query;
+    return db<List>(lamington.list).select(list.listId, list.name).whereIn(list.listId, listIds);
 };
 
 interface DeleteListParams {

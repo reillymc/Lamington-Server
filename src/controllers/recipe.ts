@@ -179,6 +179,7 @@ const save = async (recipeItem: PostRecipeRequest) => {
         photo: recipeItem.photo,
         prepTime: recipeItem.prepTime,
         servings: recipeItem.servings,
+        public: recipeItem.public ? 1 : 0,
         source: recipeItem.source,
         timesCooked: recipeItem.timesCooked,
     };

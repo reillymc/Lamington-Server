@@ -1,4 +1,5 @@
-export { BookActions } from "./book";
+export { BookActions, InternalBookActions } from "./book";
+export { BookMemberActions } from "./bookMember";
 export { BookRecipeActions } from "./bookRecipe";
 export { IngredientActions } from "./ingredient";
 export { InternalListActions, ListActions } from "./list";

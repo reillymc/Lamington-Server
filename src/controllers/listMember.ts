@@ -70,7 +70,7 @@ const readListMembers = async (params: ReadQuery<GetListMembersParams>): ReadRes
     }
     const listIds = params.map(({ listId }) => listId);
 
-    const query = db<ListItem>(lamington.listMember)
+    const query = db(lamington.listMember)
         .select(listMember.userId, listMember.canEdit, listMember.accepted, user.firstName, user.lastName)
         .whereIn(listMember.listId, listIds)
         .leftJoin(lamington.user, listMember.userId, user.userId);

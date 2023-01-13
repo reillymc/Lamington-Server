@@ -1,11 +1,14 @@
 import express from "express";
 
 import { AppError, MessageAction, userMessage } from "../services";
-import { BookActions, BookRecipeActions } from "../controllers";
+import { BookActions, BookMemberActions, BookRecipeActions, InternalBookActions } from "../controllers";
 import {
     Book,
     BookEndpoint,
     Books,
+    DeleteBookMemberRequestBody,
+    DeleteBookMemberRequestParams,
+    DeleteBookMemberResponse,
     DeleteBookRecipeRequestBody,
     DeleteBookRecipeRequestParams,
     DeleteBookRecipeResponse,
@@ -18,6 +21,9 @@ import {
     GetBooksRequestBody,
     GetBooksRequestParams,
     GetBooksResponse,
+    PostBookMemberRequestBody,
+    PostBookMemberRequestParams,
+    PostBookMemberResponse,
     PostBookRecipeRequestBody,
     PostBookRecipeRequestParams,
     PostBookRecipeResponse,
@@ -42,7 +48,11 @@ router.get<GetBooksRequestParams, GetBooksResponse, GetBooksRequestBody>(
             const data: Books = Object.fromEntries(
                 results.map(book => [
                     book.bookId,
-                    { ...book, createdBy: { userId: book.createdBy, firstName: book.createdByName } },
+                    {
+                        ...book,
+                        createdBy: { userId: book.createdBy, firstName: book.createdByName },
+                        accepted: book.createdBy === userId ? true : !!book.accepted,
+                    },
                 ])
             );
 
@@ -64,6 +74,7 @@ router.get<GetBooksRequestParams, GetBooksResponse, GetBooksRequestBody>(
 router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(BookEndpoint.getBook, async (req, res, next) => {
     // Extract request fields
     const { bookId } = req.params;
+    const { userId } = req.body;
 
     if (!bookId) {
         return next(
@@ -77,7 +88,7 @@ router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(BookEndpoi
 
     // Fetch and return result
     try {
-        const [book] = await BookActions.read({ bookId });
+        const [book] = await BookActions.read({ bookId, userId });
         if (!book) {
             return next(
                 new AppError({
@@ -89,12 +100,25 @@ router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(BookEndpoi
         }
 
         const bookRecipesResponse = await BookRecipeActions.read({ bookId });
+        const bookMembersResponse = await BookMemberActions.read({ bookId });
 
         const data: Book = {
             ...book,
             createdBy: { userId: book.createdBy, firstName: book.createdByName },
             recipes: bookRecipesResponse.filter(item => item.bookId === book.bookId).map(({ recipeId }) => recipeId),
+            members: Object.fromEntries(
+                bookMembersResponse.map(({ userId, canEdit, firstName, lastName }) => [
+                    userId,
+                    { userId, permissions: canEdit, firstName, lastName },
+                ])
+            ),
+            accepted:
+                book.createdBy === userId
+                    ? true
+                    : !!bookMembersResponse.find(({ userId }) => userId === userId)?.accepted,
         };
+
+        console.log(data);
 
         return res.status(200).json({ error: false, data });
     } catch (e: unknown) {
@@ -109,7 +133,7 @@ router.post<PostBookRequestParams, PostBookResponse, PostBookRequestBody>(
     BookEndpoint.postBook,
     async (req, res, next) => {
         // Extract request fields
-        const { userId, name, description, bookId } = req.body;
+        const { userId, name, description, bookId, memberIds = [] } = req.body;
 
         // Check all required fields are present
         if (!name) {
@@ -119,7 +143,7 @@ router.post<PostBookRequestParams, PostBookResponse, PostBookRequestBody>(
         // Update database and return status
         try {
             if (bookId) {
-                const [existingBook] = await BookActions.read({ bookId });
+                const [existingBook] = await BookActions.read({ bookId, userId });
                 if (!existingBook) {
                     return res.status(403).json({
                         error: true,
@@ -139,6 +163,7 @@ router.post<PostBookRequestParams, PostBookResponse, PostBookRequestBody>(
                 name,
                 createdBy: userId,
                 description,
+                memberIds,
             });
             return res.status(201).json({ error: false, message: `Book ${bookId ? "updated" : "created"}` });
         } catch (e: unknown) {
@@ -174,7 +199,7 @@ router.delete<DeleteBookRequestParams, DeleteBookResponse, DeleteBookRequestBody
 
         // Update database and return status
         try {
-            const [existingBook] = await BookActions.read({ bookId });
+            const [existingBook] = await BookActions.read({ bookId, userId });
 
             if (!existingBook) {
                 return res.status(403).json({
@@ -230,7 +255,7 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
 
         // Update database and return status
         try {
-            const [existingBook] = await BookActions.read({ bookId });
+            const [existingBook] = await BookActions.read({ bookId, userId });
 
             if (!existingBook) {
                 return res.status(403).json({
@@ -265,6 +290,69 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
 );
 
 /**
+ * POST request to update a book member.
+ */
+router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberRequestBody>(
+    BookEndpoint.postBookMember,
+    async (req, res, next) => {
+        // Extract request fields
+        const { bookId } = req.params;
+
+        const { userId, accepted } = req.body;
+
+        // Check all required fields are present
+        if (!bookId) {
+            return next(
+                new AppError({
+                    status: 400,
+                    code: "INSUFFICIENT_DATA",
+                    message: "Insufficient data to update book member.",
+                })
+            );
+        }
+
+        // Update database and return status
+        try {
+            const [existingBook] = await InternalBookActions.read({ bookId });
+            if (!existingBook) {
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "NOT_FOUND",
+                        message: "Cannot find book to edit membership for.",
+                    })
+                );
+            }
+
+            const bookMembers = await BookMemberActions.read({ bookId });
+
+            if (!bookMembers?.some(member => member.userId === userId)) {
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "NO_PERMISSIONS",
+                        message: "You are not a member of this book.",
+                    })
+                );
+            }
+
+            await BookMemberActions.update({ bookId, userId, accepted });
+            return res.status(201).json({ error: false, message: "Book member removed." });
+        } catch (e: unknown) {
+            next(
+                new AppError({
+                    innerError: e,
+                    message: userMessage({
+                        action: MessageAction.Delete,
+                        entity: "book member",
+                    }),
+                })
+            );
+        }
+    }
+);
+
+/**
  * DELETE request to delete a book recipe.
  */
 router.delete<DeleteBookRecipeRequestParams, DeleteBookRecipeResponse, DeleteBookRecipeRequestBody>(
@@ -288,7 +376,7 @@ router.delete<DeleteBookRecipeRequestParams, DeleteBookRecipeResponse, DeleteBoo
 
         // Update database and return status
         try {
-            const [existingBook] = await BookActions.read({ bookId });
+            const [existingBook] = await BookActions.read({ bookId, userId });
 
             if (!existingBook) {
                 return next(
@@ -315,6 +403,79 @@ router.delete<DeleteBookRecipeRequestParams, DeleteBookRecipeResponse, DeleteBoo
                 new AppError({
                     innerError: e,
                     message: userMessage({ action: MessageAction.Delete, entity: "book item" }),
+                })
+            );
+        }
+    }
+);
+
+/**
+ * DELETE request to delete a book member.
+ */
+router.delete<DeleteBookMemberRequestParams, DeleteBookMemberResponse, DeleteBookMemberRequestBody>(
+    BookEndpoint.deleteBookMember,
+    async (req, res, next) => {
+        // Extract request fields
+        const { bookId, userId: userIdReq } = req.params;
+
+        const { userId } = req.body;
+
+        const userToDelete = userIdReq || userId;
+
+        // Check all required fields are present
+        if (!userToDelete || !bookId) {
+            return next(
+                new AppError({
+                    status: 400,
+                    code: "INSUFFICIENT_DATA",
+                    message: "Insufficient data to remove book member.",
+                })
+            );
+        }
+
+        // Update database and return status
+        try {
+            const [existingBook] = await InternalBookActions.read({ bookId });
+            if (!existingBook) {
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "NOT_FOUND",
+                        message: "Cannot find book to remove member from.",
+                    })
+                );
+            }
+
+            if (existingBook.createdBy === userToDelete) {
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "OWNER",
+                        message: "You cannot leave a book you own.",
+                    })
+                );
+            }
+
+            if (userIdReq && userId !== userIdReq && existingBook.createdBy !== userId) {
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "NO_PERMISSIONS",
+                        message: "You do not have permissions to remove book member.",
+                    })
+                );
+            }
+
+            await BookMemberActions.delete({ bookId, userId: userToDelete });
+            return res.status(201).json({ error: false, message: "Book member removed." });
+        } catch (e: unknown) {
+            next(
+                new AppError({
+                    innerError: e,
+                    message: userMessage({
+                        action: MessageAction.Delete,
+                        entity: "book member",
+                    }),
                 })
             );
         }

@@ -1,9 +1,9 @@
 import { AuthenticatedBody } from "../../middleware";
 import { AttachmentServices, imageSubpath, uploadDirectory } from "./attachment";
 import { AuthServices, loginSubpath, registerSubpath } from "./auth";
-import { bookIdParam, BookServices, recipeSubpath } from "./book";
+import { bookIdParam, bookMemberIdParam, bookMemberSubpath, BookServices, recipeSubpath } from "./book";
 import { IngredientServices } from "./ingredient";
-import { itemIdParam, itemSubpath, listIdParam, ListServices, memberIdParam, memberSubpath } from "./list";
+import { itemIdParam, itemSubpath, listIdParam, ListServices, listMemberIdParam, listMemberSubpath } from "./list";
 import { rateSubpath, recipeIdParam, RecipeServices } from "./recipe";
 import { TagServices } from "./tag";
 import { UserServices } from "./user";
@@ -35,10 +35,12 @@ export const AuthEndpoint = {
 
 export const BookEndpoint = {
     deleteBook: `/:${bookIdParam}`,
+    deleteBookMember: `/:${bookIdParam}/${bookMemberSubpath}/:${bookMemberIdParam}`,
     deleteBookRecipe: `/:${bookIdParam}/${recipeSubpath}/:${recipeIdParam}`,
     getBook: `/:${bookIdParam}`,
     getBooks: `/`,
     postBook: `/`,
+    postBookMember: `/:${bookIdParam}/${bookMemberSubpath}`,
     postBookRecipe: `/:${bookIdParam}/${recipeSubpath}`,
 } as const satisfies Record<keyof BookServices, string>;
 
@@ -50,12 +52,12 @@ export const IngredientEndpoint = {
 export const ListEndpoint = {
     deleteList: `/:${listIdParam}`,
     deleteListItem: `/:${listIdParam}/${itemSubpath}/:${itemIdParam}`,
-    deleteListMember: `/:${listIdParam}/${memberSubpath}/:${memberIdParam}`,
+    deleteListMember: `/:${listIdParam}/${listMemberSubpath}/:${listMemberIdParam}`,
     getList: `/:${listIdParam}`,
     getLists: `/`,
     postList: `/`,
     postListItem: `/:${listIdParam}/${itemSubpath}`,
-    postListMember: `/:${listIdParam}/${memberSubpath}`,
+    postListMember: `/:${listIdParam}/${listMemberSubpath}`,
 } as const satisfies Record<keyof ListServices, string>;
 
 export const RecipeEndpoint = {
