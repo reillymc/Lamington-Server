@@ -33,6 +33,7 @@ export interface Recipe {
     cookTime?: number;
     prepTime?: number;
     servings?: number;
+    public?: boolean;
     timesCooked?: number;
 }
 

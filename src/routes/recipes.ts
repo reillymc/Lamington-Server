@@ -174,6 +174,7 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
                 cookTime: body.cookTime,
                 timesCooked: body.timesCooked,
                 tags: body.tags,
+                public: body.public,
                 userId: body.userId,
             });
             return res.status(201).json({ error: false, message: `Recipe ${body.recipeId ? "updated" : "created"}` });

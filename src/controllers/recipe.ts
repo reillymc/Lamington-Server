@@ -34,7 +34,7 @@ import {
 
 type GetAllRecipesResults = Pick<
     Recipe,
-    "recipeId" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime" | "createdBy"
+    "recipeId" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime" | "public" | "createdBy"
 > & { ratingAverage: string; createdByName: User["firstName"] };
 
 const getAllRecipes = async (userId?: string): ReadResponse<GetAllRecipesResults> => {
@@ -53,6 +53,7 @@ const getAllRecipes = async (userId?: string): ReadResponse<GetAllRecipesResults
             recipeAlias.timesCooked,
             recipeAlias.cookTime,
             recipeAlias.prepTime,
+            recipeAlias.public,
             recipeAlias.createdBy,
             `${user.firstName} as createdByName`,
             db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ratingAverage`),
@@ -88,6 +89,7 @@ const getFullRecipe = async (recipeId: string, userId: string): Promise<GetFullR
             recipe.prepTime,
             recipe.cookTime,
             recipe.notes,
+            recipe.public,
             recipe.timesCooked,
             recipe.createdBy,
             `${user.firstName} as createdByName`,
@@ -138,6 +140,7 @@ const read = async (recipeId: string, userId: string) => {
         ingredients,
         method,
         tags,
+        public: recipe.public === 1,
         createdBy: { userId: recipe.createdBy, firstName: recipe.createdByName },
     };
 
@@ -157,6 +160,7 @@ const readMy = async (userId?: string) => {
         tags: recipeTagRowsToResponse(
             recipeCategoriesList.filter(cat => !cat.parentId || cat.recipeId === recipe.recipeId)
         ),
+        public: recipe.public === 1,
         createdBy: { userId: recipe.createdBy, firstName: recipe.createdByName },
     }));
 
