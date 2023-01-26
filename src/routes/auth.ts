@@ -10,7 +10,9 @@ import {
     RegisterRequestParams,
     RegisterResponse,
     AuthEndpoint,
+    UserStatus,
 } from "./spec";
+import { userStatusToUserStatus } from "../controllers/helpers";
 
 const router = express.Router();
 
@@ -37,20 +39,20 @@ router.post<RegisterRequestParams, RegisterResponse, RegisterRequestBody>(
                 lastName,
                 password: await hashPassword(password),
                 created: new Date().toISOString().slice(0, 19).replace("T", " "),
-                status: "c",
+                status: UserStatus.Pending,
             });
 
-            const token = createToken(createdUser?.userId);
-            if (!token || !createdUser) throw "Failed to create token";
+            if (!createdUser) {
+                return next(new AppError({ message: userMessage({ action: "creating", entity: "account" }) }));
+            }
 
             return res.status(200).json({
                 error: false,
                 data: {
-                    authorization: {
-                        token,
-                        tokenType: "Bearer",
+                    user: {
+                        ...createdUser,
+                        status: userStatusToUserStatus(createdUser.status),
                     },
-                    user: createdUser,
                 },
             });
         } catch (e: unknown) {
@@ -68,7 +70,7 @@ router.post<LoginRequestParams, LoginResponse, LoginRequestBody>(AuthEndpoint.lo
 
     // Check all required fields are present
     if (!email || (process.env.NODE_ENV === "production" && !password)) {
-        return res.status(401).json({ error: true, message: `invalid login - bad password` });
+        return next(new AppError({ status: 401, message: "Invalid username or password" }));
     }
 
     // Fetch and return data from database
@@ -80,24 +82,27 @@ router.post<LoginRequestParams, LoginResponse, LoginRequestBody>(AuthEndpoint.lo
         const result = await comparePassword(password, user.password);
 
         if (result) {
-            const token = createToken(user.userId);
-            if (!token) throw "Failed to create token";
+            const userPending = user.status === UserStatus.Pending;
+            const token = !userPending ? createToken(user.userId, userStatusToUserStatus(user.status)) : undefined;
 
             return res.status(200).json({
                 error: false,
                 data: {
-                    authorization: {
-                        token,
-                        tokenType: "Bearer",
-                    },
+                    authorization: token
+                        ? {
+                              token,
+                              tokenType: "Bearer",
+                          }
+                        : undefined,
                     user: {
                         userId: user.userId,
                         email: user.email,
                         firstName: user.firstName,
                         lastName: user.lastName,
-                        status: user.status,
+                        status: userStatusToUserStatus(user.status),
                     },
                 },
+                message: userPending ? "Account is pending approval" : undefined,
             });
         }
         next(new AppError({ status: 401, message: "Invalid username or password" }));

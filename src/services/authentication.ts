@@ -3,15 +3,16 @@ import bcrypt from "bcrypt";
 
 import config from "../config";
 import { AuthenticatedBody } from "../middleware";
+import { UserStatus } from "../routes/spec";
 
 const saltRounds = 10;
 
 const { jwtSecret, jwtExpiration } = config.authentication;
 
-export const createToken = (userId: string | undefined) => {
+export const createToken = (userId: string | undefined, status = UserStatus.Pending) => {
     if (!jwtSecret || !userId) return;
 
-    const payload: AuthenticatedBody = { userId };
+    const payload: AuthenticatedBody = { userId, status };
     return jwt.sign(payload, jwtSecret, { noTimestamp: true, expiresIn: jwtExpiration });
 };
 

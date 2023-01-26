@@ -103,12 +103,13 @@ export interface CreateBookParams {
  * Creates a new book from params
  * @returns the newly created books
  */
-const createBooks = async (books: CreateQuery<CreateBookParams>): CreateResponse<Book> => {
+const saveBooks = async (books: CreateQuery<CreateBookParams>): CreateResponse<Book> => {
     if (!Array.isArray(books)) {
         books = [books];
     }
 
     const data = books.map(({ bookId, ...params }) => ({ bookId: bookId ?? Uuid(), ...params })).filter(Undefined);
+    const bookIds = data.map(({ bookId }) => bookId);
 
     const bookData: Book[] = data.map(({ memberIds, ...bookItem }) => bookItem);
     const memberData: BookMember[] = data.flatMap(
@@ -118,6 +119,7 @@ const createBooks = async (books: CreateQuery<CreateBookParams>): CreateResponse
     const result = await db(lamington.book).insert(bookData).onConflict(book.bookId).merge();
 
     const result2 = await db(lamington.bookMember)
+        .whereIn(bookMember.bookId, bookIds)
         .whereNotIn(
             bookMember.userId,
             memberData.map(({ userId }) => userId)
@@ -130,8 +132,6 @@ const createBooks = async (books: CreateQuery<CreateBookParams>): CreateResponse
             .onConflict([bookMember.bookId, bookMember.userId])
             .merge();
     }
-
-    const bookIds = data.map(({ bookId }) => bookId);
 
     return db<Book>(lamington.book).select(book.bookId, book.name).whereIn(book.bookId, bookIds);
 };
@@ -175,7 +175,7 @@ const readBooksInternal = async (params: ReadQuery<ReadBookInternalParams>): Rea
 };
 
 export const BookActions = {
-    save: createBooks,
+    save: saveBooks,
     delete: deleteBooks,
     read: readBooks,
     readMy: readMyBooks,

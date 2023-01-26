@@ -14,7 +14,7 @@ export interface Authorization {
 }
 
 export interface AuthenticationResponse {
-    authorization: Authorization;
+    authorization?: Authorization;
     user: Pick<User, "userId" | "email" | "firstName" | "lastName" | "status">;
 }
 

@@ -103,12 +103,13 @@ interface CreateListParams {
  * Creates a new list from params
  * @returns the newly created lists
  */
-const createLists = async (lists: CreateQuery<CreateListParams>): CreateResponse<List> => {
+const saveLists = async (lists: CreateQuery<CreateListParams>): CreateResponse<List> => {
     if (!Array.isArray(lists)) {
         lists = [lists];
     }
 
     const data = lists.map(({ listId, ...params }) => ({ listId: listId ?? Uuid(), ...params })).filter(Undefined);
+    const listIds = data.map(({ listId }) => listId);
 
     const listData: List[] = data.map(({ memberIds, ...listItem }) => listItem);
     const memberData: ListMember[] = data.flatMap(
@@ -118,6 +119,7 @@ const createLists = async (lists: CreateQuery<CreateListParams>): CreateResponse
     const result = await db(lamington.list).insert(listData).onConflict(list.listId).merge();
 
     const result2 = await db(lamington.listMember)
+        .whereIn(listMember.listId, listIds)
         .whereNotIn(
             listMember.userId,
             memberData.map(({ userId }) => userId)
@@ -130,8 +132,6 @@ const createLists = async (lists: CreateQuery<CreateListParams>): CreateResponse
             .onConflict([listMember.listId, listMember.userId])
             .merge();
     }
-
-    const listIds = data.map(({ listId }) => listId);
 
     return db<List>(lamington.list).select(list.listId, list.name).whereIn(list.listId, listIds);
 };
@@ -179,7 +179,7 @@ export const ListActions = {
     read: readLists,
     readAll: readAllLists,
     readMy: readMyLists,
-    save: createLists,
+    save: saveLists,
 };
 
 export const InternalListActions = {

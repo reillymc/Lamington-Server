@@ -6,7 +6,7 @@ import { IngredientServices } from "./ingredient";
 import { itemIdParam, itemSubpath, listIdParam, ListServices, listMemberIdParam, listMemberSubpath } from "./list";
 import { rateSubpath, recipeIdParam, RecipeServices } from "./recipe";
 import { TagServices } from "./tag";
-import { UserServices } from "./user";
+import { approveSubpath, userIdParam, UserServices } from "./user";
 
 export type BaseRequest<T = null> = T extends null ? {} : T;
 
@@ -74,6 +74,7 @@ export const TagEndpoint = {
 
 export const UserEndpoint = {
     getUsers: `/`,
+    approveUser: `/:${userIdParam}/${approveSubpath}`,
 } as const satisfies Record<keyof UserServices, string>;
 
 export * from "./attachment";

@@ -2,12 +2,18 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 import config from "../config";
-import { BaseResponse } from "../routes/spec";
-import { logger } from "../services";
+import { userStatusToUserStatus } from "../controllers/helpers";
+import { BaseResponse, UserStatus } from "../routes/spec";
+import { AppError, logger } from "../services";
 
 const { jwtSecret } = config.authentication;
 
-type AuthenticatedBody<T = null> = T extends null ? { userId: string } : { userId: string } & T;
+interface AuthData {
+    userId: string;
+    status?: UserStatus;
+}
+
+type AuthenticatedBody<T = null> = T extends null ? AuthData : AuthData & T;
 
 const authenticationMiddleware = (
     req: Request<null, null, AuthenticatedBody, null>,
@@ -36,17 +42,24 @@ const authenticationMiddleware = (
                     route: req.originalUrl,
                 },
             });
-            const response: BaseResponse = { error: true, message: "Failed to authenticate token." };
-            return res.status(400).send(response);
+
+            return next(new AppError({ status: 400, message: "Failed to authenticate token." }));
         }
+
+        const userStatus = userStatusToUserStatus(decoded.status as string);
+
+        if (userStatus === UserStatus.Pending) {
+            return next(new AppError({ status: 401, message: "User account is pending approval." }));
+        }
+
+        if (userStatus === UserStatus.Blacklisted) {
+            return next(new AppError({ status: 401, message: "User account access denied." }));
+        }
+
         req.body.userId = decoded.userId;
+        req.body.status = userStatus;
         return next();
     });
 };
-
-// const authenticationMiddleware = (req: Request<null, null, AuthenticatedBody, null>, res: Response, next: NextFunction) => {
-//         req.body.userId = "10000000-0000-0000-0000-000000000000"
-//         return next();
-// };
 
 export { authenticationMiddleware, AuthenticatedBody };

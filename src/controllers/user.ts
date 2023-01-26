@@ -1,14 +1,15 @@
 import { v4 as Uuid } from "uuid";
 
 import db, { CreateResponse, ReadResponse, user, lamington, ReadQuery, CreateQuery, User } from "../database";
+import { UserStatus } from "../routes/spec";
 import { Undefined } from "../utils";
 
 /**
  * Get all users
  * @returns an array of all users in the database
  */
-const readAllUsers = async (): ReadResponse<Pick<User, "userId" | "firstName" | "lastName">> => {
-    const query = db<User>(lamington.user).select(user.userId, user.firstName, user.lastName);
+const readAllUsers = async (): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">> => {
+    const query = db<User>(lamington.user).select(user.userId, user.firstName, user.lastName, user.email, user.status);
     return query;
 };
 
@@ -41,14 +42,14 @@ type CreateUserParams = {
     lastName: string;
     password: string;
     created: string;
-    status: string;
+    status: UserStatus;
 };
 
 /**
- * Creates a new user from params
- * @returns the newly created users
+ * Saves a user from params
+ * @returns the newly created / updated users
  */
-const createUsers = async (users: CreateQuery<CreateUserParams>): CreateResponse<User> => {
+const saveUsers = async (users: CreateQuery<CreateUserParams>): CreateResponse<User> => {
     if (!Array.isArray(users)) {
         users = [users];
     }
@@ -64,22 +65,30 @@ const createUsers = async (users: CreateQuery<CreateUserParams>): CreateResponse
     return query;
 };
 
-interface CreateUserItemParams {
-    itemId: string | undefined;
-    userId: string;
-    name: string;
-    dateAdded: string;
-    completed: boolean;
-    ingredientId?: string;
-    unit?: string;
-    amount?: number;
-    notes?: string;
-}
+const saveUserStatus = async (users: CreateQuery<{ userId: string; status: UserStatus }>): CreateResponse<User> => {
+    if (!Array.isArray(users)) {
+        users = [users];
+    }
+
+    users.forEach(async userRequest => {
+        await db(lamington.user)
+            .where({ [user.userId]: userRequest.userId })
+            .update({
+                [user.status]: userRequest.status,
+            });
+    });
+
+    const userIds = users.map(({ userId }) => userId);
+
+    const query = db<User>(lamington.user).select("*").whereIn(user.userId, userIds);
+    return query;
+};
 
 export const UserActions = {
     read: readUsers,
     readAll: readAllUsers,
-    create: createUsers,
+    save: saveUsers,
+    saveStatus: saveUserStatus,
 };
 
 interface ReadUserInternalParams {
@@ -104,5 +113,5 @@ const readUsersInternal = async (params: ReadQuery<ReadUserInternalParams>): Rea
 
 export const InternalUserActions = {
     read: readUsersInternal,
-    save: createUsers,
+    save: saveUsers,
 };
