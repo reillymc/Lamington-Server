@@ -67,13 +67,21 @@ export type RecipeMethod = Array<Section<RecipeMethodStep>>;
 
 export type RecipeTags = { [tagGroup: string]: Partial<Tag> & { tags?: Array<Tag> } };
 
-// Get recipes
-export type GetRecipesRequestParams = BaseRequestParams;
-export type GetRecipesRequestBody = BaseRequestBody;
+// Get all recipes
+export type GetAllRecipesRequestParams = BaseRequestParams;
+export type GetAllRecipesRequestBody = BaseRequestBody;
 
-export type GetRecipesRequest = BaseRequest<GetRecipesRequestBody & GetRecipesRequestParams>;
-export type GetRecipesResponse = BaseResponse<Recipes>;
-export type GetRecipesService = (request: GetRecipesRequest) => GetRecipesResponse;
+export type GetAllRecipesRequest = BaseRequest<GetAllRecipesRequestBody & GetAllRecipesRequestParams>;
+export type GetAllRecipesResponse = BaseResponse<Recipes>;
+export type GetAllRecipesService = (request: GetAllRecipesRequest) => GetAllRecipesResponse;
+
+// Get all recipes for user
+export type GetMyRecipesRequestParams = BaseRequestParams;
+export type GetMyRecipesRequestBody = BaseRequestBody;
+
+export type GetMyRecipesRequest = BaseRequest<GetMyRecipesRequestBody & GetMyRecipesRequestParams>;
+export type GetMyRecipesResponse = BaseResponse<Recipes>;
+export type GetMyRecipesService = (request: GetMyRecipesRequest) => GetMyRecipesResponse;
 
 // Get recipe
 export type GetRecipeRequestParams = BaseRequestParams<{ [recipeIdParam]: Recipe["recipeId"] }>;
@@ -128,7 +136,8 @@ export type PostRecipeRatingResponse = BaseResponse;
 export type PostRecipeRatingService = (request: PostRecipeRatingRequest) => PostRecipeRatingResponse;
 
 export interface RecipeServices {
-    getRecipes: GetRecipesService;
+    getAllRecipes: GetAllRecipesService;
+    getMyRecipes: GetMyRecipesService;
     getRecipe: GetRecipeService;
     postRecipe: PostRecipeService;
     deleteRecipe: DeleteRecipeService;

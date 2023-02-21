@@ -9,9 +9,12 @@ import {
     GetRecipeRequestBody,
     GetRecipeRequestParams,
     GetRecipeResponse,
-    GetRecipesRequestBody,
-    GetRecipesRequestParams,
-    GetRecipesResponse,
+    GetAllRecipesRequestBody,
+    GetAllRecipesRequestParams,
+    GetAllRecipesResponse,
+    GetMyRecipesRequestBody,
+    GetMyRecipesRequestParams,
+    GetMyRecipesResponse,
     PostRecipeRequestBody,
     PostRecipeRequestParams,
     PostRecipeResponse,
@@ -22,6 +25,50 @@ import {
 } from "./spec";
 
 const router = express.Router();
+
+/**
+ * GET request to fetch all recipes
+ */
+router.get<GetAllRecipesRequestParams, GetAllRecipesResponse, GetAllRecipesRequestBody>(
+    RecipeEndpoint.getAllRecipes,
+    async (req, res, next) => {
+        // Extract request fields
+        const { userId } = req.body;
+
+        // Fetch and return result
+        try {
+            const result = await RecipeActions.readAll(userId);
+            const data = Object.fromEntries(result.map(row => [row.recipeId, row]));
+            return res.status(200).json({ error: false, data });
+        } catch (e: unknown) {
+            next(
+                new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "recipes" }) })
+            );
+        }
+    }
+);
+
+/**
+ * GET request to fetch all recipes by a user
+ */
+router.get<GetMyRecipesRequestParams, GetMyRecipesResponse, GetMyRecipesRequestBody>(
+    RecipeEndpoint.getMyRecipes,
+    async (req, res, next) => {
+        // Extract request fields
+        const { userId } = req.body;
+
+        // Fetch and return result
+        try {
+            const result = await RecipeActions.readMy(userId);
+            const data = Object.fromEntries(result.map(row => [row.recipeId, row]));
+            return res.status(200).json({ error: false, data });
+        } catch (e: unknown) {
+            next(
+                new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "recipes" }) })
+            );
+        }
+    }
+);
 
 /**
  * GET request to fetch a recipe by Id
@@ -47,28 +94,6 @@ router.get<GetRecipeRequestParams, GetRecipeResponse, GetRecipeRequestBody>(
         } catch (e: unknown) {
             next(
                 new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "recipe" }) })
-            );
-        }
-    }
-);
-
-/**
- * GET request to fetch all recipes
- */
-router.get<GetRecipesRequestParams, GetRecipesResponse, GetRecipesRequestBody>(
-    RecipeEndpoint.getRecipes,
-    async (req, res, next) => {
-        // Extract request fields
-        const { userId } = req.body;
-
-        // Fetch and return result
-        try {
-            const result = await RecipeActions.readMy(userId);
-            const data = Object.fromEntries(result.map(row => [row.recipeId, row]));
-            return res.status(200).json({ error: false, data });
-        } catch (e: unknown) {
-            next(
-                new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "recipes" }) })
             );
         }
     }

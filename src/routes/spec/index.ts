@@ -63,7 +63,8 @@ export const ListEndpoint = {
 export const RecipeEndpoint = {
     deleteRecipe: `/:${recipeIdParam}`,
     getRecipe: `/:${recipeIdParam}`,
-    getRecipes: `/`,
+    getAllRecipes: `/`,
+    getMyRecipes: `/my`,
     postRecipe: `/`,
     postRecipeRating: `/:${recipeIdParam}/${rateSubpath}`,
 } as const satisfies Record<keyof RecipeServices, string>;
