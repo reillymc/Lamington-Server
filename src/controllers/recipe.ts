@@ -10,6 +10,7 @@ import db, {
     ReadResponse,
     user,
     User,
+    bookRecipe,
 } from "../database";
 
 import { Recipe as GetRecipeResponseItem, PostRecipeRequest } from "../routes/spec";
@@ -111,6 +112,47 @@ const getMyRecipes = async (userId: string): ReadResponse<GetAllRecipesResults> 
         )
         .leftJoin(lamington.recipeRating, recipeAlias.recipeId, recipeRating.recipeId)
         .leftJoin(lamington.user, recipeAlias.createdBy, user.userId)
+        .groupBy(recipeAlias.recipeId);
+
+    return query;
+};
+
+const getBookRecipes = async (userId: string, bookId: string): ReadResponse<GetAllRecipesResults> => {
+    const recipeAliasName = "m1";
+    const recipeAlias = Alias(recipe, lamington.recipe, recipeAliasName);
+
+    const recipeRatingAliasName = "mr1";
+    const recipeRatingAlias = Alias(recipeRating, lamington.recipeRating, recipeRatingAliasName);
+
+    const query = db
+        .from(`${lamington.recipe} as ${recipeAliasName}`)
+        .where({ [bookRecipe.bookId]: bookId })
+        .select(
+            recipeAlias.recipeId,
+            recipeAlias.name,
+            recipeAlias.photo,
+            recipeAlias.timesCooked,
+            recipeAlias.cookTime,
+            recipeAlias.prepTime,
+            recipeAlias.public,
+            recipeAlias.createdBy,
+            `${user.firstName} as createdByName`,
+            db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ratingAverage`),
+            db.raw(
+                `(${db
+                    .select(recipeRatingAlias.rating)
+                    .from(`${lamington.recipeRating} as ${recipeRatingAliasName}`)
+                    .where({
+                        [recipeAlias.recipeId]: db.raw(recipeRatingAlias.recipeId),
+                        [recipeRatingAlias.raterId]: userId,
+                    })
+                    .join(lamington.recipe, recipeAlias.recipeId, recipeRatingAlias.recipeId)
+                    .groupBy(recipeAlias.recipeId)}) as ratingPersonal`
+            )
+        )
+        .leftJoin(lamington.recipeRating, recipeAlias.recipeId, recipeRating.recipeId)
+        .leftJoin(lamington.user, recipeAlias.createdBy, user.userId)
+        .leftJoin(lamington.bookRecipe, recipeAlias.recipeId, bookRecipe.recipeId)
         .groupBy(recipeAlias.recipeId);
 
     return query;
@@ -227,6 +269,26 @@ const readMy = async (userId: string) => {
     return data;
 };
 
+const readByBook = async (userId: string, bookId: string) => {
+    // Fetch from database
+    const recipeList = await getBookRecipes(userId, bookId);
+    const recipeCategoriesList = await RecipeTagActions.readByRecipeId(recipeList.map(({ recipeId }) => recipeId));
+
+    // Process results
+    const data: GetRecipeResponseItem[] = recipeList.map(recipe => ({
+        // TODO: Update GetRecipeResponseItem naming
+        ...recipe,
+        ratingAverage: parseFloat(recipe.ratingAverage),
+        tags: recipeTagRowsToResponse(
+            recipeCategoriesList.filter(cat => !cat.parentId || cat.recipeId === recipe.recipeId)
+        ),
+        public: recipe.public === 1,
+        createdBy: { userId: recipe.createdBy, firstName: recipe.createdByName },
+    }));
+
+    return data;
+};
+
 /**
  * Create a new recipe or update an existing recipe by recipeId
  * @param recipeItem
@@ -292,6 +354,7 @@ export const RecipeActions = {
     readMy,
     save,
     delete: deleteRecipe,
+    readByBook,
 };
 
 export const InternalRecipeActions = {

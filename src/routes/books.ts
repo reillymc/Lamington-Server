@@ -1,7 +1,7 @@
 import express from "express";
 
 import { AppError, MessageAction, userMessage } from "../services";
-import { BookActions, BookMemberActions, BookRecipeActions, InternalBookActions } from "../controllers";
+import { BookActions, BookMemberActions, BookRecipeActions, InternalBookActions, RecipeActions } from "../controllers";
 import {
     Book,
     BookEndpoint,
@@ -99,13 +99,13 @@ router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(BookEndpoi
             );
         }
 
-        const bookRecipesResponse = await BookRecipeActions.read({ bookId });
+        const bookRecipesResponse = await RecipeActions.readByBook(userId, bookId);
         const bookMembersResponse = await BookMemberActions.read({ bookId });
 
         const data: Book = {
             ...book,
             createdBy: { userId: book.createdBy, firstName: book.createdByName },
-            recipes: bookRecipesResponse.filter(item => item.bookId === book.bookId).map(({ recipeId }) => recipeId),
+            recipes: Object.fromEntries(bookRecipesResponse.map(recipe => [recipe.recipeId, recipe])),
             members: Object.fromEntries(
                 bookMembersResponse.map(({ userId, canEdit, firstName, lastName }) => [
                     userId,

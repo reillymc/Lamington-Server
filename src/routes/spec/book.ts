@@ -1,6 +1,6 @@
 import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
 import { User } from "./user";
-import { Recipe, recipeIdParam } from "./recipe";
+import { Recipe, Recipes, recipeIdParam } from "./recipe";
 
 export const bookEndpoint = "/books" as const;
 
@@ -26,7 +26,7 @@ export type Book = {
     createdBy: Pick<User, "userId" | "firstName">;
     description: string | undefined;
     accepted?: boolean;
-    recipes?: Array<Recipe["recipeId"]>;
+    recipes?: Recipes;
     members?: {
         [userId: User["userId"]]: {
             userId: User["userId"];
