@@ -20,7 +20,7 @@ export interface Recipes {
  */
 export interface Recipe {
     recipeId: string;
-    name?: string;
+    name: string;
     source?: string;
     ingredients?: RecipeIngredients;
     method?: RecipeMethod;
@@ -95,7 +95,7 @@ export type GetRecipeService = (request: GetRecipeRequest) => GetRecipeResponse;
 export type PostRecipeRequestParams = BaseRequestParams;
 export type PostRecipeRequestBody = BaseRequestBody<{
     recipeId: string;
-    name?: string;
+    name: string;
     source?: string;
     ingredients?: RecipeIngredients;
     method?: RecipeMethod;

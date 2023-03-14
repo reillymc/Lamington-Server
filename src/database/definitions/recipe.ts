@@ -5,7 +5,7 @@ import { lamington, Table } from ".";
  */
 export interface Recipe {
     recipeId: string;
-    name: string | undefined;
+    name: string;
     source: string | undefined;
     photo: string | undefined;
     servings: number | undefined;

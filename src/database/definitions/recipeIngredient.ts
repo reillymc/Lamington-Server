@@ -31,7 +31,7 @@ export const recipeIngredient: Table<RecipeIngredient> = {
     recipeId: `${lamington.recipeIngredient}.recipeId`,
     sectionId: `${lamington.recipeIngredient}.sectionId`,
     ingredientId: `${lamington.recipeIngredient}.ingredientId`,
-    subrecipeId: `${lamington.recipeIngredient}.recipeId`,
+    subrecipeId: `${lamington.recipeIngredient}.subrecipeId`,
     index: `${lamington.recipeIngredient}.index`,
     unit: `${lamington.recipeIngredient}.unit`,
     amount: `${lamington.recipeIngredient}.amount`,

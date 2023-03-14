@@ -20,7 +20,8 @@ export const recipeIngredientRowsToResponse = (
             description,
             items: ingredients
                 .filter(ingredient => ingredient.sectionId === sectionId)
-                .sort((a, b) => (a.index ?? 0) - (b.index ?? 0)),
+                .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+                .map(({ recipeName, ingredientName, ...rest }) => ({ ...rest, name: ingredientName ?? recipeName })),
         }))
         .filter(({ items, name }) => (name === DefaultSection ? true : items.length));
 
@@ -36,7 +37,7 @@ export const recipeIngredientsRequestToRows = (
     return ingredientSections.flatMap(({ sectionId, items }) =>
         items
             .map((ingItem, index) => {
-                if (!ingItem.ingredientId) return undefined;
+                if (!ingItem.ingredientId && !ingItem.subrecipeId) return undefined;
                 return {
                     id: ingItem.id,
                     recipeId,

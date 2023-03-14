@@ -1,4 +1,4 @@
-import db, { Ingredient, RecipeIngredient, lamington, recipeIngredient, ingredient, ReadResponse } from "../database";
+import db, { RecipeIngredient, lamington, recipeIngredient, ingredient, ReadResponse, recipe } from "../database";
 import { Undefined } from "../utils";
 
 /**
@@ -33,7 +33,10 @@ const save = async (recipeId: string, recipeIngredients: RecipeIngredient[]) => 
     await insertRows(recipeIngredients);
 };
 
-export type IngredientReadByRecipeIdResponse = Omit<RecipeIngredient, "recipeId"> & Pick<Ingredient, "name">;
+export type IngredientReadByRecipeIdResponse = Omit<RecipeIngredient, "recipeId"> & {
+    recipeName?: string;
+    ingredientName?: string;
+};
 
 /**
  * Get all ingredients for a recipe
@@ -46,7 +49,9 @@ const readByRecipeId = async (recipeId: string): ReadResponse<IngredientReadByRe
         .select(
             recipeIngredient.id,
             recipeIngredient.ingredientId,
-            ingredient.name,
+            recipeIngredient.subrecipeId,
+            `${recipe.name} as recipeName`,
+            `${ingredient.name} as ingredientName`,
             recipeIngredient.sectionId,
             recipeIngredient.index,
             recipeIngredient.description,
@@ -54,7 +59,8 @@ const readByRecipeId = async (recipeId: string): ReadResponse<IngredientReadByRe
             recipeIngredient.amount,
             recipeIngredient.multiplier
         )
-        .join(lamington.ingredient, recipeIngredient.ingredientId, ingredient.ingredientId);
+        .leftJoin(lamington.ingredient, recipeIngredient.ingredientId, ingredient.ingredientId)
+        .leftJoin(lamington.recipe, recipeIngredient.subrecipeId, recipe.recipeId);
 
 export const RecipeIngredientActions = {
     readByRecipeId,
