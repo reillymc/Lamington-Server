@@ -33,6 +33,7 @@ interface ReadBookRow extends Pick<Book, "bookId" | "name" | "description"> {
     createdBy: User["userId"];
     createdByName: User["firstName"];
     accepted: BookMember["accepted"];
+    canEdit: BookMember["canEdit"];
 }
 
 /**
@@ -47,7 +48,8 @@ const readMyBooks = async ({ userId }: GetMyBooksParams): ReadResponse<ReadBookR
             book.description,
             book.createdBy,
             `${user.firstName} as createdByName`,
-            bookMember.accepted
+            bookMember.accepted,
+            bookMember.canEdit
         )
         .whereIn(
             book.bookId,

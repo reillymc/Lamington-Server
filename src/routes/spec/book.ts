@@ -26,6 +26,7 @@ export type Book = {
     createdBy: Pick<User, "userId" | "firstName">;
     description: string | undefined;
     accepted?: boolean;
+    canEdit?: boolean;
     recipes?: Recipes;
     members?: {
         [userId: User["userId"]]: {

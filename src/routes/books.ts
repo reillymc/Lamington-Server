@@ -52,6 +52,7 @@ router.get<GetBooksRequestParams, GetBooksResponse, GetBooksRequestBody>(
                         ...book,
                         createdBy: { userId: book.createdBy, firstName: book.createdByName },
                         accepted: book.createdBy === userId ? true : !!book.accepted,
+                        canEdit: book.createdBy === userId ? true : !!book.canEdit,
                     },
                 ])
             );
@@ -116,6 +117,10 @@ router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(BookEndpoi
                 book.createdBy === userId
                     ? true
                     : !!bookMembersResponse.find(({ userId }) => userId === userId)?.accepted,
+            canEdit:
+                book.createdBy === userId
+                    ? true
+                    : !!bookMembersResponse.find(({ userId }) => userId === userId)?.canEdit,
         };
 
         return res.status(200).json({ error: false, data });
