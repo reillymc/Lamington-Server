@@ -4,6 +4,7 @@ import FormData from "form-data";
 import { FileFilterCallback } from "multer";
 import { Request } from "express";
 import { v4 as Uuid } from "uuid";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 import config from "../config";
 import path from "path";
@@ -17,7 +18,12 @@ export const imageFilter = (req: Request, file: Express.Multer.File, callback: F
     callback(null, validFile);
 };
 
-export const compressImage = (file: Buffer) => sharp(file).jpeg({ force: true, mozjpeg: true, quality: 80 }).toBuffer();
+export const compressImage = (file: Buffer) =>
+    sharp(file)
+        .toFormat("jpeg", { mozjpeg: true, quality: 60 })
+        .resize({ width: 2048, height: 2048, fit: "inside" })
+        .withMetadata()
+        .toBuffer();
 
 export const storeLocalImage = (file: Buffer, name: string) =>
     sharp(file).jpeg({ force: true, mozjpeg: true, quality: 50 }).toFile(`uploads/${name}`);
@@ -40,4 +46,26 @@ export const uploadImageToImgur = async (file: Buffer) => {
 
     const { data } = (await response.data) as { data: { id: string } };
     return data;
+};
+
+export const uploadImageToS3 = async (file: Buffer, name: string) => {
+    if (!config.service.awsBucketName || !config.service.awsAccessKeyId || !config.service.awsSecretAccessKey) {
+        throw new Error("AWS Bucket Name is not defined");
+    }
+
+    const s3 = new S3Client({
+        region: config.service.awsRegion,
+        credentials: {
+            accessKeyId: config.service.awsAccessKeyId,
+            secretAccessKey: config.service.awsSecretAccessKey,
+        },
+    });
+
+    const command = new PutObjectCommand({
+        Bucket: config.service.awsBucketName,
+        Key: name,
+        Body: file,
+    });
+
+    return s3.send(command);
 };

@@ -15,8 +15,12 @@ const config: LamingtonConfig = {
         jwtExpiration: process.env.JWT_EXPIRATION,
     },
     service: {
-        imageStorage: "imgur",
+        imageStorage: "s3",
         imgurClientId: process.env.IMGUR_CLIENT_ID,
+        awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        awsRegion: process.env.AWS_REGION,
+        awsBucketName: process.env.AWS_BUCKET_NAME,
     },
 } as const;
 
@@ -37,8 +41,12 @@ interface LamingtonConfig {
         jwtExpiration: string | undefined;
     };
     service: {
-        imageStorage: "local" | "imgur";
+        imageStorage: "local" | "imgur" | "s3";
         imgurClientId: string | undefined;
+        awsAccessKeyId: string | undefined;
+        awsSecretAccessKey: string | undefined;
+        awsRegion: string | undefined;
+        awsBucketName: string | undefined;
     };
 }
 
