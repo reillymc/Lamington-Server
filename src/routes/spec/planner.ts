@@ -61,6 +61,14 @@ export type GetPlannersRequest = BaseRequest<GetPlannersRequestBody & GetPlanner
 export type GetPlannersResponse = BaseResponse<Planners>;
 export type GetPlannersService = (request: GetPlannersRequest) => GetPlannersResponse;
 
+// Get planner
+export type GetPlannerRequestParams = BaseRequestParams<{ [plannerIdParam]: Planner["plannerId"] }>;
+export type GetPlannerRequestBody = BaseRequestBody;
+
+export type GetPlannerRequest = BaseRequest<GetPlannerRequestParams & GetPlannerRequestBody>;
+export type GetPlannerResponse = BaseResponse<Planner>;
+export type GetPlannerService = (request: GetPlannerRequest) => GetPlannerResponse;
+
 // Get planner recipes
 export type GetPlannerMealsRequestParams = BaseRequestParams<{
     [plannerIdParam]: Planner["plannerId"];
@@ -140,9 +148,10 @@ export type DeletePlannerMemberService = (request: DeletePlannerMemberRequest) =
 export interface PlannerServices {
     deletePlanner: DeletePlannerService;
     deletePlannerMeal: DeletePlannerMealService;
+    deletePlannerMember: DeletePlannerMemberService;
+    getPlanner: GetPlannerService;
     getPlanners: GetPlannersService;
     postPlanner: PostPlannerService;
     postPlannerMeal: PostPlannerMealService;
     postPlannerMember: PostPlannerMemberService;
-    deletePlannerMember: DeletePlannerMemberService;
 }

@@ -6,6 +6,7 @@ import {
     bookEndpoint,
     ingredientEndpoint,
     listEndpoint,
+    plannerEndpoint,
     recipeEndpoint,
     tagEndpoint,
     usersEndpoint,
@@ -19,6 +20,7 @@ import { default as listsRouter } from "./lists";
 import { default as recipesRouter } from "./recipes";
 import { default as tagsRouter } from "./tags";
 import { default as usersRouter } from "./users";
+import { default as plannersRouter } from "./planners";
 
 const appRouter = express.Router();
 
@@ -29,6 +31,7 @@ appRouter.use(listEndpoint, listsRouter);
 appRouter.use(recipeEndpoint, recipesRouter);
 appRouter.use(tagEndpoint, tagsRouter);
 appRouter.use(usersEndpoint, usersRouter);
+appRouter.use(plannerEndpoint, plannersRouter);
 
 appRouter.use("/", notFoundMiddleware);
 

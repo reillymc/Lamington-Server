@@ -89,6 +89,7 @@ const readPlanners = async ({ plannerId, userId }: GetPlannerParams): ReadRespon
         .select(
             planner.plannerId,
             planner.name,
+            planner.variant,
             planner.description,
             planner.createdBy,
             `${user.firstName} as createdByName`
@@ -188,7 +189,7 @@ const readPlannersInternal = async (params: ReadQuery<ReadPlannerInternalParams>
     const plannerIds = params.map(({ plannerId }) => plannerId);
 
     const query = db<Planner>(lamington.planner)
-        .select(planner.plannerId, planner.name, planner.description, planner.createdBy)
+        .select(planner.plannerId, planner.name, planner.variant, planner.description, planner.createdBy)
         .whereIn(planner.plannerId, plannerIds);
     return query;
 };

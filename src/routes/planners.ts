@@ -26,6 +26,10 @@ import {
     PostPlannerRequestBody,
     PostPlannerRequestParams,
     PostPlannerResponse,
+    Planner,
+    GetPlannerRequestBody,
+    GetPlannerRequestParams,
+    GetPlannerResponse,
 } from "./spec";
 
 const router = express.Router();
@@ -60,6 +64,69 @@ router.get<GetPlannersRequestParams, GetPlannersResponse, GetPlannersRequestBody
                     innerError: e,
                     message: userMessage({ action: MessageAction.Read, entity: "planners" }),
                 })
+            );
+        }
+    }
+);
+
+/**
+ * GET request to fetch a planner
+ */
+router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
+    PlannerEndpoint.getPlanner,
+    async (req, res, next) => {
+        // Extract request fields
+        const { plannerId } = req.params;
+        const { userId } = req.body;
+
+        if (!plannerId) {
+            return next(
+                new AppError({
+                    status: 400,
+                    code: "INSUFFICIENT_DATA",
+                    message: "Insufficient data to remove planner member.",
+                })
+            );
+        }
+
+        // Fetch and return result
+        try {
+            const [planner] = await PlannerActions.read({ plannerId, userId });
+            if (!planner) {
+                return next(
+                    new AppError({
+                        status: 404,
+                        code: "NOT_FOUND",
+                        message: "Could not find planner.",
+                    })
+                );
+            }
+
+            const plannerMembersResponse = await PlannerMemberActions.read({ entityId: plannerId });
+
+            const data: Planner = {
+                ...planner,
+                createdBy: { userId: planner.createdBy, firstName: planner.createdByName },
+                members: Object.fromEntries(
+                    plannerMembersResponse.map(({ userId, canEdit, firstName, lastName }) => [
+                        userId,
+                        { userId, permissions: canEdit, firstName, lastName },
+                    ])
+                ),
+                accepted:
+                    planner.createdBy === userId
+                        ? true
+                        : !!plannerMembersResponse.find(({ userId }) => userId === userId)?.accepted,
+                canEdit:
+                    planner.createdBy === userId
+                        ? true
+                        : !!plannerMembersResponse.find(({ userId }) => userId === userId)?.canEdit,
+            };
+
+            return res.status(200).json({ error: false, data });
+        } catch (e: unknown) {
+            next(
+                new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "planner" }) })
             );
         }
     }

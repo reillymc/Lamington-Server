@@ -37,7 +37,6 @@ router.get<GetUsersRequestParams, GetUsersResponse, GetUsersRequestBody>(
                     },
                 ])
             );
-            console.log(data);
 
             return res.status(200).json({ error: false, data });
         } catch (e: unknown) {

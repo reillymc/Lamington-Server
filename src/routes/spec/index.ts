@@ -65,6 +65,7 @@ export const PlannerEndpoint = {
     deletePlanner: `/:${plannerIdParam}`,
     deletePlannerMember: `/:${plannerIdParam}/${plannerMemberSubpath}/:${plannerMemberIdParam}`,
     deletePlannerMeal: `/:${plannerIdParam}/${recipeSubpath}/:${recipeIdParam}`,
+    getPlanner: `/:${plannerIdParam}`,
     getPlanners: `/`,
     postPlanner: `/`,
     postPlannerMember: `/:${plannerIdParam}/${plannerMemberSubpath}`,
