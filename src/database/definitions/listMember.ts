@@ -1,14 +1,11 @@
-import { lamington, Table } from ".";
+import { Table } from ".";
+import { EntityMember } from "./entity";
+import { lamington } from "./lamington";
 
 /**
- * List
+ * ListMember
  */
-export type ListMember = {
-    listId: string;
-    userId: string;
-    canEdit: string | undefined;
-    accepted: number | undefined;
-};
+export type ListMember = EntityMember<{ listId: string }>;
 
 export const listMember: Table<ListMember> = {
     listId: `${lamington.listMember}.listId`,

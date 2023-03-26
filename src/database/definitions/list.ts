@@ -1,4 +1,5 @@
-import { lamington, Table } from ".";
+import { Table } from ".";
+import { lamington } from "./lamington";
 
 /**
  * List

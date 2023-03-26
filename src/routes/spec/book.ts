@@ -92,6 +92,10 @@ export type DeleteBookRecipeRequestParams = BaseRequestParams<{
 }>;
 export type DeleteBookRecipeRequestBody = BaseRequestBody;
 
+export type DeleteBookRecipeRequest = BaseRequest<DeleteBookRecipeRequestParams & DeleteBookRecipeRequestBody>;
+export type DeleteBookRecipeResponse = BaseResponse;
+export type DeleteBookRecipeService = (request: DeleteBookRecipeRequest) => DeleteBookRecipeResponse;
+
 // Post book member
 export type PostBookMemberRequestParams = BaseRequestParams<{
     [bookIdParam]: Book["bookId"];
@@ -99,10 +103,6 @@ export type PostBookMemberRequestParams = BaseRequestParams<{
 export type PostBookMemberRequestBody = BaseRequestBody<{
     accepted?: boolean;
 }>;
-
-export type DeleteBookRecipeRequest = BaseRequest<DeleteBookRecipeRequestParams & DeleteBookRecipeRequestBody>;
-export type DeleteBookRecipeResponse = BaseResponse;
-export type DeleteBookRecipeService = (request: DeleteBookRecipeRequest) => DeleteBookRecipeResponse;
 
 export type PostBookMemberRequest = BaseRequest<PostBookMemberRequestParams & PostBookMemberRequestBody>;
 export type PostBookMemberResponse = BaseResponse;

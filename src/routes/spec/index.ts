@@ -4,6 +4,7 @@ import { AuthServices, loginSubpath, registerSubpath } from "./auth";
 import { bookIdParam, bookMemberIdParam, bookMemberSubpath, BookServices, recipeSubpath } from "./book";
 import { IngredientServices } from "./ingredient";
 import { itemIdParam, itemSubpath, listIdParam, ListServices, listMemberIdParam, listMemberSubpath } from "./list";
+import { plannerIdParam, plannerMemberIdParam, plannerMemberSubpath, PlannerServices } from "./planner";
 import { rateSubpath, recipeIdParam, RecipeServices } from "./recipe";
 import { TagServices } from "./tag";
 import { approveSubpath, userIdParam, UserServices } from "./user";
@@ -60,6 +61,16 @@ export const ListEndpoint = {
     postListMember: `/:${listIdParam}/${listMemberSubpath}`,
 } as const satisfies Record<keyof ListServices, string>;
 
+export const PlannerEndpoint = {
+    deletePlanner: `/:${plannerIdParam}`,
+    deletePlannerMember: `/:${plannerIdParam}/${plannerMemberSubpath}/:${plannerMemberIdParam}`,
+    deletePlannerMeal: `/:${plannerIdParam}/${recipeSubpath}/:${recipeIdParam}`,
+    getPlanners: `/`,
+    postPlanner: `/`,
+    postPlannerMember: `/:${plannerIdParam}/${plannerMemberSubpath}`,
+    postPlannerMeal: `/:${plannerIdParam}/${recipeSubpath}`,
+} as const satisfies Record<keyof PlannerServices, string>;
+
 export const RecipeEndpoint = {
     deleteRecipe: `/:${recipeIdParam}`,
     getRecipe: `/:${recipeIdParam}`,
@@ -83,6 +94,7 @@ export * from "./auth";
 export * from "./book";
 export * from "./ingredient";
 export * from "./list";
+export * from "./planner";
 export * from "./recipe";
 export * from "./tag";
 export * from "./user";

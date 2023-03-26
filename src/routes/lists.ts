@@ -102,7 +102,7 @@ router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(ListEndpoi
         }
 
         const listItemsResponse = await ListItemActions.read({ listId });
-        const listMembersResponse = await ListMemberActions.read({ listId });
+        const listMembersResponse = await ListMemberActions.read({ entityId: listId });
 
         const data: List = {
             ...list,
@@ -225,7 +225,7 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
             }
 
             if (existingList.createdBy !== userId) {
-                const existingListMembers = await ListMemberActions.read({ listId });
+                const existingListMembers = await ListMemberActions.read({ entityId: listId });
 
                 if (!existingListMembers?.some(member => member.userId === userId && member.canEdit)) {
                     return res.status(403).json({
@@ -298,7 +298,7 @@ router.post<PostListMemberRequestParams, PostListMemberResponse, PostListMemberR
                 );
             }
 
-            const listMembers = await ListMemberActions.read({ listId });
+            const listMembers = await ListMemberActions.read({ entityId: listId });
 
             if (!listMembers?.some(member => member.userId === userId)) {
                 return next(
@@ -310,7 +310,7 @@ router.post<PostListMemberRequestParams, PostListMemberResponse, PostListMemberR
                 );
             }
 
-            await ListMemberActions.update({ listId, userId, accepted });
+            await ListMemberActions.update({ entityId: listId, userId, accepted });
             return res.status(201).json({ error: false, message: "List member removed." });
         } catch (e: unknown) {
             next(
@@ -408,7 +408,7 @@ router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListIte
                 );
             }
             if (existingList.createdBy !== userId) {
-                const existingListMembers = await ListMemberActions.read({ listId });
+                const existingListMembers = await ListMemberActions.read({ entityId: listId });
                 if (!existingListMembers?.some(member => member.userId === userId && member.canEdit)) {
                     return next(
                         new AppError({
@@ -489,7 +489,7 @@ router.delete<DeleteListMemberRequestParams, DeleteListMemberResponse, DeleteLis
                 );
             }
 
-            await ListMemberActions.delete({ listId, userId: userToDelete });
+            await ListMemberActions.delete({ entityId: listId, userId: userToDelete });
             return res.status(201).json({ error: false, message: "List member removed." });
         } catch (e: unknown) {
             next(

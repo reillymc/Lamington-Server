@@ -101,7 +101,7 @@ router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(BookEndpoi
         }
 
         const bookRecipesResponse = await RecipeActions.readByBook(userId, bookId);
-        const bookMembersResponse = await BookMemberActions.read({ bookId });
+        const bookMembersResponse = await BookMemberActions.read({ entityId: bookId });
 
         const data: Book = {
             ...book,
@@ -327,7 +327,7 @@ router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberR
                 );
             }
 
-            const bookMembers = await BookMemberActions.read({ bookId });
+            const bookMembers = await BookMemberActions.read({ entityId: bookId });
 
             if (!bookMembers?.some(member => member.userId === userId)) {
                 return next(
@@ -339,7 +339,7 @@ router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberR
                 );
             }
 
-            await BookMemberActions.update({ bookId, userId, accepted });
+            await BookMemberActions.update({ entityId: bookId, userId, accepted });
             return res.status(201).json({ error: false, message: "Book member removed." });
         } catch (e: unknown) {
             next(
@@ -469,7 +469,7 @@ router.delete<DeleteBookMemberRequestParams, DeleteBookMemberResponse, DeleteBoo
                 );
             }
 
-            await BookMemberActions.delete({ bookId, userId: userToDelete });
+            await BookMemberActions.delete({ entityId: bookId, userId: userToDelete });
             return res.status(201).json({ error: false, message: "Book member removed." });
         } catch (e: unknown) {
             next(
