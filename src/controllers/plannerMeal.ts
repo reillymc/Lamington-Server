@@ -1,31 +1,19 @@
-import db, {
-    CreateQuery,
-    CreateResponse,
-    DeleteResponse,
-    lamington,
-    PlannerMeal,
-    plannerMeal,
-    ReadQuery,
-    ReadResponse,
-} from "../database";
-
-interface GetPlannerMealsParams {
-    plannerId: string;
-}
+import db, { CreateQuery, CreateResponse, DeleteResponse, lamington, PlannerMeal, plannerMeal } from "../database";
 
 /**
- * Get planners by id or ids
+ * Get planner meals by id or ids
  * @returns an array of planners matching given ids
  */
-const readPlannerMeals = async (params: ReadQuery<GetPlannerMealsParams>): ReadResponse<PlannerMeal> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
-    const plannerIds = params.map(({ plannerId }) => plannerId);
-
+const readPlannerMeals = async (params: Pick<PlannerMeal, "plannerId" | "year" | "month">): Promise<PlannerMeal[]> => {
     const query = db<PlannerMeal>(lamington.plannerMeal)
-        .select(plannerMeal.plannerId, plannerMeal.recipeId)
-        .whereIn(plannerMeal.plannerId, plannerIds);
+        .where(plannerMeal.plannerId, params.plannerId)
+        .andWhere(plannerMeal.year, params.year)
+        .andWhere(plannerMeal.month, params.month)
+        .orWhere(plannerMeal.month, params.month - 1)
+        .andWhere(plannerMeal.dayOfMonth, ">=", 21)
+        .orWhere(plannerMeal.month, params.month + 1)
+        .andWhere(plannerMeal.dayOfMonth, "<=", 7);
+
     return query;
 };
 
@@ -40,7 +28,7 @@ const createPlannerMeals = async (plannerMeals: CreateQuery<PlannerMeal>): Creat
 
     const result = await db(lamington.plannerMeal)
         .insert(plannerMeals)
-        .onConflict([plannerMeal.plannerId, plannerMeal.recipeId])
+        .onConflict([plannerMeal.plannerId, plannerMeal.id])
         .merge();
 
     return result;
@@ -50,7 +38,7 @@ const createPlannerMeals = async (plannerMeals: CreateQuery<PlannerMeal>): Creat
  * Creates a new planner from params
  * @returns the newly created planners
  */
-const deletePlannerMeals = async (plannerMeals: CreateQuery<{ id: string }>): DeleteResponse => {
+const deletePlannerMeals = async (plannerMeals: CreateQuery<Pick<PlannerMeal, "id">>): DeleteResponse => {
     if (!Array.isArray(plannerMeals)) {
         plannerMeals = [plannerMeals];
     }

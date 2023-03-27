@@ -36,6 +36,7 @@ export type Planner = {
             permissions?: string;
         };
     };
+    meals?: PlannerMeal[];
 };
 
 /**
@@ -62,24 +63,16 @@ export type GetPlannersResponse = BaseResponse<Planners>;
 export type GetPlannersService = (request: GetPlannersRequest) => GetPlannersResponse;
 
 // Get planner
-export type GetPlannerRequestParams = BaseRequestParams<{ [plannerIdParam]: Planner["plannerId"] }>;
+export type GetPlannerRequestParams = BaseRequestParams<{
+    [plannerIdParam]: Planner["plannerId"];
+    [yearParam]: string;
+    [monthParam]: string;
+}>;
 export type GetPlannerRequestBody = BaseRequestBody;
 
 export type GetPlannerRequest = BaseRequest<GetPlannerRequestParams & GetPlannerRequestBody>;
 export type GetPlannerResponse = BaseResponse<Planner>;
 export type GetPlannerService = (request: GetPlannerRequest) => GetPlannerResponse;
-
-// Get planner recipes
-export type GetPlannerMealsRequestParams = BaseRequestParams<{
-    [plannerIdParam]: Planner["plannerId"];
-    [yearParam]: PlannerMeal["year"];
-    [monthParam]: PlannerMeal["month"];
-}>;
-export type GetPlannerMealsRequestBody = BaseRequestBody;
-
-export type GetPlannerMealsRequest = BaseRequest<GetPlannerMealsRequestParams & GetPlannerMealsRequestBody>;
-export type GetPlannerMealsResponse = BaseResponse<Planner>;
-export type GetPlannerMealsService = (request: GetPlannerMealsRequest) => GetPlannerMealsResponse;
 
 // Post planner
 export type PostPlannerRequestParams = BaseRequestParams;

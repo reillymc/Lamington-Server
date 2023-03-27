@@ -76,8 +76,11 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
     PlannerEndpoint.getPlanner,
     async (req, res, next) => {
         // Extract request fields
-        const { plannerId } = req.params;
+        const { plannerId, year, month } = req.params;
         const { userId } = req.body;
+
+        let parsedYear = year ? parseInt(year, 10) : undefined;
+        let parsedMonth = month ? parseInt(month, 10) : undefined;
 
         if (!plannerId) {
             return next(
@@ -104,6 +107,11 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
 
             const plannerMembersResponse = await PlannerMemberActions.read({ entityId: plannerId });
 
+            const plannerMealsResponse =
+                parsedYear !== undefined && parsedMonth !== undefined
+                    ? await PlannerMealActions.read({ plannerId, year: parsedYear, month: parsedMonth })
+                    : undefined;
+
             const data: Planner = {
                 ...planner,
                 createdBy: { userId: planner.createdBy, firstName: planner.createdByName },
@@ -121,6 +129,7 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
                     planner.createdBy === userId
                         ? true
                         : !!plannerMembersResponse.find(({ userId }) => userId === userId)?.canEdit,
+                meals: plannerMealsResponse,
             };
 
             return res.status(200).json({ error: false, data });
@@ -236,7 +245,7 @@ router.delete<DeletePlannerRequestParams, DeletePlannerResponse, DeletePlannerRe
 );
 
 /**
- * POST request to create a planner recipe.
+ * POST request to create a planner meal.
  */
 router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMealRequestBody>(
     PlannerEndpoint.postPlannerMeal,

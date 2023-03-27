@@ -4,7 +4,14 @@ import { AuthServices, loginSubpath, registerSubpath } from "./auth";
 import { bookIdParam, bookMemberIdParam, bookMemberSubpath, BookServices, recipeSubpath } from "./book";
 import { IngredientServices } from "./ingredient";
 import { itemIdParam, itemSubpath, listIdParam, ListServices, listMemberIdParam, listMemberSubpath } from "./list";
-import { plannerIdParam, plannerMemberIdParam, plannerMemberSubpath, PlannerServices } from "./planner";
+import {
+    monthParam,
+    plannerIdParam,
+    plannerMemberIdParam,
+    plannerMemberSubpath,
+    PlannerServices,
+    yearParam,
+} from "./planner";
 import { rateSubpath, recipeIdParam, RecipeServices } from "./recipe";
 import { TagServices } from "./tag";
 import { approveSubpath, userIdParam, UserServices } from "./user";
@@ -65,7 +72,7 @@ export const PlannerEndpoint = {
     deletePlanner: `/:${plannerIdParam}`,
     deletePlannerMember: `/:${plannerIdParam}/${plannerMemberSubpath}/:${plannerMemberIdParam}`,
     deletePlannerMeal: `/:${plannerIdParam}/${recipeSubpath}/:${recipeIdParam}`,
-    getPlanner: `/:${plannerIdParam}`,
+    getPlanner: `/:${plannerIdParam}/:${yearParam}/:${monthParam}`,
     getPlanners: `/`,
     postPlanner: `/`,
     postPlannerMember: `/:${plannerIdParam}/${plannerMemberSubpath}`,
