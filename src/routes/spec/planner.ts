@@ -4,11 +4,13 @@ import { User } from "./user";
 export const plannerEndpoint = "/planners" as const;
 
 export const plannerMemberSubpath = "members" as const;
+export const mealSubpath = "meals" as const;
 
 export const plannerIdParam = "plannerId" as const;
 export const yearParam = "year" as const;
 export const monthParam = "month" as const;
 export const plannerMemberIdParam = "userId" as const;
+export const mealIdParam = "mealId" as const;
 
 /**
  * Planners
@@ -107,7 +109,7 @@ export type PostPlannerMealService = (request: PostPlannerMealRequest) => PostPl
 // Delete planner recipe
 export type DeletePlannerMealRequestParams = BaseRequestParams<{
     [plannerIdParam]: Planner["plannerId"];
-    id: PlannerMeal["id"];
+    [mealIdParam]: PlannerMeal["id"];
 }>;
 export type DeletePlannerMealRequestBody = BaseRequestBody;
 

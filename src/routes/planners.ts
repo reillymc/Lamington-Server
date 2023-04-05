@@ -376,23 +376,23 @@ router.post<PostPlannerMemberRequestParams, PostPlannerMemberResponse, PostPlann
 );
 
 /**
- * DELETE request to delete a planner recipe.
+ * DELETE request to delete a planner meal.
  */
 router.delete<DeletePlannerMealRequestParams, DeletePlannerMealResponse, DeletePlannerMealRequestBody>(
     PlannerEndpoint.deletePlannerMeal,
     async (req, res, next) => {
         // Extract request fields
-        const { plannerId, id } = req.params;
+        const { plannerId, mealId } = req.params;
 
         const { userId } = req.body;
 
         // Check all required fields are present
-        if (!plannerId || !id) {
+        if (!plannerId || !mealId) {
             return next(
                 new AppError({
                     status: 400,
                     code: "INSUFFICIENT_DATA",
-                    message: "Insufficient data to remove planner recipe.",
+                    message: "Insufficient data to remove planner meal.",
                 })
             );
         }
@@ -405,7 +405,7 @@ router.delete<DeletePlannerMealRequestParams, DeletePlannerMealResponse, DeleteP
                 return next(
                     new AppError({
                         status: 403,
-                        message: "Cannot find planner to delete recipe from.",
+                        message: "Cannot find planner to delete meal from.",
                     })
                 );
             }
@@ -414,18 +414,18 @@ router.delete<DeletePlannerMealRequestParams, DeletePlannerMealResponse, DeleteP
                 return next(
                     new AppError({
                         status: 403,
-                        message: "You do not have permissions to delete recipes from this planner",
+                        message: "You do not have permissions to delete meals from this planner",
                     })
                 );
             }
 
-            await PlannerMealActions.delete({ id });
-            return res.status(201).json({ error: false, message: "Planner item deleted." });
+            await PlannerMealActions.delete({ id: mealId });
+            return res.status(201).json({ error: false, message: "Planner meal deleted." });
         } catch (e: unknown) {
             next(
                 new AppError({
                     innerError: e,
-                    message: userMessage({ action: MessageAction.Delete, entity: "planner item" }),
+                    message: userMessage({ action: MessageAction.Delete, entity: "planner meal" }),
                 })
             );
         }

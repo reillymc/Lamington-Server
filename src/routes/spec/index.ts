@@ -5,6 +5,8 @@ import { bookIdParam, bookMemberIdParam, bookMemberSubpath, BookServices, recipe
 import { IngredientServices } from "./ingredient";
 import { itemIdParam, itemSubpath, listIdParam, ListServices, listMemberIdParam, listMemberSubpath } from "./list";
 import {
+    mealIdParam,
+    mealSubpath,
     monthParam,
     plannerIdParam,
     plannerMemberIdParam,
@@ -71,12 +73,12 @@ export const ListEndpoint = {
 export const PlannerEndpoint = {
     deletePlanner: `/:${plannerIdParam}`,
     deletePlannerMember: `/:${plannerIdParam}/${plannerMemberSubpath}/:${plannerMemberIdParam}`,
-    deletePlannerMeal: `/:${plannerIdParam}/${recipeSubpath}/:${recipeIdParam}`,
-    getPlanner: `/:${plannerIdParam}/:${yearParam}/:${monthParam}`,
+    deletePlannerMeal: `/:${plannerIdParam}/${mealSubpath}/:${mealIdParam}`,
+    getPlanner: `/:${plannerIdParam}/:${yearParam}?/:${monthParam}?`,
     getPlanners: `/`,
     postPlanner: `/`,
     postPlannerMember: `/:${plannerIdParam}/${plannerMemberSubpath}`,
-    postPlannerMeal: `/:${plannerIdParam}/${recipeSubpath}`,
+    postPlannerMeal: `/:${plannerIdParam}/${mealSubpath}`,
 } as const satisfies Record<keyof PlannerServices, string>;
 
 export const RecipeEndpoint = {
