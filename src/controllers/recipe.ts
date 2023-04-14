@@ -314,23 +314,23 @@ const save = async (recipeItem: PostRecipeRequest) => {
 
     // Create new RecipeSections rows
     const recipeSectionRows = recipeSectionRequestToRows(recipeId, recipeItem.ingredients, recipeItem.method);
-    if (recipeSectionRows?.length) await RecipeSectionActions.save(recipeId, recipeSectionRows);
+    if (recipeSectionRows) await RecipeSectionActions.save(recipeId, recipeSectionRows);
 
     // Create new Ingredients rows
     const ingredientRows = ingredientsRequestToRows(recipeItem.ingredients, recipeItem.userId);
-    if (ingredientRows?.length) await IngredientActions.save(ingredientRows);
+    if (ingredientRows) await IngredientActions.save(ingredientRows);
 
     // Update RecipeIngredients rows
     const recipeIngredientRows = recipeIngredientsRequestToRows(recipeId, recipeItem.ingredients);
-    if (recipeIngredientRows?.length) await RecipeIngredientActions.save(recipeId, recipeIngredientRows);
+    if (recipeIngredientRows) await RecipeIngredientActions.save(recipeId, recipeIngredientRows);
 
     // Update RecipeSteps rows
     const recipeStepRows = recipeMethodRequestToRows(recipeId, recipeItem.method);
-    if (recipeStepRows?.length) await RecipeStepActions.save(recipeId, recipeStepRows);
+    if (recipeStepRows) await RecipeStepActions.save(recipeId, recipeStepRows);
 
     // Update RecipeTags rows
     const recipeTagRows = recipeTagsRequestToRows(recipeId, recipeItem.tags);
-    if (recipeTagRows?.length) await RecipeTagActions.save(recipeId, recipeTagRows);
+    if (recipeTagRows) await RecipeTagActions.save(recipeId, recipeTagRows);
 
     // Update Recipe Rating row
     if (recipeItem.ratingPersonal) {

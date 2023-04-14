@@ -1,6 +1,6 @@
 import express from "express";
 
-import { UserActions } from "../controllers";
+import { BookActions, ListActions, PlannerActions, UserActions } from "../controllers";
 import { userStatusToUserStatus } from "../controllers/helpers";
 import { AppError, MessageAction, userMessage } from "../services";
 import {
@@ -72,6 +72,8 @@ router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApp
                 status: accept ? UserStatus.Registered : UserStatus.Blacklisted,
             });
 
+            createDefaultUserData(userToUpdate);
+
             return res.status(200).json({ error: false });
         } catch (e: unknown) {
             next(
@@ -82,3 +84,24 @@ router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApp
 );
 
 export default router;
+
+const createDefaultUserData = async (userId: string) => {
+    const book = await BookActions.save({
+        createdBy: userId,
+        name: "Favourite Recipes",
+        description: "A recipe book for all my favourite recipes",
+    });
+
+    const list = await ListActions.save({
+        createdBy: userId,
+        name: "My Shopping List",
+        description: "A list of all the items I need to buy",
+    });
+
+    const planner = await PlannerActions.save({
+        createdBy: userId,
+        name: "My Meal Planner",
+        description: "A planner for all the meals I want to cook",
+        variant: "variant1",
+    });
+};

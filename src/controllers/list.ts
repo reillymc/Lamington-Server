@@ -49,15 +49,12 @@ const readMyLists = async ({ userId }: GetMyListsParams): ReadResponse<ReadListR
             `${user.firstName} as createdByName`,
             listMember.accepted
         )
-        .whereIn(
-            list.listId,
-            db<string[]>(lamington.listMember)
-                .select(listMember.listId)
-                .where({ [listMember.userId]: userId })
-        )
-        .orWhere({ [list.createdBy]: userId })
+        .where({ [list.createdBy]: userId })
+        .orWhere({ [listMember.userId]: userId })
         .leftJoin(lamington.user, list.createdBy, user.userId)
         .leftJoin(lamington.listMember, list.listId, listMember.listId);
+
+    console.log(query.toQuery());
 
     return query;
 };
@@ -79,14 +76,11 @@ const readLists = async ({ listId, userId }: GetListParams): ReadResponse<ReadLi
 
     const query = db<ReadListRow>(lamington.list)
         .select(list.listId, list.name, list.description, list.createdBy, `${user.firstName} as createdByName`)
-        .whereIn(
-            list.listId,
-            db<string[]>(lamington.listMember)
-                .select(listMember.listId)
-                .where({ [listMember.userId]: userId, [listMember.listId]: listId })
-        )
+        .where({ [list.listId]: listId })
+        .andWhere(qb => qb.where({ [list.createdBy]: userId }).orWhere({ [listMember.userId]: userId }))
         .orWhere({ [list.createdBy]: userId, [list.listId]: listId })
-        .leftJoin(lamington.user, list.createdBy, user.userId);
+        .leftJoin(lamington.user, list.createdBy, user.userId)
+        .leftJoin(lamington.listMember, list.listId, listMember.listId);
 
     return query;
 };

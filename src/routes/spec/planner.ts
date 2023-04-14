@@ -100,7 +100,7 @@ export type DeletePlannerService = (request: DeletePlannerRequest) => DeletePlan
 
 // Post planner recipe
 export type PostPlannerMealRequestParams = BaseRequestParams<{ [plannerIdParam]: Planner["plannerId"] }>;
-export type PostPlannerMealRequestBody = BaseRequestBody<Omit<PlannerMeal, "plannerId">>;
+export type PostPlannerMealRequestBody = BaseRequestBody<Omit<Partial<PlannerMeal>, "plannerId">>;
 
 export type PostPlannerMealRequest = BaseRequest<PostPlannerMealRequestParams & PostPlannerMealRequestBody>;
 export type PostPlannerMealResponse = BaseResponse;

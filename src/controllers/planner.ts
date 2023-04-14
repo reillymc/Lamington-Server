@@ -57,13 +57,8 @@ const readMyPlanners = async ({ userId }: GetMyPlannersParams): ReadResponse<Rea
             plannerMember.accepted,
             plannerMember.canEdit
         )
-        .whereIn(
-            planner.plannerId,
-            db<string[]>(lamington.plannerMember)
-                .select(plannerMember.plannerId)
-                .where({ [plannerMember.userId]: userId })
-        )
-        .orWhere({ [planner.createdBy]: userId })
+        .where({ [planner.createdBy]: userId })
+        .orWhere({ [plannerMember.userId]: userId })
         .leftJoin(lamington.user, planner.createdBy, user.userId)
         .leftJoin(lamington.plannerMember, planner.plannerId, plannerMember.plannerId);
 

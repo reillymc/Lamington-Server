@@ -45,7 +45,7 @@ const updateRows = async (recipeId: string, recipeTags: RecipeTag[]) => {
         recipeId,
         recipeTags.map(({ tagId }) => tagId)
     );
-    await insertRows(recipeTags);
+    if (recipeTags.length > 0) await insertRows(recipeTags);
 };
 
 export type TagReadByRecipeIdResults = Array<RecipeTag & Pick<Tag, "parentId" | "name">>;

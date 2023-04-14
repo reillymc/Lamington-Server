@@ -1,4 +1,5 @@
 import express from "express";
+import { v4 as Uuid } from "uuid";
 
 import { AppError, MessageAction, userMessage } from "../services";
 import { InternalPlannerActions, PlannerActions, PlannerMemberActions, PlannerMealActions } from "../controllers";
@@ -253,13 +254,13 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
         // Extract request fields
         const { plannerId } = req.params;
 
-        const { id, month, dayOfMonth, meal, year, description, recipeId, userId } = req.body;
+        const { id = Uuid(), month, dayOfMonth, meal, year, description, recipeId, userId } = req.body;
 
         // Check all required fields are present
-        if (!id || !plannerId || !meal || !year || !month || !dayOfMonth) {
+        if (!plannerId || !meal || !year || !month || !dayOfMonth) {
             return res.status(400).json({
                 error: true,
-                code: "BOOK_INSUFFICIENT_DATA",
+                code: "PLANNER_INSUFFICIENT_DATA",
                 message: "Insufficient data to create a planner recipe.",
             });
         }
@@ -283,7 +284,7 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
             if (!existingPlanner) {
                 return res.status(403).json({
                     error: true,
-                    code: "BOOK_NOT_FOUND",
+                    code: "PLANNER_NOT_FOUND",
                     message: "Cannot find planner to add recipe to.",
                 });
             }
@@ -291,7 +292,7 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
             if (existingPlanner.createdBy !== userId) {
                 return res.status(403).json({
                     error: true,
-                    code: "BOOK_NO_PERMISSIONS",
+                    code: "PLANNER_NO_PERMISSIONS",
                     message: "You do not have permissions to edit this planner.",
                 });
             }

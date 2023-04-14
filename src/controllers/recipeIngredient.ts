@@ -30,7 +30,7 @@ const save = async (recipeId: string, recipeIngredients: RecipeIngredient[]) => 
     const ingredientIds = recipeIngredients.map(({ id }) => id).filter(Undefined);
 
     await deleteExcessRows(recipeId, ingredientIds);
-    await insertRows(recipeIngredients);
+    if (recipeIngredients.length > 0) await insertRows(recipeIngredients);
 };
 
 export type IngredientReadByRecipeIdResponse = Omit<RecipeIngredient, "recipeId"> & {

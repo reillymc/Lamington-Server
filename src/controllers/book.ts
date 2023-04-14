@@ -51,13 +51,8 @@ const readMyBooks = async ({ userId }: GetMyBooksParams): ReadResponse<ReadBookR
             bookMember.accepted,
             bookMember.canEdit
         )
-        .whereIn(
-            book.bookId,
-            db<string[]>(lamington.bookMember)
-                .select(bookMember.bookId)
-                .where({ [bookMember.userId]: userId })
-        )
-        .orWhere({ [book.createdBy]: userId })
+        .where({ [book.createdBy]: userId })
+        .orWhere({ [bookMember.userId]: userId })
         .leftJoin(lamington.user, book.createdBy, user.userId)
         .leftJoin(lamington.bookMember, book.bookId, bookMember.bookId);
 
@@ -81,14 +76,10 @@ const readBooks = async ({ bookId, userId }: GetBookParams): ReadResponse<ReadBo
 
     const query = db<ReadBookRow>(lamington.book)
         .select(book.bookId, book.name, book.description, book.createdBy, `${user.firstName} as createdByName`)
-        .whereIn(
-            book.bookId,
-            db<string[]>(lamington.bookMember)
-                .select(bookMember.bookId)
-                .where({ [bookMember.userId]: userId, [bookMember.bookId]: bookId })
-        )
-        .orWhere({ [book.createdBy]: userId, [book.bookId]: bookId })
-        .leftJoin(lamington.user, book.createdBy, user.userId);
+        .where({ [book.bookId]: bookId })
+        .andWhere(qb => qb.where({ [book.createdBy]: userId }).orWhere({ [bookMember.userId]: userId }))
+        .leftJoin(lamington.user, book.createdBy, user.userId)
+        .leftJoin(lamington.bookMember, book.bookId, bookMember.bookId);
 
     return query;
 };

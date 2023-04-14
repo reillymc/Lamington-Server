@@ -123,6 +123,8 @@ router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(BookEndpoi
                     : !!bookMembersResponse.find(({ userId }) => userId === userId)?.canEdit,
         };
 
+        console.log(data.bookId, data.name);
+
         return res.status(200).json({ error: false, data });
     } catch (e: unknown) {
         next(new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "book" }) }));

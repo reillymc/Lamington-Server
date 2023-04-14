@@ -3,7 +3,7 @@
     "info": {
         "title": "Lamington API",
         "description": "API for data used by the Lamington app.",
-        "version": "1.0.3",
+        "version": "1.0.4",
         "contact": {
             "email": "reilly@mackenzie-cree.net"
         }
@@ -42,12 +42,7 @@
                         "default": "password123"
                     }
                 },
-                "required": [
-                    "email",
-                    "firstName",
-                    "lastName",
-                    "password"
-                ]
+                "required": ["email", "firstName", "lastName", "password"]
             },
             "Recipe": {
                 "properties": {
@@ -110,10 +105,7 @@
                         }
                     }
                 },
-                "required": [
-                    "name",
-                    "created_by"
-                ]
+                "required": ["name", "created_by"]
             },
             "RecipeList": {
                 "properties": {
@@ -278,9 +270,7 @@
     "paths": {
         "/users/register": {
             "post": {
-                "tags": [
-                    "Authentication"
-                ],
+                "tags": ["Authentication"],
                 "summary": "Registration page",
                 "description": "Registration page to allow for authenticated access to the API",
                 "operationId": "register",
@@ -334,9 +324,7 @@
         },
         "/users/login": {
             "post": {
-                "tags": [
-                    "Authentication"
-                ],
+                "tags": ["Authentication"],
                 "summary": "Login page",
                 "description": "Login page to allow for authenticated access to the API",
                 "operationId": "login",
@@ -410,9 +398,7 @@
         },
         "/recipes": {
             "get": {
-                "tags": [
-                    "Recipes"
-                ],
+                "tags": ["Recipes"],
                 "summary": "Returns a list of all recipes.",
                 "responses": {
                     "200": {
@@ -428,9 +414,7 @@
                 }
             },
             "post": {
-                "tags": [
-                    "Recipes"
-                ],
+                "tags": ["Recipes"],
                 "summary": "Create a new recipe or update an existing recipe.",
                 "requestBody": {
                     "required": true,
@@ -451,9 +435,7 @@
         },
         "/recipes/{recipeId}": {
             "get": {
-                "tags": [
-                    "Recipes"
-                ],
+                "tags": ["Recipes"],
                 "summary": "Returns a recipe.",
                 "parameters": [
                     {
@@ -482,9 +464,7 @@
         },
         "/recipes/roster": {
             "get": {
-                "tags": [
-                    "Recipes"
-                ],
+                "tags": ["Recipes"],
                 "summary": "Returns the recipe roster.",
                 "responses": {
                     "200": {
@@ -502,9 +482,7 @@
         },
         "/recipes/rate": {
             "post": {
-                "tags": [
-                    "Recipes"
-                ],
+                "tags": ["Recipes"],
                 "summary": "Rate a recipe.",
                 "requestBody": {
                     "required": true,
@@ -525,9 +503,7 @@
         },
         "/categories": {
             "get": {
-                "tags": [
-                    "Categories"
-                ],
+                "tags": ["Categories"],
                 "summary": "Returns a list of all categories.",
                 "responses": {
                     "200": {
@@ -543,9 +519,7 @@
                 }
             },
             "post": {
-                "tags": [
-                    "Categories"
-                ],
+                "tags": ["Categories"],
                 "summary": "Create a category.",
                 "requestBody": {
                     "required": true,
@@ -566,9 +540,7 @@
         },
         "/ingredient": {
             "get": {
-                "tags": [
-                    "Ingredients"
-                ],
+                "tags": ["Ingredients"],
                 "summary": "Returns a list of all ingredients.",
                 "responses": {
                     "200": {
@@ -584,9 +556,7 @@
                 }
             },
             "post": {
-                "tags": [
-                    "Ingredients"
-                ],
+                "tags": ["Ingredients"],
                 "summary": "Create an ingredient.",
                 "requestBody": {
                     "required": true,
@@ -607,9 +577,7 @@
         },
         "/list": {
             "get": {
-                "tags": [
-                    "List"
-                ],
+                "tags": ["List"],
                 "summary": "Returns the desired list information and items.",
                 "responses": {
                     "200": {
@@ -625,9 +593,7 @@
                 }
             },
             "post": {
-                "tags": [
-                    "List"
-                ],
+                "tags": ["List"],
                 "summary": "Create a list.",
                 "requestBody": {
                     "required": true,

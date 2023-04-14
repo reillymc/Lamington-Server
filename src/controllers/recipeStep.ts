@@ -30,7 +30,7 @@ const updateRows = async (recipeId: string, recipeSteps: RecipeStep[]) => {
         recipeId,
         recipeSteps.map(({ id }) => id)
     );
-    await insertRows(recipeSteps);
+    if (recipeSteps.length > 0) await insertRows(recipeSteps);
 };
 
 export type StepReadByIdResponse = Omit<RecipeStep, "recipeId">;
