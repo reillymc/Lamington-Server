@@ -1,18 +1,9 @@
 import { createLogger, format, transports } from "winston";
-const rfs = require("rotating-file-stream");
+import "winston-daily-rotate-file";
 
 import { Undefined } from "../utils";
 
 const logPath = "logs";
-
-const transportList = [
-    new transports.File({ dirname: logPath, filename: "error.log", level: "error", maxsize: 5242880 }),
-    process.env.NODE_ENV !== "production"
-        ? new transports.Console({
-              format: format.combine(format.colorize(), format.simple()),
-          })
-        : undefined,
-].filter(Undefined);
 
 interface AppErrorConstructor {
     status?: number;
@@ -38,8 +29,13 @@ export class AppError {
     }
 }
 
-export const logger = createLogger({
-    level: "info",
+const ErrorLogFileTransport = new transports.DailyRotateFile({
+    level: "error",
+    filename: "error-%DATE%.log",
+    zippedArchive: true,
+    maxSize: "10m",
+    maxFiles: "60d",
+    dirname: logPath,
     format: format.combine(
         format.timestamp({
             format: "YYYY-MM-DD HH:mm:ss",
@@ -48,12 +44,35 @@ export const logger = createLogger({
         format.splat(),
         format.json()
     ),
-    transports: transportList,
 });
 
-export const accessLog = rfs.createStream("access.log", {
-    interval: "1d",
-    path: logPath,
+const AccessLogFileTransport = new transports.DailyRotateFile({
+    level: "http",
+    filename: "access-%DATE%.log",
+    zippedArchive: true,
+    maxSize: "10m",
+    maxFiles: "60d",
+    dirname: logPath,
+    format: format.combine(
+        format.timestamp({
+            format: "YYYY-MM-DD HH:mm:ss",
+        }),
+        format.printf(({ level, message, timestamp }) => {
+            return `${timestamp} ${level}: ${message}`;
+        })
+    ),
+});
+
+const ConsoleLogTransport =
+    process.env.NODE_ENV !== "production"
+        ? new transports.Console({
+              level: "http",
+              format: format.combine(format.colorize(), format.simple()),
+          })
+        : undefined;
+
+export const logger = createLogger({
+    transports: [ErrorLogFileTransport, AccessLogFileTransport, ConsoleLogTransport].filter(Undefined),
 });
 
 export enum MessageAction {

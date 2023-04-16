@@ -30,20 +30,9 @@ const authenticationMiddleware = (
     if (token.startsWith("Bearer ")) {
         token = token.slice(7, token.length);
     }
-    jwt.verify(token, jwtSecret, function (err, decoded: AuthenticatedBody) {
+    jwt.verify(token, jwtSecret, (err, decoded: AuthenticatedBody) => {
         if (err) {
-            logger.log({
-                level: "error",
-                message: err.message,
-                request: {
-                    params: req.params,
-                    query: req.query,
-                    body: req.body,
-                    route: req.originalUrl,
-                },
-            });
-
-            return next(new AppError({ status: 400, message: "Failed to authenticate token." }));
+            return next(new AppError({ status: 400, message: "Failed to authenticate token.", innerError: err }));
         }
 
         const userStatus = userStatusToUserStatus(decoded.status as string);

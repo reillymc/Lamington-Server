@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 
 import { AppError, logger } from "../services";
+import { authEndpoint } from "../routes/spec";
 
 export const errorMiddleware = (error: AppError, request: Request, response: Response, next: NextFunction) => {
     logger.log({
@@ -9,7 +10,7 @@ export const errorMiddleware = (error: AppError, request: Request, response: Res
         request: {
             params: request.params,
             query: request.query,
-            body: request.body,
+            body: request.originalUrl.includes(authEndpoint) ? "REDACTED" : request.body,
             route: request.originalUrl,
             method: request.method,
         },

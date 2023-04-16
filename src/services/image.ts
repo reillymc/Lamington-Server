@@ -3,11 +3,11 @@ import sharp from "sharp";
 import FormData from "form-data";
 import { FileFilterCallback } from "multer";
 import { Request } from "express";
-import { v4 as Uuid } from "uuid";
+import path from "path";
+import fs from "fs";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 import config from "../config";
-import path from "path";
 
 const acceptedExtensions = [".jpg", ".jpeg", ".png"];
 const acceptedMimeTypes = ["image/jpg", "image/jpeg", "image/png"];
@@ -25,15 +25,19 @@ export const compressImage = (file: Buffer) =>
         .withMetadata()
         .toBuffer();
 
-export const storeLocalImage = (file: Buffer, name: string) =>
-    sharp(file).jpeg({ force: true, mozjpeg: true, quality: 50 }).toFile(`uploads/${name}`);
+export const storeLocalImage = (file: Buffer, name: string) => {
+    if (!fs.existsSync("uploads/")) {
+        fs.mkdirSync("uploads/");
+    }
+    return sharp(file).toFile(`uploads/${name}`);
+};
 
 export const uploadImageToImgur = async (file: Buffer) => {
     const formData = new FormData();
     formData.append("image", file.toString("base64"));
 
     const headers = {
-        Authorization: `Client-ID ${config.service.imgurClientId}`,
+        Authorization: `Client-ID ${config.attachments.imgurClientId}`,
         ...formData.getHeaders(),
     };
 
@@ -49,20 +53,24 @@ export const uploadImageToImgur = async (file: Buffer) => {
 };
 
 export const uploadImageToS3 = async (file: Buffer, name: string) => {
-    if (!config.service.awsBucketName || !config.service.awsAccessKeyId || !config.service.awsSecretAccessKey) {
+    if (
+        !config.attachments.awsBucketName ||
+        !config.attachments.awsAccessKeyId ||
+        !config.attachments.awsSecretAccessKey
+    ) {
         throw new Error("AWS Bucket Name is not defined");
     }
 
     const s3 = new S3Client({
-        region: config.service.awsRegion,
+        region: config.attachments.awsRegion,
         credentials: {
-            accessKeyId: config.service.awsAccessKeyId,
-            secretAccessKey: config.service.awsSecretAccessKey,
+            accessKeyId: config.attachments.awsAccessKeyId,
+            secretAccessKey: config.attachments.awsSecretAccessKey,
         },
     });
 
     const command = new PutObjectCommand({
-        Bucket: config.service.awsBucketName,
+        Bucket: config.attachments.awsBucketName,
         Key: name,
         Body: file,
     });

@@ -54,8 +54,6 @@ const readMyLists = async ({ userId }: GetMyListsParams): ReadResponse<ReadListR
         .leftJoin(lamington.user, list.createdBy, user.userId)
         .leftJoin(lamington.listMember, list.listId, listMember.listId);
 
-    console.log(query.toQuery());
-
     return query;
 };
 

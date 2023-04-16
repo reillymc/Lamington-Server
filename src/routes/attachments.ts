@@ -24,49 +24,32 @@ router.post<PostImageAttachmentRequestParams, PostImageAttachmentResponse, PostI
             return res.status(400).json({ error: true, message: "No file was uploaded." });
         }
 
-        switch (config.service.imageStorage) {
-            case "local":
-                const name = `${Uuid()}.jpeg`;
-
-                try {
-                    await storeLocalImage(file.buffer, name);
+        try {
+            switch (config.attachments.storageService) {
+                case "local":
+                    const name = `${Uuid()}.jpeg`;
+                    await storeLocalImage(await compressImage(file.buffer), name);
                     return res.json({ error: false, data: { address: `lamington:${name}` } });
-                } catch (e: unknown) {
-                    next(new AppError({ innerError: e, message: "An error occurred when uploading image" }));
-                }
-                break;
-            case "imgur":
-                try {
-                    const resizedFile = await compressImage(file.buffer);
-                    const uploadResponse = await uploadImageToImgur(resizedFile);
-
+                case "imgur":
+                    const uploadResponse = await uploadImageToImgur(await compressImage(file.buffer));
                     return res.json({
                         error: false,
                         data: {
                             address: `imgur:${uploadResponse.id}${path.extname(req?.file?.originalname ?? ".jpeg")}`,
                         },
                     });
-                } catch (e: unknown) {
-                    next(new AppError({ innerError: e, message: "An error occurred when uploading image" }));
-                }
-                break;
-            case "s3":
-                try {
-                    console.log(req?.file?.originalname);
-
+                case "s3":
                     const s3FileName = `${Uuid()}${path.extname(req?.file?.originalname ?? ".jpeg")}`;
-                    const resizedFile = await compressImage(file.buffer);
-                    const uploadResponse = await uploadImageToS3(resizedFile, s3FileName);
-
+                    await uploadImageToS3(await compressImage(file.buffer), s3FileName);
                     return res.json({
                         error: false,
                         data: {
                             address: `s3:${s3FileName}`,
                         },
                     });
-                } catch (e: unknown) {
-                    next(new AppError({ innerError: e, message: "An error occurred when uploading image" }));
-                }
+            }
+        } catch (e: unknown) {
+            next(new AppError({ innerError: e, message: "An error occurred when uploading image" }));
         }
     }
 );
