@@ -35,13 +35,13 @@ const formatAttachmentConfig = (config: LamingtonConfig["attachments"]): { messa
             error = !config.imgurClientId;
             break;
         case "s3":
-            message = `${message} S3 (Bucket=${config.awsBucketName} - Region=${
-                config.awsRegion
-            }, Access key=${!!config.awsAccessKeyId}, Secret key=${!!config.awsSecretAccessKey})`;
+            message = `${message} S3 (Bucket=${config.awsBucketName} - Region=${config.awsRegion}, (Path=${
+                config.path
+            }), Access key=${!!config.awsAccessKeyId}, Secret key=${!!config.awsSecretAccessKey})`;
             error = !config.awsBucketName || !config.awsAccessKeyId || !config.awsSecretAccessKey;
             break;
         default:
-            message = `${message} Local`;
+            message = `${message} Local (Path=uploads/${config.path})`;
             break;
     }
 

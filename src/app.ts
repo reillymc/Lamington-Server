@@ -2,7 +2,6 @@ require("dotenv").config();
 
 import express from "express";
 import cookieParser from "cookie-parser";
-import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
 
@@ -25,7 +24,7 @@ app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"] }
 app.use(loggerMiddleware);
 
 // routers
-if (config.attachments.storageService === "local") {
+if (config.attachments.storageService === "local" || process.env.NODE_ENV !== "production") {
     app.use(`/v1${attachmentEndpoint}/${uploadDirectory}`, express.static(uploadDirectory));
 }
 app.use(`/v1${authEndpoint}`, authRouter);

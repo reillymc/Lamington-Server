@@ -1,5 +1,3 @@
-import { v4 as Uuid } from "uuid";
-
 import db, {
     Alias,
     lamington,
@@ -192,11 +190,21 @@ const getFullRecipe = async (recipeId: string, userId: string): Promise<GetFullR
     return query;
 };
 
-const readCreatedByUser = async (recipeId: string): Promise<{ createdBy: string } | undefined> => {
+const readInternal = async (
+    recipeId: string
+): Promise<{ createdBy: string; photo: string | undefined } | undefined> => {
     const query = db(lamington.recipe)
-        .select(recipe.createdBy)
+        .select(recipe.createdBy, recipe.photo)
         .where({ [recipe.recipeId]: recipeId })
         .first();
+
+    return query;
+};
+
+const readByPhoto = async (photo: string): Promise<Array<{ recipeId: string }>> => {
+    const query = db(lamington.recipe)
+        .select(recipe.recipeId)
+        .where({ [recipe.photo]: photo });
 
     return query;
 };
@@ -294,10 +302,8 @@ const readByBook = async (userId: string, bookId: string) => {
  * @param recipeItem
  */
 const save = async (recipeItem: PostRecipeRequest) => {
-    const recipeId = recipeItem.recipeId ?? Uuid();
-
     const recipeData: Recipe = {
-        recipeId: recipeId,
+        recipeId: recipeItem.recipeId,
         name: recipeItem.name,
         createdBy: recipeItem.userId,
         cookTime: recipeItem.cookTime,
@@ -313,29 +319,33 @@ const save = async (recipeItem: PostRecipeRequest) => {
     await db(lamington.recipe).insert(recipeData).onConflict(recipe.recipeId).merge();
 
     // Create new RecipeSections rows
-    const recipeSectionRows = recipeSectionRequestToRows(recipeId, recipeItem.ingredients, recipeItem.method);
-    if (recipeSectionRows) await RecipeSectionActions.save(recipeId, recipeSectionRows);
+    const recipeSectionRows = recipeSectionRequestToRows(
+        recipeItem.recipeId,
+        recipeItem.ingredients,
+        recipeItem.method
+    );
+    if (recipeSectionRows) await RecipeSectionActions.save(recipeItem.recipeId, recipeSectionRows);
 
     // Create new Ingredients rows
     const ingredientRows = ingredientsRequestToRows(recipeItem.ingredients, recipeItem.userId);
     if (ingredientRows) await IngredientActions.save(ingredientRows);
 
     // Update RecipeIngredients rows
-    const recipeIngredientRows = recipeIngredientsRequestToRows(recipeId, recipeItem.ingredients);
-    if (recipeIngredientRows) await RecipeIngredientActions.save(recipeId, recipeIngredientRows);
+    const recipeIngredientRows = recipeIngredientsRequestToRows(recipeItem.recipeId, recipeItem.ingredients);
+    if (recipeIngredientRows) await RecipeIngredientActions.save(recipeItem.recipeId, recipeIngredientRows);
 
     // Update RecipeSteps rows
-    const recipeStepRows = recipeMethodRequestToRows(recipeId, recipeItem.method);
-    if (recipeStepRows) await RecipeStepActions.save(recipeId, recipeStepRows);
+    const recipeStepRows = recipeMethodRequestToRows(recipeItem.recipeId, recipeItem.method);
+    if (recipeStepRows) await RecipeStepActions.save(recipeItem.recipeId, recipeStepRows);
 
     // Update RecipeTags rows
-    const recipeTagRows = recipeTagsRequestToRows(recipeId, recipeItem.tags);
-    if (recipeTagRows) await RecipeTagActions.save(recipeId, recipeTagRows);
+    const recipeTagRows = recipeTagsRequestToRows(recipeItem.recipeId, recipeItem.tags);
+    if (recipeTagRows) await RecipeTagActions.save(recipeItem.recipeId, recipeTagRows);
 
     // Update Recipe Rating row
     if (recipeItem.ratingPersonal) {
         const recipeRatingRow: RecipeRating = {
-            recipeId,
+            recipeId: recipeItem.recipeId,
             raterId: recipeItem.userId,
             rating: recipeItem.ratingPersonal,
         };
@@ -358,5 +368,6 @@ export const RecipeActions = {
 };
 
 export const InternalRecipeActions = {
-    readCreatedByUser,
+    read: readInternal,
+    readByPhoto,
 };

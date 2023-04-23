@@ -1,4 +1,4 @@
-import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
+import { BaseRequest, BaseRequestParams, BaseResponse } from ".";
 
 export const attachmentEndpoint = "/attachments" as const;
 export const imageSubpath = "image" as const;
@@ -13,7 +13,7 @@ export interface ImageAttachment {
 
 // Post image attachment
 export type PostImageAttachmentRequestParams = BaseRequestParams;
-export type PostImageAttachmentRequestBody = BaseRequestBody;
+export type PostImageAttachmentRequestBody = { entity: string };
 
 export type PostImageAttachmentRequest = BaseRequest<PostImageAttachmentRequestBody & PostImageAttachmentRequestParams>;
 export type PostImageAttachmentResponse = BaseResponse<ImageAttachment>;

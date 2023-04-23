@@ -47,6 +47,7 @@ const config: LamingtonConfig = {
         awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
         awsRegion: process.env.AWS_REGION,
         awsBucketName: process.env.AWS_BUCKET_NAME,
+        path: process.env.ATTACHMENT_PATH ?? "prod",
     },
 } as const;
 
@@ -68,6 +69,7 @@ export interface LamingtonConfig {
     };
     attachments: {
         storageService: "local" | "imgur" | "s3";
+        path: string;
         imgurClientId: string | undefined;
         awsAccessKeyId: string | undefined;
         awsSecretAccessKey: string | undefined;

@@ -1,6 +1,7 @@
 import express from "express";
+import { v4 as Uuid } from "uuid";
 
-import { AppError, MessageAction, userMessage } from "../services";
+import { AppError, AttachmentService, MessageAction, userMessage } from "../services";
 import { InternalRecipeActions, RecipeActions, RecipeRatingActions } from "../controllers";
 import {
     DeleteRecipeRequestBody,
@@ -119,7 +120,7 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
 
         // Update database and return status
         try {
-            const existingRecipe = await InternalRecipeActions.readCreatedByUser(recipeId);
+            const existingRecipe = await InternalRecipeActions.read(recipeId);
 
             if (!existingRecipe) {
                 return res.status(403).json({
@@ -136,6 +137,9 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
             }
 
             const data = await RecipeActions.delete(recipeId);
+
+            if (existingRecipe.photo) AttachmentService.deleteImage(existingRecipe.photo);
+
             return res.status(200).json({ error: false });
         } catch (e: unknown) {
             next(
@@ -167,8 +171,10 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
         }
 
         try {
+            let currentPhoto: string | undefined;
+
             if (body.recipeId) {
-                const existingRecipe = await InternalRecipeActions.readCreatedByUser(body.recipeId);
+                const existingRecipe = await InternalRecipeActions.read(body.recipeId);
 
                 if (!existingRecipe) {
                     return res.status(403).json({
@@ -183,10 +189,20 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
                         message: `Cannot edit a recipe that doesn't belong to you`,
                     });
                 }
+
+                currentPhoto = existingRecipe.photo;
+            }
+
+            const recipeId = body.recipeId ?? Uuid();
+
+            const isUnsavedImage = AttachmentService.isUnsavedImage(body.userId, "recipe", body.photo);
+
+            if (isUnsavedImage) {
+                body.photo = await AttachmentService.saveImage(body.userId, "recipe", recipeId, currentPhoto);
             }
 
             await RecipeActions.save({
-                recipeId: body.recipeId,
+                recipeId,
                 name: body.name,
                 source: body.source,
                 ingredients: body.ingredients,

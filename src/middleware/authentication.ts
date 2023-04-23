@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import config from "../config";
 import { userStatusToUserStatus } from "../controllers/helpers";
 import { BaseResponse, UserStatus } from "../routes/spec";
-import { AppError, logger } from "../services";
+import { AppError } from "../services";
 
 const { jwtSecret } = config.authentication;
 
@@ -47,6 +47,7 @@ const authenticationMiddleware = (
 
         req.body.userId = decoded.userId;
         req.body.status = userStatus;
+        req.secret = decoded.userId;
         return next();
     });
 };
