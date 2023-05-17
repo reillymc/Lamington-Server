@@ -24,12 +24,13 @@ const authenticationMiddleware = (
 
     var token = req.headers["authorization"];
     if (!token) {
-        const response: BaseResponse = { error: true, message: "Authentication required to access this service." };
-        return res.status(403).send(response);
+        return next(new AppError({ status: 403, message: "Authentication required to access this service." }));
     }
+
     if (token.startsWith("Bearer ")) {
         token = token.slice(7, token.length);
     }
+
     jwt.verify(token, jwtSecret, (err, decoded: AuthenticatedBody) => {
         if (err) {
             return next(new AppError({ status: 400, message: "Failed to authenticate token.", innerError: err }));

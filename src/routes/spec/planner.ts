@@ -1,4 +1,5 @@
 import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
+import { EntityMember, EntityMembers } from "./common";
 import { User } from "./user";
 
 export const plannerEndpoint = "/planners" as const;
@@ -30,14 +31,7 @@ export type Planner = {
     description: string | undefined;
     accepted?: boolean;
     canEdit?: boolean;
-    members?: {
-        [userId: User["userId"]]: {
-            userId: User["userId"];
-            firstName?: User["firstName"];
-            lastName?: User["lastName"];
-            permissions?: string;
-        };
-    };
+    members?: EntityMembers;
     meals?: PlannerMeal[];
 };
 
@@ -83,7 +77,7 @@ export type PostPlannerRequestBody = BaseRequestBody<{
     plannerId?: Planner["plannerId"];
     variant?: Planner["variant"];
     description?: Planner["description"];
-    memberIds?: string[];
+    members?: Array<EntityMember>;
 }>;
 
 export type PostPlannerRequest = BaseRequest<PostPlannerRequestBody & PostPlannerRequestParams>;
@@ -100,7 +94,7 @@ export type DeletePlannerService = (request: DeletePlannerRequest) => DeletePlan
 
 // Post planner recipe
 export type PostPlannerMealRequestParams = BaseRequestParams<{ [plannerIdParam]: Planner["plannerId"] }>;
-export type PostPlannerMealRequestBody = BaseRequestBody<Omit<Partial<PlannerMeal>, "plannerId">>;
+export type PostPlannerMealRequestBody = BaseRequestBody<Omit<PlannerMeal, "plannerId">>;
 
 export type PostPlannerMealRequest = BaseRequest<PostPlannerMealRequestParams & PostPlannerMealRequestBody>;
 export type PostPlannerMealResponse = BaseResponse;

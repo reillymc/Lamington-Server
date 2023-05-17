@@ -27,7 +27,12 @@ router.post<RegisterRequestParams, RegisterResponse, RegisterRequestBody>(
 
         // Check all required fields are present
         if (!email || !firstName || !lastName || !password) {
-            return res.status(400).json({ error: true, message: `Not enough information to register` });
+            return next(
+                new AppError({
+                    status: 400,
+                    message: `Not enough information to register`,
+                })
+            );
         }
 
         // Update database and return status
@@ -77,7 +82,12 @@ router.post<LoginRequestParams, LoginResponse, LoginRequestBody>(AuthEndpoint.lo
     try {
         const [user] = await InternalUserActions.read({ email });
         if (!user) {
-            return res.status(401).json({ error: true, message: `Invalid username of password` });
+            return next(
+                new AppError({
+                    status: 401,
+                    message: `Invalid username or password`,
+                })
+            );
         }
         const result = await comparePassword(password, user.password);
 

@@ -15,6 +15,8 @@ import db, {
     DeleteResponse,
     User,
 } from "../database";
+import { CreateEntityMemberParams, EntityMember } from "./entity";
+import { ListMemberActions } from "./listMember";
 
 /**
  * Get all lists
@@ -88,7 +90,7 @@ interface CreateListParams {
     description: string | undefined;
     name: string;
     createdBy: string;
-    memberIds?: string[];
+    members?: Array<EntityMember>;
 }
 
 /**
@@ -103,27 +105,20 @@ const saveLists = async (lists: CreateQuery<CreateListParams>): CreateResponse<L
     const data = lists.map(({ listId, ...params }) => ({ listId: listId ?? Uuid(), ...params })).filter(Undefined);
     const listIds = data.map(({ listId }) => listId);
 
-    const listData: List[] = data.map(({ memberIds, ...listItem }) => listItem);
-    const memberData: ListMember[] = data.flatMap(
-        ({ listId, memberIds }) => memberIds?.map(userId => ({ listId, userId, canEdit: "1", accepted: 0 })) ?? []
+    const listData: List[] = data.map(({ members, ...listItem }) => listItem);
+    const memberData: CreateEntityMemberParams[] = data.flatMap(
+        ({ listId, members }) =>
+            members?.map(({ userId, allowEditing }) => ({
+                entityId: listId,
+                userId,
+                allowEditing,
+                accepted: false,
+            })) ?? []
     );
 
     const result = await db(lamington.list).insert(listData).onConflict(list.listId).merge();
 
-    const result2 = await db(lamington.listMember)
-        .whereIn(listMember.listId, listIds)
-        .whereNotIn(
-            listMember.userId,
-            memberData.map(({ userId }) => userId)
-        )
-        .delete();
-
-    if (memberData.length > 0) {
-        const result3 = await db(lamington.listMember)
-            .insert(memberData)
-            .onConflict([listMember.listId, listMember.userId])
-            .merge();
-    }
+    if (memberData.length > 0) await ListMemberActions.update(memberData, { preserveAccepted: true, trimNotIn: true });
 
     return db<List>(lamington.list).select(list.listId, list.name).whereIn(list.listId, listIds);
 };

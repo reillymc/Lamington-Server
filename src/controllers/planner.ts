@@ -15,6 +15,8 @@ import db, {
     user,
     User,
 } from "../database";
+import { CreateEntityMemberParams, EntityMember } from "./entity";
+import { PlannerMemberActions } from "./plannerMember";
 
 /**
  * Get all planners
@@ -107,7 +109,7 @@ export interface CreatePlannerParams {
     name: string;
     variant: string;
     createdBy: string;
-    memberIds?: string[];
+    members?: Array<EntityMember>;
 }
 
 /**
@@ -124,27 +126,21 @@ const savePlanners = async (planners: CreateQuery<CreatePlannerParams>): CreateR
         .filter(Undefined);
     const plannerIds = data.map(({ plannerId }) => plannerId);
 
-    const plannerData: Planner[] = data.map(({ memberIds, ...plannerItem }) => plannerItem);
-    const memberData: PlannerMember[] = data.flatMap(
-        ({ plannerId, memberIds }) => memberIds?.map(userId => ({ plannerId, userId, canEdit: "1", accepted: 0 })) ?? []
+    const plannerData: Planner[] = data.map(({ members, ...plannerItem }) => plannerItem);
+    const memberData: CreateEntityMemberParams[] = data.flatMap(
+        ({ plannerId, members }) =>
+            members?.map(({ userId, allowEditing }) => ({
+                entityId: plannerId,
+                userId,
+                allowEditing,
+                accepted: false,
+            })) ?? []
     );
 
     const result = await db(lamington.planner).insert(plannerData).onConflict(planner.plannerId).merge();
 
-    const result2 = await db(lamington.plannerMember)
-        .whereIn(plannerMember.plannerId, plannerIds)
-        .whereNotIn(
-            plannerMember.userId,
-            memberData.map(({ userId }) => userId)
-        )
-        .delete();
-
-    if (memberData.length > 0) {
-        const result3 = await db(lamington.plannerMember)
-            .insert(memberData)
-            .onConflict([plannerMember.plannerId, plannerMember.userId])
-            .merge();
-    }
+    if (memberData.length > 0)
+        await PlannerMemberActions.update(memberData, { preserveAccepted: true, trimNotIn: true });
 
     return db<Planner>(lamington.planner)
         .select(planner.plannerId, planner.name)

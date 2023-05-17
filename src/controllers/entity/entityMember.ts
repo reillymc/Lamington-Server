@@ -11,30 +11,52 @@ import db, {
 } from "../../database";
 import { EntityMember } from "../../database/definitions/entity";
 
-interface CreateEntityMemberParams {
+export interface CreateEntityMemberParams {
     entityId: string;
     userId: string;
+    allowEditing?: boolean;
     accepted?: boolean;
 }
 
+export interface CreateEntityMemberOptions {
+    preserveAccepted?: boolean;
+    trimNotIn?: boolean;
+}
+
 const saveEntityMembers =
-    <T extends keyof typeof LamingtonMemberTables, K extends keyof typeof Lamington[T]>(entity: T, idField: K) =>
-    async (entityMembers: CreateQuery<CreateEntityMemberParams>) => {
+    <T extends keyof typeof LamingtonMemberTables, K extends keyof (typeof Lamington)[T]>(entity: T, idField: K) =>
+    async (entityMembers: CreateQuery<CreateEntityMemberParams>, options?: CreateEntityMemberOptions) => {
         if (!Array.isArray(entityMembers)) {
             entityMembers = [entityMembers];
         }
 
-        const data = entityMembers.map(({ entityId, userId, accepted }) => ({
+        const data = entityMembers.map(({ entityId, userId, allowEditing, accepted }) => ({
             [idField]: entityId,
             userId,
-            canEdit: undefined,
+            canEdit: allowEditing ? 1 : 0,
             accepted: accepted ? 1 : 0,
         }));
+
+        const entityIds = data.map(({ [idField]: entityId }) => entityId) as string[];
 
         const entityIdField = Lamington[entity][idField] as string;
         const memberIdField = LamingtonMemberTables[entity]["userId"];
 
-        return db.insert(data).into(entity).onConflict([entityIdField, memberIdField]).merge();
+        if (options?.trimNotIn) {
+            await db(entity)
+                .whereIn(entityIdField, entityIds)
+                .whereNotIn(
+                    memberIdField,
+                    data.map(({ userId }) => userId)
+                )
+                .delete();
+        }
+
+        return db
+            .insert(data)
+            .into(entity)
+            .onConflict([entityIdField, memberIdField])
+            .merge(options?.preserveAccepted ? ["canEdit"] : undefined); // Knex seems to disallow columns prefixed with table name
     };
 
 interface DeleteEntityMemberParams {
@@ -43,30 +65,30 @@ interface DeleteEntityMemberParams {
 }
 
 const deleteEntityMembers =
-    <T extends keyof typeof LamingtonMemberTables, K extends keyof typeof Lamington[T]>(entity: T, idField: K) =>
+    <T extends keyof typeof LamingtonMemberTables, K extends keyof (typeof Lamington)[T]>(entity: T, idField: K) =>
     async (entityMembers: CreateQuery<DeleteEntityMemberParams>): DeleteResponse => {
         if (!Array.isArray(entityMembers)) {
             entityMembers = [entityMembers];
         }
 
-        const bookIds = entityMembers.map(({ entityId }) => entityId);
+        const entityIds = entityMembers.map(({ entityId }) => entityId);
         const userIds = entityMembers.map(({ userId }) => userId);
 
         const entityIdField = Lamington[entity][idField] as string;
         const memberIdField = LamingtonMemberTables[entity]["userId"];
 
-        return db(entity).whereIn(entityIdField, bookIds).whereIn(memberIdField, userIds).delete();
+        return db(entity).whereIn(entityIdField, entityIds).whereIn(memberIdField, userIds).delete();
     };
 
 interface GetEntityMembersParams {
     entityId: string;
 }
 
-type GetEntityMembersResponse = Pick<EntityMember, "userId" | "canEdit" | "accepted"> &
-    Pick<User, "firstName" | "lastName">;
+type GetEntityMembersResponse = Pick<EntityMember, "userId" | "accepted"> &
+    Pick<User, "firstName" | "lastName"> & { canEdit: number };
 
 const readEntityMembers =
-    <T extends keyof typeof LamingtonMemberTables, K extends keyof typeof Lamington[T]>(entity: T, idField: K) =>
+    <T extends keyof typeof LamingtonMemberTables, K extends keyof (typeof Lamington)[T]>(entity: T, idField: K) =>
     async (params: ReadQuery<GetEntityMembersParams>): ReadResponse<GetEntityMembersResponse> => {
         if (!Array.isArray(params)) {
             params = [params];
@@ -87,7 +109,7 @@ const readEntityMembers =
 
 export const CreateEntityMemberActions = <
     T extends keyof typeof LamingtonMemberTables,
-    K extends keyof typeof Lamington[T]
+    K extends keyof (typeof Lamington)[T]
 >(
     entity: T,
     idField: K

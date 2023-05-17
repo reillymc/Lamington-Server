@@ -110,7 +110,7 @@ router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(BookEndpoi
             members: Object.fromEntries(
                 bookMembersResponse.map(({ userId, canEdit, firstName, lastName }) => [
                     userId,
-                    { userId, permissions: canEdit, firstName, lastName },
+                    { userId, allowEditing: !!canEdit, firstName, lastName },
                 ])
             ),
             accepted:
@@ -136,11 +136,16 @@ router.post<PostBookRequestParams, PostBookResponse, PostBookRequestBody>(
     BookEndpoint.postBook,
     async (req, res, next) => {
         // Extract request fields
-        const { userId, name, description, bookId, memberIds = [] } = req.body;
+        const { userId, name, description, bookId, members } = req.body;
 
         // Check all required fields are present
         if (!name) {
-            return res.status(400).json({ error: true, message: "Insufficient data to create a book." });
+            return next(
+                new AppError({
+                    status: 400,
+                    message: "Insufficient data to create a book.",
+                })
+            );
         }
 
         // Update database and return status
@@ -148,16 +153,20 @@ router.post<PostBookRequestParams, PostBookResponse, PostBookRequestBody>(
             if (bookId) {
                 const [existingBook] = await BookActions.read({ bookId, userId });
                 if (!existingBook) {
-                    return res.status(403).json({
-                        error: true,
-                        message: "Cannot find book to edit.",
-                    });
+                    return next(
+                        new AppError({
+                            status: 403,
+                            message: "Cannot find book to edit.",
+                        })
+                    );
                 }
                 if (existingBook.createdBy !== userId) {
-                    return res.status(403).json({
-                        error: true,
-                        message: "You do not have permissions to edit this book",
-                    });
+                    return next(
+                        new AppError({
+                            status: 403,
+                            message: "You do not have permissions to edit this book",
+                        })
+                    );
                 }
             }
 
@@ -166,7 +175,7 @@ router.post<PostBookRequestParams, PostBookResponse, PostBookRequestBody>(
                 name,
                 createdBy: userId,
                 description,
-                memberIds,
+                members,
             });
             return res.status(201).json({ error: false, message: `Book ${bookId ? "updated" : "created"}` });
         } catch (e: unknown) {
@@ -197,7 +206,12 @@ router.delete<DeleteBookRequestParams, DeleteBookResponse, DeleteBookRequestBody
 
         // Check all required fields are present
         if (!bookId) {
-            return res.status(400).json({ error: true, message: "Insufficient data to delete a book." });
+            return next(
+                new AppError({
+                    status: 400,
+                    message: "Insufficient data to delete a book.",
+                })
+            );
         }
 
         // Update database and return status
@@ -205,17 +219,21 @@ router.delete<DeleteBookRequestParams, DeleteBookResponse, DeleteBookRequestBody
             const [existingBook] = await BookActions.read({ bookId, userId });
 
             if (!existingBook) {
-                return res.status(403).json({
-                    error: true,
-                    message: "Cannot find book to delete.",
-                });
+                return next(
+                    new AppError({
+                        status: 404,
+                        message: "Cannot find book to delete.",
+                    })
+                );
             }
 
             if (existingBook.createdBy !== userId) {
-                return res.status(403).json({
-                    error: true,
-                    message: "You do not have permissions to delete this book",
-                });
+                return next(
+                    new AppError({
+                        status: 404,
+                        message: "You do not have permissions to delete this book",
+                    })
+                );
             }
 
             await BookActions.delete({ bookId });
@@ -244,11 +262,13 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
 
         // Check all required fields are present
         if (!recipeId || !bookId) {
-            return res.status(400).json({
-                error: true,
-                code: "BOOK_INSUFFICIENT_DATA",
-                message: "Insufficient data to create a book recipe.",
-            });
+            return next(
+                new AppError({
+                    status: 400,
+                    code: "BOOK_INSUFFICIENT_DATA",
+                    message: "Insufficient data to create a book recipe.",
+                })
+            );
         }
 
         const bookRecipe = {
@@ -261,19 +281,27 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
             const [existingBook] = await BookActions.read({ bookId, userId });
 
             if (!existingBook) {
-                return res.status(403).json({
-                    error: true,
-                    code: "BOOK_NOT_FOUND",
-                    message: "Cannot find book to add recipe to.",
-                });
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "BOOK_NOT_FOUND",
+                        message: "Cannot find book to add recipe to.",
+                    })
+                );
             }
 
             if (existingBook.createdBy !== userId) {
-                return res.status(403).json({
-                    error: true,
-                    code: "BOOK_NO_PERMISSIONS",
-                    message: "You do not have permissions to edit this book.",
-                });
+                const existingBookMembers = await BookMemberActions.read({ entityId: bookId });
+
+                if (!existingBookMembers?.some(member => member.userId === userId && member.canEdit)) {
+                    return next(
+                        new AppError({
+                            status: 403,
+                            code: "BOOK_NO_PERMISSIONS",
+                            message: "You do not have permissions to edit this book.",
+                        })
+                    );
+                }
             }
 
             await BookRecipeActions.save(bookRecipe);
@@ -397,6 +425,20 @@ router.delete<DeleteBookRecipeRequestParams, DeleteBookRecipeResponse, DeleteBoo
                         message: "You do not have permissions to delete recipes from this book",
                     })
                 );
+            }
+
+            if (existingBook.createdBy !== userId) {
+                const existingBookMembers = await BookMemberActions.read({ entityId: bookId });
+
+                if (!existingBookMembers?.some(member => member.userId === userId && member.canEdit)) {
+                    return next(
+                        new AppError({
+                            status: 403,
+                            code: "BOOK_NO_PERMISSIONS",
+                            message: "You do not have permissions to delete recipes from this book.",
+                        })
+                    );
+                }
             }
 
             await BookRecipeActions.delete({ bookId, recipeId });

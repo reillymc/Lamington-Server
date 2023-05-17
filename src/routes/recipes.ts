@@ -84,7 +84,12 @@ router.get<GetRecipeRequestParams, GetRecipeResponse, GetRecipeRequestBody>(
 
         // Check all required fields are present
         if (!recipeId) {
-            return res.status(400).json({ error: true, message: `Error getting recipe: Recipe ID not provided.` });
+            return next(
+                new AppError({
+                    status: 400,
+                    message: `Error getting recipe: Recipe ID not provided.`,
+                })
+            );
         }
 
         // Fetch and return result
@@ -113,9 +118,12 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
 
         // Check all required fields are present
         if (!userId || !recipeId) {
-            return res
-                .status(400)
-                .json({ error: true, message: `You haven't given enough information to delete this recipe` });
+            return next(
+                new AppError({
+                    status: 400,
+                    message: `You haven't given enough information to delete this recipe`,
+                })
+            );
         }
 
         // Update database and return status
@@ -123,17 +131,21 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
             const existingRecipe = await InternalRecipeActions.read(recipeId);
 
             if (!existingRecipe) {
-                return res.status(403).json({
-                    error: true,
-                    message: `Cannot find recipe to delete`,
-                });
+                return next(
+                    new AppError({
+                        status: 403,
+                        message: `Cannot find recipe to delete`,
+                    })
+                );
             }
 
             if (existingRecipe.createdBy !== userId) {
-                return res.status(403).json({
-                    error: true,
-                    message: `Cannot delete a recipe that doesn't belong to you`,
-                });
+                return next(
+                    new AppError({
+                        status: 403,
+                        message: `Cannot delete a recipe that doesn't belong to you`,
+                    })
+                );
             }
 
             const data = await RecipeActions.delete(recipeId);
@@ -177,17 +189,21 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
                 const existingRecipe = await InternalRecipeActions.read(body.recipeId);
 
                 if (!existingRecipe) {
-                    return res.status(403).json({
-                        error: true,
-                        message: `Cannot find recipe to edit`,
-                    });
+                    return next(
+                        new AppError({
+                            status: 403,
+                            message: `Cannot find recipe to edit`,
+                        })
+                    );
                 }
 
                 if (existingRecipe.createdBy !== body.userId) {
-                    return res.status(403).json({
-                        error: true,
-                        message: `Cannot edit a recipe that doesn't belong to you`,
-                    });
+                    return next(
+                        new AppError({
+                            status: 403,
+                            message: `Cannot edit a recipe that doesn't belong to you`,
+                        })
+                    );
                 }
 
                 currentPhoto = existingRecipe.photo;
@@ -231,7 +247,12 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
             );
         }
 
-        return res.status(400).json({ error: true, message: `Recipe formatted incorrectly` });
+        return next(
+            new AppError({
+                status: 400,
+                message: `Recipe formatted incorrectly`,
+            })
+        );
     }
 );
 

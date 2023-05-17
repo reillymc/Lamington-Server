@@ -119,7 +119,7 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
                 members: Object.fromEntries(
                     plannerMembersResponse.map(({ userId, canEdit, firstName, lastName }) => [
                         userId,
-                        { userId, permissions: canEdit, firstName, lastName },
+                        { userId, allowEditing: !!canEdit, firstName, lastName },
                     ])
                 ),
                 accepted:
@@ -149,11 +149,16 @@ router.post<PostPlannerRequestParams, PostPlannerResponse, PostPlannerRequestBod
     PlannerEndpoint.postPlanner,
     async (req, res, next) => {
         // Extract request fields
-        const { userId, name, variant, description, plannerId, memberIds = [] } = req.body;
+        const { userId, name, variant, description, plannerId, members } = req.body;
 
         // Check all required fields are present
         if (!name || !variant) {
-            return res.status(400).json({ error: true, message: "Insufficient data to create a planner." });
+            return next(
+                new AppError({
+                    status: 400,
+                    message: "Insufficient data to create a planner.",
+                })
+            );
         }
 
         // Update database and return status
@@ -161,16 +166,20 @@ router.post<PostPlannerRequestParams, PostPlannerResponse, PostPlannerRequestBod
             if (plannerId) {
                 const [existingPlanner] = await PlannerActions.read({ plannerId, userId });
                 if (!existingPlanner) {
-                    return res.status(403).json({
-                        error: true,
-                        message: "Cannot find planner to edit.",
-                    });
+                    return next(
+                        new AppError({
+                            status: 403,
+                            message: "Cannot find planner to edit.",
+                        })
+                    );
                 }
                 if (existingPlanner.createdBy !== userId) {
-                    return res.status(403).json({
-                        error: true,
-                        message: "You do not have permissions to edit this planner",
-                    });
+                    return next(
+                        new AppError({
+                            status: 403,
+                            message: "You do not have permissions to edit this planner",
+                        })
+                    );
                 }
             }
 
@@ -180,7 +189,7 @@ router.post<PostPlannerRequestParams, PostPlannerResponse, PostPlannerRequestBod
                 variant,
                 createdBy: userId,
                 description,
-                memberIds,
+                members,
             });
             return res.status(201).json({ error: false, message: `Planner ${plannerId ? "updated" : "created"}` });
         } catch (e: unknown) {
@@ -211,7 +220,12 @@ router.delete<DeletePlannerRequestParams, DeletePlannerResponse, DeletePlannerRe
 
         // Check all required fields are present
         if (!plannerId) {
-            return res.status(400).json({ error: true, message: "Insufficient data to delete a planner." });
+            return next(
+                new AppError({
+                    status: 400,
+                    message: "Insufficient data to delete a planner.",
+                })
+            );
         }
 
         // Update database and return status
@@ -219,17 +233,21 @@ router.delete<DeletePlannerRequestParams, DeletePlannerResponse, DeletePlannerRe
             const [existingPlanner] = await PlannerActions.read({ plannerId, userId });
 
             if (!existingPlanner) {
-                return res.status(403).json({
-                    error: true,
-                    message: "Cannot find planner to delete.",
-                });
+                return next(
+                    new AppError({
+                        status: 403,
+                        message: "Cannot find planner to delete.",
+                    })
+                );
             }
 
             if (existingPlanner.createdBy !== userId) {
-                return res.status(403).json({
-                    error: true,
-                    message: "You do not have permissions to delete this planner",
-                });
+                return next(
+                    new AppError({
+                        status: 403,
+                        message: "You do not have permissions to delete this planner",
+                    })
+                );
             }
 
             await PlannerActions.delete({ plannerId });
@@ -258,11 +276,13 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
 
         // Check all required fields are present
         if (!plannerId || !meal || !year || !month || !dayOfMonth) {
-            return res.status(400).json({
-                error: true,
-                code: "PLANNER_INSUFFICIENT_DATA",
-                message: "Insufficient data to create a planner recipe.",
-            });
+            return next(
+                new AppError({
+                    status: 400,
+                    code: "PLANNER_INSUFFICIENT_DATA",
+                    message: "Insufficient data to create a planner recipe.",
+                })
+            );
         }
 
         const plannerMeal = {
@@ -282,19 +302,27 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
             const [existingPlanner] = await PlannerActions.read({ plannerId, userId });
 
             if (!existingPlanner) {
-                return res.status(403).json({
-                    error: true,
-                    code: "PLANNER_NOT_FOUND",
-                    message: "Cannot find planner to add recipe to.",
-                });
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "PLANNER_NOT_FOUND",
+                        message: "Cannot find planner to add recipe to.",
+                    })
+                );
             }
 
             if (existingPlanner.createdBy !== userId) {
-                return res.status(403).json({
-                    error: true,
-                    code: "PLANNER_NO_PERMISSIONS",
-                    message: "You do not have permissions to edit this planner.",
-                });
+                const existingPlannerMembers = await PlannerMemberActions.read({ entityId: plannerId });
+
+                if (!existingPlannerMembers?.some(member => member.userId === userId && member.canEdit)) {
+                    return next(
+                        new AppError({
+                            status: 403,
+                            code: "PLANNER_NO_PERMISSIONS",
+                            message: "You do not have permissions to edit this planner.",
+                        })
+                    );
+                }
             }
 
             await PlannerMealActions.save(plannerMeal);
@@ -412,12 +440,16 @@ router.delete<DeletePlannerMealRequestParams, DeletePlannerMealResponse, DeleteP
             }
 
             if (existingPlanner.createdBy !== userId) {
-                return next(
-                    new AppError({
-                        status: 403,
-                        message: "You do not have permissions to delete meals from this planner",
-                    })
-                );
+                const existingPlannerMembers = await PlannerMemberActions.read({ entityId: plannerId });
+
+                if (!existingPlannerMembers?.some(member => member.userId === userId && member.canEdit)) {
+                    return next(
+                        new AppError({
+                            status: 403,
+                            message: "You do not have permissions to delete meals from this planner",
+                        })
+                    );
+                }
             }
 
             await PlannerMealActions.delete({ id: mealId });

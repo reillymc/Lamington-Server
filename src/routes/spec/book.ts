@@ -1,6 +1,7 @@
 import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
 import { User } from "./user";
 import { Recipe, Recipes, recipeIdParam } from "./recipe";
+import { EntityMember, EntityMembers } from "./common";
 
 export const bookEndpoint = "/books" as const;
 
@@ -28,14 +29,7 @@ export type Book = {
     accepted?: boolean;
     canEdit?: boolean;
     recipes?: Recipes;
-    members?: {
-        [userId: User["userId"]]: {
-            userId: User["userId"];
-            firstName?: User["firstName"];
-            lastName?: User["lastName"];
-            permissions?: string;
-        };
-    };
+    members?: EntityMembers;
 };
 
 // Get books
@@ -60,7 +54,7 @@ export type PostBookRequestBody = BaseRequestBody<{
     name?: Book["name"];
     bookId?: Book["bookId"];
     description?: Book["description"];
-    memberIds?: string[];
+    members?: Array<EntityMember>;
 }>;
 
 export type PostBookRequest = BaseRequest<PostBookRequestBody & PostBookRequestParams>;

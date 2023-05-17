@@ -111,7 +111,7 @@ router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(ListEndpoi
             members: Object.fromEntries(
                 listMembersResponse.map(({ userId, canEdit, firstName, lastName }) => [
                     userId,
-                    { userId, permissions: canEdit, firstName, lastName },
+                    { userId, allowEditing: !!canEdit, firstName, lastName },
                 ])
             ),
             accepted:
@@ -133,11 +133,16 @@ router.post<PostListRequestParams, PostListResponse, PostListRequestBody>(
     ListEndpoint.postList,
     async (req, res, next) => {
         // Extract request fields
-        const { userId, name, description, listId, memberIds = [] } = req.body;
+        const { userId, name, description, listId, members } = req.body;
 
         // Check all required fields are present
         if (!name) {
-            return res.status(400).json({ error: true, message: "Insufficient data to create a list." });
+            return next(
+                new AppError({
+                    status: 400,
+                    message: "Insufficient data to create a list.",
+                })
+            );
         }
 
         // Update database and return status
@@ -146,17 +151,21 @@ router.post<PostListRequestParams, PostListResponse, PostListRequestBody>(
                 const [existingList] = await ListActions.read({ listId, userId });
 
                 if (!existingList) {
-                    return res.status(403).json({
-                        error: true,
-                        message: "Cannot find list to edit.",
-                    });
+                    return next(
+                        new AppError({
+                            status: 403,
+                            message: "Cannot find list to edit.",
+                        })
+                    );
                 }
 
                 if (existingList.createdBy !== userId) {
-                    return res.status(403).json({
-                        error: true,
-                        message: "You do not have permissions to edit this list",
-                    });
+                    return next(
+                        new AppError({
+                            status: 403,
+                            message: "You do not have permissions to edit this list",
+                        })
+                    );
                 }
             }
 
@@ -165,7 +174,7 @@ router.post<PostListRequestParams, PostListResponse, PostListRequestBody>(
                 name,
                 createdBy: userId,
                 description,
-                memberIds,
+                members,
             });
             return res.status(201).json({ error: false, message: `List ${listId ? "updated" : "created"}` });
         } catch (e: unknown) {
@@ -205,11 +214,13 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
 
         // Check all required fields are present
         if (!name || !listId) {
-            return res.status(400).json({
-                error: true,
-                code: "LIST_INSUFFICIENT_DATA",
-                message: "Insufficient data to create a list item.",
-            });
+            return next(
+                new AppError({
+                    status: 400,
+                    code: "LIST_INSUFFICIENT_DATA",
+                    message: "Insufficient data to create a list item.",
+                })
+            );
         }
 
         // Update database and return status
@@ -217,22 +228,26 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
             const [existingList] = await InternalListActions.read({ listId });
 
             if (!existingList) {
-                return res.status(403).json({
-                    error: true,
-                    code: "LIST_NOT_FOUND",
-                    message: "Cannot find list to add item to.",
-                });
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "LIST_NOT_FOUND",
+                        message: "Cannot find list to add item to.",
+                    })
+                );
             }
 
             if (existingList.createdBy !== userId) {
                 const existingListMembers = await ListMemberActions.read({ entityId: listId });
 
                 if (!existingListMembers?.some(member => member.userId === userId && member.canEdit)) {
-                    return res.status(403).json({
-                        error: true,
-                        code: "LIST_NO_PERMISSIONS",
-                        message: "You do not have permissions to edit this list.",
-                    });
+                    return next(
+                        new AppError({
+                            status: 403,
+                            code: "LIST_NO_PERMISSIONS",
+                            message: "You do not have permissions to edit this list.",
+                        })
+                    );
                 }
             }
 
@@ -340,7 +355,12 @@ router.delete<DeleteListRequestParams, DeleteListResponse, DeleteListRequestBody
 
         // Check all required fields are present
         if (!listId) {
-            return res.status(400).json({ error: true, message: "Insufficient data to delete a list." });
+            return next(
+                new AppError({
+                    status: 400,
+                    message: "Insufficient data to delete a list.",
+                })
+            );
         }
 
         // Update database and return status
@@ -348,17 +368,21 @@ router.delete<DeleteListRequestParams, DeleteListResponse, DeleteListRequestBody
             const [existingList] = await InternalListActions.read({ listId });
 
             if (!existingList) {
-                return res.status(403).json({
-                    error: true,
-                    message: "Cannot find list to delete.",
-                });
+                return next(
+                    new AppError({
+                        status: 403,
+                        message: "Cannot find list to delete.",
+                    })
+                );
             }
 
             if (existingList.createdBy !== userId) {
-                return res.status(403).json({
-                    error: true,
-                    message: "You do not have permissions to delete this list",
-                });
+                return next(
+                    new AppError({
+                        status: 403,
+                        message: "You do not have permissions to delete this list",
+                    })
+                );
             }
 
             await ListActions.delete({ listId });
@@ -409,6 +433,7 @@ router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListIte
             }
             if (existingList.createdBy !== userId) {
                 const existingListMembers = await ListMemberActions.read({ entityId: listId });
+
                 if (!existingListMembers?.some(member => member.userId === userId && member.canEdit)) {
                     return next(
                         new AppError({

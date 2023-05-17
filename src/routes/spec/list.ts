@@ -1,4 +1,5 @@
 import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
+import { EntityMember, EntityMembers } from "./common";
 import { User } from "./user";
 
 export const listEndpoint = "/lists" as const;
@@ -28,14 +29,7 @@ export type List = {
     outstandingItemCount?: number;
     accepted?: boolean;
     items?: Array<ListItem>;
-    members?: {
-        [userId: User["userId"]]: {
-            userId: User["userId"];
-            firstName?: User["firstName"];
-            lastName?: User["lastName"];
-            permissions?: string;
-        };
-    };
+    members?: EntityMembers;
 };
 
 /**
@@ -74,7 +68,7 @@ export type PostListRequestBody = BaseRequestBody<{
     name?: List["name"];
     listId?: List["listId"];
     description?: List["description"];
-    memberIds?: string[];
+    members?: Array<EntityMember>;
 }>;
 
 export type PostListRequest = BaseRequest<PostListRequestBody & PostListRequestParams>;

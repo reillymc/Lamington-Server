@@ -15,6 +15,8 @@ import db, {
     user,
     User,
 } from "../database";
+import { CreateEntityMemberParams, EntityMember } from "./entity";
+import { BookMemberActions } from "./bookMember";
 
 /**
  * Get all books
@@ -89,7 +91,7 @@ export interface CreateBookParams {
     description: string | undefined;
     name: string;
     createdBy: string;
-    memberIds?: string[];
+    members?: Array<EntityMember>;
 }
 
 /**
@@ -104,27 +106,20 @@ const saveBooks = async (books: CreateQuery<CreateBookParams>): CreateResponse<B
     const data = books.map(({ bookId, ...params }) => ({ bookId: bookId ?? Uuid(), ...params })).filter(Undefined);
     const bookIds = data.map(({ bookId }) => bookId);
 
-    const bookData: Book[] = data.map(({ memberIds, ...bookItem }) => bookItem);
-    const memberData: BookMember[] = data.flatMap(
-        ({ bookId, memberIds }) => memberIds?.map(userId => ({ bookId, userId, canEdit: "1", accepted: 0 })) ?? []
+    const bookData: Book[] = data.map(({ members, ...bookItem }) => bookItem);
+    const memberData: CreateEntityMemberParams[] = data.flatMap(
+        ({ bookId, members }) =>
+            members?.map(({ userId, allowEditing }) => ({
+                entityId: bookId,
+                userId,
+                allowEditing,
+                accepted: false,
+            })) ?? []
     );
 
     const result = await db(lamington.book).insert(bookData).onConflict(book.bookId).merge();
 
-    const result2 = await db(lamington.bookMember)
-        .whereIn(bookMember.bookId, bookIds)
-        .whereNotIn(
-            bookMember.userId,
-            memberData.map(({ userId }) => userId)
-        )
-        .delete();
-
-    if (memberData.length > 0) {
-        const result3 = await db(lamington.bookMember)
-            .insert(memberData)
-            .onConflict([bookMember.bookId, bookMember.userId])
-            .merge();
-    }
+    if (memberData.length > 0) await BookMemberActions.update(memberData, { preserveAccepted: true, trimNotIn: true });
 
     return db<Book>(lamington.book).select(book.bookId, book.name).whereIn(book.bookId, bookIds);
 };
