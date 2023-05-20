@@ -95,8 +95,9 @@ export const TagEndpoint = {
 } as const satisfies Record<keyof TagServices, string>;
 
 export const UserEndpoint = {
-    getUsers: `/`,
     approveUser: `/:${userIdParam}/${approveSubpath}`,
+    getPendingUsers: `/pending`,
+    getUsers: `/`,
 } as const satisfies Record<keyof UserServices, string>;
 
 export * from "./attachment";

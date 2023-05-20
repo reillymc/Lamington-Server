@@ -9,7 +9,22 @@ import { Undefined } from "../utils";
  * @returns an array of all users in the database
  */
 const readAllUsers = async (): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">> => {
-    const query = db<User>(lamington.user).select(user.userId, user.firstName, user.lastName, user.email, user.status);
+    const query = db<User>(lamington.user)
+        .select(user.userId, user.firstName, user.lastName, user.email, user.status)
+        .whereNot(user.status, UserStatus.Pending);
+    return query;
+};
+
+/**
+ * Get pending users
+ * @returns an array of all pending users in the database
+ */
+const readPendingUsers = async (): ReadResponse<
+    Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">
+> => {
+    const query = db<User>(lamington.user)
+        .select(user.userId, user.firstName, user.lastName, user.email, user.status)
+        .where(user.status, UserStatus.Pending);
     return query;
 };
 
@@ -87,6 +102,7 @@ const saveUserStatus = async (users: CreateQuery<{ userId: string; status: UserS
 export const UserActions = {
     read: readUsers,
     readAll: readAllUsers,
+    readPending: readPendingUsers,
     save: saveUsers,
     saveStatus: saveUserStatus,
 };

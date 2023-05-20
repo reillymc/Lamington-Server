@@ -56,6 +56,14 @@ export type GetUsersRequest = BaseRequest<GetUsersRequestBody & GetUsersRequestP
 export type GetUsersResponse = BaseResponse<Users>;
 export type GetUsersService = (request: GetUsersRequest) => GetUsersResponse;
 
+// Get pending users
+export type GetPendingUsersRequestParams = BaseRequestParams;
+export type GetPendingUsersRequestBody = BaseRequestBody;
+
+export type GetPendingUsersRequest = BaseRequest<GetPendingUsersRequestBody & GetPendingUsersRequestParams>;
+export type GetPendingUsersResponse = BaseResponse<Users>;
+export type GetPendingUsersService = (request: GetPendingUsersRequest) => GetPendingUsersResponse;
+
 // Approve user
 export type PostUserApprovalRequestParams = BaseRequestParams<{ userId: string }>;
 export type PostUserApprovalRequestBody = BaseRequestBody<{
@@ -68,5 +76,6 @@ export type PostUserApprovalService = (request: PostUserApprovalRequest) => Post
 
 export interface UserServices {
     approveUser: PostUserApprovalService;
+    getPendingUsers: GetPendingUsersService;
     getUsers: GetUsersService;
 }

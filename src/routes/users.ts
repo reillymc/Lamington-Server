@@ -12,6 +12,9 @@ import {
     PostUserApprovalRequestParams,
     PostUserApprovalResponse,
     PostUserApprovalRequestBody,
+    GetPendingUsersRequestBody,
+    GetPendingUsersRequestParams,
+    GetPendingUsersResponse,
 } from "./spec";
 
 const router = express.Router();
@@ -34,6 +37,40 @@ router.get<GetUsersRequestParams, GetUsersResponse, GetUsersRequestBody>(
                         ...user,
                         status: isAdmin ? userStatusToUserStatus(user.status) : undefined,
                         email: isAdmin ? user.email : undefined,
+                    },
+                ])
+            );
+
+            return res.status(200).json({ error: false, data });
+        } catch (e: unknown) {
+            next(
+                new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "users" }) })
+            );
+        }
+    }
+);
+
+/**
+ * GET request to fetch pending users
+ */
+router.get<GetPendingUsersRequestParams, GetPendingUsersResponse, GetPendingUsersRequestBody>(
+    UserEndpoint.getPendingUsers,
+    async (req, res, next) => {
+        const isAdmin = req.body.status === UserStatus.Administrator;
+
+        if (!isAdmin) {
+            return next(new AppError({ status: 401, message: "Unauthorised action" }));
+        }
+
+        try {
+            const users = await UserActions.readPending();
+
+            const data = Object.fromEntries(
+                users.map(user => [
+                    user.userId,
+                    {
+                        ...user,
+                        status: userStatusToUserStatus(user.status),
                     },
                 ])
             );
