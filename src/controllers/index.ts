@@ -9,6 +9,6 @@ export { ListItemActions } from "./listItem";
 export { ListMemberActions } from "./listMember";
 export { PlannerActions, InternalPlannerActions } from "./planner";
 export { PlannerMemberActions } from "./plannerMember";
-export { PlannerMealActions } from "./plannerMeal";
+export { PlannerMealActions, InternalPlannerMealActions } from "./plannerMeal";
 export { RecipeRatingActions } from "./recipeRating";
 export { TagActions } from "./tag";

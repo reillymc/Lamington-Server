@@ -171,4 +171,5 @@ export const BookActions = {
 
 export const InternalBookActions = {
     read: readBooksInternal,
+    readAll: readAllBooks,
 };

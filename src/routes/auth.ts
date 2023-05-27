@@ -39,7 +39,7 @@ router.post<RegisterRequestParams, RegisterResponse, RegisterRequestBody>(
         try {
             const [createdUser] = await InternalUserActions.save({
                 userId: undefined,
-                email,
+                email: email.toLowerCase(),
                 firstName,
                 lastName,
                 password: await hashPassword(password),
@@ -74,7 +74,7 @@ router.post<LoginRequestParams, LoginResponse, LoginRequestBody>(AuthEndpoint.lo
     const { email, password } = req.body;
 
     // Check all required fields are present
-    if (!email || (process.env.NODE_ENV === "production" && !password)) {
+    if (!email || (process.env.NODE_ENV !== "development" && !password)) {
         return next(new AppError({ status: 401, message: "Invalid username or password" }));
     }
 
@@ -93,7 +93,7 @@ router.post<LoginRequestParams, LoginResponse, LoginRequestBody>(AuthEndpoint.lo
 
         if (result) {
             const userPending = user.status === UserStatus.Pending;
-            const token = !userPending ? createToken(user.userId, userStatusToUserStatus(user.status)) : undefined;
+            const token = !userPending ? createToken(user.userId) : undefined;
 
             return res.status(200).json({
                 error: false,
@@ -106,7 +106,7 @@ router.post<LoginRequestParams, LoginResponse, LoginRequestBody>(AuthEndpoint.lo
                         : undefined,
                     user: {
                         userId: user.userId,
-                        email: user.email,
+                        email: user.email.toLowerCase(),
                         firstName: user.firstName,
                         lastName: user.lastName,
                         status: userStatusToUserStatus(user.status),

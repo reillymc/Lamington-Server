@@ -31,10 +31,14 @@ const config: LamingtonConfig = {
     },
     database: {
         client: "mysql2",
-        name: process.env.DB_NAME,
-        host: process.env.DB_HOST,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
+        name: process.env.NODE_ENV === "test" ? process.env.DB_TEST_NAME : process.env.DB_NAME,
+        host: process.env.NODE_ENV === "test" ? process.env.DB_TEST_HOST : process.env.DB_HOST,
+        port: parseInt(
+            (process.env.NODE_ENV === "test" ? process.env.DB_TEST_PORT : process.env.DB_PORT) ?? "3306",
+            10
+        ),
+        user: process.env.NODE_ENV === "test" ? process.env.DB_TEST_USER : process.env.DB_USER,
+        password: process.env.NODE_ENV === "test" ? process.env.DB_TEST_PASSWORD : process.env.DB_PASSWORD,
     },
     authentication: {
         jwtSecret: process.env.JWT_SECRET,
@@ -59,6 +63,7 @@ export interface LamingtonConfig {
     database: {
         client: "mysql2";
         host: string | undefined;
+        port: number | undefined;
         name: string | undefined;
         user: string | undefined;
         password: string | undefined;

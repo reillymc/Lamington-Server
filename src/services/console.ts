@@ -4,7 +4,9 @@ const applyColor = ({ message, error }: { message: string; error?: boolean }): s
     error ? `\u001b[31m${message}\u001b[0m` : `\u001b[36m${message}\u001b[0m`;
 
 const formatDatabaseString = (config: LamingtonConfig["database"]) => {
-    let message = `Database: ${config.name} - ${config.user}@${config.host} (password=${!!config.password})`;
+    let message = `Database: ${config.name} - ${config.user}@${config.host}:${
+        config.port
+    } (password=${!!config.password})`;
     let error = false;
 
     if (!config.host || !config.name || !config.user || !config.password) {

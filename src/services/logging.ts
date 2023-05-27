@@ -64,7 +64,7 @@ const AccessLogFileTransport = new transports.DailyRotateFile({
 });
 
 const ConsoleLogTransport =
-    process.env.NODE_ENV !== "production"
+    process.env.NODE_ENV === "development"
         ? new transports.Console({
               level: "http",
               format: format.combine(format.colorize(), format.simple()),

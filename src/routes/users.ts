@@ -41,14 +41,16 @@ router.get<GetUsersRequestParams, GetUsersResponse, GetUsersRequestBody>(
             const users = await UserActions.readAll();
 
             const data = Object.fromEntries(
-                users.map(user => [
-                    user.userId,
-                    {
-                        ...user,
-                        status: isAdmin ? userStatusToUserStatus(user.status) : undefined,
-                        email: isAdmin ? user.email : undefined,
-                    },
-                ])
+                users
+                    .filter(({ userId }) => userId !== req.body.userId)
+                    .map(user => [
+                        user.userId,
+                        {
+                            ...user,
+                            status: isAdmin ? userStatusToUserStatus(user.status) : undefined,
+                            email: isAdmin ? user.email : undefined,
+                        },
+                    ])
             );
 
             return res.status(200).json({ error: false, data });
@@ -115,14 +117,18 @@ router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApp
 
         const [user] = await UserActions.read({ userId: userToUpdate });
 
+        if (!user) {
+            return next(new AppError({ status: 400, message: "User does not exist" }));
+        }
+
         try {
-            const success = UserActions.saveStatus({
+            const [updatedUser] = await UserActions.saveStatus({
                 userId: userToUpdate,
                 status: accept ? UserStatus.Registered : UserStatus.Blacklisted,
             });
 
-            if (user?.status === UserStatus.Pending && accept) {
-                createDefaultUserData(userToUpdate);
+            if (user.status === UserStatus.Pending && updatedUser?.status === UserStatus.Registered && accept) {
+                await createDefaultUserData(userToUpdate);
             }
 
             return res.status(200).json({ error: false });
@@ -143,14 +149,14 @@ const createDefaultUserData = async (userId: string) => {
     const recipeId = Uuid();
     const plannerId = Uuid();
 
-    const list = await ListActions.save({
+    await ListActions.save({
         listId,
         createdBy: userId,
         name: "My Shopping List",
         description: "A list of all the items I need to buy",
     });
 
-    const listItem = await ListItemActions.save({
+    await ListItemActions.save({
         listId,
         itemId: listItemId,
         createdBy: userId,
@@ -160,14 +166,14 @@ const createDefaultUserData = async (userId: string) => {
         notes: "You can edit or delete this item by swiping left on it",
     });
 
-    const book = await BookActions.save({
+    await BookActions.save({
         bookId,
         createdBy: userId,
         name: "Favourite Recipes",
         description: "A recipe book for all my favourite recipes",
     });
 
-    const recipe = await RecipeActions.save({
+    await RecipeActions.save({
         name: "Example Recipe",
         recipeId,
         userId,
@@ -192,12 +198,12 @@ const createDefaultUserData = async (userId: string) => {
         notes: "There are many other entries you can use to create your recipe, such as adding a photo, recording the prep/cook time, servings, additional details, source and more.",
     });
 
-    const bookRecipe = await BookRecipeActions.save({
+    await BookRecipeActions.save({
         bookId,
         recipeId,
     });
 
-    const planner = await PlannerActions.save({
+    await PlannerActions.save({
         plannerId,
         createdBy: userId,
         name: "My Meal Planner",
@@ -205,7 +211,7 @@ const createDefaultUserData = async (userId: string) => {
         variant: "variant1",
     });
 
-    const meal = await PlannerMealActions.save([
+    await PlannerMealActions.save([
         {
             plannerId,
             createdBy: userId,

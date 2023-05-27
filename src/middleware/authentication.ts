@@ -3,8 +3,9 @@ import jwt from "jsonwebtoken";
 
 import config from "../config";
 import { userStatusToUserStatus } from "../controllers/helpers";
-import { BaseResponse, UserStatus } from "../routes/spec";
+import { UserStatus } from "../routes/spec";
 import { AppError } from "../services";
+import { UserActions } from "../controllers";
 
 const { jwtSecret } = config.authentication;
 
@@ -31,12 +32,18 @@ const authenticationMiddleware = (
         token = token.slice(7, token.length);
     }
 
-    jwt.verify(token, jwtSecret, (err, decoded: AuthenticatedBody) => {
+    jwt.verify(token, jwtSecret, async (err, decoded: Pick<AuthenticatedBody, "userId">) => {
         if (err) {
             return next(new AppError({ status: 401, message: "Failed to authenticate user.", innerError: err }));
         }
 
-        const userStatus = userStatusToUserStatus(decoded.status as string);
+        const [user] = await UserActions.read({ userId: decoded.userId });
+
+        if (!user) {
+            return next(new AppError({ status: 401, message: "User not found." }));
+        }
+
+        const userStatus = userStatusToUserStatus(user.status);
 
         if (userStatus === UserStatus.Pending) {
             return next(new AppError({ status: 401, message: "User account is pending approval." }));

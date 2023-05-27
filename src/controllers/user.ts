@@ -11,7 +11,7 @@ import { Undefined } from "../utils";
 const readAllUsers = async (): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">> => {
     const query = db<User>(lamington.user)
         .select(user.userId, user.firstName, user.lastName, user.email, user.status)
-        .whereNot(user.status, UserStatus.Pending);
+        .whereNotIn(user.status, [UserStatus.Pending, UserStatus.Blacklisted]);
     return query;
 };
 
@@ -85,13 +85,13 @@ const saveUserStatus = async (users: CreateQuery<{ userId: string; status: UserS
         users = [users];
     }
 
-    users.forEach(async userRequest => {
+    for (const userRequest of users) {
         await db(lamington.user)
             .where({ [user.userId]: userRequest.userId })
             .update({
                 [user.status]: userRequest.status,
             });
-    });
+    }
 
     const userIds = users.map(({ userId }) => userId);
 

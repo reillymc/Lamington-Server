@@ -2,7 +2,7 @@ import db, { CreateQuery, CreateResponse, DeleteResponse, lamington, PlannerMeal
 
 /**
  * Get planner meals by id or ids
- * @returns an array of planners matching given ids
+ * @returns an array of planners matching given ids, filtered by year and month
  */
 const readPlannerMeals = async (params: Pick<PlannerMeal, "plannerId" | "year" | "month">): Promise<PlannerMeal[]> => {
     const query = db<PlannerMeal>(lamington.plannerMeal)
@@ -52,4 +52,18 @@ export const PlannerMealActions = {
     save: createPlannerMeals,
     delete: deletePlannerMeals,
     read: readPlannerMeals,
+};
+
+/**
+ * Get planner meals by id or ids
+ * @returns an array of planners matching given ids
+ */
+const readAllPlannerMeals = async (params: Pick<PlannerMeal, "plannerId">): Promise<PlannerMeal[]> => {
+    const query = db<PlannerMeal>(lamington.plannerMeal).where(plannerMeal.plannerId, params.plannerId);
+
+    return query;
+};
+
+export const InternalPlannerMealActions = {
+    readAll: readAllPlannerMeals,
 };

@@ -6,7 +6,6 @@ import cors from "cors";
 import helmet from "helmet";
 
 import config from "./config";
-import { logger, printConfig } from "./services";
 import appRouter, { authRouter, docsRouter } from "./routes";
 import { authenticationMiddleware, errorMiddleware, loggerMiddleware, notFoundMiddleware } from "./middleware";
 import { attachmentEndpoint, authEndpoint, uploadDirectory } from "./routes/spec";
@@ -37,9 +36,4 @@ app.use(notFoundMiddleware);
 // error handler
 app.use(errorMiddleware);
 
-app.listen(config.app.port, () => {
-    printConfig(config);
-    logger.info(`Lamington Server Started: http://localhost:${config.app.port}`);
-});
-
-module.exports = app;
+export default app;

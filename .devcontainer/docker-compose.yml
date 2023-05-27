@@ -13,6 +13,20 @@ services:
             - $DB_LOCAL_PORT:$DB_DOCKER_PORT
         volumes:
             - db:/var/lib/mysql
+
+    mariadb_testdb:
+        image: mariadb:10.4
+        restart: unless-stopped
+        env_file: .env
+        environment:
+            - MYSQL_ROOT_PASSWORD=$DB_PASSWORD
+            - MYSQL_DATABASE=$DB_NAME
+        ports:
+            - $DB_TEST_LOCAL_PORT:$DB_TEST_DOCKER_PORT
+        volumes:
+            - db_test:/var/lib/mysql
+            - ../database/schema:/docker-entrypoint-initdb.d/:ro
+
     app:
         image: app:latest
         depends_on:
@@ -35,3 +49,4 @@ services:
 
 volumes:
     db:
+    db_test:
