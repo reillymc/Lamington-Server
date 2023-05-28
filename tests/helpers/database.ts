@@ -1,10 +1,12 @@
 import { v4 as uuid } from "uuid";
 
-import { UserActions } from "../../src/controllers";
+import { BookActions, UserActions } from "../../src/controllers";
 import { UserStatus } from "../../src/routes/spec";
 import { lamington } from "../../src/database";
 import { hashPassword } from "../../src/services";
 import db from "../../src/database/config";
+import { CreateBookParams } from "../../src/controllers/book";
+import { randomCount } from "./data";
 
 export const CreateUsers = async ({ count = 1, status = UserStatus.Registered } = {}) => {
     const users = Array.from({ length: count }, (_, i) => ({
@@ -54,4 +56,18 @@ export const CleanTables = async (...tables: Table[]) => {
     if (tables.includes("book")) await db.table("book").del();
     if (tables.includes("tag")) await db.table("tag").del();
     if (tables.includes("user")) await db.table("user").del();
+};
+
+export const CreateBooks = async ({ count = randomCount, createdBy }: { count?: number; createdBy: string }) => {
+    const books: CreateBookParams[] = Array.from({ length: count }, () => ({
+        bookId: uuid(),
+        createdBy,
+        description: uuid(),
+        name: uuid(),
+        members: [],
+    }));
+
+    BookActions.save(books);
+
+    return [books, count];
 };

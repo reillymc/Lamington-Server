@@ -1,7 +1,7 @@
 import request from "supertest";
 
 import app from "../../../src/app";
-import { CleanTables, CreateUsers, GenerateToken, UserEndpoint } from "../../helpers";
+import { CleanTables, CreateUsers, PrepareAuthenticatedUser, UserEndpoint } from "../../helpers";
 import { GetPendingUsersResponse, UserStatus } from "../../../src/routes/spec";
 
 beforeEach(async () => {
@@ -19,8 +19,8 @@ test("route should require authentication", async () => {
 });
 
 test("route should require administrator privileges", async () => {
-    const adminToken = await GenerateToken(UserStatus.Administrator);
-    const registeredToken = await GenerateToken(UserStatus.Registered);
+    const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
+    const [registeredToken] = await PrepareAuthenticatedUser(UserStatus.Registered);
 
     const registeredRes = await request(app).get(UserEndpoint.getPendingUsers).set(registeredToken);
 
@@ -32,7 +32,7 @@ test("route should require administrator privileges", async () => {
 });
 
 test("should return correct number of pending users", async () => {
-    const adminToken = await GenerateToken(UserStatus.Administrator);
+    const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
 
     const users = await CreateUsers({ count: Math.floor(Math.random() * 10) + 1, status: UserStatus.Pending });
 

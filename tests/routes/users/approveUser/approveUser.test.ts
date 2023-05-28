@@ -1,7 +1,7 @@
 import request from "supertest";
 
 import app from "../../../../src/app";
-import { CleanTables, CreateUsers, GenerateToken } from "../../../helpers";
+import { CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../../helpers";
 import { PostUserApprovalRequestBody, UserStatus } from "../../../../src/routes/spec";
 import { UserEndpoint } from "../../../helpers/api";
 import { UserActions } from "../../../../src/controllers";
@@ -15,8 +15,8 @@ afterAll(async () => {
 });
 
 test("route should require admin authentication", async () => {
-    const adminToken = await GenerateToken(UserStatus.Administrator);
-    const registeredToken = await GenerateToken(UserStatus.Registered);
+    const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
+    const [registeredToken] = await PrepareAuthenticatedUser(UserStatus.Registered);
 
     const endpoint = UserEndpoint.approveUser("non-existent-user-id");
 
@@ -31,7 +31,7 @@ test("route should require admin authentication", async () => {
 });
 
 test("should register pending user", async () => {
-    const adminToken = await GenerateToken(UserStatus.Administrator);
+    const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
 
     const [user] = await CreateUsers({ status: UserStatus.Pending });
     if (!user) throw new Error("User not created");
@@ -49,7 +49,7 @@ test("should register pending user", async () => {
 });
 
 test("should blacklist pending user", async () => {
-    const adminToken = await GenerateToken(UserStatus.Administrator);
+    const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
 
     const [user] = await CreateUsers({ status: UserStatus.Pending });
     if (!user) throw new Error("User not created");
@@ -67,7 +67,7 @@ test("should blacklist pending user", async () => {
 });
 
 test("should blacklist registered user", async () => {
-    const adminToken = await GenerateToken(UserStatus.Administrator);
+    const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
 
     const [user] = await CreateUsers({ status: UserStatus.Registered });
     if (!user) throw new Error("User not created");
@@ -85,7 +85,7 @@ test("should blacklist registered user", async () => {
 });
 
 test("should blacklist admin user", async () => {
-    const adminToken = await GenerateToken(UserStatus.Administrator);
+    const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
 
     const [user] = await CreateUsers({ status: UserStatus.Administrator });
     if (!user) throw new Error("User not created");

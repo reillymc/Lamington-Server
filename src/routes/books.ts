@@ -130,7 +130,7 @@ router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(BookEndpoi
 });
 
 /**
- * POST request to create a book.
+ * POST request to save a book.
  */
 router.post<PostBookRequestParams, PostBookResponse, PostBookRequestBody>(
     BookEndpoint.postBook,
@@ -143,7 +143,7 @@ router.post<PostBookRequestParams, PostBookResponse, PostBookRequestBody>(
             return next(
                 new AppError({
                     status: 400,
-                    message: "Insufficient data to create a book.",
+                    message: "Insufficient data to save a book.",
                 })
             );
         }
@@ -152,19 +152,11 @@ router.post<PostBookRequestParams, PostBookResponse, PostBookRequestBody>(
         try {
             if (bookId) {
                 const [existingBook] = await BookActions.read({ bookId, userId });
-                if (!existingBook) {
+                if (!existingBook || existingBook.createdBy !== userId) {
                     return next(
                         new AppError({
-                            status: 403,
+                            status: 404,
                             message: "Cannot find book to edit.",
-                        })
-                    );
-                }
-                if (existingBook.createdBy !== userId) {
-                    return next(
-                        new AppError({
-                            status: 403,
-                            message: "You do not have permissions to edit this book",
                         })
                     );
                 }
@@ -280,25 +272,15 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
         try {
             const [existingBook] = await BookActions.read({ bookId, userId });
 
-            if (!existingBook) {
-                return next(
-                    new AppError({
-                        status: 403,
-                        code: "BOOK_NOT_FOUND",
-                        message: "Cannot find book to add recipe to.",
-                    })
-                );
-            }
-
-            if (existingBook.createdBy !== userId) {
+            if (!existingBook || existingBook.createdBy !== userId) {
                 const existingBookMembers = await BookMemberActions.read({ entityId: bookId });
 
                 if (!existingBookMembers?.some(member => member.userId === userId && member.canEdit)) {
                     return next(
                         new AppError({
-                            status: 403,
-                            code: "BOOK_NO_PERMISSIONS",
-                            message: "You do not have permissions to edit this book.",
+                            status: 404,
+                            code: "BOOK_NOT_FOUND",
+                            message: "Cannot find book to add recipe to.",
                         })
                     );
                 }
@@ -348,7 +330,7 @@ router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberR
             if (!existingBook) {
                 return next(
                     new AppError({
-                        status: 403,
+                        status: 404,
                         code: "NOT_FOUND",
                         message: "Cannot find book to edit membership for.",
                     })

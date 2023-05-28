@@ -1,7 +1,7 @@
 import request from "supertest";
 
 import app from "../../../../src/app";
-import { CleanTables, CreateUsers, GenerateToken } from "../../../helpers";
+import { CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../../helpers";
 import { PostUserApprovalRequestBody, UserStatus } from "../../../../src/routes/spec";
 import { UserEndpoint } from "../../../helpers/api";
 import {
@@ -24,7 +24,7 @@ afterAll(async () => {
 });
 
 test("should create sample data for pending => registered user", async () => {
-    const adminToken = await GenerateToken(UserStatus.Administrator);
+    const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
 
     const [user] = await CreateUsers({ status: UserStatus.Pending });
     if (!user) throw new Error("User not created");
