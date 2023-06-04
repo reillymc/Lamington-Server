@@ -113,14 +113,8 @@ router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(BookEndpoi
                     { userId, allowEditing: !!canEdit, firstName, lastName },
                 ])
             ),
-            accepted:
-                book.createdBy === userId
-                    ? true
-                    : !!bookMembersResponse.find(({ userId }) => userId === userId)?.accepted,
-            canEdit:
-                book.createdBy === userId
-                    ? true
-                    : !!bookMembersResponse.find(({ userId }) => userId === userId)?.canEdit,
+            accepted: book.createdBy === userId ? true : !!book.accepted,
+            canEdit: book.createdBy === userId ? true : !!book.canEdit,
         };
 
         return res.status(200).json({ error: false, data });
@@ -349,7 +343,7 @@ router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberR
                 );
             }
 
-            await BookMemberActions.update({ entityId: bookId, userId, accepted });
+            await BookMemberActions.save({ bookId, members: [{ userId, accepted }] });
             return res.status(201).json({ error: false, message: "Book member removed." });
         } catch (e: unknown) {
             next(

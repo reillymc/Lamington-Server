@@ -10,7 +10,7 @@
         // Configure properties specific to VS Code.
         "vscode": {
             // Add the IDs of extensions you want installed when the container is created.
-            "extensions": ["dbaeumer.vscode-eslint"],
+            "extensions": ["dbaeumer.vscode-eslint", "orta.vscode-jest", "esbenp.prettier-vscode"],
             "settings": {
                 "eslint.alwaysShowStatus": true
             }

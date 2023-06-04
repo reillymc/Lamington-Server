@@ -65,11 +65,15 @@ test("should allow accepting if existing book member", async () => {
     } satisfies CreateBookParams;
 
     await BookActions.save(book);
-    await BookMemberActions.update({
-        entityId: book.bookId,
-        userId: user!.userId,
-        accepted: false,
-        allowEditing: false,
+    await BookMemberActions.save({
+        bookId: book.bookId,
+        members: [
+            {
+                userId: user!.userId,
+                accepted: false,
+                allowEditing: false,
+            },
+        ],
     });
 
     const res = await request(app)

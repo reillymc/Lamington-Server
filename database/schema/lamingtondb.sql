@@ -401,7 +401,7 @@ CREATE TABLE IF NOT EXISTS `lamingtondb`.`book_member` (
     REFERENCES `lamingtondb`.`user` (`userId`)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
-  CONSTRAINT `fk_book_member_listId`
+  CONSTRAINT `fk_book_member_bookId`
     FOREIGN KEY (`bookId`)
     REFERENCES `lamingtondb`.`book` (`bookId`)
     ON DELETE CASCADE

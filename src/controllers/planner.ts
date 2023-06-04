@@ -15,8 +15,8 @@ import db, {
     user,
     User,
 } from "../database";
-import { CreateEntityMemberParams, EntityMember } from "./entity";
-import { PlannerMemberActions } from "./plannerMember";
+import { EntityMember } from "./entity";
+import { CreatePlannerMemberParams, PlannerMemberActions } from "./plannerMember";
 
 /**
  * Get all planners
@@ -127,20 +127,20 @@ const savePlanners = async (planners: CreateQuery<CreatePlannerParams>): CreateR
     const plannerIds = data.map(({ plannerId }) => plannerId);
 
     const plannerData: Planner[] = data.map(({ members, ...plannerItem }) => plannerItem);
-    const memberData: CreateEntityMemberParams[] = data.flatMap(
-        ({ plannerId, members }) =>
+    const memberData: CreatePlannerMemberParams[] = data.flatMap(({ plannerId, members }) => ({
+        plannerId,
+        members:
             members?.map(({ userId, allowEditing }) => ({
-                entityId: plannerId,
                 userId,
                 allowEditing,
                 accepted: false,
-            })) ?? []
-    );
+            })) ?? [],
+    }));
 
     const result = await db(lamington.planner).insert(plannerData).onConflict(planner.plannerId).merge();
 
     if (memberData.length > 0)
-        await PlannerMemberActions.update(memberData, { preserveAccepted: true, trimNotIn: true });
+        await PlannerMemberActions.save(memberData, { preserveAccepted: true, trimNotIn: true });
 
     return db<Planner>(lamington.planner)
         .select(planner.plannerId, planner.name)

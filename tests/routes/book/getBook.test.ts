@@ -148,11 +148,15 @@ test("should return book members", async () => {
 
     await BookActions.save(book);
 
-    await BookMemberActions.update({
-        entityId: book.bookId,
-        userId: bookMember!.userId,
-        accepted: true,
-        allowEditing: true,
+    await BookMemberActions.save({
+        bookId: book.bookId,
+        members: [
+            {
+                userId: bookMember!.userId,
+                accepted: true,
+                allowEditing: true,
+            },
+        ],
     });
 
     const res = await request(app).get(BookEndpoint.getBook(book.bookId)).set(token);

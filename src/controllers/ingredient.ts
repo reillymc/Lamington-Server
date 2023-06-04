@@ -55,10 +55,7 @@ const save = async (ingredients: CreateQuery<Partial<Ingredient>>): CreateRespon
 
     if (data.length === 0) return [];
 
-    const result = await db(lamington.ingredient)
-        .insert(data)
-        .onConflict([ingredient.ingredientId, ingredient.name])
-        .ignore();
+    const result = await db(lamington.ingredient).insert(data).onConflict([ingredient.ingredientId]).ignore();
 
     const ingredientIds = data.map(({ ingredientId }) => ingredientId);
 

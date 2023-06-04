@@ -325,7 +325,7 @@ router.post<PostListMemberRequestParams, PostListMemberResponse, PostListMemberR
                 );
             }
 
-            await ListMemberActions.update({ entityId: listId, userId, accepted });
+            await ListMemberActions.save({ listId, members: [{ userId, accepted }] });
             return res.status(201).json({ error: false, message: "List member removed." });
         } catch (e: unknown) {
             next(

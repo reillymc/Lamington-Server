@@ -7,3 +7,5 @@ export const ObjectFromEntries = <T extends object, K extends symbol | string | 
     const entries = Object.entries(obj) as Array<[keyof T, T[keyof T]]>;
     return Object.fromEntries(cast(entries)) as any;
 };
+
+export const EnsureArray = <T>(x: T | T[]): T[] => (Array.isArray(x) ? x : [x]);

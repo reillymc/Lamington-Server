@@ -15,8 +15,8 @@ import db, {
     user,
     User,
 } from "../database";
-import { CreateEntityMemberParams, EntityMember } from "./entity";
-import { BookMemberActions } from "./bookMember";
+import { EntityMember } from "./entity";
+import { BookMemberActions, CreateBookMemberParams } from "./bookMember";
 
 /**
  * Get all books
@@ -77,7 +77,15 @@ const readBooks = async ({ bookId, userId }: GetBookParams): ReadResponse<ReadBo
     // const bookIds = params.map(({ bookId }) => bookId);
 
     const query = db<ReadBookRow>(lamington.book)
-        .select(book.bookId, book.name, book.description, book.createdBy, `${user.firstName} as createdByName`)
+        .select(
+            book.bookId,
+            book.name,
+            book.description,
+            book.createdBy,
+            `${user.firstName} as createdByName`,
+            bookMember.accepted,
+            bookMember.canEdit
+        )
         .where({ [book.bookId]: bookId })
         .andWhere(qb => qb.where({ [book.createdBy]: userId }).orWhere({ [bookMember.userId]: userId }))
         .leftJoin(lamington.user, book.createdBy, user.userId)
@@ -107,19 +115,19 @@ const saveBooks = async (books: CreateQuery<CreateBookParams>): CreateResponse<B
     const bookIds = data.map(({ bookId }) => bookId);
 
     const bookData: Book[] = data.map(({ members, ...bookItem }) => bookItem);
-    const memberData: CreateEntityMemberParams[] = data.flatMap(
-        ({ bookId, members }) =>
+    const memberData: CreateBookMemberParams[] = data.flatMap(({ bookId, members }) => ({
+        bookId,
+        members:
             members?.map(({ userId, allowEditing }) => ({
-                entityId: bookId,
                 userId,
                 allowEditing,
                 accepted: false,
-            })) ?? []
-    );
+            })) ?? [],
+    }));
 
     const result = await db(lamington.book).insert(bookData).onConflict(book.bookId).merge();
 
-    if (memberData.length > 0) await BookMemberActions.update(memberData, { preserveAccepted: true, trimNotIn: true });
+    await BookMemberActions.save(memberData, { preserveAccepted: true, trimNotIn: true });
 
     return db<Book>(lamington.book).select(book.bookId, book.name).whereIn(book.bookId, bookIds);
 };

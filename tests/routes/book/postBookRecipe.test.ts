@@ -72,11 +72,15 @@ test("should not allow editing if book member without edit permission", async ()
 
     await BookActions.save(book);
     await RecipeActions.save(recipe);
-    await BookMemberActions.update({
-        entityId: book.bookId,
-        userId: user!.userId,
-        accepted: true,
-        allowEditing: false,
+    await BookMemberActions.save({
+        bookId: book.bookId,
+        members: [
+            {
+                userId: user!.userId,
+                accepted: true,
+                allowEditing: false,
+            },
+        ],
     });
 
     const res = await request(app)
@@ -106,11 +110,15 @@ test("should allow editing if book member with edit permission", async () => {
 
     await BookActions.save(book);
     await RecipeActions.save(recipe);
-    await BookMemberActions.update({
-        entityId: book.bookId,
-        userId: user!.userId,
-        accepted: true,
-        allowEditing: true,
+    await BookMemberActions.save({
+        bookId: book.bookId,
+        members: [
+            {
+                userId: user!.userId,
+                accepted: true,
+                allowEditing: true,
+            },
+        ],
     });
 
     const res = await request(app)

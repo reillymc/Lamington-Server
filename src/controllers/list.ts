@@ -15,8 +15,8 @@ import db, {
     DeleteResponse,
     User,
 } from "../database";
-import { CreateEntityMemberParams, EntityMember } from "./entity";
-import { ListMemberActions } from "./listMember";
+import { EntityMember } from "./entity";
+import { CreateListMemberParams, ListMemberActions } from "./listMember";
 
 /**
  * Get all lists
@@ -106,19 +106,19 @@ const saveLists = async (lists: CreateQuery<CreateListParams>): CreateResponse<L
     const listIds = data.map(({ listId }) => listId);
 
     const listData: List[] = data.map(({ members, ...listItem }) => listItem);
-    const memberData: CreateEntityMemberParams[] = data.flatMap(
-        ({ listId, members }) =>
+    const memberData: CreateListMemberParams[] = data.flatMap(({ listId, members }) => ({
+        listId,
+        members:
             members?.map(({ userId, allowEditing }) => ({
-                entityId: listId,
                 userId,
                 allowEditing,
                 accepted: false,
-            })) ?? []
-    );
+            })) ?? [],
+    }));
 
     const result = await db(lamington.list).insert(listData).onConflict(list.listId).merge();
 
-    if (memberData.length > 0) await ListMemberActions.update(memberData, { preserveAccepted: true, trimNotIn: true });
+    if (memberData.length > 0) await ListMemberActions.save(memberData, { preserveAccepted: true, trimNotIn: true });
 
     return db<List>(lamington.list).select(list.listId, list.name).whereIn(list.listId, listIds);
 };

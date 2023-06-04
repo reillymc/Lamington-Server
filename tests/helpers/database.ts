@@ -58,16 +58,22 @@ export const CleanTables = async (...tables: Table[]) => {
     if (tables.includes("user")) await db.table("user").del();
 };
 
-export const CreateBooks = async ({ count = randomCount, createdBy }: { count?: number; createdBy: string }) => {
-    const books: CreateBookParams[] = Array.from({ length: count }, () => ({
+export const CreateBooks = async ({
+    count = randomCount,
+    createdBy,
+}: {
+    count?: number;
+    createdBy: string;
+}): Promise<[(CreateBookParams & { bookId: string })[], number]> => {
+    const books = Array.from({ length: count }, () => ({
         bookId: uuid(),
         createdBy,
         description: uuid(),
         name: uuid(),
         members: [],
-    }));
+    })) satisfies (CreateBookParams & { bookId: string })[];
 
-    BookActions.save(books);
+    await BookActions.save(books);
 
     return [books, count];
 };

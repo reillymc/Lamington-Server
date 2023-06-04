@@ -65,11 +65,15 @@ test("should not allow deletion if book member but not book owner", async () => 
     } satisfies CreateBookParams;
 
     await BookActions.save(book);
-    await BookMemberActions.update({
-        entityId: book.bookId,
-        userId: user!.userId,
-        accepted: true,
-        allowEditing: true,
+    await BookMemberActions.save({
+        bookId: book.bookId,
+        members: [
+            {
+                userId: user!.userId,
+                accepted: true,
+                allowEditing: true,
+            },
+        ],
     });
 
     const res = await request(app)
