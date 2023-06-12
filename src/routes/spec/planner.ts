@@ -33,6 +33,7 @@ export type Planner = {
     canEdit?: boolean;
     members?: EntityMembers;
     meals?: PlannerMeal[];
+    queue?: PlannerMeal[];
 };
 
 /**
@@ -42,9 +43,9 @@ export type PlannerMeal = {
     id: string;
     plannerId: string;
     createdBy: string;
-    year: number;
-    month: number;
-    dayOfMonth: number;
+    year?: number;
+    month?: number;
+    dayOfMonth?: number;
     meal: string;
     description?: string;
     recipeId?: string;

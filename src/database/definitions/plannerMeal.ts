@@ -8,9 +8,9 @@ export type PlannerMeal = {
     id: string;
     plannerId: string;
     createdBy: string;
-    year: number;
-    month: number;
-    dayOfMonth: number;
+    year: number | undefined;
+    month: number | undefined;
+    dayOfMonth: number | undefined;
     meal: string;
     description: string | undefined;
     recipeId: string | undefined;

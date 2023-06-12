@@ -112,6 +112,7 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
                 parsedYear !== undefined && parsedMonth !== undefined
                     ? await PlannerMealActions.read({ plannerId, year: parsedYear, month: parsedMonth })
                     : undefined;
+            const plannerQueueResponse = await PlannerMealActions.readQueue({ plannerId });
 
             const data: Planner = {
                 ...planner,
@@ -131,6 +132,7 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
                         ? true
                         : !!plannerMembersResponse.find(({ userId }) => userId === userId)?.canEdit,
                 meals: plannerMealsResponse,
+                queue: plannerQueueResponse,
             };
 
             return res.status(200).json({ error: false, data });
@@ -275,7 +277,7 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
         const { id = Uuid(), month, dayOfMonth, meal, year, description, recipeId, userId } = req.body;
 
         // Check all required fields are present
-        if (!plannerId || !meal || !year || !month || !dayOfMonth) {
+        if (!plannerId || !meal) {
             return next(
                 new AppError({
                     status: 400,
