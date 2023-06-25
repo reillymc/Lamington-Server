@@ -2,21 +2,23 @@ import { Table } from ".";
 import { lamington } from "./lamington";
 
 /**
- * PlannerMeal
+ * Meal
  */
-export type PlannerMeal = {
+export type Meal = {
     id: string;
-    plannerId: string;
+    plannerId?: string;
     createdBy: string;
-    year: number | undefined;
-    month: number | undefined;
-    dayOfMonth: number | undefined;
+    year?: number;
+    month?: number;
+    dayOfMonth?: number;
     meal: string;
-    description: string | undefined;
-    recipeId: string | undefined;
+    description?: string;
+    source?: string;
+    sequence?: number;
+    recipeId?: string;
 };
 
-export const plannerMeal: Table<PlannerMeal> = {
+export const plannerMeal: Table<Meal> = {
     id: `${lamington.plannerMeal}.id`,
     plannerId: `${lamington.plannerMeal}.plannerId`,
     createdBy: `${lamington.plannerMeal}.createdBy`,
@@ -25,5 +27,7 @@ export const plannerMeal: Table<PlannerMeal> = {
     dayOfMonth: `${lamington.plannerMeal}.dayOfMonth`,
     meal: `${lamington.plannerMeal}.meal`,
     description: `${lamington.plannerMeal}.description`,
+    source: `${lamington.plannerMeal}.source`,
+    sequence: `${lamington.plannerMeal}.sequence`,
     recipeId: `${lamington.plannerMeal}.recipeId`,
 } as const;

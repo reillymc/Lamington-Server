@@ -80,6 +80,7 @@ export enum MessageAction {
     Read = "reading",
     Update = "updating",
     Delete = "deleting",
+    Save = "saving",
 }
 
 interface UserMessage {

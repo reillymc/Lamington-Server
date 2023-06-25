@@ -439,13 +439,15 @@ DROP TABLE IF EXISTS `lamingtondb`.`planner_meal` ;
 
 CREATE TABLE IF NOT EXISTS `lamingtondb`.`planner_meal` (
   `id` CHAR(36) NOT NULL,
-  `plannerId` CHAR(36) NOT NULL,
+  `plannerId` CHAR(36) NULL,
   `createdBy` CHAR(36) NOT NULL,
   `year` INT(5) NULL,
   `month` INT(2) NULL,
   `dayOfMonth` INT(2) NULL,
   `meal` VARCHAR(45) NOT NULL,
   `description` VARCHAR(255) NULL,
+  `source` VARCHAR(255) NULL,
+  `sequence` INT(3) NULL,
   `recipeId` CHAR(36) NULL,
   PRIMARY KEY (`id`),
   INDEX `fk_planner_meal_1_idx` (`plannerId` ASC),

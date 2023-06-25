@@ -897,6 +897,8 @@ VALUES (
         22,
         'lunch',
         'Lunch with Bob',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -907,6 +909,8 @@ VALUES (
         4,
         20,
         'lunch',
+        'Salad',
+        NULL,
         NULL,
         NULL
     ),
@@ -919,6 +923,8 @@ VALUES (
         26,
         'breakfast',
         'Overnight Oats',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -930,6 +936,8 @@ VALUES (
         26,
         'dinner',
         'Pizza',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -941,6 +949,8 @@ VALUES (
         27,
         'lunch',
         'Family Lunch',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -952,6 +962,8 @@ VALUES (
         22,
         'breakfast',
         'Scrambled Eggs ',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -963,6 +975,8 @@ VALUES (
         21,
         'dinner',
         'Barbecue ',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -974,6 +988,8 @@ VALUES (
         23,
         'dinner',
         'Black Bean Enchiladas',
+        NULL,
+        NULL,
         '99656745-3325-4a47-9361-caba8849a4e2'
     ),
     (
@@ -985,6 +1001,8 @@ VALUES (
         24,
         'breakfast',
         'Muesli ',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -996,6 +1014,8 @@ VALUES (
         27,
         'dinner',
         'Take-out',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -1007,6 +1027,8 @@ VALUES (
         20,
         'breakfast',
         'Example meal with no recipe',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -1018,6 +1040,8 @@ VALUES (
         27,
         'breakfast',
         'Fruit Smoothie',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -1029,6 +1053,8 @@ VALUES (
         25,
         'dinner',
         'Risotto-Stuffed Tomatoes',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -1040,6 +1066,8 @@ VALUES (
         25,
         'breakfast',
         'Muesli ',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -1051,6 +1079,8 @@ VALUES (
         23,
         'breakfast',
         'Fruit Smoothie',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -1062,6 +1092,8 @@ VALUES (
         22,
         'dinner',
         'Black Bean Enchiladas',
+        NULL,
+        NULL,
         '99656745-3325-4a47-9361-caba8849a4e2'
     ),
     (
@@ -1073,6 +1105,8 @@ VALUES (
         24,
         'dinner',
         'Risotto-Stuffed Tomatoes',
+        NULL,
+        NULL,
         NULL
     ),
     (
@@ -1084,5 +1118,20 @@ VALUES (
         21,
         'breakfast',
         'Overnight Oats',
+        NULL,
+        NULL,
+        NULL
+    ),
+    (
+        '2e15c937-b0ab-499e-929d-700bcc248404',
+        NULL,
+        '839c1893-e03b-4479-85f2-138e4d42a2e8',
+        NULL,
+        NULL,
+        NULL,
+        'breakfast',
+        'Pancakes',
+        'www.google.com',
+        1,
         NULL
     );

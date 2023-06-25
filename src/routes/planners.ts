@@ -86,9 +86,9 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
         if (!plannerId) {
             return next(
                 new AppError({
-                    status: 400,
+                    status: 404,
                     code: "INSUFFICIENT_DATA",
-                    message: "Insufficient data to remove planner member.",
+                    message: "Insufficient data to read planner.",
                 })
             );
         }
@@ -112,7 +112,6 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
                 parsedYear !== undefined && parsedMonth !== undefined
                     ? await PlannerMealActions.read({ plannerId, year: parsedYear, month: parsedMonth })
                     : undefined;
-            const plannerQueueResponse = await PlannerMealActions.readQueue({ plannerId });
 
             const data: Planner = {
                 ...planner,
@@ -132,7 +131,6 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
                         ? true
                         : !!plannerMembersResponse.find(({ userId }) => userId === userId)?.canEdit,
                 meals: plannerMealsResponse,
-                queue: plannerQueueResponse,
             };
 
             return res.status(200).json({ error: false, data });
@@ -166,11 +164,11 @@ router.post<PostPlannerRequestParams, PostPlannerResponse, PostPlannerRequestBod
         // Update database and return status
         try {
             if (plannerId) {
-                const [existingPlanner] = await PlannerActions.read({ plannerId, userId });
+                const [existingPlanner] = await InternalPlannerActions.read({ plannerId });
                 if (!existingPlanner) {
                     return next(
                         new AppError({
-                            status: 403,
+                            status: 404,
                             message: "Cannot find planner to edit.",
                         })
                     );
@@ -454,7 +452,7 @@ router.delete<DeletePlannerMealRequestParams, DeletePlannerMealResponse, DeleteP
                 }
             }
 
-            await PlannerMealActions.delete({ id: mealId });
+            await PlannerMealActions.delete(mealId);
             return res.status(201).json({ error: false, message: "Planner meal deleted." });
         } catch (e: unknown) {
             next(

@@ -3,18 +3,18 @@ import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
 import { PlannerEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomCount } from "../../helpers";
-import { GetPlannerResponse, PostPlannerMealRequest } from "../../../src/routes/spec";
+import { GetPlannerResponse } from "../../../src/routes/spec";
 import { PlannerActions, PlannerMemberActions, PlannerMealActions } from "../../../src/controllers";
 import { CreatePlannerParams } from "../../../src/controllers/planner";
-import { PlannerMeal } from "../../../src/database";
+import { PlannerMeal } from "../../../src/controllers/plannerMeal";
 
 beforeEach(async () => {
     await CleanTables("planner", "user", "planner_meal", "planner_member");
 });
 
-afterAll(async () => {
-    await CleanTables("planner", "user", "planner_meal", "planner_member");
-});
+// afterAll(async () => {
+//     await CleanTables("planner", "user", "planner_meal", "planner_member");
+// });
 
 test("route should require authentication", async () => {
     const res = await request(app).get(PlannerEndpoint.getPlanner(uuid()));
@@ -136,10 +136,8 @@ test("should return planner meals", async () => {
     const { data } = res.body as GetPlannerResponse;
 
     const plannerMealData = Object.values(data?.meals ?? {});
-    const plannerQueueData = Object.values(data?.queue ?? {});
 
     expect(plannerMealData.length).toEqual(1);
-    expect(plannerQueueData.length).toEqual(0);
 
     const [plannerMeal] = plannerMealData;
 
@@ -152,61 +150,6 @@ test("should return planner meals", async () => {
     expect(plannerMeal.dayOfMonth).toEqual(meal.dayOfMonth);
     expect(plannerMeal.month).toEqual(meal.month);
     expect(plannerMeal.year).toEqual(meal.year);
-    expect(plannerMeal.createdBy).toEqual(meal.createdBy);
-    expect(plannerMeal.recipeId).toEqual(null);
-});
-
-test("should return planner queue", async () => {
-    const [token, user] = await PrepareAuthenticatedUser();
-
-    const planner = {
-        plannerId: uuid(),
-        name: uuid(),
-        description: uuid(),
-        variant: uuid(),
-        createdBy: user.userId,
-    } satisfies CreatePlannerParams;
-
-    await PlannerActions.save(planner);
-
-    const meal = {
-        id: uuid(),
-        meal: uuid(),
-        description: uuid(),
-        plannerId: planner.plannerId,
-        dayOfMonth: undefined,
-        month: undefined,
-        year: undefined,
-        createdBy: user.userId,
-        recipeId: undefined,
-    } satisfies PlannerMeal;
-
-    await PlannerMealActions.save(meal);
-
-    const res = await request(app).get(PlannerEndpoint.getPlanner(planner.plannerId)).set(token);
-
-    expect(res.statusCode).toEqual(200);
-
-    const { data } = res.body as GetPlannerResponse;
-
-    const plannerMealData = Object.values(data?.meals ?? {});
-    const plannerQueueData = Object.values(data?.queue ?? {});
-
-    expect(plannerMealData.length).toEqual(0);
-    expect(plannerQueueData.length).toEqual(1);
-
-    const [plannerMeal] = plannerQueueData;
-
-    if (!plannerMeal) throw new Error("No planner meal found");
-
-    expect(plannerMeal.id).toEqual(meal.id);
-    expect(plannerMeal.meal).toEqual(meal.meal);
-    expect(plannerMeal.description).toEqual(meal.description);
-    expect(plannerMeal.plannerId).toEqual(meal.plannerId);
-    // TODO deal with null/undefined better (including client)
-    expect(plannerMeal.dayOfMonth).toEqual(null);
-    expect(plannerMeal.month).toEqual(null);
-    expect(plannerMeal.year).toEqual(null);
     expect(plannerMeal.createdBy).toEqual(meal.createdBy);
     expect(plannerMeal.recipeId).toEqual(null);
 });

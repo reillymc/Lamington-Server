@@ -8,13 +8,11 @@
         "noUncheckedIndexedAccess": true,
         "moduleResolution": "node",
         "sourceMap": true,
-        "outDir": "dist",
+        "outDir": "dist"
     },
-    "include": [
-        "./src/**/*",
-        "routes/attachments.tj"
-    ],
-    "exclude": [
-        "node_modules"
-    ]
+    "ts-node": {
+        "files": true
+    },
+    "include": ["./src/**/*", "@types"],
+    "exclude": ["node_modules"]
 }

@@ -1,4 +1,6 @@
-export const Undefined: <T>(x?: T) => x is T = <T>(x?: T): x is T => x !== null && x !== undefined;
+type Undefined = <T>(x?: T) => x is NonNullable<typeof x>;
+
+export const Undefined: Undefined = (x): x is NonNullable<typeof x> => x !== null && x !== undefined;
 
 export const ObjectFromEntries = <T extends object, K extends symbol | string | number, S>(
     obj: T,
@@ -9,3 +11,25 @@ export const ObjectFromEntries = <T extends object, K extends symbol | string | 
 };
 
 export const EnsureArray = <T>(x: T | T[]): T[] => (Array.isArray(x) ? x : [x]);
+export const EnsureDefinedArray = <T>(x: T | T[]): NonNullable<T>[] => (Array.isArray(x) ? x : [x]).filter(Undefined);
+
+export const BisectOnValidItems = <T>(
+    arr: T[],
+    predicate: (item: T) => (T extends Partial<infer R> ? R : never) | undefined
+) => {
+    type Y = (typeof arr)[number];
+    type X = Y extends Partial<infer R> ? R : never;
+    const trueArr: X[] = [];
+    const falseArr: unknown[] = [];
+
+    arr.forEach(item => {
+        const validated = predicate(item);
+        if (validated) {
+            trueArr.push(validated);
+        } else {
+            falseArr.push(item);
+        }
+    });
+
+    return [trueArr, falseArr] as const;
+};

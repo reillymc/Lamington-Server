@@ -53,9 +53,12 @@ const authenticationMiddleware = (
             return next(new AppError({ status: 401, message: "User account access denied." }));
         }
 
+        req.session = { userId: decoded.userId, status: userStatus };
+
+        // Deprecated
         req.body.userId = decoded.userId;
         req.body.status = userStatus;
-        req.secret = decoded.userId;
+
         return next();
     });
 };

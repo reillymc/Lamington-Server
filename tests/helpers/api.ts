@@ -17,6 +17,7 @@ import {
     ingredientEndpoint,
     itemSubpath,
     listEndpoint,
+    cookListEndpoint,
     listMemberSubpath,
     loginSubpath,
     mealSubpath,
@@ -29,6 +30,7 @@ import {
     tagEndpoint,
     uploadDirectory,
     usersEndpoint,
+    CookListServices,
 } from "../../src/routes/spec";
 
 const ServerURL = "";
@@ -76,6 +78,12 @@ export const PlannerEndpoint = {
     postPlannerMember: (plannerId: string) =>
         `${ApiUrl}${plannerEndpoint}/${plannerId}/${plannerMemberSubpath}` as const,
 } as const satisfies Record<keyof PlannerServices, Endpoint>;
+
+export const CookListEndpoint = {
+    getMeals: `${ApiUrl}${cookListEndpoint}` as const,
+    deleteMeal: `${ApiUrl}${cookListEndpoint}` as const,
+    postMeal: `${ApiUrl}${cookListEndpoint}` as const,
+} as const satisfies Record<keyof CookListServices, Endpoint>;
 
 export const IngredientEndpoint = {
     getIngredients: `${ApiUrl}${ingredientEndpoint}`,

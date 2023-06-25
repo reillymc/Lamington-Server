@@ -139,11 +139,10 @@ const savePlanners = async (planners: CreateQuery<CreatePlannerParams>): CreateR
 
     const result = await db(lamington.planner).insert(plannerData).onConflict(planner.plannerId).merge();
 
-    if (memberData.length > 0)
-        await PlannerMemberActions.save(memberData, { preserveAccepted: true, trimNotIn: true });
+    if (memberData.length > 0) await PlannerMemberActions.save(memberData, { preserveAccepted: true, trimNotIn: true });
 
     return db<Planner>(lamington.planner)
-        .select(planner.plannerId, planner.name)
+        .select(planner.plannerId, planner.name, planner.variant, planner.description, planner.createdBy)
         .whereIn(planner.plannerId, plannerIds);
 };
 

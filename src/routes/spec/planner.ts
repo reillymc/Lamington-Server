@@ -11,7 +11,7 @@ export const plannerIdParam = "plannerId" as const;
 export const yearParam = "year" as const;
 export const monthParam = "month" as const;
 export const plannerMemberIdParam = "userId" as const;
-export const mealIdParam = "mealId" as const;
+export const plannerMealIdParam = "mealId" as const;
 
 /**
  * Planners
@@ -33,19 +33,18 @@ export type Planner = {
     canEdit?: boolean;
     members?: EntityMembers;
     meals?: PlannerMeal[];
-    queue?: PlannerMeal[];
 };
 
 /**
- * Planner recipe
+ * Planner meal
  */
 export type PlannerMeal = {
     id: string;
     plannerId: string;
     createdBy: string;
-    year?: number;
-    month?: number;
-    dayOfMonth?: number;
+    year: number;
+    month: number;
+    dayOfMonth: number;
     meal: string;
     description?: string;
     recipeId?: string;
@@ -93,7 +92,7 @@ export type DeletePlannerRequest = BaseRequest<DeletePlannerRequestParams & Dele
 export type DeletePlannerResponse = BaseResponse;
 export type DeletePlannerService = (request: DeletePlannerRequest) => DeletePlannerResponse;
 
-// Post planner recipe
+// Post planner meal
 export type PostPlannerMealRequestParams = BaseRequestParams<{ [plannerIdParam]: Planner["plannerId"] }>;
 export type PostPlannerMealRequestBody = BaseRequestBody<Omit<PlannerMeal, "plannerId">>;
 
@@ -101,10 +100,10 @@ export type PostPlannerMealRequest = BaseRequest<PostPlannerMealRequestParams & 
 export type PostPlannerMealResponse = BaseResponse;
 export type PostPlannerMealService = (request: PostPlannerMealRequest) => PostPlannerMealResponse;
 
-// Delete planner recipe
+// Delete planner meal
 export type DeletePlannerMealRequestParams = BaseRequestParams<{
     [plannerIdParam]: Planner["plannerId"];
-    [mealIdParam]: PlannerMeal["id"];
+    [plannerMealIdParam]: PlannerMeal["id"];
 }>;
 export type DeletePlannerMealRequestBody = BaseRequestBody;
 

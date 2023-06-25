@@ -2,10 +2,11 @@ import { AuthenticatedBody } from "../../middleware";
 import { AttachmentServices, imageSubpath, uploadDirectory } from "./attachment";
 import { AuthServices, loginSubpath, registerSubpath } from "./auth";
 import { bookIdParam, bookMemberIdParam, bookMemberSubpath, BookServices, recipeSubpath } from "./book";
+import { CookListServices } from "./cookList";
 import { IngredientServices } from "./ingredient";
 import { itemIdParam, itemSubpath, listIdParam, ListServices, listMemberIdParam, listMemberSubpath } from "./list";
 import {
-    mealIdParam,
+    plannerMealIdParam,
     mealSubpath,
     monthParam,
     plannerIdParam,
@@ -24,6 +25,13 @@ export type BaseRequestParams<T = null> = T extends null ? {} : T;
 
 export type BaseRequestBody<T = null> = AuthenticatedBody<T>;
 
+export type BaseRequestBodyV2<T = null> = T extends null ? {} : { data: Partial<T> | null | Array<Partial<T> | null> };
+
+export type RequestValidator<T extends BaseRequestBodyV2<unknown>> = (
+    body: T,
+    userId: string
+) => readonly [Array<Exclude<T["data"], any[] | null> extends Partial<infer R> ? R : never>, Array<unknown>];
+
 interface ResponseBodyBase {
     error: boolean;
     schema?: 1; // TODO make mandatory / remove
@@ -32,6 +40,7 @@ interface ResponseBodyBase {
 }
 
 export type BaseResponse<T = null> = T extends null ? ResponseBodyBase : ResponseBodyBase & { data?: T };
+export type BaseResponseV2<T = null> = BaseResponse<T>;
 
 export const AttachmentEndpoint = {
     postImage: `/${imageSubpath}`,
@@ -73,13 +82,19 @@ export const ListEndpoint = {
 export const PlannerEndpoint = {
     deletePlanner: `/:${plannerIdParam}`,
     deletePlannerMember: `/:${plannerIdParam}/${plannerMemberSubpath}/:${plannerMemberIdParam}`,
-    deletePlannerMeal: `/:${plannerIdParam}/${mealSubpath}/:${mealIdParam}`,
+    deletePlannerMeal: `/:${plannerIdParam}/${mealSubpath}/:${plannerMealIdParam}`,
     getPlanner: `/:${plannerIdParam}/:${yearParam}?/:${monthParam}?`,
     getPlanners: `/`,
     postPlanner: `/`,
     postPlannerMember: `/:${plannerIdParam}/${plannerMemberSubpath}`,
     postPlannerMeal: `/:${plannerIdParam}/${mealSubpath}`,
 } as const satisfies Record<keyof PlannerServices, string>;
+
+export const CookListEndpoint = {
+    getMeals: `/`,
+    postMeal: `/`,
+    deleteMeal: `/:${plannerMealIdParam}`,
+} as const satisfies Record<keyof CookListServices, string>;
 
 export const RecipeEndpoint = {
     deleteRecipe: `/:${recipeIdParam}`,
@@ -104,6 +119,7 @@ export * from "./attachment";
 export * from "./auth";
 export * from "./book";
 export * from "./common";
+export * from "./cookList";
 export * from "./ingredient";
 export * from "./list";
 export * from "./planner";

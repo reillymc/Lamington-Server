@@ -26,7 +26,7 @@ export const CreateUsers = async ({ count = 1, status = UserStatus.Registered } 
         }))
     );
 
-    UserActions.save(hashedUsers);
+    await UserActions.save(hashedUsers);
 
     return users;
 };
