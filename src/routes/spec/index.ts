@@ -19,9 +19,15 @@ import { rateSubpath, recipeIdParam, RecipeServices } from "./recipe";
 import { TagServices } from "./tag";
 import { approveSubpath, userIdParam, UserServices } from "./user";
 
+export type QueryParam = undefined | string | string[];
+
 export type BaseRequest<T = null> = T extends null ? {} : T;
 
 export type BaseRequestParams<T = null> = T extends null ? {} : T;
+
+type LamingtonQueryParams = { page: QueryParam; sort: QueryParam; search: QueryParam };
+
+export type BasePaginatedRequestQuery<T = null> = T extends null ? LamingtonQueryParams : T & LamingtonQueryParams;
 
 export type BaseRequestBody<T = null> = AuthenticatedBody<T>;
 
@@ -41,6 +47,7 @@ interface ResponseBodyBase {
 
 export type BaseResponse<T = null> = T extends null ? ResponseBodyBase : ResponseBodyBase & { data?: T };
 export type BaseResponseV2<T = null> = BaseResponse<T>;
+export type BasePaginatedResponse<T = null> = BaseResponse<T> & { page?: number };
 
 export const AttachmentEndpoint = {
     postImage: `/${imageSubpath}`,

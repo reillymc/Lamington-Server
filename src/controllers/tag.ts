@@ -63,4 +63,5 @@ const createTags = async (tags: CreateQuery<Partial<Tag>>): CreateResponse<Tag> 
 
 export const TagActions = {
     readAll: readAllTags,
+    save: createTags,
 };

@@ -3,7 +3,7 @@ import { v4 as Uuid } from "uuid";
 
 import { AppError, MessageAction, userMessage } from "../services";
 import { CookListMealActions, CookListMealActionsInternal } from "../controllers";
-import { BisectOnValidItems, EnsureDefinedArray } from "../utils";
+import { BisectOnValidPartialItems, EnsureDefinedArray } from "../utils";
 import {
     CookListEndpoint,
     DeleteCookListMealRequestBody,
@@ -26,7 +26,7 @@ const router = express.Router();
 router.get<GetCookListMealsRequestParams, GetCookListMealsResponse, GetCookListMealsRequestBody>(
     CookListEndpoint.getMeals,
     async (req, res, next) => {
-        const { userId } = req.body;
+        const { userId } = req.session;
 
         // Fetch and return result
         try {
@@ -157,7 +157,7 @@ export default router;
 const validatePostMealBody: RequestValidator<PostCookListMealRequestBody> = ({ data }, userId) => {
     const filteredData = EnsureDefinedArray(data);
 
-    return BisectOnValidItems(filteredData, item => {
+    return BisectOnValidPartialItems(filteredData, item => {
         if (!item.meal) return;
 
         return {

@@ -7,14 +7,14 @@ import { lamington } from "./lamington";
 export interface Recipe {
     recipeId: string;
     name: string;
-    source: string | undefined;
-    photo: string | undefined;
-    servings: number | undefined;
-    prepTime: number | undefined;
-    cookTime: number | undefined;
-    notes: string | undefined;
+    source?: string;
+    photo?: string;
+    servings?: number;
+    prepTime?: number;
+    cookTime?: number;
+    notes?: string;
     public: number;
-    timesCooked: number | undefined;
+    timesCooked?: number;
     createdBy: string;
 }
 

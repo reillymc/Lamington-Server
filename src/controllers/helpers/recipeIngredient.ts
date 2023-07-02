@@ -28,13 +28,16 @@ export const recipeIngredientRowsToResponse = (
     return recipeIngredients;
 };
 
-export const recipeIngredientsRequestToRows = (
-    recipeId: string,
-    ingredientSections?: RecipeIngredients
-): RecipeIngredient[] | undefined => {
-    if (!ingredientSections?.length) return;
+export const recipeIngredientsRequestToRows = ({
+    recipeId,
+    ingredients,
+}: {
+    recipeId: string;
+    ingredients?: RecipeIngredients;
+}): RecipeIngredient[] | undefined => {
+    if (!ingredients?.length) return;
 
-    return ingredientSections.flatMap(({ sectionId, items }) =>
+    return ingredients.flatMap(({ sectionId, items }) =>
         items
             .map((ingItem, index) => {
                 if (!ingItem.ingredientId && !ingItem.subrecipeId) return undefined;

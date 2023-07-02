@@ -55,12 +55,11 @@ const save = async (ingredients: CreateQuery<Partial<Ingredient>>): CreateRespon
 
     if (data.length === 0) return [];
 
-    const result = await db(lamington.ingredient).insert(data).onConflict([ingredient.ingredientId]).ignore();
+    await db(lamington.ingredient).insert(data).onConflict([ingredient.ingredientId]).ignore();
 
     const ingredientIds = data.map(({ ingredientId }) => ingredientId);
 
-    const query = db<Ingredient>(lamington.ingredient).select("*").whereIn(ingredient.ingredientId, ingredientIds);
-    return query;
+    return db<Ingredient>(lamington.ingredient).select("*").whereIn(ingredient.ingredientId, ingredientIds);
 };
 
 export const IngredientActions = {

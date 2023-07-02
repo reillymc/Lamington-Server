@@ -2,10 +2,11 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
+import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBit } from "../../helpers";
 import { BookActions, BookMemberActions, BookRecipeActions, RecipeActions } from "../../../src/controllers";
 import { CreateBookParams } from "../../../src/controllers/book";
-import { PostBookRecipeRequestBody, PostRecipeRequest } from "../../../src/routes/spec";
+import { PostBookRecipeRequestBody } from "../../../src/routes/spec";
+import { ServiceParams } from "../../../src/database";
 
 beforeEach(async () => {
     await CleanTables("book", "user", "book_member", "book_recipe");
@@ -67,8 +68,9 @@ test("should not allow editing if book member without edit permission", async ()
     const recipe = {
         recipeId: uuid(),
         name: uuid(),
-        userId: user!.userId,
-    } satisfies PostRecipeRequest;
+        createdBy: user!.userId,
+        public: randomBit(),
+    } satisfies ServiceParams<RecipeActions, "save">;
 
     await BookActions.save(book);
     await RecipeActions.save(recipe);
@@ -105,8 +107,9 @@ test("should allow editing if book member with edit permission", async () => {
     const recipe = {
         recipeId: uuid(),
         name: uuid(),
-        userId: user!.userId,
-    } satisfies PostRecipeRequest;
+        createdBy: user!.userId,
+        public: randomBit(),
+    } satisfies ServiceParams<RecipeActions, "save">;
 
     await BookActions.save(book);
     await RecipeActions.save(recipe);
@@ -151,8 +154,9 @@ test("should allow editing if book owner", async () => {
     const recipe = {
         recipeId: uuid(),
         name: uuid(),
-        userId: user!.userId,
-    } satisfies PostRecipeRequest;
+        createdBy: user!.userId,
+        public: randomBit(),
+    } satisfies ServiceParams<RecipeActions, "save">;
 
     await BookActions.save(book);
     await RecipeActions.save(recipe);

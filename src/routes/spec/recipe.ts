@@ -1,4 +1,12 @@
-import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
+import {
+    BasePaginatedRequestQuery,
+    BasePaginatedResponse,
+    BaseRequest,
+    BaseRequestBody,
+    BaseRequestBodyV2,
+    BaseRequestParams,
+    BaseResponse,
+} from ".";
 import { Tag } from "./tag";
 import { User } from "./user";
 
@@ -68,18 +76,24 @@ export type RecipeMethod = Array<Section<RecipeMethodStep>>;
 export type RecipeTags = { [tagGroup: string]: Partial<Tag> & { tags?: Array<Tag> } };
 
 // Get all recipes
+export type GetAllRecipesRequestQuery = BasePaginatedRequestQuery;
 export type GetAllRecipesRequestParams = BaseRequestParams;
 export type GetAllRecipesRequestBody = BaseRequestBody;
 
-export type GetAllRecipesRequest = BaseRequest<GetAllRecipesRequestBody & GetAllRecipesRequestParams>;
-export type GetAllRecipesResponse = BaseResponse<Recipes>;
+export type GetAllRecipesRequest = BaseRequest<
+    GetAllRecipesRequestBody & GetAllRecipesRequestParams & GetAllRecipesRequestQuery
+>;
+export type GetAllRecipesResponse = BasePaginatedResponse<Recipes>;
 export type GetAllRecipesService = (request: GetAllRecipesRequest) => GetAllRecipesResponse;
 
 // Get all recipes for user
+export type GetMyRecipesRequestQuery = BasePaginatedRequestQuery;
 export type GetMyRecipesRequestParams = BaseRequestParams;
 export type GetMyRecipesRequestBody = BaseRequestBody;
 
-export type GetMyRecipesRequest = BaseRequest<GetMyRecipesRequestBody & GetMyRecipesRequestParams>;
+export type GetMyRecipesRequest = BaseRequest<
+    GetMyRecipesRequestBody & GetMyRecipesRequestParams & GetMyRecipesRequestQuery
+>;
 export type GetMyRecipesResponse = BaseResponse<Recipes>;
 export type GetMyRecipesService = (request: GetMyRecipesRequest) => GetMyRecipesResponse;
 
@@ -93,7 +107,7 @@ export type GetRecipeService = (request: GetRecipeRequest) => GetRecipeResponse;
 
 // Post recipe
 export type PostRecipeRequestParams = BaseRequestParams;
-export type PostRecipeRequestBody = BaseRequestBody<{
+export type PostRecipeRequestBody = BaseRequestBodyV2<{
     recipeId: string;
     name: string;
     source?: string;

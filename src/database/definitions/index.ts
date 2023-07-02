@@ -1,3 +1,5 @@
+import config from "../../config";
+
 import { book } from "./book";
 import { bookMember } from "./bookMember";
 import { bookRecipe } from "./bookRecipe";
@@ -53,6 +55,18 @@ export type ReadRequest<T extends {}, K extends keyof T> = { [P in K]: T[P] } | 
 
 export type ReadService<T extends {}, K extends keyof T> = (params: ReadRequest<T, K>) => ReadResponse<T>;
 
+// QUERY
+export type QueryMetadata = {
+    page: number | undefined;
+    search: string | undefined;
+    sort: "name" | "date" | undefined;
+};
+
+export type QueryRequest<R extends {}> = R & QueryMetadata;
+export type QueryResponse<T> = Promise<Array<T>>;
+
+export type QueryService<T extends {}, R extends {}> = (params: QueryRequest<R>) => QueryResponse<T>;
+
 // READ MY
 export type ReadMyRequest<T extends {}, K extends keyof T = never> =
     | (Record<K, T[K]> & Pick<User, "userId">)
@@ -75,6 +89,10 @@ export type DeleteRequest<T extends {}, K extends keyof T> = T[K] | Array<T[K]>;
 export type DeleteResponse = Promise<number>;
 
 export type DeleteService<T extends {}, K extends keyof T> = (params: DeleteRequest<T, K>) => DeleteResponse;
+
+export type ServiceParams<T extends Record<string, any>, K extends keyof T> = Exclude<Parameters<T[K]>[0], any[]>;
+
+export const PAGE_SIZE = config.database.pageSize ?? 50;
 
 export * from "./book";
 export * from "./bookMember";

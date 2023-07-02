@@ -102,7 +102,7 @@ test("should create planner", async () => {
         name: uuid(),
         description: uuid(),
         variant: uuid(),
-        members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean })),
+        members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean() })),
     } satisfies Partial<PostPlannerRequestBody>;
 
     const res = await request(app).post(PlannerEndpoint.postPlanner).set(token).send(planner);

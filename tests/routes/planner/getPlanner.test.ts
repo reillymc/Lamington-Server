@@ -12,9 +12,9 @@ beforeEach(async () => {
     await CleanTables("planner", "user", "planner_meal", "planner_member");
 });
 
-// afterAll(async () => {
-//     await CleanTables("planner", "user", "planner_meal", "planner_member");
-// });
+afterAll(async () => {
+    await CleanTables("planner", "user", "planner_meal", "planner_member");
+});
 
 test("route should require authentication", async () => {
     const res = await request(app).get(PlannerEndpoint.getPlanner(uuid()));
@@ -127,9 +127,7 @@ test("should return planner meals", async () => {
 
     await PlannerMealActions.save(meal);
 
-    const res = await request(app)
-        .get(PlannerEndpoint.getPlanner(planner.plannerId, meal.year.toString(), meal.month.toString()))
-        .set(token);
+    const res = await request(app).get(PlannerEndpoint.getPlanner(planner.plannerId, meal.year, meal.month)).set(token);
 
     expect(res.statusCode).toEqual(200);
 

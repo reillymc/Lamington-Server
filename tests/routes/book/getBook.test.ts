@@ -2,11 +2,19 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
+import {
+    BookEndpoint,
+    CleanTables,
+    CreateUsers,
+    PrepareAuthenticatedUser,
+    randomBit,
+    randomBoolean,
+    randomNumber,
+} from "../../helpers";
 import { GetBookResponse, PostRecipeRequest } from "../../../src/routes/spec";
 import { BookActions, BookMemberActions, BookRecipeActions, RecipeActions } from "../../../src/controllers";
 import { CreateBookParams } from "../../../src/controllers/book";
-import { BookRecipe } from "../../../src/database";
+import { BookRecipe, ServiceParams } from "../../../src/database";
 
 beforeEach(async () => {
     await CleanTables("book", "user", "recipe", "book_recipe", "book_member");
@@ -108,20 +116,37 @@ test("should return book recipes", async () => {
 
     await BookActions.save(book);
 
-    const recipe = {
-        recipeId: uuid(),
-        name: uuid(),
-        userId: user.userId,
-    } satisfies PostRecipeRequest;
+    const recipesInBook = Array.from({ length: randomNumber() }).map(
+        () =>
+            ({
+                recipeId: uuid(),
+                name: uuid(),
+                createdBy: user.userId,
+                public: randomBit(),
+            } satisfies ServiceParams<RecipeActions, "save">)
+    );
 
-    await RecipeActions.save(recipe);
+    const recipesNotInBook = Array.from({ length: randomNumber() }).map(
+        () =>
+            ({
+                recipeId: uuid(),
+                name: uuid(),
+                createdBy: user.userId,
+                public: randomBit(),
+            } satisfies ServiceParams<RecipeActions, "save">)
+    );
 
-    const bookRecipe = {
-        bookId: book.bookId,
-        recipeId: recipe.recipeId,
-    } satisfies BookRecipe;
+    await RecipeActions.save(recipesInBook);
 
-    await BookRecipeActions.save(bookRecipe);
+    const bookRecipes = recipesInBook.map(
+        ({ recipeId }) =>
+            ({
+                bookId: book.bookId,
+                recipeId,
+            } satisfies BookRecipe)
+    );
+
+    await BookRecipeActions.save(bookRecipes);
 
     const res = await request(app).get(BookEndpoint.getBook(book.bookId)).set(token);
 
@@ -129,10 +154,15 @@ test("should return book recipes", async () => {
 
     const { data } = res.body as GetBookResponse;
 
-    const bookRecipeData = Object.values(data?.recipes ?? {});
+    const bookRecipeData = Object.values(data!.recipes!);
 
-    expect(bookRecipeData.length).toEqual(1);
-    expect(bookRecipeData[0]?.recipeId).toEqual(recipe.recipeId);
+    expect(bookRecipeData.length).toEqual(recipesInBook.length);
+    expect(bookRecipeData.every(({ recipeId }) => recipesInBook.some(recipe => recipe.recipeId === recipeId))).toEqual(
+        true
+    );
+    expect(
+        bookRecipeData.every(({ recipeId }) => recipesNotInBook.every(recipe => recipe.recipeId !== recipeId))
+    ).toEqual(true);
 });
 
 test("should return book members", async () => {

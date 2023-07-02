@@ -6,13 +6,16 @@ import { Ingredient } from "../../database";
 
 import { Undefined } from "../../utils";
 
-export const ingredientsRequestToRows = (
-    ingredientSections?: RecipeIngredients,
-    createdBy?: string
-): Array<Partial<Ingredient>> | undefined => {
-    if (!ingredientSections?.length) return;
+export const ingredientsRequestToRows = ({
+    createdBy,
+    ingredients,
+}: {
+    ingredients?: RecipeIngredients;
+    createdBy?: string;
+}): Array<Partial<Ingredient>> | undefined => {
+    if (!ingredients?.length) return;
 
-    return ingredientSections
+    return ingredients
         .flatMap(({ items }) => items)
         .map(item => ({
             ...item,

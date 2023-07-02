@@ -23,24 +23,30 @@ import {
     PostRecipeRatingRequestParams,
     PostRecipeRatingResponse,
     RecipeEndpoint,
+    GetAllRecipesRequestQuery,
+    GetMyRecipesRequestQuery,
 } from "./spec";
+import { BisectOnValidItems, EnsureDefinedArray } from "../utils";
+import { ServiceParams } from "../database";
+import { parseBaseQuery } from "./helpers";
 
 const router = express.Router();
 
 /**
  * GET request to fetch all recipes
  */
-router.get<GetAllRecipesRequestParams, GetAllRecipesResponse, GetAllRecipesRequestBody>(
+router.get<GetAllRecipesRequestParams, GetAllRecipesResponse, GetAllRecipesRequestBody, GetAllRecipesRequestQuery>(
     RecipeEndpoint.getAllRecipes,
-    async (req, res, next) => {
+    async ({ query, session }, res, next) => {
         // Extract request fields
-        const { userId } = req.body;
+        const { page, search, sort } = parseBaseQuery(query);
+        const { userId } = session;
 
         // Fetch and return result
         try {
-            const result = await RecipeActions.readAll(userId);
+            const result = await RecipeActions.readAll({ userId, page, search, sort });
             const data = Object.fromEntries(result.map(row => [row.recipeId, row]));
-            return res.status(200).json({ error: false, data });
+            return res.status(200).json({ error: false, data, page });
         } catch (e: unknown) {
             next(
                 new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "recipes" }) })
@@ -52,15 +58,16 @@ router.get<GetAllRecipesRequestParams, GetAllRecipesResponse, GetAllRecipesReque
 /**
  * GET request to fetch all recipes by a user
  */
-router.get<GetMyRecipesRequestParams, GetMyRecipesResponse, GetMyRecipesRequestBody>(
+router.get<GetMyRecipesRequestParams, GetMyRecipesResponse, GetMyRecipesRequestBody, GetMyRecipesRequestQuery>(
     RecipeEndpoint.getMyRecipes,
-    async (req, res, next) => {
+    async ({ query, session }, res, next) => {
         // Extract request fields
-        const { userId } = req.body;
+        const { page } = parseBaseQuery(query);
+        const { userId } = session;
 
         // Fetch and return result
         try {
-            const result = await RecipeActions.readMy(userId);
+            const result = await RecipeActions.readMy(userId, page);
             const data = Object.fromEntries(result.map(row => [row.recipeId, row]));
             return res.status(200).json({ error: false, data });
         } catch (e: unknown) {
@@ -80,7 +87,7 @@ router.get<GetRecipeRequestParams, GetRecipeResponse, GetRecipeRequestBody>(
     async (req, res, next) => {
         // Extract request fields
         const { recipeId } = req.params;
-        const { userId } = req.body;
+        const { userId } = req.session;
 
         // Check all required fields are present
         if (!recipeId) {
@@ -113,7 +120,7 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
     RecipeEndpoint.deleteRecipe,
     async (req, res, next) => {
         // Extract request fields
-        const { userId } = req.body;
+        const { userId } = req.session;
         const { recipeId } = req.params;
 
         // Check all required fields are present
@@ -128,7 +135,7 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
 
         // Update database and return status
         try {
-            const existingRecipe = await InternalRecipeActions.read(recipeId);
+            const [existingRecipe] = await InternalRecipeActions.read({ recipeId });
 
             if (!existingRecipe) {
                 return next(
@@ -167,12 +174,17 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
 /**
  * POST request to create a new recipe or update an existing recipe
  * Requires recipe data body
+ * Limitation of only one unsaved image at a time is supported.
  */
 router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
     RecipeEndpoint.postRecipe,
-    async ({ body }, res, next) => {
+    async ({ body, session }, res, next) => {
         // Check all required fields are present
-        if (!body.name) {
+        const { userId } = session;
+
+        const [validRecipes, invalidRecipes] = validatePostRecipeBody(body, userId);
+
+        if (!validRecipes.length || invalidRecipes.length) {
             return next(
                 new AppError({
                     status: 400,
@@ -183,76 +195,43 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
         }
 
         try {
-            let currentPhoto: string | undefined;
+            const existingRecipes = await InternalRecipeActions.read(validRecipes);
 
-            if (body.recipeId) {
-                const existingRecipe = await InternalRecipeActions.read(body.recipeId);
-
-                if (!existingRecipe) {
-                    return next(
-                        new AppError({
-                            status: 403,
-                            message: `Cannot find recipe to edit`,
-                        })
-                    );
-                }
-
-                if (existingRecipe.createdBy !== body.userId) {
-                    return next(
-                        new AppError({
-                            status: 403,
-                            message: `Cannot edit a recipe that doesn't belong to you`,
-                        })
-                    );
-                }
-
-                currentPhoto = existingRecipe.photo;
+            if (existingRecipes.some(recipe => recipe.createdBy !== userId)) {
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "RECIPE_NO_PERMISSIONS",
+                        message: "You do not have permissions to edit this recipe.",
+                    })
+                );
             }
 
-            const recipeId = body.recipeId ?? Uuid();
+            for (const recipe of validRecipes) {
+                const existingRecipe = existingRecipes.find(({ recipeId }) => recipeId === recipe.recipeId);
+                const currentPhoto = existingRecipe?.photo;
 
-            const isUnsavedImage = AttachmentService.isUnsavedImage(body.userId, "recipe", body.photo);
+                const isUnsavedImage = AttachmentService.isUnsavedImage(userId, "recipe", recipe.photo);
 
-            if (isUnsavedImage) {
-                body.photo = await AttachmentService.saveImage(body.userId, "recipe", recipeId, currentPhoto);
+                if (isUnsavedImage) {
+                    recipe.photo = await AttachmentService.saveImage(userId, "recipe", recipe.recipeId, currentPhoto);
+                }
             }
 
-            await RecipeActions.save({
-                recipeId,
-                name: body.name,
-                source: body.source,
-                ingredients: body.ingredients,
-                method: body.method,
-                notes: body.notes,
-                ratingPersonal: Math.min(Math.max(body.ratingPersonal ?? 0, 0), 5),
-                photo: body.photo,
-                servings: body.servings,
-                prepTime: body.prepTime,
-                cookTime: body.cookTime,
-                timesCooked: body.timesCooked,
-                tags: body.tags,
-                public: body.public,
-                userId: body.userId,
-            });
-            return res.status(201).json({ error: false, message: `Recipe ${body.recipeId ? "updated" : "created"}` });
+            await RecipeActions.save(validRecipes);
+
+            return res.status(201).json({ error: false, message: `Recipe${validRecipes.length > 1 ? "s" : ""} saved` });
         } catch (e: unknown) {
             next(
                 new AppError({
                     innerError: e,
                     message: userMessage({
-                        action: body.recipeId ? MessageAction.Update : MessageAction.Create,
+                        action: MessageAction.Save,
                         entity: "recipe",
                     }),
                 })
             );
         }
-
-        return next(
-            new AppError({
-                status: 400,
-                message: `Recipe formatted incorrectly`,
-            })
-        );
     }
 );
 
@@ -264,7 +243,8 @@ router.post<PostRecipeRatingRequestParams, PostRecipeRatingResponse, PostRecipeR
     RecipeEndpoint.postRecipeRating,
     async (req, res, next) => {
         // Extract request fields
-        const { userId, rating } = req.body;
+        const { rating } = req.body;
+        const { userId } = req.session;
         const { recipeId } = req.params;
 
         // Check all required fields are present
@@ -285,3 +265,18 @@ router.post<PostRecipeRatingRequestParams, PostRecipeRatingResponse, PostRecipeR
 );
 
 export default router;
+
+const validatePostRecipeBody = ({ data }: PostRecipeRequestBody, userId: string) => {
+    const filteredData = EnsureDefinedArray(data);
+
+    return BisectOnValidItems<ServiceParams<RecipeActions, "save">>(filteredData, ({ recipeId, name, ...item }) => {
+        if (!name) return;
+
+        return {
+            ...item,
+            recipeId: recipeId ?? Uuid(),
+            name,
+            createdBy: userId,
+        };
+    });
+};

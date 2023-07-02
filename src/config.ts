@@ -39,6 +39,7 @@ const config: LamingtonConfig = {
         ),
         user: process.env.NODE_ENV === "test" ? process.env.DB_TEST_USER : process.env.DB_USER,
         password: process.env.NODE_ENV === "test" ? process.env.DB_TEST_PASSWORD : process.env.DB_PASSWORD,
+        pageSize: parseInt(process.env.DB_PAGE_SIZE ?? "10", 10),
     },
     authentication: {
         jwtSecret: process.env.JWT_SECRET,
@@ -67,6 +68,7 @@ export interface LamingtonConfig {
         name: string | undefined;
         user: string | undefined;
         password: string | undefined;
+        pageSize: number | undefined;
     };
     authentication: {
         jwtSecret: string | undefined;

@@ -25,13 +25,16 @@ export const recipeStepRowsToResponse = (
     return recipeMethod;
 };
 
-export const recipeMethodRequestToRows = (
-    recipeId: string,
-    methodSections?: RecipeMethod
-): RecipeStep[] | undefined => {
-    if (!methodSections?.length) return;
+export const recipeMethodRequestToRows = ({
+    recipeId,
+    method,
+}: {
+    recipeId: string;
+    method?: RecipeMethod;
+}): RecipeStep[] | undefined => {
+    if (!method?.length) return;
 
-    return methodSections.flatMap(({ sectionId, items }) =>
+    return method.flatMap(({ sectionId, items }) =>
         items.map(
             ({ id, description, photo }, index): RecipeStep => ({ id, recipeId, sectionId, index, description, photo })
         )

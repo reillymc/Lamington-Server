@@ -99,7 +99,7 @@ test("should create book", async () => {
     const book = {
         name: uuid(),
         description: uuid(),
-        members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean })),
+        members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean() })),
     } satisfies Partial<PostBookRequestBody>;
 
     const res = await request(app).post(BookEndpoint.postBook).set(token).send(book);

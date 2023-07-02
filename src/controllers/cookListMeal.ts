@@ -33,7 +33,6 @@ type SaveMealsParams = Exclude<Parameters<CookListMealActions["save"]>[0], any[]
  * Creates new cook list meals or updates existing ones
  *
  * Insecure - route authentication check required (user save permission on meals)
- * @returns number of rows created/updated
  */
 const saveMeals: SaveService<CookListMeal> = async params => {
     const meals = EnsureArray(params);

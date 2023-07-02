@@ -176,8 +176,8 @@ const createDefaultUserData = async (userId: string) => {
     await RecipeActions.save({
         name: "Example Recipe",
         recipeId,
-        userId,
-        public: false,
+        createdBy: userId,
+        public: 0,
         ingredients: [
             {
                 sectionId: Uuid(),
