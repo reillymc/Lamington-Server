@@ -94,7 +94,7 @@ export type GetMyRecipesRequestBody = BaseRequestBody;
 export type GetMyRecipesRequest = BaseRequest<
     GetMyRecipesRequestBody & GetMyRecipesRequestParams & GetMyRecipesRequestQuery
 >;
-export type GetMyRecipesResponse = BaseResponse<Recipes>;
+export type GetMyRecipesResponse = BasePaginatedResponse<Recipes>;
 export type GetMyRecipesService = (request: GetMyRecipesRequest) => GetMyRecipesResponse;
 
 // Get recipe

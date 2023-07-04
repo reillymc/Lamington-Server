@@ -51,21 +51,26 @@ export type Table<T> = Required<{ [key in keyof T]: string }>;
 export type ReadQuery<T> = T | Array<T>;
 
 export type ReadResponse<T> = Promise<Array<T>>;
-export type ReadRequest<T extends {}, K extends keyof T> = { [P in K]: T[P] } | Array<{ [P in K]: T[P] }>;
+export type ReadRequest<T extends {}, K extends keyof T = never, C extends Record<string, unknown> = {}> =
+    | ({ [P in K]: T[P] } & C)
+    | Array<{ [P in K]: T[P] } & C>;
 
-export type ReadService<T extends {}, K extends keyof T> = (params: ReadRequest<T, K>) => ReadResponse<T>;
+export type ReadService<T extends {}, K extends keyof T = never, C extends Record<string, unknown> = {}> = (
+    params: ReadRequest<T, K, C>
+) => ReadResponse<T>;
 
 // QUERY
 export type QueryMetadata = {
-    page: number | undefined;
-    search: string | undefined;
-    sort: "name" | "date" | undefined;
+    page?: number;
+    search?: string;
+    sort?: "name" | "date";
 };
 
 export type QueryRequest<R extends {}> = R & QueryMetadata;
-export type QueryResponse<T> = Promise<Array<T>>;
 
-export type QueryService<T extends {}, R extends {}> = (params: QueryRequest<R>) => QueryResponse<T>;
+export type QueryService<T extends {}, R extends {}> = (
+    params: QueryRequest<R>
+) => Promise<{ result: Array<T>; nextPage?: number }>;
 
 // READ MY
 export type ReadMyRequest<T extends {}, K extends keyof T = never> =

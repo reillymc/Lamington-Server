@@ -77,6 +77,7 @@ export const logger = createLogger({
 
 export enum MessageAction {
     Create = "creating",
+    Query = "querying",
     Read = "reading",
     Update = "updating",
     Delete = "deleting",

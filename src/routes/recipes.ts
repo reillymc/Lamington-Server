@@ -44,12 +44,15 @@ router.get<GetAllRecipesRequestParams, GetAllRecipesResponse, GetAllRecipesReque
 
         // Fetch and return result
         try {
-            const result = await RecipeActions.readAll({ userId, page, search, sort });
+            const { result, nextPage } = await RecipeActions.query({ userId, page, search, sort });
             const data = Object.fromEntries(result.map(row => [row.recipeId, row]));
-            return res.status(200).json({ error: false, data, page });
+            return res.status(200).json({ error: false, data, page, nextPage });
         } catch (e: unknown) {
             next(
-                new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "recipes" }) })
+                new AppError({
+                    innerError: e,
+                    message: userMessage({ action: MessageAction.Query, entity: "recipes" }),
+                })
             );
         }
     }
@@ -62,17 +65,20 @@ router.get<GetMyRecipesRequestParams, GetMyRecipesResponse, GetMyRecipesRequestB
     RecipeEndpoint.getMyRecipes,
     async ({ query, session }, res, next) => {
         // Extract request fields
-        const { page } = parseBaseQuery(query);
+        const { page, search, sort } = parseBaseQuery(query);
         const { userId } = session;
 
         // Fetch and return result
         try {
-            const result = await RecipeActions.readMy(userId, page);
+            const { result, nextPage } = await RecipeActions.queryByUser({ userId, page, search, sort });
             const data = Object.fromEntries(result.map(row => [row.recipeId, row]));
-            return res.status(200).json({ error: false, data });
+            return res.status(200).json({ error: false, data, page, nextPage });
         } catch (e: unknown) {
             next(
-                new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "recipes" }) })
+                new AppError({
+                    innerError: e,
+                    message: userMessage({ action: MessageAction.Query, entity: "recipes" }),
+                })
             );
         }
     }
@@ -101,7 +107,7 @@ router.get<GetRecipeRequestParams, GetRecipeResponse, GetRecipeRequestBody>(
 
         // Fetch and return result
         try {
-            const data = await RecipeActions.read(recipeId, userId);
+            const [data] = await RecipeActions.read({ recipeId, userId });
 
             return res.status(200).json({ error: false, data });
         } catch (e: unknown) {

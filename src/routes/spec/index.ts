@@ -23,7 +23,7 @@ export type QueryParam = undefined | string | string[];
 
 export type BaseRequest<T = null> = T extends null ? {} : T;
 
-export type BaseRequestParams<T = null> = T extends null ? {} : T;
+export type BaseRequestParams<T = null> = T extends null ? {} : { [P in keyof T]: string };
 
 type LamingtonQueryParams = { page: QueryParam; sort: QueryParam; search: QueryParam };
 
@@ -47,7 +47,7 @@ interface ResponseBodyBase {
 
 export type BaseResponse<T = null> = T extends null ? ResponseBodyBase : ResponseBodyBase & { data?: T };
 export type BaseResponseV2<T = null> = BaseResponse<T>;
-export type BasePaginatedResponse<T = null> = BaseResponse<T> & { page?: number };
+export type BasePaginatedResponse<T = null> = BaseResponse<T> & { page?: number; nextPage?: number };
 
 export const AttachmentEndpoint = {
     postImage: `/${imageSubpath}`,
