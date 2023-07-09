@@ -1,4 +1,11 @@
-import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
+import {
+    BasePaginatedRequestQuery,
+    BasePaginatedResponse,
+    BaseRequest,
+    BaseRequestBody,
+    BaseRequestParams,
+    BaseResponse,
+} from ".";
 
 export const ingredientEndpoint = "/ingredients" as const;
 
@@ -21,12 +28,26 @@ export interface Ingredient {
 }
 
 // Get ingredients
+export type GetIngredientsRequestQuery = BasePaginatedRequestQuery;
 export type GetIngredientsRequestParams = BaseRequestParams;
 export type GetIngredientsRequestBody = BaseRequestBody;
 
-export type GetIngredientsRequest = BaseRequest<GetIngredientsRequestBody & GetIngredientsRequestParams>;
-export type GetIngredientsResponse = BaseResponse<Ingredients>;
+export type GetIngredientsRequest = BaseRequest<
+    GetIngredientsRequestQuery & GetIngredientsRequestBody & GetIngredientsRequestParams
+>;
+export type GetIngredientsResponse = BasePaginatedResponse<Ingredients>;
 export type GetIngredientsService = (request: GetIngredientsRequest) => GetIngredientsResponse;
+
+// Get my ingredients
+export type GetMyIngredientsRequestQuery = BasePaginatedRequestQuery;
+export type GetMyIngredientsRequestParams = BaseRequestParams;
+export type GetMyIngredientsRequestBody = BaseRequestBody;
+
+export type GetMyIngredientsRequest = BaseRequest<
+    GetMyIngredientsRequestQuery & GetMyIngredientsRequestBody & GetMyIngredientsRequestParams
+>;
+export type GetMyIngredientsResponse = BasePaginatedResponse<Ingredients>;
+export type GetMyIngredientsService = (request: GetMyIngredientsRequest) => GetMyIngredientsResponse;
 
 // Post ingredient
 export type PostIngredientRequestParams = BaseRequestParams;
@@ -43,5 +64,6 @@ export type PostIngredientService = (request: PostIngredientRequest) => PostIngr
 
 export interface IngredientServices {
     getIngredients: GetIngredientsService;
+    getMyIngredients: GetMyIngredientsService;
     postIngredient: PostIngredientService;
 }

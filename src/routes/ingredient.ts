@@ -5,28 +5,34 @@ import { IngredientActions } from "../controllers";
 import {
     GetIngredientsRequestBody,
     GetIngredientsRequestParams,
+    GetIngredientsRequestQuery,
     GetIngredientsResponse,
+    GetMyIngredientsRequestBody,
+    GetMyIngredientsRequestParams,
+    GetMyIngredientsRequestQuery,
+    GetMyIngredientsResponse,
     IngredientEndpoint,
     PostIngredientRequestBody,
     PostIngredientRequestParams,
     PostIngredientResponse,
 } from "./spec";
+import { parseBaseQuery } from "./helpers";
 
 const router = express.Router();
 
 /**
  * GET request to fetch all Ingredients
  */
-router.get<GetIngredientsRequestParams, GetIngredientsResponse, GetIngredientsRequestBody>(
+router.get<GetIngredientsRequestParams, GetIngredientsResponse, GetIngredientsRequestBody, GetIngredientsRequestQuery>(
     IngredientEndpoint.getIngredients,
-    async (req, res, next) => {
-        // Fetch and return result
-        try {
-            const result = await IngredientActions.readAll();
+    async ({ query }, res, next) => {
+        const { page, search, sort } = parseBaseQuery(query);
 
+        try {
+            const { result, nextPage } = await IngredientActions.query({ page, search, sort });
             const data = Object.fromEntries(result.map(row => [row.ingredientId, row]));
 
-            return res.status(200).json({ error: false, data });
+            return res.status(200).json({ error: false, data, nextPage, page });
         } catch (e: unknown) {
             next(
                 new AppError({
@@ -37,6 +43,34 @@ router.get<GetIngredientsRequestParams, GetIngredientsResponse, GetIngredientsRe
         }
     }
 );
+
+/**
+ * GET request to fetch all Ingredients by user
+ */
+router.get<
+    GetMyIngredientsRequestParams,
+    GetMyIngredientsResponse,
+    GetMyIngredientsRequestBody,
+    GetMyIngredientsRequestQuery
+>(IngredientEndpoint.getMyIngredients, async ({ query, session }, res, next) => {
+    const { page, search, sort } = parseBaseQuery(query);
+    const { userId } = session;
+
+    try {
+        const { result, nextPage } = await IngredientActions.queryByUser({ userId, page, search, sort });
+
+        const data = Object.fromEntries(result.map(row => [row.ingredientId, row]));
+
+        return res.status(200).json({ error: false, data, nextPage, page });
+    } catch (e: unknown) {
+        next(
+            new AppError({
+                innerError: e,
+                message: userMessage({ action: MessageAction.Read, entity: "ingredients" }),
+            })
+        );
+    }
+});
 
 /**
  * POST request to create an ingredient.

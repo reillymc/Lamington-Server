@@ -72,6 +72,7 @@ export const BookEndpoint = {
 
 export const IngredientEndpoint = {
     getIngredients: `/`,
+    getMyIngredients: `/my`,
     postIngredient: `/`,
 } as const satisfies Record<keyof IngredientServices, string>;
 

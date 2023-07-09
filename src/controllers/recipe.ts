@@ -27,6 +27,7 @@ import { RecipeTagActions } from "./recipeTag";
 
 import {
     ingredientsRequestToRows,
+    processPagination,
     recipeIngredientRowsToResponse,
     recipeIngredientsRequestToRows,
     recipeMethodRequestToRows,
@@ -151,16 +152,12 @@ const query: QueryService<QueryRecipesResult, Pick<User, "userId">> = async ({
         .limit(PAGE_SIZE + 1)
         .offset((page - 1) * PAGE_SIZE);
 
-    let nextPage: number | undefined;
-    if (recipeList.length > PAGE_SIZE) {
-        nextPage = page + 1;
-        recipeList.pop();
-    }
+    const { result: items, nextPage } = processPagination(recipeList, page);
 
-    const recipeCategoriesList = await RecipeTagActions.readByRecipeId(recipeList.map(({ recipeId }) => recipeId));
+    const recipeCategoriesList = await RecipeTagActions.readByRecipeId(items.map(({ recipeId }) => recipeId));
 
     // Process results
-    const result = recipeList.map(
+    const result = items.map(
         (recipe): QueryRecipesResult => ({
             ...recipe,
             ratingAverage: parseFloat(recipe.ratingAverage),

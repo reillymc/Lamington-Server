@@ -68,7 +68,7 @@ export type QueryMetadata = {
 
 export type QueryRequest<R extends {}> = R & QueryMetadata;
 
-export type QueryService<T extends {}, R extends {}> = (
+export type QueryService<T extends {}, R extends {} = {}> = (
     params: QueryRequest<R>
 ) => Promise<{ result: Array<T>; nextPage?: number }>;
 

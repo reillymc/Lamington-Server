@@ -9,15 +9,53 @@ import db, {
     lamington,
     ReadQuery,
     CreateQuery,
+    QueryService,
+    PAGE_SIZE,
+    User,
 } from "../database";
+import { processPagination } from "./helpers";
 
 /**
  * Get all ingredients
  * @returns an array of all ingredients in the database
  */
-const readAll = async (): ReadResponse<Ingredient> => {
-    const query = db<Ingredient>(lamington.ingredient).select("*");
-    return query;
+const query: QueryService<Ingredient> = async ({ page = 1, search }) => {
+    const ingredientsList = await db<Ingredient>(lamington.ingredient)
+        .select(
+            ingredient.ingredientId,
+            ingredient.name,
+            ingredient.photo,
+            ingredient.description,
+            ingredient.createdBy
+        )
+        .where(builder => (search ? builder.where(ingredient.name, "like", `%${search}%`) : undefined))
+        .orderBy([{ column: ingredient.name, order: "asc" }, ingredient.ingredientId])
+        .limit(PAGE_SIZE + 1)
+        .offset((page - 1) * PAGE_SIZE);
+
+    return processPagination(ingredientsList, page);
+};
+
+/**
+ * Get all ingredients
+ * @returns an array of all ingredients in the database
+ */
+const queryByUser: QueryService<Ingredient, Pick<User, "userId">> = async ({ page = 1, search, userId }) => {
+    const ingredientsList = await db<Ingredient>(lamington.ingredient)
+        .select(
+            ingredient.ingredientId,
+            ingredient.name,
+            ingredient.photo,
+            ingredient.description,
+            ingredient.createdBy
+        )
+        .where({ [ingredient.createdBy]: userId })
+        .where(builder => (search ? builder.where(ingredient.name, "like", `%${search}%`) : undefined))
+        .orderBy([{ column: ingredient.name, order: "asc" }, ingredient.ingredientId])
+        .limit(PAGE_SIZE + 1)
+        .offset((page - 1) * PAGE_SIZE);
+
+    return processPagination(ingredientsList, page);
 };
 
 interface GetIngredientParams {
@@ -63,6 +101,9 @@ const save = async (ingredients: CreateQuery<Partial<Ingredient>>): CreateRespon
 };
 
 export const IngredientActions = {
-    readAll,
+    query,
+    queryByUser,
     save,
 };
+
+export type IngredientActions = typeof IngredientActions;
