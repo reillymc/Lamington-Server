@@ -46,6 +46,7 @@ export type PlannerMeal = {
     month: number;
     dayOfMonth: number;
     meal: string;
+    source?: string;
     description?: string;
     recipeId?: string;
 };

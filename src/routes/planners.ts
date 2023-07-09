@@ -268,11 +268,11 @@ router.delete<DeletePlannerRequestParams, DeletePlannerResponse, DeletePlannerRe
  */
 router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMealRequestBody>(
     PlannerEndpoint.postPlannerMeal,
-    async (req, res, next) => {
+    async ({ params, body, session }, res, next) => {
         // Extract request fields
-        const { plannerId } = req.params;
-
-        const { id = Uuid(), month, dayOfMonth, meal, year, description, recipeId, userId } = req.body;
+        const { plannerId } = params;
+        const { userId } = session;
+        const { id = Uuid(), month, dayOfMonth, meal, year, description, recipeId, source } = body;
 
         // Check all required fields are present
         if (!plannerId || !meal) {
@@ -284,18 +284,6 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
                 })
             );
         }
-
-        const plannerMeal = {
-            id,
-            plannerId,
-            meal,
-            year,
-            month,
-            dayOfMonth,
-            recipeId,
-            description,
-            createdBy: userId,
-        };
 
         // Update database and return status
         try {
@@ -325,7 +313,18 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
                 }
             }
 
-            await PlannerMealActions.save(plannerMeal);
+            await PlannerMealActions.save({
+                id,
+                plannerId,
+                meal,
+                year,
+                month,
+                dayOfMonth,
+                recipeId,
+                description,
+                createdBy: userId,
+                source,
+            });
             return res.status(201).json({ error: false, message: "Planner recipe added." });
         } catch (e: unknown) {
             next(

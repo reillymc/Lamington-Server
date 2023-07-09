@@ -3,7 +3,7 @@ import { EnsureArray } from "../utils";
 
 export type PlannerMeal = Pick<
     Meal,
-    "id" | "plannerId" | "year" | "month" | "dayOfMonth" | "meal" | "description" | "recipeId" | "createdBy"
+    "id" | "plannerId" | "year" | "month" | "dayOfMonth" | "meal" | "description" | "recipeId" | "createdBy" | "source"
 > & { plannerId: string; year: number; month: number; dayOfMonth: number };
 
 /**
