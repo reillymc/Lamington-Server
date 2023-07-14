@@ -15,14 +15,11 @@ const router = express.Router();
 router.post<PostImageAttachmentRequestParams, PostImageAttachmentResponse, PostImageAttachmentRequestBody>(
     AttachmentEndpoint.postImage,
     uploadImageMiddleware,
-    async (req, res, next) => {
-        const {
-            file,
-            body: { entity },
-            secret,
-        } = req;
+    async ({ file, body, session }, res, next) => {
+        const { entity } = body;
+        const { userId } = session;
 
-        if (!file || !secret) {
+        if (!file || !userId) {
             return next(
                 new AppError({
                     status: 400,
@@ -53,7 +50,7 @@ router.post<PostImageAttachmentRequestParams, PostImageAttachmentResponse, PostI
         }
 
         try {
-            const address = await AttachmentService.uploadImage(file.buffer, secret, entity, req.file?.originalname);
+            const address = await AttachmentService.uploadImage(file.buffer, userId, entity, file?.originalname);
             return res.json({
                 error: false,
                 data: { address },
