@@ -5,7 +5,7 @@ import app from "../../../src/app";
 import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 import { BookActions, BookMemberActions } from "../../../src/controllers";
 import { CreateBookParams } from "../../../src/controllers/book";
-import { PostBookRequestBody } from "../../../src/routes/spec";
+import { DeleteBookRequestParams } from "../../../src/routes/spec";
 
 beforeEach(async () => {
     await CleanTables("book", "user", "book_member");
@@ -27,7 +27,7 @@ test("should return 404 for non-existant book", async () => {
     const res = await request(app)
         .delete(BookEndpoint.deleteBook(uuid()))
         .set(token)
-        .send({ bookId: uuid(), name: "book" } as PostBookRequestBody);
+        .send({ bookId: uuid() } satisfies DeleteBookRequestParams);
 
     expect(res.statusCode).toEqual(404);
 });
@@ -48,7 +48,7 @@ test("should not allow deletion if not book owner", async () => {
     const res = await request(app)
         .delete(BookEndpoint.deleteBook(book.bookId))
         .set(token)
-        .send({ bookId: book.bookId, name: "book" } as PostBookRequestBody);
+        .send({ bookId: book.bookId } satisfies DeleteBookRequestParams);
 
     expect(res.statusCode).toEqual(404);
 });
@@ -79,7 +79,7 @@ test("should not allow deletion if book member but not book owner", async () => 
     const res = await request(app)
         .delete(BookEndpoint.deleteBook(book.bookId))
         .set(token)
-        .send({ bookId: book.bookId, name: "book" } as PostBookRequestBody);
+        .send({ bookId: book.bookId } satisfies DeleteBookRequestParams);
 
     expect(res.statusCode).toEqual(404);
 });

@@ -1,4 +1,5 @@
 import express from "express";
+import { v4 as Uuid } from "uuid";
 
 import { AppError, MessageAction, userMessage } from "../services";
 import { ListActions, InternalListActions, ListItemActions, ListMemberActions } from "../controllers";
@@ -30,110 +31,120 @@ import {
     PostListRequestBody,
     PostListRequestParams,
     PostListResponse,
+    RequestValidator,
 } from "./spec";
+import { BisectOnValidItems, BisectOnValidPartialItems, EnsureDefinedArray } from "../utils";
+import { ServiceParams } from "../database";
 
 const router = express.Router();
 
 /**
  * GET request to fetch all lists for a user
  */
-router.get<GetListsRequestParams, GetListsResponse, GetListsRequest>(ListEndpoint.getLists, async (req, res, next) => {
-    const { userId } = req.body;
+router.get<GetListsRequestParams, GetListsResponse, GetListsRequest>(
+    ListEndpoint.getLists,
+    async ({ body }, res, next) => {
+        const { userId } = body;
 
-    // Fetch and return result
-    try {
-        const results = await ListActions.readMy({ userId });
-        const outstandingItemCounts = await ListItemActions.countOutstandingItems(
-            results.map(({ listId }) => ({ listId }))
-        );
+        // Fetch and return result
+        try {
+            const results = await ListActions.readMy({ userId });
+            const outstandingItemCounts = await ListItemActions.countOutstandingItems(
+                results.map(({ listId }) => ({ listId }))
+            );
 
-        const data: Lists = Object.fromEntries(
-            results.map(list => [
-                list.listId,
-                {
-                    ...list,
-                    outstandingItemCount: outstandingItemCounts.find(({ listId }) => listId === list.listId)?.count,
-                    createdBy: { userId: list.createdBy, firstName: list.createdByName },
-                    accepted: list.createdBy === userId ? true : !!list.accepted,
-                },
-            ])
-        );
+            const data: Lists = Object.fromEntries(
+                results.map(list => [
+                    list.listId,
+                    {
+                        ...list,
+                        outstandingItemCount: outstandingItemCounts.find(({ listId }) => listId === list.listId)?.count,
+                        createdBy: { userId: list.createdBy, firstName: list.createdByName },
+                        accepted: list.createdBy === userId ? true : !!list.accepted,
+                    },
+                ])
+            );
 
-        return res.status(200).json({ error: false, data });
-    } catch (e: unknown) {
-        next(
-            new AppError({
-                innerError: e,
-                message: userMessage({ action: MessageAction.Read, entity: "lists" }),
-            })
-        );
+            return res.status(200).json({ error: false, data });
+        } catch (e: unknown) {
+            next(
+                new AppError({
+                    innerError: e,
+                    message: userMessage({ action: MessageAction.Read, entity: "lists" }),
+                })
+            );
+        }
     }
-});
+);
 
 /**
  * GET request to fetch list
  */
-router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(ListEndpoint.getList, async (req, res, next) => {
-    // Extract request fields
-    const { listId } = req.params;
-    const { userId } = req.body;
+router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(
+    ListEndpoint.getList,
+    async ({ params, session }, res, next) => {
+        // Extract request fields
+        const { listId } = params;
+        const { userId } = session;
 
-    if (!listId) {
-        return next(
-            new AppError({
-                status: 400,
-                code: "INSUFFICIENT_DATA",
-                message: "Insufficient data to remove list member.",
-            })
-        );
-    }
-
-    // Fetch and return result
-    try {
-        const [list] = await ListActions.read({ listId, userId });
-        if (!list) {
+        if (!listId) {
             return next(
                 new AppError({
-                    status: 404,
-                    code: "NOT_FOUND",
-                    message: "Could not find list.",
+                    status: 400,
+                    code: "INSUFFICIENT_DATA",
+                    message: "Insufficient data to remove list member.",
                 })
             );
         }
 
-        const listItemsResponse = await ListItemActions.read({ listId });
-        const listMembersResponse = await ListMemberActions.read({ entityId: listId });
+        // Fetch and return result
+        try {
+            const [list] = await ListActions.read({ listId, userId });
+            if (!list) {
+                return next(
+                    new AppError({
+                        status: 404,
+                        code: "NOT_FOUND",
+                        message: "Could not find list.",
+                    })
+                );
+            }
 
-        const data: List = {
-            ...list,
-            createdBy: { userId: list.createdBy, firstName: list.createdByName },
-            items: listItemsResponse.filter(item => item.listId === list.listId),
-            members: Object.fromEntries(
-                listMembersResponse.map(({ userId, canEdit, firstName, lastName }) => [
-                    userId,
-                    { userId, allowEditing: !!canEdit, firstName, lastName },
-                ])
-            ),
-            accepted:
-                list.createdBy === userId
-                    ? true
-                    : !!listMembersResponse.find(({ userId }) => userId === userId)?.accepted,
-        };
+            const listItemsResponse = await ListItemActions.read({ listId });
+            const listMembersResponse = await ListMemberActions.read({ entityId: listId });
 
-        return res.status(200).json({ error: false, data });
-    } catch (e: unknown) {
-        next(new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "list" }) }));
+            const data: List = {
+                ...list,
+                createdBy: { userId: list.createdBy, firstName: list.createdByName },
+                items: listItemsResponse.filter(item => item.listId === list.listId),
+                members: Object.fromEntries(
+                    listMembersResponse.map(({ userId, canEdit, firstName, lastName }) => [
+                        userId,
+                        { userId, allowEditing: !!canEdit, firstName, lastName },
+                    ])
+                ),
+                accepted:
+                    list.createdBy === userId
+                        ? true
+                        : !!listMembersResponse.find(({ userId }) => userId === userId)?.accepted,
+            };
+
+            return res.status(200).json({ error: false, data });
+        } catch (e: unknown) {
+            next(new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "list" }) }));
+        }
     }
-});
+);
 
 /**
  * POST request to create a list.
  */
 router.post<PostListRequestParams, PostListResponse, PostListRequestBody>(
     ListEndpoint.postList,
-    async (req, res, next) => {
+    async ({ body, session }, res, next) => {
         // Extract request fields
-        const { userId, name, description, listId, members } = req.body;
+        const { name, description, listId, members } = body;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!name) {
@@ -196,29 +207,18 @@ router.post<PostListRequestParams, PostListResponse, PostListRequestBody>(
  */
 router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequestBody>(
     ListEndpoint.postListItem,
-    async (req, res, next) => {
+    async ({ body, params, session }, res, next) => {
         // Extract request fields
-        const { listId } = req.params;
-
-        const {
-            userId,
-            name,
-            itemId,
-            amount,
-            completed = false,
-            dateAdded = new Date().toISOString(),
-            ingredientId,
-            notes,
-            unit,
-        } = req.body;
+        const { listId } = params;
+        const { userId } = session;
+        const [validListItems, invalidListItems] = validatePostListItemBody(body, userId, listId);
 
         // Check all required fields are present
-        if (!name || !listId) {
+        if (!validListItems.length || invalidListItems.length) {
             return next(
                 new AppError({
                     status: 400,
-                    code: "LIST_INSUFFICIENT_DATA",
-                    message: "Insufficient data to create a list item.",
+                    message: "Insufficient data to save a book.",
                 })
             );
         }
@@ -251,18 +251,7 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
                 }
             }
 
-            await ListItemActions.save({
-                listId,
-                name,
-                completed,
-                dateAdded: new Date(dateAdded).toISOString().slice(0, 19).replace("T", " "),
-                itemId,
-                amount,
-                ingredientId,
-                notes,
-                unit,
-                createdBy: userId,
-            });
+            await ListItemActions.save(validListItems);
             return res.status(201).json({ error: false, message: "List item added." });
         } catch (e: unknown) {
             next(
@@ -283,11 +272,11 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
  */
 router.post<PostListMemberRequestParams, PostListMemberResponse, PostListMemberRequestBody>(
     ListEndpoint.postListMember,
-    async (req, res, next) => {
+    async ({ body, params, session }, res, next) => {
         // Extract request fields
-        const { listId } = req.params;
-
-        const { userId, accepted } = req.body;
+        const { listId } = params;
+        const { accepted } = body;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!listId) {
@@ -346,12 +335,10 @@ router.post<PostListMemberRequestParams, PostListMemberResponse, PostListMemberR
  */
 router.delete<DeleteListRequestParams, DeleteListResponse, DeleteListRequestBody>(
     ListEndpoint.deleteList,
-    async (req, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
-        const {
-            params: { listId },
-            body: { userId },
-        } = req;
+        const { listId } = params;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!listId) {
@@ -403,11 +390,10 @@ router.delete<DeleteListRequestParams, DeleteListResponse, DeleteListRequestBody
  */
 router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListItemRequestBody>(
     ListEndpoint.deleteListItem,
-    async (req, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
-        const { listId, itemId } = req.params;
-
-        const { userId } = req.body;
+        const { listId, itemId } = params;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!listId || !itemId) {
@@ -462,11 +448,10 @@ router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListIte
  */
 router.delete<DeleteListMemberRequestParams, DeleteListMemberResponse, DeleteListMemberRequestBody>(
     ListEndpoint.deleteListMember,
-    async (req, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
-        const { listId, userId: userIdReq } = req.params;
-
-        const { userId } = req.body;
+        const { listId, userId: userIdReq } = params;
+        const { userId } = session;
 
         const userToDelete = userIdReq || userId;
 
@@ -531,3 +516,28 @@ router.delete<DeleteListMemberRequestParams, DeleteListMemberResponse, DeleteLis
 );
 
 export default router;
+
+const validatePostListItemBody = ({ data }: PostListItemRequestBody, userId: string, listId: string) => {
+    const filteredData = EnsureDefinedArray(data);
+
+    return BisectOnValidItems(filteredData, ({ itemId = Uuid(), name, ...item }) => {
+        if (!name) return;
+
+        const parsedDate = item.dateAdded ? new Date(item.dateAdded) : new Date();
+
+        const parsedItem: ServiceParams<ListItemActions, "save"> = {
+            itemId,
+            listId,
+            name,
+            amount: item.amount,
+            completed: item.completed ?? false,
+            dateAdded: parsedDate.toISOString().slice(0, 19).replace("T", " "),
+            ingredientId: item.ingredientId,
+            notes: item.notes,
+            unit: item.unit,
+            createdBy: userId,
+        };
+
+        return parsedItem;
+    });
+};

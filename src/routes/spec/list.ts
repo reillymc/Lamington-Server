@@ -1,4 +1,4 @@
-import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
+import { BaseRequest, BaseRequestBody, BaseRequestBodyV2, BaseRequestParams, BaseResponse } from ".";
 import { EntityMember, EntityMembers } from "./common";
 import { User } from "./user";
 
@@ -77,15 +77,16 @@ export type PostListService = (request: PostListRequest) => PostListResponse;
 
 // Post list item
 export type PostListItemRequestParams = BaseRequestParams<{ [listIdParam]: List["listId"] }>;
-export type PostListItemRequestBody = BaseRequestBody<{
-    name?: ListItem["name"];
-    itemId?: ListItem["itemId"];
+export type PostListItemRequestBody = BaseRequestBodyV2<{
+    name: ListItem["name"];
+    itemId: ListItem["itemId"];
     dateAdded?: ListItem["dateAdded"];
     completed?: ListItem["completed"];
     ingredientId?: ListItem["ingredientId"];
     unit?: ListItem["unit"];
     amount?: ListItem["amount"];
     notes?: ListItem["notes"];
+    createdBy: User["userId"];
 }>;
 
 export type PostListItemRequest = BaseRequest<PostListItemRequestParams & PostListItemRequestBody>;

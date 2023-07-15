@@ -1,4 +1,5 @@
 import express from "express";
+import { v4 as Uuid } from "uuid";
 
 import { AppError, MessageAction, userMessage } from "../services";
 import { BookActions, BookMemberActions, BookRecipeActions, InternalBookActions, RecipeActions } from "../controllers";
@@ -30,7 +31,9 @@ import {
     PostBookRequestBody,
     PostBookRequestParams,
     PostBookResponse,
+    RequestValidator,
 } from "./spec";
+import { BisectOnValidPartialItems, EnsureDefinedArray } from "../utils";
 
 const router = express.Router();
 
@@ -39,8 +42,8 @@ const router = express.Router();
  */
 router.get<GetBooksRequestParams, GetBooksResponse, GetBooksRequestBody>(
     BookEndpoint.getBooks,
-    async (req, res, next) => {
-        const { userId } = req.body;
+    async ({ session }, res, next) => {
+        const { userId } = session;
 
         // Fetch and return result
         try {
@@ -72,68 +75,72 @@ router.get<GetBooksRequestParams, GetBooksResponse, GetBooksRequestBody>(
 /**
  * GET request to fetch a book
  */
-router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(BookEndpoint.getBook, async (req, res, next) => {
-    // Extract request fields
-    const { bookId } = req.params;
-    const { userId } = req.body;
+router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(
+    BookEndpoint.getBook,
+    async ({ params, session }, res, next) => {
+        // Extract request fields
+        const { bookId } = params;
+        const { userId } = session;
 
-    if (!bookId) {
-        return next(
-            new AppError({
-                status: 400,
-                code: "INSUFFICIENT_DATA",
-                message: "Insufficient data to remove book member.",
-            })
-        );
-    }
-
-    // Fetch and return result
-    try {
-        const [book] = await BookActions.read({ bookId, userId });
-        if (!book) {
+        if (!bookId) {
             return next(
                 new AppError({
-                    status: 404,
-                    code: "NOT_FOUND",
-                    message: "Could not find book.",
+                    status: 400,
+                    code: "INSUFFICIENT_DATA",
+                    message: "Insufficient data to remove book member.",
                 })
             );
         }
 
-        const { result: bookRecipesResponse } = await RecipeActions.queryByBook({ userId, bookId });
-        const bookMembersResponse = await BookMemberActions.read({ entityId: bookId });
+        // Fetch and return result
+        try {
+            const [book] = await BookActions.read({ bookId, userId });
+            if (!book) {
+                return next(
+                    new AppError({
+                        status: 404,
+                        code: "NOT_FOUND",
+                        message: "Could not find book.",
+                    })
+                );
+            }
 
-        const data: Book = {
-            ...book,
-            createdBy: { userId: book.createdBy, firstName: book.createdByName },
-            recipes: Object.fromEntries(bookRecipesResponse.map(recipe => [recipe.recipeId, recipe])),
-            members: Object.fromEntries(
-                bookMembersResponse.map(({ userId, canEdit, firstName, lastName }) => [
-                    userId,
-                    { userId, allowEditing: !!canEdit, firstName, lastName },
-                ])
-            ),
-            accepted: book.createdBy === userId ? true : !!book.accepted,
-            canEdit: book.createdBy === userId ? true : !!book.canEdit,
-        };
+            const { result: bookRecipesResponse } = await RecipeActions.queryByBook({ userId, bookId });
+            const bookMembersResponse = await BookMemberActions.read({ entityId: bookId });
 
-        return res.status(200).json({ error: false, data });
-    } catch (e: unknown) {
-        next(new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "book" }) }));
+            const data: Book = {
+                ...book,
+                createdBy: { userId: book.createdBy, firstName: book.createdByName },
+                recipes: Object.fromEntries(bookRecipesResponse.map(recipe => [recipe.recipeId, recipe])),
+                members: Object.fromEntries(
+                    bookMembersResponse.map(({ userId, canEdit, firstName, lastName }) => [
+                        userId,
+                        { userId, allowEditing: !!canEdit, firstName, lastName },
+                    ])
+                ),
+                accepted: book.createdBy === userId ? true : !!book.accepted,
+                canEdit: book.createdBy === userId ? true : !!book.canEdit,
+            };
+
+            return res.status(200).json({ error: false, data });
+        } catch (e: unknown) {
+            next(new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "book" }) }));
+        }
     }
-});
+);
 
 /**
  * POST request to save a book.
  */
 router.post<PostBookRequestParams, PostBookResponse, PostBookRequestBody>(
     BookEndpoint.postBook,
-    async (req, res, next) => {
+    async ({ body, session }, res, next) => {
         // Extract request fields
-        const { userId, name, description, bookId, members } = req.body;
+        const { userId } = session;
+        const [validBooks, invalidBooks] = validatePostBookBody(body, userId);
 
         // Check all required fields are present
-        if (!name) {
+        if (!validBooks.length || invalidBooks.length) {
             return next(
                 new AppError({
                     status: 400,
@@ -144,32 +151,26 @@ router.post<PostBookRequestParams, PostBookResponse, PostBookRequestBody>(
 
         // Update database and return status
         try {
-            if (bookId) {
-                const [existingBook] = await BookActions.read({ bookId, userId });
-                if (!existingBook || existingBook.createdBy !== userId) {
-                    return next(
-                        new AppError({
-                            status: 404,
-                            message: "Cannot find book to edit.",
-                        })
-                    );
-                }
+            const existingBooks = await InternalBookActions.read(validBooks);
+
+            if (existingBooks.some(book => book.createdBy !== userId)) {
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "Book_NO_PERMISSIONS",
+                        message: "You do not have permissions to edit this book.",
+                    })
+                );
             }
 
-            await BookActions.save({
-                bookId,
-                name,
-                createdBy: userId,
-                description,
-                members,
-            });
-            return res.status(201).json({ error: false, message: `Book ${bookId ? "updated" : "created"}` });
+            await BookActions.save(validBooks);
+            return res.status(201).json({ error: false, message: "Book saved" });
         } catch (e: unknown) {
             next(
                 new AppError({
                     innerError: e,
                     message: userMessage({
-                        action: bookId ? MessageAction.Update : MessageAction.Create,
+                        action: MessageAction.Save,
                         entity: "book",
                     }),
                 })
@@ -183,12 +184,10 @@ router.post<PostBookRequestParams, PostBookResponse, PostBookRequestBody>(
  */
 router.delete<DeleteBookRequestParams, DeleteBookResponse, DeleteBookRequestBody>(
     BookEndpoint.deleteBook,
-    async (req, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
-        const {
-            params: { bookId },
-            body: { userId },
-        } = req;
+        const { bookId } = params;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!bookId) {
@@ -240,11 +239,11 @@ router.delete<DeleteBookRequestParams, DeleteBookResponse, DeleteBookRequestBody
  */
 router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeRequestBody>(
     BookEndpoint.postBookRecipe,
-    async (req, res, next) => {
+    async ({ body, params, session }, res, next) => {
         // Extract request fields
-        const { bookId } = req.params;
-
-        const { recipeId, userId } = req.body;
+        const { bookId } = params;
+        const { recipeId } = body;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!recipeId || !bookId) {
@@ -301,11 +300,11 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
  */
 router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberRequestBody>(
     BookEndpoint.postBookMember,
-    async (req, res, next) => {
+    async ({ body, params, session }, res, next) => {
         // Extract request fields
-        const { bookId } = req.params;
-
-        const { userId, accepted } = req.body;
+        const { bookId } = params;
+        const { accepted } = body;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!bookId) {
@@ -364,11 +363,10 @@ router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberR
  */
 router.delete<DeleteBookRecipeRequestParams, DeleteBookRecipeResponse, DeleteBookRecipeRequestBody>(
     BookEndpoint.deleteBookRecipe,
-    async (req, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
-        const { bookId, recipeId } = req.params;
-
-        const { userId } = req.body;
+        const { bookId, recipeId } = params;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!bookId || !recipeId) {
@@ -435,13 +433,12 @@ router.delete<DeleteBookRecipeRequestParams, DeleteBookRecipeResponse, DeleteBoo
  */
 router.delete<DeleteBookMemberRequestParams, DeleteBookMemberResponse, DeleteBookMemberRequestBody>(
     BookEndpoint.deleteBookMember,
-    async (req, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
-        const { bookId, userId: userIdReq } = req.params;
+        const { bookId, userId: userToRemove } = params;
+        const { userId } = session;
 
-        const { userId } = req.body;
-
-        const userToDelete = userIdReq || userId;
+        const userToDelete = userToRemove || userId;
 
         // Check all required fields are present
         if (!userToDelete || !bookId) {
@@ -477,7 +474,7 @@ router.delete<DeleteBookMemberRequestParams, DeleteBookMemberResponse, DeleteBoo
                 );
             }
 
-            if (userIdReq && userId !== userIdReq && existingBook.createdBy !== userId) {
+            if (userToRemove && userId !== userToRemove && existingBook.createdBy !== userId) {
                 return next(
                     new AppError({
                         status: 403,
@@ -504,3 +501,19 @@ router.delete<DeleteBookMemberRequestParams, DeleteBookMemberResponse, DeleteBoo
 );
 
 export default router;
+
+const validatePostBookBody: RequestValidator<PostBookRequestBody> = ({ data }, userId) => {
+    const filteredData = EnsureDefinedArray(data);
+
+    return BisectOnValidPartialItems(filteredData, item => {
+        if (!item.name) return;
+
+        return {
+            bookId: item.bookId ?? Uuid(),
+            name: item.name,
+            description: item.description,
+            members: item.members,
+            createdBy: userId,
+        };
+    });
+};

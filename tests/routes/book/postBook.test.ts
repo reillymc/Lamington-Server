@@ -9,6 +9,7 @@ import {
     PrepareAuthenticatedUser,
     randomBoolean,
     randomCount,
+    randomNumber,
 } from "../../helpers";
 import { BookActions, BookMemberActions } from "../../../src/controllers";
 import { CreateBookParams } from "../../../src/controllers/book";
@@ -29,17 +30,6 @@ test("route should require authentication", async () => {
     expect(res.statusCode).toEqual(401);
 });
 
-test("should return 404 for non-existant book", async () => {
-    const [token] = await PrepareAuthenticatedUser();
-
-    const res = await request(app)
-        .post(BookEndpoint.postBook)
-        .set(token)
-        .send({ bookId: uuid(), name: "book" } as PostBookRequestBody);
-
-    expect(res.statusCode).toEqual(404);
-});
-
 test("should not allow editing if not book owner", async () => {
     const [token] = await PrepareAuthenticatedUser();
     const [bookOwner] = await CreateUsers();
@@ -56,9 +46,9 @@ test("should not allow editing if not book owner", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBook)
         .set(token)
-        .send({ bookId: book.bookId, name: "book" } as PostBookRequestBody);
+        .send({ data: { bookId: book.bookId, name: "book" } } as PostBookRequestBody);
 
-    expect(res.statusCode).toEqual(404);
+    expect(res.statusCode).toEqual(403);
 });
 
 test("should not allow editing if book member but not book owner", async () => {
@@ -87,43 +77,52 @@ test("should not allow editing if book member but not book owner", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBook)
         .set(token)
-        .send({ bookId: book.bookId, name: "book" } as PostBookRequestBody);
+        .send({ data: { bookId: book.bookId, name: "book" } } as PostBookRequestBody);
 
-    expect(res.statusCode).toEqual(404);
+    expect(res.statusCode).toEqual(403);
 });
 
 test("should create book", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
     const users = await CreateUsers();
 
-    const book = {
-        name: uuid(),
-        description: uuid(),
-        members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean() })),
-    } satisfies Partial<PostBookRequestBody>;
+    const books = {
+        data: Array.from({ length: randomNumber() }).map((_, i) => ({
+            bookId: uuid(),
+            name: uuid(),
+            description: uuid(),
+            members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean() })),
+        })),
+    } satisfies PostBookRequestBody;
 
-    const res = await request(app).post(BookEndpoint.postBook).set(token).send(book);
+    const res = await request(app).post(BookEndpoint.postBook).set(token).send(books);
 
     expect(res.statusCode).toEqual(201);
 
     const savedBooks = await BookActions.readMy({ userId: user.userId });
 
-    expect(savedBooks.length).toEqual(1);
+    expect(savedBooks.length).toEqual(books.data.length);
 
-    const [savedBook] = savedBooks;
-    const savedBookMembers = await BookMemberActions.read({ entityId: savedBook!.bookId });
+    expect(savedBooks.length).toEqual(books.data.length);
 
-    expect(savedBook?.name).toEqual(book.name);
-    expect(savedBook?.description).toEqual(book.description);
-    expect(savedBook?.createdBy).toEqual(user.userId);
-    expect(savedBookMembers.length).toEqual(book.members!.length);
+    const savedBookMembers = await BookMemberActions.read(savedBooks.map(({ bookId }) => ({ entityId: bookId })));
 
-    for (const { userId, allowEditing } of book.members!) {
-        const savedBookMember = savedBookMembers.find(({ userId: savedUserId }) => savedUserId === userId);
+    for (const book of savedBooks) {
+        const expectedBook = books.data.find(({ bookId }) => bookId === book.bookId);
+        const actualBookMembers = savedBookMembers.filter(({ bookId }) => bookId === book.bookId);
 
-        expect(savedBookMember).toBeTruthy();
+        expect(book?.name).toEqual(expectedBook!.name);
+        expect(book?.description).toEqual(expectedBook!.description);
+        expect(book?.createdBy).toEqual(user.userId);
+        expect(actualBookMembers.length).toEqual(expectedBook!.members.length);
 
-        expect(savedBookMember?.canEdit).toEqual(allowEditing ? 1 : 0);
+        for (const { userId, allowEditing } of expectedBook!.members) {
+            const savedBookMember = actualBookMembers.find(({ userId: savedUserId }) => savedUserId === userId);
+
+            expect(savedBookMember).toBeTruthy();
+
+            expect(savedBookMember?.canEdit).toEqual(allowEditing ? 1 : 0);
+        }
     }
 });
 
@@ -139,11 +138,13 @@ test("should save updated book details as book owner", async () => {
 
     await BookActions.save(book);
 
-    const updatedBook: Partial<PostBookRequestBody> = {
-        bookId: book.bookId,
-        name: uuid(),
-        description: uuid(),
-    };
+    const updatedBook = {
+        data: {
+            bookId: book.bookId,
+            name: uuid(),
+            description: uuid(),
+        },
+    } satisfies PostBookRequestBody;
 
     const res = await request(app).post(BookEndpoint.postBook).set(token).send(updatedBook);
 
@@ -151,8 +152,8 @@ test("should save updated book details as book owner", async () => {
 
     const [savedBook] = await BookActions.read({ bookId: book.bookId, userId: user.userId });
 
-    expect(savedBook?.name).toEqual(updatedBook.name);
-    expect(savedBook?.description).toEqual(updatedBook.description);
+    expect(savedBook?.name).toEqual(updatedBook.data.name);
+    expect(savedBook?.description).toEqual(updatedBook.data.description);
     expect(savedBook?.bookId).toEqual(book.bookId);
     expect(savedBook?.createdBy).toEqual(book.createdBy);
 });
@@ -167,6 +168,7 @@ test("should save additional book members", async () => {
     const allMembers = [...initialMembers, ...additionalMembers];
 
     const [book] = await BookActions.save({
+        bookId: uuid(),
         createdBy: user.userId,
         name: uuid(),
         description: uuid(),
@@ -179,7 +181,7 @@ test("should save additional book members", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBook)
         .set(token)
-        .send({ ...book, members: allMembers } as Partial<PostBookRequestBody>);
+        .send({ data: { ...book, members: allMembers } } satisfies Partial<PostBookRequestBody>);
 
     expect(res.statusCode).toEqual(201);
 
@@ -205,6 +207,7 @@ test("should remove some book members", async () => {
     );
 
     const [book] = await BookActions.save({
+        bookId: uuid(),
         createdBy: user.userId,
         name: uuid(),
         description: uuid(),
@@ -216,7 +219,7 @@ test("should remove some book members", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBook)
         .set(token)
-        .send({ ...book, members: reducedMembers } as Partial<PostBookRequestBody>);
+        .send({ data: { ...book, members: reducedMembers } } satisfies Partial<PostBookRequestBody>);
 
     expect(res.statusCode).toEqual(201);
 
@@ -237,6 +240,7 @@ test("should remove all book members", async () => {
     const members = await CreateUsers({ count: randomCount });
 
     const [book] = await BookActions.save({
+        bookId: uuid(),
         createdBy: user.userId,
         name: uuid(),
         description: uuid(),
@@ -249,7 +253,7 @@ test("should remove all book members", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBook)
         .set(token)
-        .send({ ...book, members: [] } as Partial<PostBookRequestBody>);
+        .send({ data: { ...book, members: [] } } as Partial<PostBookRequestBody>);
 
     expect(res.statusCode).toEqual(201);
 

@@ -40,8 +40,8 @@ const router = express.Router();
  */
 router.get<GetPlannersRequestParams, GetPlannersResponse, GetPlannersRequestBody>(
     PlannerEndpoint.getPlanners,
-    async (req, res, next) => {
-        const { userId } = req.body;
+    async ({ session }, res, next) => {
+        const { userId } = session;
 
         // Fetch and return result
         try {
@@ -75,10 +75,10 @@ router.get<GetPlannersRequestParams, GetPlannersResponse, GetPlannersRequestBody
  */
 router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
     PlannerEndpoint.getPlanner,
-    async (req, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
-        const { plannerId, year, month } = req.params;
-        const { userId } = req.body;
+        const { plannerId, year, month } = params;
+        const { userId } = session;
 
         let parsedYear = year ? parseInt(year, 10) : undefined;
         let parsedMonth = month ? parseInt(month, 10) : undefined;
@@ -147,9 +147,10 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
  */
 router.post<PostPlannerRequestParams, PostPlannerResponse, PostPlannerRequestBody>(
     PlannerEndpoint.postPlanner,
-    async (req, res, next) => {
+    async ({ body, session }, res, next) => {
         // Extract request fields
-        const { userId, name, variant, description, plannerId, members } = req.body;
+        const { name, variant, description, plannerId, members } = body;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!name || !variant) {
@@ -211,12 +212,10 @@ router.post<PostPlannerRequestParams, PostPlannerResponse, PostPlannerRequestBod
  */
 router.delete<DeletePlannerRequestParams, DeletePlannerResponse, DeletePlannerRequestBody>(
     PlannerEndpoint.deletePlanner,
-    async (req, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
-        const {
-            params: { plannerId },
-            body: { userId },
-        } = req;
+        const { plannerId } = params;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!plannerId) {
@@ -345,11 +344,11 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
  */
 router.post<PostPlannerMemberRequestParams, PostPlannerMemberResponse, PostPlannerMemberRequestBody>(
     PlannerEndpoint.postPlannerMember,
-    async (req, res, next) => {
+    async ({ body, params, session }, res, next) => {
         // Extract request fields
-        const { plannerId } = req.params;
-
-        const { userId, accepted } = req.body;
+        const { plannerId } = params;
+        const { accepted } = body;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!plannerId) {
@@ -408,11 +407,10 @@ router.post<PostPlannerMemberRequestParams, PostPlannerMemberResponse, PostPlann
  */
 router.delete<DeletePlannerMealRequestParams, DeletePlannerMealResponse, DeletePlannerMealRequestBody>(
     PlannerEndpoint.deletePlannerMeal,
-    async (req, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
-        const { plannerId, mealId } = req.params;
-
-        const { userId } = req.body;
+        const { plannerId, mealId } = params;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!plannerId || !mealId) {
@@ -469,11 +467,10 @@ router.delete<DeletePlannerMealRequestParams, DeletePlannerMealResponse, DeleteP
  */
 router.delete<DeletePlannerMemberRequestParams, DeletePlannerMemberResponse, DeletePlannerMemberRequestBody>(
     PlannerEndpoint.deletePlannerMember,
-    async (req, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
-        const { plannerId, userId: userIdReq } = req.params;
-
-        const { userId } = req.body;
+        const { plannerId, userId: userIdReq } = params;
+        const { userId } = session;
 
         const userToDelete = userIdReq || userId;
 

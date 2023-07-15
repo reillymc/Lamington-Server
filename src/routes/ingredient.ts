@@ -77,9 +77,10 @@ router.get<
  */
 router.post<PostIngredientRequestParams, PostIngredientResponse, PostIngredientRequestBody>(
     IngredientEndpoint.postIngredient,
-    async (req, res, next) => {
+    async ({ body, session }, res, next) => {
         // Extract request fields
-        const { name, description, userId } = req.body;
+        const { name, description } = body;
+        const { userId } = session;
 
         // Check all required fields are present
 

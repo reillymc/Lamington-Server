@@ -9,15 +9,13 @@ import { UserActions } from "../controllers";
 
 const { jwtSecret } = config.authentication;
 
-interface AuthData {
+export interface AuthData {
     userId: string;
     status?: UserStatus;
 }
 
-type AuthenticatedBody<T = null> = T extends null ? AuthData : AuthData & T;
-
-const authenticationMiddleware = (
-    req: Request<null, null, AuthenticatedBody, null>,
+export const authenticationMiddleware = (
+    req: Request<null, null, AuthData, null>,
     res: Response,
     next: NextFunction
 ) => {
@@ -32,7 +30,7 @@ const authenticationMiddleware = (
         token = token.slice(7, token.length);
     }
 
-    jwt.verify(token, jwtSecret, async (err, decoded: Pick<AuthenticatedBody, "userId">) => {
+    jwt.verify(token, jwtSecret, async (err, decoded: Pick<AuthData, "userId">) => {
         if (err) {
             return next(new AppError({ status: 401, message: "Failed to authenticate user.", innerError: err }));
         }
@@ -55,12 +53,6 @@ const authenticationMiddleware = (
 
         req.session = { userId: decoded.userId, status: userStatus };
 
-        // Deprecated
-        req.body.userId = decoded.userId;
-        req.body.status = userStatus;
-
         return next();
     });
 };
-
-export { authenticationMiddleware, AuthenticatedBody };

@@ -100,11 +100,10 @@ router.post<PostCookListMealRequestParams, PostCookListMealResponse, PostCookLis
  */
 router.delete<DeleteCookListMealRequestParams, DeleteCookListMealResponse, DeleteCookListMealRequestBody>(
     CookListEndpoint.deleteMeal,
-    async (req, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
-        const { mealId } = req.params;
-
-        const { userId } = req.body;
+        const { mealId } = params;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!mealId) {

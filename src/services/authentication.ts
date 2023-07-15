@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
 import config from "../config";
-import { AuthenticatedBody } from "../middleware";
+import { AuthData } from "../middleware";
 
 const saltRounds = 10;
 
@@ -11,7 +11,7 @@ const { jwtSecret, jwtExpiration } = config.authentication;
 export const createToken = (userId: string | undefined) => {
     if (!jwtSecret || !userId) return;
 
-    const payload: AuthenticatedBody = { userId };
+    const payload: AuthData = { userId };
     return jwt.sign(payload, jwtSecret, { noTimestamp: true, expiresIn: jwtExpiration });
 };
 

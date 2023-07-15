@@ -1,17 +1,17 @@
 import { v4 as Uuid } from "uuid";
 
-import { Undefined } from "../utils";
+import { EnsureArray, Undefined } from "../utils";
 import db, {
     book,
     Book,
     BookMember,
     bookMember,
     CreateQuery,
-    CreateResponse,
     DeleteResponse,
     lamington,
     ReadQuery,
     ReadResponse,
+    SaveService,
     user,
     User,
 } from "../database";
@@ -94,11 +94,7 @@ const readBooks = async ({ bookId, userId }: GetBookParams): ReadResponse<ReadBo
     return query;
 };
 
-export interface CreateBookParams {
-    bookId?: string;
-    description: string | undefined;
-    name: string;
-    createdBy: string;
+export interface CreateBookParams extends Pick<Book, "bookId" | "name" | "description" | "createdBy"> {
     members?: Array<EntityMember>;
 }
 
@@ -106,10 +102,8 @@ export interface CreateBookParams {
  * Creates a new book from params
  * @returns the newly created books
  */
-const saveBooks = async (books: CreateQuery<CreateBookParams>): CreateResponse<Book> => {
-    if (!Array.isArray(books)) {
-        books = [books];
-    }
+const saveBooks: SaveService<CreateBookParams> = async params => {
+    const books = EnsureArray(params);
 
     const data = books.map(({ bookId, ...params }) => ({ bookId: bookId ?? Uuid(), ...params })).filter(Undefined);
     const bookIds = data.map(({ bookId }) => bookId);
@@ -176,6 +170,8 @@ export const BookActions = {
     read: readBooks,
     readMy: readMyBooks,
 };
+
+export type BookActions = typeof BookActions;
 
 export const InternalBookActions = {
     read: readBooksInternal,

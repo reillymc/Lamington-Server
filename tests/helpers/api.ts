@@ -90,6 +90,7 @@ export const CookListEndpoint = {
 export const IngredientEndpoint = {
     getIngredients: `${ApiUrl}${ingredientEndpoint}`,
     postIngredient: `${ApiUrl}${ingredientEndpoint}`,
+    getMyIngredients: `${ApiUrl}${ingredientEndpoint}/my`,
 } as const satisfies Record<keyof IngredientServices, Endpoint>;
 
 export const ListEndpoint = {

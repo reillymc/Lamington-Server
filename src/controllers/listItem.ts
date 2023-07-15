@@ -1,7 +1,6 @@
 import { v4 as Uuid } from "uuid";
 
 import db, {
-    CreateResponse,
     ReadResponse,
     lamington,
     ReadQuery,
@@ -10,8 +9,9 @@ import db, {
     listItem,
     ListItemModel,
     DeleteResponse,
+    SaveService,
 } from "../database";
-import { Undefined } from "../utils";
+import { EnsureArray, Undefined } from "../utils";
 
 interface GetListItemsParams {
     listId: string;
@@ -60,7 +60,7 @@ const countOutstandingItems = async (params: ReadQuery<CountListItemsParams>): R
 };
 
 interface CreateListItemParams {
-    itemId: string | undefined;
+    itemId: string;
     listId: string;
     name: string;
     dateAdded: string;
@@ -73,13 +73,12 @@ interface CreateListItemParams {
 }
 
 /**
- * Creates a new list from params
- * @returns the newly created lists
+ * Creates new list items from params
+ * @returns the newly created list items
  */
-const saveListItems = async (listItems: CreateQuery<CreateListItemParams>): CreateResponse<ListItem> => {
-    if (!Array.isArray(listItems)) {
-        listItems = [listItems];
-    }
+const saveListItems: SaveService<CreateListItemParams> = async params => {
+    const listItems = EnsureArray(params);
+
     const data: ListItemModel[] = listItems
         .map(({ itemId, completed, ...params }) => ({
             itemId: itemId ?? Uuid(),
@@ -122,3 +121,5 @@ export const ListItemActions = {
     save: saveListItems,
     countOutstandingItems,
 };
+
+export type ListItemActions = typeof ListItemActions;

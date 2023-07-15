@@ -1,4 +1,3 @@
-import { AuthenticatedBody } from "../../middleware";
 import { AttachmentServices, imageSubpath, uploadDirectory } from "./attachment";
 import { AuthServices, loginSubpath, registerSubpath } from "./auth";
 import { bookIdParam, bookMemberIdParam, bookMemberSubpath, BookServices, recipeSubpath } from "./book";
@@ -29,7 +28,7 @@ type LamingtonQueryParams = { page: QueryParam; sort: QueryParam; search: QueryP
 
 export type BasePaginatedRequestQuery<T = null> = T extends null ? LamingtonQueryParams : T & LamingtonQueryParams;
 
-export type BaseRequestBody<T = null> = AuthenticatedBody<T>;
+export type BaseRequestBody<T = null> = T;
 
 export type BaseRequestBodyV2<T = null> = T extends null ? {} : { data: Partial<T> | null | Array<Partial<T> | null> };
 

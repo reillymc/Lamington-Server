@@ -1,13 +1,13 @@
-import { AuthenticatedBody } from "../../src/middleware";
+import { AuthData } from "../../src/middleware";
 
 declare module "express" {
     interface Request {
-        session: AuthenticatedBody;
+        session: AuthData;
     }
 }
 
 declare module "express-serve-static-core" {
     interface Request {
-        session: AuthenticatedBody;
+        session: AuthData;
     }
 }

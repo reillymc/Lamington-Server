@@ -34,15 +34,15 @@ const router = express.Router();
  */
 router.get<GetUsersRequestParams, GetUsersResponse, GetUsersRequestBody>(
     UserEndpoint.getUsers,
-    async (req, res, next) => {
-        const isAdmin = req.body.status === UserStatus.Administrator;
+    async ({ session }, res, next) => {
+        const isAdmin = session.status === UserStatus.Administrator;
 
         try {
             const users = await UserActions.readAll();
 
             const data = Object.fromEntries(
                 users
-                    .filter(({ userId }) => userId !== req.body.userId)
+                    .filter(({ userId }) => userId !== session.userId)
                     .map(user => [
                         user.userId,
                         {
@@ -67,8 +67,8 @@ router.get<GetUsersRequestParams, GetUsersResponse, GetUsersRequestBody>(
  */
 router.get<GetPendingUsersRequestParams, GetPendingUsersResponse, GetPendingUsersRequestBody>(
     UserEndpoint.getPendingUsers,
-    async (req, res, next) => {
-        const isAdmin = req.body.status === UserStatus.Administrator;
+    async ({ session }, res, next) => {
+        const isAdmin = session.status === UserStatus.Administrator;
 
         if (!isAdmin) {
             return next(new AppError({ status: 401, message: "Unauthorised action" }));
@@ -101,15 +101,14 @@ router.get<GetPendingUsersRequestParams, GetPendingUsersResponse, GetPendingUser
  */
 router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApprovalRequestBody>(
     UserEndpoint.approveUser,
-    async (req, res, next) => {
-        const isAdmin = req.body.status === UserStatus.Administrator;
+    async ({ body, params, session }, res, next) => {
+        const isAdmin = session.status === UserStatus.Administrator;
+        const { userId: userToUpdate } = params;
+        const { accept } = body;
 
         if (!isAdmin) {
             return next(new AppError({ status: 401, message: "Unauthorised action" }));
         }
-
-        const { userId: userToUpdate } = req.params;
-        const { accept } = req.body;
 
         if (!userToUpdate) {
             return next(new AppError({ status: 400, message: "No user provided" }));

@@ -323,10 +323,9 @@ const save: SaveService<
 > = async params => {
     const recipes = EnsureArray(params);
 
-    const recipeData: Recipe[] = recipes.map(({ ingredients, method, tags, ratingPersonal, ...recipeItem }) => ({
-        ...recipeItem,
-        public: recipeItem.public ? 1 : 0,
-    }));
+    const recipeData: Recipe[] = recipes.map(
+        ({ ingredients, method, tags, ratingPersonal, ...recipeItem }) => recipeItem
+    );
 
     await db(lamington.recipe).insert(recipeData).onConflict(recipe.recipeId).merge();
 

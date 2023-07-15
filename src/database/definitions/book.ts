@@ -7,7 +7,7 @@ import { lamington } from "./lamington";
 export interface Book {
     bookId: string;
     name: string;
-    description: string | undefined;
+    description?: string;
     createdBy: string;
 }
 

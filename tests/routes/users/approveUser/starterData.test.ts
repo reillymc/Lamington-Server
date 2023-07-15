@@ -55,7 +55,7 @@ test("should create sample data for pending => registered user", async () => {
     if (!book) throw new Error("Book not created");
     expect(book.createdBy).toEqual(user.userId);
 
-    const recipes = await RecipeActions.readMy(user.userId);
+    const { result: recipes } = await RecipeActions.queryByUser({ userId: user.userId });
     expect(recipes.length).toEqual(1);
 
     const [recipe] = recipes;

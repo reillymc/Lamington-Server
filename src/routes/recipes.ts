@@ -275,14 +275,27 @@ export default router;
 const validatePostRecipeBody = ({ data }: PostRecipeRequestBody, userId: string) => {
     const filteredData = EnsureDefinedArray(data);
 
-    return BisectOnValidItems<ServiceParams<RecipeActions, "save">>(filteredData, ({ recipeId, name, ...item }) => {
+    return BisectOnValidItems(filteredData, ({ recipeId = Uuid(), name, ...item }) => {
         if (!name) return;
 
-        return {
-            ...item,
-            recipeId: recipeId ?? Uuid(),
+        const validItem: ServiceParams<RecipeActions, "save"> = {
+            cookTime: item.cookTime,
+            prepTime: item.prepTime,
+            servings: item.servings,
+            ingredients: item.ingredients,
+            method: item.method,
+            notes: item.notes,
+            photo: item.photo,
+            public: item.public ? 1 : 0,
+            source: item.source,
+            tags: item.tags,
+            timesCooked: item.timesCooked,
+            ratingPersonal: item.ratingPersonal,
+            recipeId,
             name,
             createdBy: userId,
         };
+
+        return validItem;
     });
 };
