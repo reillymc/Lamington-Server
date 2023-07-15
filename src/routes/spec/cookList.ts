@@ -1,4 +1,4 @@
-import { BaseRequest, BaseRequestBody, BaseRequestBodyV2, BaseRequestParams, BaseResponse, BaseResponseV2 } from ".";
+import { BaseRequest, BaseRequestBody,  BaseRequestParams, BaseResponse, BaseResponseV2 } from ".";
 
 export const cookListEndpoint = "/queue" as const;
 export const cookListMealIdParam = "mealId" as const;
@@ -26,7 +26,7 @@ export type GetCookListMealsService = (request: GetCookListMealsRequest) => GetC
 
 // Post cook list meal
 export type PostCookListMealRequestParams = BaseRequestParams;
-export type PostCookListMealRequestBody = BaseRequestBodyV2<CookListMeal>;
+export type PostCookListMealRequestBody = BaseRequestBody<CookListMeal>;
 
 export type PostCookListMealRequest = BaseRequest<PostCookListMealRequestParams & PostCookListMealRequestBody>;
 export type PostCookListMealResponse = BaseResponse;

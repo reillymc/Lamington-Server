@@ -56,6 +56,8 @@ export const PlannerMealActions = {
     read: readPlannerMeals,
 };
 
+export type PlannerMealActions = typeof PlannerMealActions;
+
 /**
  * Get planner meals by id or ids
  * @returns an array of planners matching given ids

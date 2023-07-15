@@ -46,7 +46,7 @@ test("should not allow editing if not book owner", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBook)
         .set(token)
-        .send({ data: { bookId: book.bookId, name: "book" } } as PostBookRequestBody);
+        .send({ data: { bookId: book.bookId, name: "book" } } satisfies PostBookRequestBody);
 
     expect(res.statusCode).toEqual(403);
 });
@@ -77,7 +77,7 @@ test("should not allow editing if book member but not book owner", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBook)
         .set(token)
-        .send({ data: { bookId: book.bookId, name: "book" } } as PostBookRequestBody);
+        .send({ data: { bookId: book.bookId, name: "book" } } satisfies PostBookRequestBody);
 
     expect(res.statusCode).toEqual(403);
 });
@@ -181,7 +181,7 @@ test("should save additional book members", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBook)
         .set(token)
-        .send({ data: { ...book, members: allMembers } } satisfies Partial<PostBookRequestBody>);
+        .send({ data: { ...book, members: allMembers } } satisfies PostBookRequestBody);
 
     expect(res.statusCode).toEqual(201);
 
@@ -219,7 +219,7 @@ test("should remove some book members", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBook)
         .set(token)
-        .send({ data: { ...book, members: reducedMembers } } satisfies Partial<PostBookRequestBody>);
+        .send({ data: { ...book, members: reducedMembers } } satisfies PostBookRequestBody);
 
     expect(res.statusCode).toEqual(201);
 
@@ -253,7 +253,7 @@ test("should remove all book members", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBook)
         .set(token)
-        .send({ data: { ...book, members: [] } } as Partial<PostBookRequestBody>);
+        .send({ data: { ...book, members: [] } } satisfies PostBookRequestBody);
 
     expect(res.statusCode).toEqual(201);
 

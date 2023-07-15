@@ -1,4 +1,4 @@
-import { BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
+import { BaseSimpleRequestBody, BaseRequestParams, BaseResponse } from ".";
 import { User } from "./user";
 
 export const authEndpoint = "/auth" as const;
@@ -20,7 +20,7 @@ export interface AuthenticationResponse {
 
 // Register
 export type RegisterRequestParams = BaseRequestParams;
-export type RegisterRequestBody = Pick<User, "email" | "password" | "firstName" | "lastName">;
+export type RegisterRequestBody = BaseSimpleRequestBody<Pick<User, "email" | "password" | "firstName" | "lastName">>;
 
 export type RegisterRequest = RegisterRequestBody & RegisterRequestParams;
 export type RegisterResponse = BaseResponse<AuthenticationResponse>;
@@ -28,7 +28,7 @@ export type RegisterService = (request: RegisterRequest) => RegisterResponse;
 
 // Login
 export type LoginRequestParams = BaseRequestParams;
-export type LoginRequestBody = BaseRequestBody<Pick<User, "email" | "password">>;
+export type LoginRequestBody = BaseSimpleRequestBody<Pick<User, "email" | "password">>;
 
 export type LoginRequest = LoginRequestBody & LoginRequestParams;
 export type LoginResponse = BaseResponse<AuthenticationResponse>;

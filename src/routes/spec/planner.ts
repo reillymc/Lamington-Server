@@ -1,4 +1,4 @@
-import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
+import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from ".";
 import { EntityMember, EntityMembers } from "./common";
 import { User } from "./user";
 
@@ -116,9 +116,7 @@ export type DeletePlannerMealService = (request: DeletePlannerMealRequest) => De
 export type PostPlannerMemberRequestParams = BaseRequestParams<{
     [plannerIdParam]: Planner["plannerId"];
 }>;
-export type PostPlannerMemberRequestBody = BaseRequestBody<{
-    accepted?: boolean;
-}>;
+export type PostPlannerMemberRequestBody = BaseSimpleRequestBody<Pick<Planner, "accepted">>;
 
 export type PostPlannerMemberRequest = BaseRequest<PostPlannerMemberRequestParams & PostPlannerMemberRequestBody>;
 export type PostPlannerMemberResponse = BaseResponse;

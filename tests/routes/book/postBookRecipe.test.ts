@@ -28,7 +28,7 @@ test("should return 404 for non-existant book", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBookRecipe(uuid()))
         .set(token)
-        .send({ recipeId: uuid() } as PostBookRecipeRequestBody);
+        .send({ data: { recipeId: uuid() } } satisfies PostBookRecipeRequestBody);
 
     expect(res.statusCode).toEqual(404);
 });
@@ -49,7 +49,7 @@ test("should not allow editing if not book owner", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBookRecipe(book.bookId))
         .set(token)
-        .send({ recipeId: uuid() } as PostBookRecipeRequestBody);
+        .send({ data: { recipeId: uuid() } } satisfies PostBookRecipeRequestBody);
 
     expect(res.statusCode).toEqual(404);
 });
@@ -88,7 +88,7 @@ test("should not allow editing if book member without edit permission", async ()
     const res = await request(app)
         .post(BookEndpoint.postBookRecipe(book.bookId))
         .set(token)
-        .send({ recipeId: recipe.recipeId } as PostBookRecipeRequestBody);
+        .send({ data: { recipeId: recipe.recipeId } } satisfies PostBookRecipeRequestBody);
 
     expect(res.statusCode).toEqual(404);
 });
@@ -127,7 +127,7 @@ test("should allow editing if book member with edit permission", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBookRecipe(book.bookId))
         .set(token)
-        .send({ recipeId: recipe.recipeId } as PostBookRecipeRequestBody);
+        .send({ data: { recipeId: recipe.recipeId } } satisfies PostBookRecipeRequestBody);
 
     expect(res.statusCode).toEqual(201);
 
@@ -164,7 +164,7 @@ test("should allow editing if book owner", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBookRecipe(book.bookId))
         .set(token)
-        .send({ recipeId: recipe.recipeId } as PostBookRecipeRequestBody);
+        .send({ data: { recipeId: recipe.recipeId } } satisfies PostBookRecipeRequestBody);
 
     expect(res.statusCode).toEqual(201);
 

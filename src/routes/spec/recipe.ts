@@ -3,9 +3,9 @@ import {
     BasePaginatedResponse,
     BaseRequest,
     BaseRequestBody,
-    BaseRequestBodyV2,
     BaseRequestParams,
     BaseResponse,
+    BaseSimpleRequestBody,
 } from ".";
 import { Tag } from "./tag";
 import { User } from "./user";
@@ -107,7 +107,7 @@ export type GetRecipeService = (request: GetRecipeRequest) => GetRecipeResponse;
 
 // Post recipe
 export type PostRecipeRequestParams = BaseRequestParams;
-export type PostRecipeRequestBody = BaseRequestBodyV2<{
+export type PostRecipeRequestBody = BaseRequestBody<{
     recipeId: string;
     name: string;
     source?: string;
@@ -141,7 +141,7 @@ export type DeleteRecipeService = (request: DeleteRecipeRequest) => DeleteRecipe
 export type PostRecipeRatingRequestParams = BaseRequestParams<{
     [recipeIdParam]: Recipe["recipeId"];
 }>;
-export type PostRecipeRatingRequestBody = BaseRequestBody<{
+export type PostRecipeRatingRequestBody = BaseSimpleRequestBody<{
     rating?: Recipe["ratingPersonal"];
 }>;
 

@@ -28,11 +28,11 @@ type LamingtonQueryParams = { page: QueryParam; sort: QueryParam; search: QueryP
 
 export type BasePaginatedRequestQuery<T = null> = T extends null ? LamingtonQueryParams : T & LamingtonQueryParams;
 
-export type BaseRequestBody<T = null> = T;
+export type BaseSimpleRequestBody<T = null> = T extends null ? {} : Partial<T>;
 
-export type BaseRequestBodyV2<T = null> = T extends null ? {} : { data: Partial<T> | null | Array<Partial<T> | null> };
+export type BaseRequestBody<T = null> = T extends null ? {} : { data: Partial<T> | null | Array<Partial<T> | null> };
 
-export type RequestValidator<T extends BaseRequestBodyV2<unknown>> = (
+export type RequestValidator<T extends BaseRequestBody<unknown>> = (
     body: T,
     userId: string
 ) => readonly [Array<Exclude<T["data"], any[] | null> extends Partial<infer R> ? R : never>, Array<unknown>];

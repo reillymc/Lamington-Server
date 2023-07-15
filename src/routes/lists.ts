@@ -16,7 +16,7 @@ import {
     GetListRequestBody,
     GetListRequestParams,
     GetListResponse,
-    GetListsRequest,
+    GetListsRequestBody,
     GetListsRequestParams,
     GetListsResponse,
     List,
@@ -31,9 +31,8 @@ import {
     PostListRequestBody,
     PostListRequestParams,
     PostListResponse,
-    RequestValidator,
 } from "./spec";
-import { BisectOnValidItems, BisectOnValidPartialItems, EnsureDefinedArray } from "../utils";
+import { BisectOnValidItems, EnsureDefinedArray } from "../utils";
 import { ServiceParams } from "../database";
 
 const router = express.Router();
@@ -41,10 +40,10 @@ const router = express.Router();
 /**
  * GET request to fetch all lists for a user
  */
-router.get<GetListsRequestParams, GetListsResponse, GetListsRequest>(
+router.get<GetListsRequestParams, GetListsResponse, GetListsRequestBody>(
     ListEndpoint.getLists,
-    async ({ body }, res, next) => {
-        const { userId } = body;
+    async ({ session }, res, next) => {
+        const { userId } = session;
 
         // Fetch and return result
         try {
@@ -143,14 +142,15 @@ router.post<PostListRequestParams, PostListResponse, PostListRequestBody>(
     ListEndpoint.postList,
     async ({ body, session }, res, next) => {
         // Extract request fields
-        const { name, description, listId, members } = body;
         const { userId } = session;
+        const [validLists, invalidLists] = validatePostListBody(body, userId);
 
         // Check all required fields are present
-        if (!name) {
+        if (!validLists.length || invalidLists.length) {
             return next(
                 new AppError({
                     status: 400,
+                    code: "INSUFFICIENT_DATA",
                     message: "Insufficient data to create a list.",
                 })
             );
@@ -158,42 +158,26 @@ router.post<PostListRequestParams, PostListResponse, PostListRequestBody>(
 
         // Update database and return status
         try {
-            if (listId) {
-                const [existingList] = await ListActions.read({ listId, userId });
+            const existingLists = await InternalListActions.read(validLists);
 
-                if (!existingList) {
-                    return next(
-                        new AppError({
-                            status: 403,
-                            message: "Cannot find list to edit.",
-                        })
-                    );
-                }
-
-                if (existingList.createdBy !== userId) {
-                    return next(
-                        new AppError({
-                            status: 403,
-                            message: "You do not have permissions to edit this list",
-                        })
-                    );
-                }
+            if (existingLists.some(list => list.createdBy !== userId)) {
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "RECIPE_NO_PERMISSIONS",
+                        message: "You do not have permissions to edit this list.",
+                    })
+                );
             }
 
-            await ListActions.save({
-                listId,
-                name,
-                createdBy: userId,
-                description,
-                members,
-            });
-            return res.status(201).json({ error: false, message: `List ${listId ? "updated" : "created"}` });
+            await ListActions.save(validLists);
+            return res.status(201).json({ error: false, message: `List saved` });
         } catch (e: unknown) {
             next(
                 new AppError({
                     innerError: e,
                     message: userMessage({
-                        action: listId ? MessageAction.Update : MessageAction.Create,
+                        action: MessageAction.Save,
                         entity: "list",
                     }),
                 })
@@ -218,6 +202,7 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
             return next(
                 new AppError({
                     status: 400,
+                    code: "INSUFFICIENT_DATA",
                     message: "Insufficient data to save a book.",
                 })
             );
@@ -517,6 +502,24 @@ router.delete<DeleteListMemberRequestParams, DeleteListMemberResponse, DeleteLis
 
 export default router;
 
+const validatePostListBody = ({ data }: PostListRequestBody, userId: string) => {
+    const filteredData = EnsureDefinedArray(data);
+
+    return BisectOnValidItems(filteredData, ({ listId = Uuid(), name, ...item }) => {
+        if (!name) return;
+
+        const validItem: ServiceParams<ListActions, "save"> = {
+            listId,
+            name,
+            description: item.description,
+            members: item.members,
+            createdBy: userId,
+        };
+
+        return validItem;
+    });
+};
+
 const validatePostListItemBody = ({ data }: PostListItemRequestBody, userId: string, listId: string) => {
     const filteredData = EnsureDefinedArray(data);
 
@@ -525,7 +528,7 @@ const validatePostListItemBody = ({ data }: PostListItemRequestBody, userId: str
 
         const parsedDate = item.dateAdded ? new Date(item.dateAdded) : new Date();
 
-        const parsedItem: ServiceParams<ListItemActions, "save"> = {
+        const validItem: ServiceParams<ListItemActions, "save"> = {
             itemId,
             listId,
             name,
@@ -538,6 +541,6 @@ const validatePostListItemBody = ({ data }: PostListItemRequestBody, userId: str
             createdBy: userId,
         };
 
-        return parsedItem;
+        return validItem;
     });
 };

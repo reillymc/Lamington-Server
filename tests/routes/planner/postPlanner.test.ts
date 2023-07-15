@@ -29,17 +29,6 @@ test("route should require authentication", async () => {
     expect(res.statusCode).toEqual(401);
 });
 
-test("should return 404 for non-existant planner", async () => {
-    const [token] = await PrepareAuthenticatedUser();
-
-    const res = await request(app)
-        .post(PlannerEndpoint.postPlanner)
-        .set(token)
-        .send({ plannerId: uuid(), name: uuid(), variant: uuid() } as PostPlannerRequestBody);
-
-    expect(res.statusCode).toEqual(404);
-});
-
 test("should not allow editing if not planner owner", async () => {
     const [token] = await PrepareAuthenticatedUser();
     const [plannerOwner] = await CreateUsers();
@@ -57,7 +46,9 @@ test("should not allow editing if not planner owner", async () => {
     const res = await request(app)
         .post(PlannerEndpoint.postPlanner)
         .set(token)
-        .send({ plannerId: planner.plannerId, name: uuid(), variant: uuid() } as PostPlannerRequestBody);
+        .send({
+            data: { plannerId: planner.plannerId, name: uuid(), variant: uuid() },
+        } satisfies PostPlannerRequestBody);
 
     expect(res.statusCode).toEqual(403);
 });
@@ -89,7 +80,9 @@ test("should not allow editing if planner member but not planner owner", async (
     const res = await request(app)
         .post(PlannerEndpoint.postPlanner)
         .set(token)
-        .send({ plannerId: planner.plannerId, name: uuid(), variant: uuid() } as PostPlannerRequestBody);
+        .send({
+            data: { plannerId: planner.plannerId, name: uuid(), variant: uuid() },
+        } satisfies PostPlannerRequestBody);
 
     expect(res.statusCode).toEqual(403);
 });
@@ -99,10 +92,12 @@ test("should create planner", async () => {
     const users = await CreateUsers();
 
     const planner = {
-        name: uuid(),
-        description: uuid(),
-        variant: uuid(),
-        members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean() })),
+        data: {
+            name: uuid(),
+            description: uuid(),
+            variant: uuid(),
+            members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean() })),
+        },
     } satisfies Partial<PostPlannerRequestBody>;
 
     const res = await request(app).post(PlannerEndpoint.postPlanner).set(token).send(planner);
@@ -116,13 +111,13 @@ test("should create planner", async () => {
     const [savedPlanner] = savedPlanners;
     const savedPlannerMembers = await PlannerMemberActions.read({ entityId: savedPlanner!.plannerId });
 
-    expect(savedPlanner?.name).toEqual(planner.name);
-    expect(savedPlanner?.variant).toEqual(planner.variant);
-    expect(savedPlanner?.description).toEqual(planner.description);
+    expect(savedPlanner?.name).toEqual(planner.data.name);
+    expect(savedPlanner?.variant).toEqual(planner.data.variant);
+    expect(savedPlanner?.description).toEqual(planner.data.description);
     expect(savedPlanner?.createdBy).toEqual(user.userId);
-    expect(savedPlannerMembers.length).toEqual(planner.members!.length);
+    expect(savedPlannerMembers.length).toEqual(planner.data.members!.length);
 
-    for (const { userId, allowEditing } of planner.members!) {
+    for (const { userId, allowEditing } of planner.data.members!) {
         const savedPlannerMember = savedPlannerMembers.find(({ userId: savedUserId }) => savedUserId === userId);
 
         expect(savedPlannerMember).toBeTruthy();
@@ -144,12 +139,14 @@ test("should save updated planner details as planner owner", async () => {
 
     await PlannerActions.save(planner);
 
-    const updatedPlanner: Partial<PostPlannerRequestBody> = {
-        plannerId: planner.plannerId,
-        name: uuid(),
-        description: uuid(),
-        variant: uuid(),
-    };
+    const updatedPlanner = {
+        data: {
+            plannerId: planner.plannerId,
+            name: uuid(),
+            description: uuid(),
+            variant: uuid(),
+        },
+    } satisfies PostPlannerRequestBody;
 
     const res = await request(app).post(PlannerEndpoint.postPlanner).set(token).send(updatedPlanner);
 
@@ -157,9 +154,9 @@ test("should save updated planner details as planner owner", async () => {
 
     const [savedPlanner] = await PlannerActions.read({ plannerId: planner.plannerId, userId: user.userId });
 
-    expect(savedPlanner?.name).toEqual(updatedPlanner.name);
-    expect(savedPlanner?.variant).toEqual(updatedPlanner.variant);
-    expect(savedPlanner?.description).toEqual(updatedPlanner.description);
+    expect(savedPlanner?.name).toEqual(updatedPlanner.data!.name);
+    expect(savedPlanner?.variant).toEqual(updatedPlanner.data!.variant);
+    expect(savedPlanner?.description).toEqual(updatedPlanner.data!.description);
     expect(savedPlanner?.plannerId).toEqual(planner.plannerId);
     expect(savedPlanner?.createdBy).toEqual(planner.createdBy);
 });
@@ -174,6 +171,7 @@ test("should save additional planner members", async () => {
     const allMembers = [...initialMembers, ...additionalMembers];
 
     const [planner] = await PlannerActions.save({
+        plannerId: uuid(),
         createdBy: user.userId,
         name: uuid(),
         description: uuid(),
@@ -187,7 +185,7 @@ test("should save additional planner members", async () => {
     const res = await request(app)
         .post(PlannerEndpoint.postPlanner)
         .set(token)
-        .send({ ...planner, members: allMembers } as Partial<PostPlannerRequestBody>);
+        .send({ data: { ...planner, members: allMembers } } satisfies PostPlannerRequestBody);
 
     expect(res.statusCode).toEqual(201);
 
@@ -213,6 +211,7 @@ test("should remove some planner members", async () => {
     );
 
     const [planner] = await PlannerActions.save({
+        plannerId: uuid(),
         createdBy: user.userId,
         name: uuid(),
         description: uuid(),
@@ -225,7 +224,7 @@ test("should remove some planner members", async () => {
     const res = await request(app)
         .post(PlannerEndpoint.postPlanner)
         .set(token)
-        .send({ ...planner, members: reducedMembers } as Partial<PostPlannerRequestBody>);
+        .send({ data: { ...planner, members: reducedMembers } } satisfies PostPlannerRequestBody);
 
     expect(res.statusCode).toEqual(201);
 
@@ -246,6 +245,7 @@ test("should remove all planner members", async () => {
     const members = await CreateUsers({ count: randomCount });
 
     const [planner] = await PlannerActions.save({
+        plannerId: uuid(),
         createdBy: user.userId,
         name: uuid(),
         description: uuid(),
@@ -259,7 +259,7 @@ test("should remove all planner members", async () => {
     const res = await request(app)
         .post(PlannerEndpoint.postPlanner)
         .set(token)
-        .send({ ...planner, members: [] } as Partial<PostPlannerRequestBody>);
+        .send({ data: { ...planner, members: [] } } satisfies PostPlannerRequestBody);
 
     expect(res.statusCode).toEqual(201);
 

@@ -86,7 +86,7 @@ const readLists = async ({ listId, userId }: GetListParams): ReadResponse<ReadLi
 };
 
 interface CreateListParams {
-    listId?: string;
+    listId: string;
     description: string | undefined;
     name: string;
     createdBy: string;
@@ -168,6 +168,8 @@ export const ListActions = {
     readMy: readMyLists,
     save: saveLists,
 };
+
+export type ListActions = typeof ListActions;
 
 export const InternalListActions = {
     read: readListsInternal,

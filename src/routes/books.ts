@@ -33,7 +33,7 @@ import {
     PostBookResponse,
     RequestValidator,
 } from "./spec";
-import { BisectOnValidPartialItems, EnsureDefinedArray } from "../utils";
+import { BisectOnValidPartialItems, EnsureDefinedArray, Undefined } from "../utils";
 
 const router = express.Router();
 
@@ -242,11 +242,13 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
     async ({ body, params, session }, res, next) => {
         // Extract request fields
         const { bookId } = params;
-        const { recipeId } = body;
+        const recipeIds = EnsureDefinedArray(body.data)
+            .map(({ recipeId }) => recipeId)
+            .filter(Undefined);
         const { userId } = session;
 
         // Check all required fields are present
-        if (!recipeId || !bookId) {
+        if (!recipeIds.length || !bookId) {
             return next(
                 new AppError({
                     status: 400,
@@ -255,11 +257,6 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
                 })
             );
         }
-
-        const bookRecipe = {
-            bookId,
-            recipeId,
-        };
 
         // Update database and return status
         try {
@@ -279,7 +276,7 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
                 }
             }
 
-            await BookRecipeActions.save(bookRecipe);
+            await BookRecipeActions.save(recipeIds.map(recipeId => ({ bookId, recipeId })));
             return res.status(201).json({ error: false, message: "Book recipe added." });
         } catch (e: unknown) {
             next(

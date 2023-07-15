@@ -27,7 +27,7 @@ test("should return 404 for non-existant book", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBookMember(uuid()))
         .set(token)
-        .send({ userId: uuid() } as PostBookMemberRequestBody);
+        .send({ accepted: true } satisfies PostBookMemberRequestBody);
 
     expect(res.statusCode).toEqual(404);
 });
@@ -48,7 +48,7 @@ test("should not allow editing if not existing book member", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBookMember(book.bookId))
         .set(token)
-        .send({ userId: user.userId } as PostBookMemberRequestBody);
+        .send({ accepted: true } satisfies PostBookMemberRequestBody);
 
     expect(res.statusCode).toEqual(403);
 });
@@ -79,7 +79,7 @@ test("should allow accepting if existing book member", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBookMember(book.bookId))
         .set(token)
-        .send({ userId: uuid(), accepted: true } as PostBookMemberRequestBody);
+        .send({ accepted: true } satisfies PostBookMemberRequestBody);
 
     expect(res.statusCode).toEqual(201);
 

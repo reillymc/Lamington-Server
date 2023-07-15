@@ -32,6 +32,8 @@ import {
     GetPlannerRequestParams,
     GetPlannerResponse,
 } from "./spec";
+import { ServiceParams } from "../database";
+import { BisectOnValidItems, EnsureDefinedArray } from "../utils";
 
 const router = express.Router();
 
@@ -149,14 +151,15 @@ router.post<PostPlannerRequestParams, PostPlannerResponse, PostPlannerRequestBod
     PlannerEndpoint.postPlanner,
     async ({ body, session }, res, next) => {
         // Extract request fields
-        const { name, variant, description, plannerId, members } = body;
         const { userId } = session;
+        const [validPlanners, invalidPlanners] = validatePostPlannerBody(body, userId);
 
         // Check all required fields are present
-        if (!name || !variant) {
+        if (!validPlanners.length || invalidPlanners.length) {
             return next(
                 new AppError({
                     status: 400,
+                    code: "INSUFFICIENT_DATA",
                     message: "Insufficient data to create a planner.",
                 })
             );
@@ -164,41 +167,26 @@ router.post<PostPlannerRequestParams, PostPlannerResponse, PostPlannerRequestBod
 
         // Update database and return status
         try {
-            if (plannerId) {
-                const [existingPlanner] = await InternalPlannerActions.read({ plannerId });
-                if (!existingPlanner) {
-                    return next(
-                        new AppError({
-                            status: 404,
-                            message: "Cannot find planner to edit.",
-                        })
-                    );
-                }
-                if (existingPlanner.createdBy !== userId) {
-                    return next(
-                        new AppError({
-                            status: 403,
-                            message: "You do not have permissions to edit this planner",
-                        })
-                    );
-                }
+            const existingPlanners = await InternalPlannerActions.read(validPlanners);
+
+            if (existingPlanners.some(recipe => recipe.createdBy !== userId)) {
+                return next(
+                    new AppError({
+                        status: 403,
+                        code: "RECIPE_NO_PERMISSIONS",
+                        message: "You do not have permissions to edit this planner.",
+                    })
+                );
             }
 
-            await PlannerActions.save({
-                plannerId,
-                name,
-                variant,
-                createdBy: userId,
-                description,
-                members,
-            });
-            return res.status(201).json({ error: false, message: `Planner ${plannerId ? "updated" : "created"}` });
+            await PlannerActions.save(validPlanners);
+            return res.status(201).json({ error: false, message: `Planner saved` });
         } catch (e: unknown) {
             next(
                 new AppError({
                     innerError: e,
                     message: userMessage({
-                        action: plannerId ? MessageAction.Update : MessageAction.Create,
+                        action: MessageAction.Save,
                         entity: "planner",
                     }),
                 })
@@ -271,14 +259,14 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
         // Extract request fields
         const { plannerId } = params;
         const { userId } = session;
-        const { id = Uuid(), month, dayOfMonth, meal, year, description, recipeId, source } = body;
+        const [validPlannerMeals, invalidPlannerMeals] = validatePostPlannerMealBody(body, userId, plannerId);
 
         // Check all required fields are present
-        if (!plannerId || !meal) {
+        if (!validPlannerMeals.length || invalidPlannerMeals.length) {
             return next(
                 new AppError({
                     status: 400,
-                    code: "PLANNER_INSUFFICIENT_DATA",
+                    code: "INSUFFICIENT_DATA",
                     message: "Insufficient data to create a planner recipe.",
                 })
             );
@@ -312,18 +300,7 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
                 }
             }
 
-            await PlannerMealActions.save({
-                id,
-                plannerId,
-                meal,
-                year,
-                month,
-                dayOfMonth,
-                recipeId,
-                description,
-                createdBy: userId,
-                source,
-            });
+            await PlannerMealActions.save(validPlannerMeals);
             return res.status(201).json({ error: false, message: "Planner recipe added." });
         } catch (e: unknown) {
             next(
@@ -535,3 +512,45 @@ router.delete<DeletePlannerMemberRequestParams, DeletePlannerMemberResponse, Del
 );
 
 export default router;
+
+const validatePostPlannerBody = ({ data }: PostPlannerRequestBody, userId: string) => {
+    const filteredData = EnsureDefinedArray(data);
+
+    return BisectOnValidItems(filteredData, ({ plannerId = Uuid(), name, variant, ...item }) => {
+        if (!name || !variant) return;
+
+        const validItem: ServiceParams<PlannerActions, "save"> = {
+            plannerId,
+            name,
+            variant,
+            description: item.description,
+            members: item.members,
+            createdBy: userId,
+        };
+
+        return validItem;
+    });
+};
+
+const validatePostPlannerMealBody = ({ data }: PostPlannerMealRequestBody, userId: string, plannerId: string) => {
+    const filteredData = EnsureDefinedArray(data);
+
+    return BisectOnValidItems(filteredData, ({ id = Uuid(), dayOfMonth, month, meal, year, ...item }) => {
+        if (!dayOfMonth || !month || !meal || !year) return;
+
+        const validItem: ServiceParams<PlannerMealActions, "save"> = {
+            id,
+            meal,
+            year,
+            month,
+            dayOfMonth,
+            plannerId,
+            createdBy: userId,
+            recipeId: item.recipeId,
+            description: item.description,
+            source: item.source,
+        };
+
+        return validItem;
+    });
+};

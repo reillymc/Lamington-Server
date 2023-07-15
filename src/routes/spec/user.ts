@@ -1,4 +1,4 @@
-import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
+import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from ".";
 
 export const usersEndpoint = "/users" as const;
 
@@ -66,7 +66,7 @@ export type GetPendingUsersService = (request: GetPendingUsersRequest) => GetPen
 
 // Approve user
 export type PostUserApprovalRequestParams = BaseRequestParams<{ userId: string }>;
-export type PostUserApprovalRequestBody = BaseRequestBody<{
+export type PostUserApprovalRequestBody = BaseSimpleRequestBody<{
     accept?: boolean;
 }>;
 

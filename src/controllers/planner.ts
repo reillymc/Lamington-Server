@@ -104,7 +104,7 @@ const readPlanners = async ({ plannerId, userId }: GetPlannerParams): ReadRespon
 };
 
 export interface CreatePlannerParams {
-    plannerId?: string;
+    plannerId: string;
     description: string | undefined;
     name: string;
     variant: string;
@@ -190,6 +190,8 @@ export const PlannerActions = {
     read: readPlanners,
     readMy: readMyPlanners,
 };
+
+export type PlannerActions = typeof PlannerActions;
 
 export const InternalPlannerActions = {
     read: readPlannersInternal,

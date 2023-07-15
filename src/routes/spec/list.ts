@@ -1,4 +1,4 @@
-import { BaseRequest, BaseRequestBody, BaseRequestBodyV2, BaseRequestParams, BaseResponse } from ".";
+import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from ".";
 import { EntityMember, EntityMembers } from "./common";
 import { User } from "./user";
 
@@ -77,7 +77,7 @@ export type PostListService = (request: PostListRequest) => PostListResponse;
 
 // Post list item
 export type PostListItemRequestParams = BaseRequestParams<{ [listIdParam]: List["listId"] }>;
-export type PostListItemRequestBody = BaseRequestBodyV2<{
+export type PostListItemRequestBody = BaseRequestBody<{
     name: ListItem["name"];
     itemId: ListItem["itemId"];
     dateAdded?: ListItem["dateAdded"];
@@ -116,9 +116,7 @@ export type DeleteListItemService = (request: DeleteListItemRequest) => DeleteLi
 export type PostListMemberRequestParams = BaseRequestParams<{
     [listIdParam]: List["listId"];
 }>;
-export type PostListMemberRequestBody = BaseRequestBody<{
-    accepted?: boolean;
-}>;
+export type PostListMemberRequestBody = BaseSimpleRequestBody<Pick<List, "accepted">>;
 
 export type PostListMemberRequest = BaseRequest<PostListMemberRequestParams & PostListMemberRequestBody>;
 export type PostListMemberResponse = BaseResponse;

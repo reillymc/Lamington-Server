@@ -1,4 +1,5 @@
 import express from "express";
+import { v4 as Uuid } from "uuid";
 
 import { AppError, userMessage, MessageAction } from "../services";
 import { IngredientActions } from "../controllers";
@@ -17,6 +18,8 @@ import {
     PostIngredientResponse,
 } from "./spec";
 import { parseBaseQuery } from "./helpers";
+import { ServiceParams } from "../database";
+import { BisectOnValidItems, EnsureDefinedArray } from "../utils";
 
 const router = express.Router();
 
@@ -79,14 +82,16 @@ router.post<PostIngredientRequestParams, PostIngredientResponse, PostIngredientR
     IngredientEndpoint.postIngredient,
     async ({ body, session }, res, next) => {
         // Extract request fields
-        const { name, description } = body;
         const { userId } = session;
+        const [validIngredients, invalidIngredients] = validatePostIngredientBody(body, userId);
 
         // Check all required fields are present
 
-        if (!name) {
+        if (!validIngredients.length || invalidIngredients.length) {
             return next(
                 new AppError({
+                    status: 400,
+                    code: "INSUFFICIENT_DATA",
                     message: userMessage({
                         action: "Insufficient data to create ingredient",
                         entity: "ingredient",
@@ -97,7 +102,7 @@ router.post<PostIngredientRequestParams, PostIngredientResponse, PostIngredientR
 
         // Update database and return status
         try {
-            const [result] = await IngredientActions.save({ name, description, createdBy: userId });
+            const [result] = await IngredientActions.save(validIngredients);
 
             if (!result) {
                 next(
@@ -124,3 +129,21 @@ router.post<PostIngredientRequestParams, PostIngredientResponse, PostIngredientR
 );
 
 export default router;
+
+const validatePostIngredientBody = ({ data }: PostIngredientRequestBody, userId: string) => {
+    const filteredData = EnsureDefinedArray(data);
+
+    return BisectOnValidItems(filteredData, ({ name, ...item }) => {
+        if (!name) return;
+
+        const validItem: ServiceParams<IngredientActions, "save"> = {
+            ingredientId: Uuid(), // Currently updating is not supported
+            name,
+            description: item.description,
+            photo: item.photo,
+            createdBy: userId,
+        };
+
+        return validItem;
+    });
+};

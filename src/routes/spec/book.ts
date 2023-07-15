@@ -1,4 +1,4 @@
-import { BaseRequest, BaseRequestBody, BaseRequestBodyV2, BaseRequestParams, BaseResponse } from ".";
+import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from ".";
 import { User } from "./user";
 import { Recipe, Recipes, recipeIdParam } from "./recipe";
 import { EntityMember, EntityMembers } from "./common";
@@ -34,7 +34,7 @@ export type Book = {
 
 // Get books
 export type GetBooksRequestParams = BaseRequestParams;
-export type GetBooksRequestBody = BaseRequestBodyV2;
+export type GetBooksRequestBody = BaseRequestBody;
 
 export type GetBooksRequest = BaseRequest<GetBooksRequestBody & GetBooksRequestParams>;
 export type GetBooksResponse = BaseResponse<Books>;
@@ -42,7 +42,7 @@ export type GetBooksService = (request: GetBooksRequest) => GetBooksResponse;
 
 // Get book
 export type GetBookRequestParams = BaseRequestParams<{ [bookIdParam]: Book["bookId"] }>;
-export type GetBookRequestBody = BaseRequestBodyV2;
+export type GetBookRequestBody = BaseRequestBody;
 
 export type GetBookRequest = BaseRequest<GetBookRequestParams & GetBookRequestBody>;
 export type GetBookResponse = BaseResponse<Book>;
@@ -50,7 +50,7 @@ export type GetBookService = (request: GetBookRequest) => GetBookResponse;
 
 // Post book
 export type PostBookRequestParams = BaseRequestParams;
-export type PostBookRequestBody = BaseRequestBodyV2<{
+export type PostBookRequestBody = BaseRequestBody<{
     name: Book["name"];
     bookId: Book["bookId"];
     description?: Book["description"];
@@ -64,7 +64,7 @@ export type PostBookService = (request: PostBookRequest) => PostBookResponse;
 
 // Delete book
 export type DeleteBookRequestParams = BaseRequestParams<{ [bookIdParam]: Book["bookId"] }>;
-export type DeleteBookRequestBody = BaseRequestBodyV2;
+export type DeleteBookRequestBody = BaseSimpleRequestBody;
 
 export type DeleteBookRequest = BaseRequest<DeleteBookRequestParams & DeleteBookRequestBody>;
 export type DeleteBookResponse = BaseResponse;
@@ -85,7 +85,7 @@ export type DeleteBookRecipeRequestParams = BaseRequestParams<{
     [bookIdParam]: Book["bookId"];
     [recipeIdParam]: Recipe["recipeId"];
 }>;
-export type DeleteBookRecipeRequestBody = BaseRequestBodyV2;
+export type DeleteBookRecipeRequestBody = BaseSimpleRequestBody;
 
 export type DeleteBookRecipeRequest = BaseRequest<DeleteBookRecipeRequestParams & DeleteBookRecipeRequestBody>;
 export type DeleteBookRecipeResponse = BaseResponse;
@@ -95,9 +95,7 @@ export type DeleteBookRecipeService = (request: DeleteBookRecipeRequest) => Dele
 export type PostBookMemberRequestParams = BaseRequestParams<{
     [bookIdParam]: Book["bookId"];
 }>;
-export type PostBookMemberRequestBody = BaseRequestBody<{
-    accepted?: boolean;
-}>;
+export type PostBookMemberRequestBody = BaseSimpleRequestBody<Pick<Book, "accepted">>;
 
 export type PostBookMemberRequest = BaseRequest<PostBookMemberRequestParams & PostBookMemberRequestBody>;
 export type PostBookMemberResponse = BaseResponse;
@@ -108,7 +106,7 @@ export type DeleteBookMemberRequestParams = BaseRequestParams<{
     [bookIdParam]: Book["bookId"];
     [bookMemberIdParam]: User["userId"];
 }>;
-export type DeleteBookMemberRequestBody = BaseRequestBodyV2;
+export type DeleteBookMemberRequestBody = BaseSimpleRequestBody;
 
 export type DeleteBookMemberRequest = BaseRequest<DeleteBookMemberRequestParams & DeleteBookMemberRequestBody>;
 export type DeleteBookMemberResponse = BaseResponse;
