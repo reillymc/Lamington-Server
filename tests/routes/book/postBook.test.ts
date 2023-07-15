@@ -12,9 +12,9 @@ import {
     randomNumber,
 } from "../../helpers";
 import { BookActions, BookMemberActions } from "../../../src/controllers";
-import { CreateBookParams } from "../../../src/controllers/book";
 import { PostBookRequestBody } from "../../../src/routes/spec";
 import { EntityMember } from "../../../src/controllers/entity";
+import { ServiceParams } from "../../../src/database";
 
 beforeEach(async () => {
     await CleanTables("book", "user", "book_member");
@@ -39,7 +39,7 @@ test("should not allow editing if not book owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: bookOwner!.userId,
-    } satisfies CreateBookParams;
+    } satisfies ServiceParams<BookActions, "save">;
 
     await BookActions.save(book);
 
@@ -60,7 +60,7 @@ test("should not allow editing if book member but not book owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: bookOwner!.userId,
-    } satisfies CreateBookParams;
+    } satisfies ServiceParams<BookActions, "save">;
 
     await BookActions.save(book);
     await BookMemberActions.save({
@@ -134,7 +134,7 @@ test("should save updated book details as book owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: user.userId,
-    } satisfies CreateBookParams;
+    } satisfies ServiceParams<BookActions, "save">;
 
     await BookActions.save(book);
 

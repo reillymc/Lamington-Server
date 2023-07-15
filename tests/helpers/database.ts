@@ -1,11 +1,10 @@
 import { v4 as uuid } from "uuid";
 
-import { BookActions, UserActions } from "../../src/controllers";
+import { BookActions, ListActions, UserActions } from "../../src/controllers";
 import { UserStatus } from "../../src/routes/spec";
-import { lamington } from "../../src/database";
+import { ServiceParams, lamington } from "../../src/database";
 import { hashPassword } from "../../src/services";
 import db from "../../src/database/config";
-import { CreateBookParams } from "../../src/controllers/book";
 import { randomCount } from "./data";
 
 export const CreateUsers = async ({ count = 1, status = UserStatus.Registered } = {}) => {
@@ -64,16 +63,36 @@ export const CreateBooks = async ({
 }: {
     count?: number;
     createdBy: string;
-}): Promise<[(CreateBookParams & { bookId: string })[], number]> => {
+}): Promise<[ServiceParams<BookActions, "save">[], number]> => {
     const books = Array.from({ length: count }, () => ({
         bookId: uuid(),
         createdBy,
         description: uuid(),
         name: uuid(),
         members: [],
-    })) satisfies (CreateBookParams & { bookId: string })[];
+    })) satisfies ServiceParams<BookActions, "save">[];
 
     await BookActions.save(books);
+
+    return [books, count];
+};
+
+export const CreateLists = async ({
+    count = randomCount,
+    createdBy,
+}: {
+    count?: number;
+    createdBy: string;
+}): Promise<[ServiceParams<ListActions, "save">[], number]> => {
+    const books = Array.from({ length: count }, () => ({
+        listId: uuid(),
+        createdBy,
+        description: uuid(),
+        name: uuid(),
+        members: [],
+    })) satisfies ServiceParams<ListActions, "save">[];
+
+    await ListActions.save(books);
 
     return [books, count];
 };

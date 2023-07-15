@@ -60,6 +60,7 @@ router.get<GetListsRequestParams, GetListsResponse, GetListsRequestBody>(
                         outstandingItemCount: outstandingItemCounts.find(({ listId }) => listId === list.listId)?.count,
                         createdBy: { userId: list.createdBy, firstName: list.createdByName },
                         accepted: list.createdBy === userId ? true : !!list.accepted,
+                        canEdit: list.createdBy === userId ? true : !!list.canEdit,
                     },
                 ])
             );
@@ -126,6 +127,7 @@ router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(
                     list.createdBy === userId
                         ? true
                         : !!listMembersResponse.find(({ userId }) => userId === userId)?.accepted,
+                canEdit: list.createdBy === userId ? true : !!list.canEdit,
             };
 
             return res.status(200).json({ error: false, data });
@@ -215,7 +217,7 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
             if (!existingList) {
                 return next(
                     new AppError({
-                        status: 403,
+                        status: 404,
                         code: "LIST_NOT_FOUND",
                         message: "Cannot find list to add item to.",
                     })
@@ -280,7 +282,7 @@ router.post<PostListMemberRequestParams, PostListMemberResponse, PostListMemberR
             if (!existingList) {
                 return next(
                     new AppError({
-                        status: 403,
+                        status: 404,
                         code: "NOT_FOUND",
                         message: "Cannot find list to edit membership for.",
                     })
@@ -342,7 +344,7 @@ router.delete<DeleteListRequestParams, DeleteListResponse, DeleteListRequestBody
             if (!existingList) {
                 return next(
                     new AppError({
-                        status: 403,
+                        status: 404,
                         message: "Cannot find list to delete.",
                     })
                 );
@@ -397,7 +399,7 @@ router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListIte
             if (!existingList) {
                 return next(
                     new AppError({
-                        status: 403,
+                        status: 404,
                         message: "Cannot find list to delete item from.",
                     })
                 );
@@ -457,7 +459,7 @@ router.delete<DeleteListMemberRequestParams, DeleteListMemberResponse, DeleteLis
             if (!existingList) {
                 return next(
                     new AppError({
-                        status: 403,
+                        status: 404,
                         code: "NOT_FOUND",
                         message: "Cannot find list to remove member from.",
                     })
@@ -467,7 +469,7 @@ router.delete<DeleteListMemberRequestParams, DeleteListMemberResponse, DeleteLis
             if (existingList.createdBy === userToDelete) {
                 return next(
                     new AppError({
-                        status: 403,
+                        status: 400,
                         code: "OWNER",
                         message: "You cannot leave a list you own.",
                     })

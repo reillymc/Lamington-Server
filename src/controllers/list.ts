@@ -35,6 +35,7 @@ interface ReadListRow extends Pick<List, "listId" | "name" | "description"> {
     createdBy: User["userId"];
     createdByName: User["firstName"];
     accepted: ListMember["accepted"];
+    canEdit: ListMember["canEdit"];
 }
 
 /**
@@ -49,7 +50,8 @@ const readMyLists = async ({ userId }: GetMyListsParams): ReadResponse<ReadListR
             list.description,
             list.createdBy,
             `${user.firstName} as createdByName`,
-            listMember.accepted
+            listMember.accepted,
+            listMember.canEdit
         )
         .where({ [list.createdBy]: userId })
         .orWhere({ [listMember.userId]: userId })

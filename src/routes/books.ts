@@ -201,7 +201,7 @@ router.delete<DeleteBookRequestParams, DeleteBookResponse, DeleteBookRequestBody
 
         // Update database and return status
         try {
-            const [existingBook] = await BookActions.read({ bookId, userId });
+            const [existingBook] = await InternalBookActions.read({ bookId });
 
             if (!existingBook) {
                 return next(
@@ -215,7 +215,7 @@ router.delete<DeleteBookRequestParams, DeleteBookResponse, DeleteBookRequestBody
             if (existingBook.createdBy !== userId) {
                 return next(
                     new AppError({
-                        status: 404,
+                        status: 403,
                         message: "You do not have permissions to delete this book",
                     })
                 );
@@ -260,17 +260,27 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
 
         // Update database and return status
         try {
-            const [existingBook] = await BookActions.read({ bookId, userId });
+            const [existingBook] = await InternalBookActions.read({ bookId });
 
-            if (!existingBook || existingBook.createdBy !== userId) {
+            if (!existingBook) {
+                return next(
+                    new AppError({
+                        status: 404,
+                        code: "BOOK_NOT_FOUND",
+                        message: "Cannot find book to add recipe to.",
+                    })
+                );
+            }
+
+            if (existingBook.createdBy !== userId) {
                 const existingBookMembers = await BookMemberActions.read({ entityId: bookId });
 
                 if (!existingBookMembers?.some(member => member.userId === userId && member.canEdit)) {
                     return next(
                         new AppError({
-                            status: 404,
-                            code: "BOOK_NOT_FOUND",
-                            message: "Cannot find book to add recipe to.",
+                            status: 403,
+                            code: "BOOK_NO_PERMISSIONS",
+                            message: "You do not have permissions to edit this book.",
                         })
                     );
                 }
@@ -378,22 +388,13 @@ router.delete<DeleteBookRecipeRequestParams, DeleteBookRecipeResponse, DeleteBoo
 
         // Update database and return status
         try {
-            const [existingBook] = await BookActions.read({ bookId, userId });
+            const [existingBook] = await InternalBookActions.read({ bookId });
 
             if (!existingBook) {
                 return next(
                     new AppError({
-                        status: 403,
+                        status: 404,
                         message: "Cannot find book to delete recipe from.",
-                    })
-                );
-            }
-
-            if (existingBook.createdBy !== userId) {
-                return next(
-                    new AppError({
-                        status: 403,
-                        message: "You do not have permissions to delete recipes from this book",
                     })
                 );
             }
@@ -454,7 +455,7 @@ router.delete<DeleteBookMemberRequestParams, DeleteBookMemberResponse, DeleteBoo
             if (!existingBook) {
                 return next(
                     new AppError({
-                        status: 403,
+                        status: 404,
                         code: "NOT_FOUND",
                         message: "Cannot find book to remove member from.",
                     })
@@ -464,7 +465,7 @@ router.delete<DeleteBookMemberRequestParams, DeleteBookMemberResponse, DeleteBoo
             if (existingBook.createdBy === userToDelete) {
                 return next(
                     new AppError({
-                        status: 403,
+                        status: 400,
                         code: "OWNER",
                         message: "You cannot leave a book you own.",
                     })

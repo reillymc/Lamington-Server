@@ -4,8 +4,8 @@ import { v4 as uuid } from "uuid";
 import app from "../../../src/app";
 import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 import { BookActions, BookMemberActions } from "../../../src/controllers";
-import { CreateBookParams } from "../../../src/controllers/book";
 import { DeleteBookRequestParams } from "../../../src/routes/spec";
+import { ServiceParams } from "../../../src/database";
 
 beforeEach(async () => {
     await CleanTables("book", "user", "book_member");
@@ -41,7 +41,7 @@ test("should not allow deletion if not book owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: bookOwner!.userId,
-    } satisfies CreateBookParams;
+    } satisfies ServiceParams<BookActions, "save">;
 
     await BookActions.save(book);
 
@@ -50,7 +50,7 @@ test("should not allow deletion if not book owner", async () => {
         .set(token)
         .send({ bookId: book.bookId } satisfies DeleteBookRequestParams);
 
-    expect(res.statusCode).toEqual(404);
+    expect(res.statusCode).toEqual(403);
 });
 
 test("should not allow deletion if book member but not book owner", async () => {
@@ -62,7 +62,7 @@ test("should not allow deletion if book member but not book owner", async () => 
         name: uuid(),
         description: uuid(),
         createdBy: bookOwner!.userId,
-    } satisfies CreateBookParams;
+    } satisfies ServiceParams<BookActions, "save">;
 
     await BookActions.save(book);
     await BookMemberActions.save({
@@ -81,7 +81,7 @@ test("should not allow deletion if book member but not book owner", async () => 
         .set(token)
         .send({ bookId: book.bookId } satisfies DeleteBookRequestParams);
 
-    expect(res.statusCode).toEqual(404);
+    expect(res.statusCode).toEqual(403);
 });
 
 test("should delete book", async () => {
@@ -92,7 +92,7 @@ test("should delete book", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: user!.userId,
-    } satisfies CreateBookParams;
+    } satisfies ServiceParams<BookActions, "save">;
 
     await BookActions.save(book);
 

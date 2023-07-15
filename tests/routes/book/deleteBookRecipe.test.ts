@@ -4,7 +4,6 @@ import { v4 as uuid } from "uuid";
 import app from "../../../src/app";
 import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBit } from "../../helpers";
 import { BookActions, BookMemberActions, BookRecipeActions, RecipeActions } from "../../../src/controllers";
-import { PostBookRecipeRequestBody } from "../../../src/routes/spec";
 import { ServiceParams } from "../../../src/database";
 
 beforeEach(async () => {
@@ -16,7 +15,7 @@ afterAll(async () => {
 });
 
 test("route should require authentication", async () => {
-    const res = await request(app).post(BookEndpoint.postBookRecipe(uuid()));
+    const res = await request(app).delete(BookEndpoint.deleteBookRecipe(uuid(), uuid()));
 
     expect(res.statusCode).toEqual(401);
 });
@@ -24,15 +23,12 @@ test("route should require authentication", async () => {
 test("should return 404 for non-existant book", async () => {
     const [token] = await PrepareAuthenticatedUser();
 
-    const res = await request(app)
-        .post(BookEndpoint.postBookRecipe(uuid()))
-        .set(token)
-        .send({ data: { recipeId: uuid() } } satisfies PostBookRecipeRequestBody);
+    const res = await request(app).delete(BookEndpoint.deleteBookRecipe(uuid(), uuid())).set(token).send();
 
     expect(res.statusCode).toEqual(404);
 });
 
-test("should not allow editing if not book owner", async () => {
+test("should not allow deletion if not book owner", async () => {
     const [token] = await PrepareAuthenticatedUser();
     const [bookOwner] = await CreateUsers();
 
@@ -43,17 +39,31 @@ test("should not allow editing if not book owner", async () => {
         createdBy: bookOwner!.userId,
     } satisfies ServiceParams<BookActions, "save">;
 
+    const recipe = {
+        recipeId: uuid(),
+        name: uuid(),
+        createdBy: bookOwner!.userId,
+        public: randomBit(),
+    } satisfies ServiceParams<RecipeActions, "save">;
+
+    const bookRecipe = {
+        recipeId: recipe.recipeId,
+        bookId: book.bookId,
+    } satisfies ServiceParams<BookRecipeActions, "save">;
+
     await BookActions.save(book);
+    await RecipeActions.save(recipe);
+    await BookRecipeActions.save(bookRecipe);
 
     const res = await request(app)
-        .post(BookEndpoint.postBookRecipe(book.bookId))
+        .delete(BookEndpoint.deleteBookRecipe(book.bookId, bookRecipe.recipeId))
         .set(token)
-        .send({ data: { recipeId: uuid() } } satisfies PostBookRecipeRequestBody);
+        .send();
 
     expect(res.statusCode).toEqual(403);
 });
 
-test("should not allow editing if book member without edit permission", async () => {
+test("should not allow deletion if book member without edit permission", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
     const [bookOwner] = await CreateUsers();
 
@@ -67,12 +77,18 @@ test("should not allow editing if book member without edit permission", async ()
     const recipe = {
         recipeId: uuid(),
         name: uuid(),
-        createdBy: user!.userId,
+        createdBy: bookOwner!.userId,
         public: randomBit(),
     } satisfies ServiceParams<RecipeActions, "save">;
 
+    const bookRecipe = {
+        recipeId: recipe.recipeId,
+        bookId: book.bookId,
+    } satisfies ServiceParams<BookRecipeActions, "save">;
+
     await BookActions.save(book);
     await RecipeActions.save(recipe);
+    await BookRecipeActions.save(bookRecipe);
     await BookMemberActions.save({
         bookId: book.bookId,
         members: [
@@ -85,14 +101,14 @@ test("should not allow editing if book member without edit permission", async ()
     });
 
     const res = await request(app)
-        .post(BookEndpoint.postBookRecipe(book.bookId))
+        .delete(BookEndpoint.deleteBookRecipe(book.bookId, bookRecipe.recipeId))
         .set(token)
-        .send({ data: { recipeId: recipe.recipeId } } satisfies PostBookRecipeRequestBody);
+        .send();
 
     expect(res.statusCode).toEqual(403);
 });
 
-test("should allow editing if book member with edit permission", async () => {
+test("should allow deletion if book member with edit permission", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
     const [bookOwner] = await CreateUsers();
 
@@ -106,12 +122,18 @@ test("should allow editing if book member with edit permission", async () => {
     const recipe = {
         recipeId: uuid(),
         name: uuid(),
-        createdBy: user!.userId,
+        createdBy: bookOwner!.userId,
         public: randomBit(),
     } satisfies ServiceParams<RecipeActions, "save">;
 
+    const bookRecipe = {
+        recipeId: recipe.recipeId,
+        bookId: book.bookId,
+    } satisfies ServiceParams<BookRecipeActions, "save">;
+
     await BookActions.save(book);
     await RecipeActions.save(recipe);
+    await BookRecipeActions.save(bookRecipe);
     await BookMemberActions.save({
         bookId: book.bookId,
         members: [
@@ -124,23 +146,18 @@ test("should allow editing if book member with edit permission", async () => {
     });
 
     const res = await request(app)
-        .post(BookEndpoint.postBookRecipe(book.bookId))
+        .delete(BookEndpoint.deleteBookRecipe(book.bookId, bookRecipe.recipeId))
         .set(token)
-        .send({ data: { recipeId: recipe.recipeId } } satisfies PostBookRecipeRequestBody);
+        .send();
 
     expect(res.statusCode).toEqual(201);
 
     const bookRecipes = await BookRecipeActions.read({ bookId: book.bookId });
 
-    expect(bookRecipes.length).toEqual(1);
-
-    const [bookRecipe] = bookRecipes;
-
-    expect(bookRecipe?.bookId).toEqual(book.bookId);
-    expect(bookRecipe?.recipeId).toEqual(recipe.recipeId);
+    expect(bookRecipes.length).toEqual(0);
 });
 
-test("should allow editing if book owner", async () => {
+test("should allow deletion if book owner", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
 
     const book = {
@@ -157,22 +174,23 @@ test("should allow editing if book owner", async () => {
         public: randomBit(),
     } satisfies ServiceParams<RecipeActions, "save">;
 
+    const bookRecipe = {
+        recipeId: recipe.recipeId,
+        bookId: book.bookId,
+    } satisfies ServiceParams<BookRecipeActions, "save">;
+
     await BookActions.save(book);
     await RecipeActions.save(recipe);
+    await BookRecipeActions.save(bookRecipe);
 
     const res = await request(app)
-        .post(BookEndpoint.postBookRecipe(book.bookId))
+        .delete(BookEndpoint.deleteBookRecipe(book.bookId, bookRecipe.recipeId))
         .set(token)
-        .send({ data: { recipeId: recipe.recipeId } } satisfies PostBookRecipeRequestBody);
+        .send();
 
     expect(res.statusCode).toEqual(201);
 
     const bookRecipes = await BookRecipeActions.read({ bookId: book.bookId });
 
-    expect(bookRecipes.length).toEqual(1);
-
-    const [bookRecipe] = bookRecipes;
-
-    expect(bookRecipe?.bookId).toEqual(book.bookId);
-    expect(bookRecipe?.recipeId).toEqual(recipe.recipeId);
+    expect(bookRecipes.length).toEqual(0);
 });

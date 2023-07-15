@@ -28,6 +28,7 @@ export type List = {
     description: string | undefined;
     outstandingItemCount?: number;
     accepted?: boolean;
+    canEdit?: boolean;
     items?: Array<ListItem>;
     members?: EntityMembers;
 };

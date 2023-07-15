@@ -69,3 +69,5 @@ export const BookRecipeActions = {
     delete: deleteBookRecipes,
     read: readBookRecipes,
 };
+
+export type BookRecipeActions = typeof BookRecipeActions;

@@ -4,8 +4,8 @@ import { v4 as uuid } from "uuid";
 import app from "../../../src/app";
 import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 import { BookActions, BookMemberActions } from "../../../src/controllers";
-import { CreateBookParams } from "../../../src/controllers/book";
 import { PostBookMemberRequestBody } from "../../../src/routes/spec";
+import { ServiceParams } from "../../../src/database";
 
 beforeEach(async () => {
     await CleanTables("book", "user", "book_member");
@@ -33,7 +33,7 @@ test("should return 404 for non-existant book", async () => {
 });
 
 test("should not allow editing if not existing book member", async () => {
-    const [token, user] = await PrepareAuthenticatedUser();
+    const [token] = await PrepareAuthenticatedUser();
     const [bookOwner] = await CreateUsers();
 
     const book = {
@@ -41,7 +41,7 @@ test("should not allow editing if not existing book member", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: bookOwner!.userId,
-    } satisfies CreateBookParams;
+    } satisfies ServiceParams<BookActions, "save">;
 
     await BookActions.save(book);
 
@@ -62,7 +62,7 @@ test("should allow accepting if existing book member", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: bookOwner!.userId,
-    } satisfies CreateBookParams;
+    } satisfies ServiceParams<BookActions, "save">;
 
     await BookActions.save(book);
     await BookMemberActions.save({

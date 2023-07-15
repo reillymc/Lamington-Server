@@ -12,7 +12,6 @@ import {
 } from "../../helpers";
 import { GetBookResponse } from "../../../src/routes/spec";
 import { BookActions, BookMemberActions, BookRecipeActions, RecipeActions } from "../../../src/controllers";
-import { CreateBookParams } from "../../../src/controllers/book";
 import { BookRecipe, ServiceParams } from "../../../src/database";
 
 beforeEach(async () => {
@@ -30,7 +29,7 @@ test("route should require authentication", async () => {
 });
 
 test("should return 404 for non-existant book", async () => {
-    const [token, user] = await PrepareAuthenticatedUser();
+    const [token] = await PrepareAuthenticatedUser();
 
     const res = await request(app).get(BookEndpoint.getBook(uuid())).set(token);
 
@@ -46,7 +45,7 @@ test("should not return book user doesn't have access to", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: bookOwner!.userId,
-    } satisfies CreateBookParams;
+    } satisfies ServiceParams<BookActions, "save">;
 
     await BookActions.save(createBookParams);
 
@@ -63,7 +62,7 @@ test("should return correct book details for book id", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: user.userId,
-    } satisfies CreateBookParams;
+    } satisfies ServiceParams<BookActions, "save">;
 
     await BookActions.save(createBookParams);
 
@@ -90,7 +89,7 @@ test("should return a book that a user is a member of", async () => {
         description: uuid(),
         createdBy: bookOwner!.userId,
         members: [{ userId: user.userId }],
-    } satisfies CreateBookParams;
+    } satisfies ServiceParams<BookActions, "save">;
 
     await BookActions.save(createBookParams);
 
@@ -111,7 +110,7 @@ test("should return book recipes", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: user.userId,
-    } satisfies CreateBookParams;
+    } satisfies ServiceParams<BookActions, "save">;
 
     await BookActions.save(book);
 
@@ -173,7 +172,7 @@ test("should return book members", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: user.userId,
-    } satisfies CreateBookParams;
+    } satisfies ServiceParams<BookActions, "save">;
 
     await BookActions.save(book);
 
