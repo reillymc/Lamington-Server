@@ -235,7 +235,7 @@ router.delete<DeleteBookRequestParams, DeleteBookResponse, DeleteBookRequestBody
 );
 
 /**
- * POST request to create a book recipe.
+ * POST request to save a book recipe.
  */
 router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeRequestBody>(
     BookEndpoint.postBookRecipe,

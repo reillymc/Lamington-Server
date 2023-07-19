@@ -6,4 +6,5 @@ module.exports = {
     globalTeardown: "./tests/teardown.ts",
     testTimeout: 200000,
     watchAll: false,
+    collectCoverageFrom: ["./src/**"],
 };

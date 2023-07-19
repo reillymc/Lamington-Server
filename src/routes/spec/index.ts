@@ -45,7 +45,6 @@ interface ResponseBodyBase {
 }
 
 export type BaseResponse<T = null> = T extends null ? ResponseBodyBase : ResponseBodyBase & { data?: T };
-export type BaseResponseV2<T = null> = BaseResponse<T>;
 export type BasePaginatedResponse<T = null> = BaseResponse<T> & { page?: number; nextPage?: number };
 
 export const AttachmentEndpoint = {

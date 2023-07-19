@@ -251,7 +251,7 @@ router.delete<DeletePlannerRequestParams, DeletePlannerResponse, DeletePlannerRe
 );
 
 /**
- * POST request to create a planner meal.
+ * POST request to save a planner meal.
  */
 router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMealRequestBody>(
     PlannerEndpoint.postPlannerMeal,

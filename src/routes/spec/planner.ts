@@ -62,8 +62,8 @@ export type GetPlannersService = (request: GetPlannersRequest) => GetPlannersRes
 // Get planner
 export type GetPlannerRequestParams = BaseRequestParams<{
     [plannerIdParam]: Planner["plannerId"];
-    [yearParam]: number;
-    [monthParam]: number;
+    [yearParam]?: number;
+    [monthParam]?: number;
 }>;
 export type GetPlannerRequestBody = BaseRequestBody;
 

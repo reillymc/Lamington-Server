@@ -205,7 +205,7 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
                 new AppError({
                     status: 400,
                     code: "INSUFFICIENT_DATA",
-                    message: "Insufficient data to save a book.",
+                    message: "Insufficient data to save a list item.",
                 })
             );
         }

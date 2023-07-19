@@ -105,11 +105,10 @@ export interface CreateBookParams extends Pick<Book, "bookId" | "name" | "descri
 const saveBooks: SaveService<CreateBookParams> = async params => {
     const books = EnsureArray(params);
 
-    const data = books.map(({ bookId, ...params }) => ({ bookId: bookId ?? Uuid(), ...params })).filter(Undefined);
-    const bookIds = data.map(({ bookId }) => bookId);
+    const bookIds = books.map(({ bookId }) => bookId);
 
-    const bookData: Book[] = data.map(({ members, ...bookItem }) => bookItem);
-    const memberData: CreateBookMemberParams[] = data.flatMap(({ bookId, members }) => ({
+    const bookData: Book[] = books.map(({ members, ...bookItem }) => bookItem);
+    const memberData: CreateBookMemberParams[] = books.flatMap(({ bookId, members }) => ({
         bookId,
         members:
             members?.map(({ userId, allowEditing }) => ({

@@ -96,7 +96,7 @@ router.post<PostCookListMealRequestParams, PostCookListMealResponse, PostCookLis
     }
 );
 /**
- * DELETE request to delete a planner meal.
+ * DELETE request to delete a cook list meal.
  */
 router.delete<DeleteCookListMealRequestParams, DeleteCookListMealResponse, DeleteCookListMealRequestBody>(
     CookListEndpoint.deleteMeal,
