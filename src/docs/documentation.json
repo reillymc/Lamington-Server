@@ -3,14 +3,24 @@
     "info": {
         "title": "Lamington API",
         "description": "API for data used by the Lamington app.",
-        "version": "1.0.7",
+        "version": "1.0.8",
         "contact": {
             "email": "reilly@mackenzie-cree.net"
         }
     },
     "servers": [
         {
-            "url": "http://localhost:3000"
+            "description": "Production server",
+            "url": "https://lamingtonapi.reillymc.com/v1"
+        },
+        {
+            "description": "Development server",
+            "url": "http://localhost:3000/v1"
+        }
+    ],
+    "security": [
+        {
+            "bearerAuth": []
         }
     ],
     "tags": [
@@ -27,19 +37,22 @@
                 "properties": {
                     "email": {
                         "type": "string",
-                        "default": "test@localhost.com"
+                        "default": "test"
                     },
                     "firstName": {
                         "type": "string",
-                        "default": "Testificate"
+                        "default": "Alice"
                     },
                     "lastName": {
                         "type": "string",
-                        "default": "Man"
+                        "default": "Lamington"
                     },
                     "password": {
                         "type": "string",
-                        "default": "password123"
+                        "default": ""
+                    },
+                    "status": {
+                        "type": "string"
                     }
                 },
                 "required": ["email", "firstName", "lastName", "password"]
@@ -262,13 +275,8 @@
             }
         }
     },
-    "security": [
-        {
-            "bearerAuth": []
-        }
-    ],
     "paths": {
-        "/users/register": {
+        "/auth/register": {
             "post": {
                 "tags": ["Authentication"],
                 "summary": "Registration page",
@@ -322,7 +330,7 @@
                 }
             }
         },
-        "/users/login": {
+        "/auth/login": {
             "post": {
                 "tags": ["Authentication"],
                 "summary": "Login page",
@@ -337,11 +345,11 @@
                                 "properties": {
                                     "email": {
                                         "type": "string",
-                                        "example": "test@localhost.com"
+                                        "example": "test"
                                     },
                                     "password": {
                                         "type": "string",
-                                        "example": "password123"
+                                        "example": ""
                                     }
                                 }
                             }

@@ -17,9 +17,12 @@ export const ingredientsRequestToRows = ({
 
     return ingredients
         .flatMap(({ items }) => items)
-        .map(item => ({
-            ...item,
-            createdBy,
-        }))
+        .map(
+            (item): Partial<Ingredient> => ({
+                ingredientId: item.ingredientId,
+                name: item.name,
+                createdBy,
+            })
+        )
         .filter(Undefined);
 };

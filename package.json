@@ -4,7 +4,7 @@
     "private": true,
     "main": "src/app.ts",
     "scripts": {
-        "build": "tsc && cp -R src/docs dist/docs && cp package.json dist/package.json && cp package-lock.json dist/package-lock.json",
+        "build": "rm -rf dist/ && tsc && cp -R src/docs dist/docs && cp package.json dist/package.json && cp package-lock.json dist/package-lock.json",
         "start": "NODE_ENV=development nodemon src/index.ts",
         "prod": "NODE_ENV=production node index.js",
         "test": "NODE_ENV=test jest --runInBand --forceExit --coverage"

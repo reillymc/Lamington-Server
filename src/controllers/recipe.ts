@@ -401,7 +401,9 @@ export type RecipeActions = typeof RecipeActions;
 const readInternal: ReadService<Recipe, "recipeId"> = async params => {
     const recipeIds = EnsureArray(params).map(({ recipeId }) => recipeId);
 
-    const query = db(lamington.recipe).select(recipe.createdBy, recipe.photo).whereIn(recipe.recipeId, recipeIds);
+    const query = db(lamington.recipe)
+        .select(recipe.recipeId, recipe.createdBy, recipe.photo)
+        .whereIn(recipe.recipeId, recipeIds);
 
     return query;
 };
