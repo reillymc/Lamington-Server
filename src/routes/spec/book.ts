@@ -26,6 +26,8 @@ export type Book = {
     name: string;
     createdBy: Pick<User, "userId" | "firstName">;
     description?: string;
+    color?: string;
+    icon?: string;
     accepted?: boolean;
     canEdit?: boolean;
     recipes?: Recipes;
@@ -54,6 +56,8 @@ export type PostBookRequestBody = BaseRequestBody<{
     name: Book["name"];
     bookId: Book["bookId"];
     description?: Book["description"];
+    color?: Book["color"];
+    icon?: Book["icon"];
     members?: Array<EntityMember>;
     createdBy: string;
 }>;

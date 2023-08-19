@@ -1,10 +1,8 @@
 import express from "express";
-import { v4 as Uuid } from "uuid";
 
 import { AppError, MessageAction, userMessage } from "../services";
 import { BookActions, BookMemberActions, BookRecipeActions, InternalBookActions, RecipeActions } from "../controllers";
 import {
-    Book,
     BookEndpoint,
     Books,
     DeleteBookMemberRequestBody,
@@ -31,9 +29,9 @@ import {
     PostBookRequestBody,
     PostBookRequestParams,
     PostBookResponse,
-    RequestValidator,
 } from "./spec";
-import { BisectOnValidPartialItems, EnsureDefinedArray, Undefined } from "../utils";
+import { EnsureDefinedArray, Undefined } from "../utils";
+import { prepareGetBookResponseBody, validatePostBookBody } from "./helpers";
 
 const router = express.Router();
 
@@ -49,15 +47,7 @@ router.get<GetBooksRequestParams, GetBooksResponse, GetBooksRequestBody>(
         try {
             const results = await BookActions.readMy({ userId });
             const data: Books = Object.fromEntries(
-                results.map(book => [
-                    book.bookId,
-                    {
-                        ...book,
-                        createdBy: { userId: book.createdBy, firstName: book.createdByName },
-                        accepted: book.createdBy === userId ? true : !!book.accepted,
-                        canEdit: book.createdBy === userId ? true : !!book.canEdit,
-                    },
-                ])
+                results.map(book => [book.bookId, prepareGetBookResponseBody(book, userId)])
             );
 
             return res.status(200).json({ error: false, data });
@@ -108,19 +98,7 @@ router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(
             const { result: bookRecipesResponse } = await RecipeActions.queryByBook({ userId, bookId });
             const bookMembersResponse = await BookMemberActions.read({ entityId: bookId });
 
-            const data: Book = {
-                ...book,
-                createdBy: { userId: book.createdBy, firstName: book.createdByName },
-                recipes: Object.fromEntries(bookRecipesResponse.map(recipe => [recipe.recipeId, recipe])),
-                members: Object.fromEntries(
-                    bookMembersResponse.map(({ userId, canEdit, firstName, lastName }) => [
-                        userId,
-                        { userId, allowEditing: !!canEdit, firstName, lastName },
-                    ])
-                ),
-                accepted: book.createdBy === userId ? true : !!book.accepted,
-                canEdit: book.createdBy === userId ? true : !!book.canEdit,
-            };
+            const data = prepareGetBookResponseBody(book, userId, bookRecipesResponse, bookMembersResponse);
 
             return res.status(200).json({ error: false, data });
         } catch (e: unknown) {
@@ -499,19 +477,3 @@ router.delete<DeleteBookMemberRequestParams, DeleteBookMemberResponse, DeleteBoo
 );
 
 export default router;
-
-const validatePostBookBody: RequestValidator<PostBookRequestBody> = ({ data }, userId) => {
-    const filteredData = EnsureDefinedArray(data);
-
-    return BisectOnValidPartialItems(filteredData, item => {
-        if (!item.name) return;
-
-        return {
-            bookId: item.bookId ?? Uuid(),
-            name: item.name,
-            description: item.description,
-            members: item.members,
-            createdBy: userId,
-        };
-    });
-};

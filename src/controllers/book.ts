@@ -31,7 +31,7 @@ interface GetMyBooksParams {
     userId: string;
 }
 
-interface ReadBookRow extends Pick<Book, "bookId" | "name" | "description"> {
+interface ReadBookRow extends Pick<Book, "bookId" | "name" | "description" | "customisations"> {
     createdBy: User["userId"];
     createdByName: User["firstName"];
     accepted: BookMember["accepted"];
@@ -48,6 +48,7 @@ const readMyBooks = async ({ userId }: GetMyBooksParams): ReadResponse<ReadBookR
             book.bookId,
             book.name,
             book.description,
+            book.customisations,
             book.createdBy,
             `${user.firstName} as createdByName`,
             bookMember.accepted,
@@ -81,6 +82,7 @@ const readBooks = async ({ bookId, userId }: GetBookParams): ReadResponse<ReadBo
             book.bookId,
             book.name,
             book.description,
+            book.customisations,
             book.createdBy,
             `${user.firstName} as createdByName`,
             bookMember.accepted,
