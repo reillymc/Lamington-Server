@@ -44,16 +44,52 @@ VALUES (
         NULL
     ),
     (
+        'd58e5bf0-2fe7-4356-a9fa-17a6feec5764',
+        'Vegetarian',
+        NULL,
+        '038e3305-b679-4822-bc57-6e6fda8eb766'
+    ),
+    (
+        '570ac8b5-82f0-4fab-8b29-2c8b48c9e78b',
+        'Vegan',
+        NULL,
+        '038e3305-b679-4822-bc57-6e6fda8eb766'
+    ),
+    (
+        'd8f703fe-b0b5-43f4-ae15-7ecce6bf03c5',
+        'Gluten free',
+        NULL,
+        '038e3305-b679-4822-bc57-6e6fda8eb766'
+    ),
+    (
+        '0656cd4b-ebdf-4217-b113-3590b3df1077',
+        'Dairy free',
+        NULL,
+        '038e3305-b679-4822-bc57-6e6fda8eb766'
+    ),
+    (
         '5508c6d9-49c7-462e-9e45-f6e6c78abe6c',
         'Difficulty',
         'Skill / time / effort required to cook recipe',
         NULL
     ),
     (
-        '6c46dcdf-1afe-4e29-9b4b-542306ae5a99',
-        'Measurement',
-        'Ingredient measurement units',
-        NULL
+        '28b6995b-811f-44bb-af9f-768d078e010e',
+        'Hard',
+        NULL,
+        '5508c6d9-49c7-462e-9e45-f6e6c78abe6c'
+    ),
+    (
+        '95a5cc8c-3f69-4652-9810-6597002899bd',
+        'Easy',
+        NULL,
+        '5508c6d9-49c7-462e-9e45-f6e6c78abe6c'
+    ),
+    (
+        'ff629e93-cc6a-4dbf-bc5e-6969f89eed47',
+        'Medium',
+        NULL,
+        '5508c6d9-49c7-462e-9e45-f6e6c78abe6c'
     ),
     (
         '7a2dc44b-1eac-4810-8a1c-322cb14ce5c8',
@@ -62,22 +98,10 @@ VALUES (
         NULL
     ),
     (
-        'bb5f54d1-47a6-4a6a-a6e8-6b2d8b37e7d5',
-        'Cusine',
-        'Recipe styles',
-        NULL
-    ),
-    (
-        'e6167e53-7115-475d-ade0-6261e486f4ce',
-        'Cost',
-        'Price range to cook based on ingredients',
-        NULL
-    ),
-    (
-        '06158727-fc25-4d99-b356-7a36a07a8993',
-        '$',
-        'Budget',
-        'e6167e53-7115-475d-ade0-6261e486f4ce'
+        '61ee0516-1987-4b6b-a59a-251cc07b2995',
+        'Dinner',
+        NULL,
+        '7a2dc44b-1eac-4810-8a1c-322cb14ce5c8'
     ),
     (
         '13aaec7b-70bd-4f9b-ac77-ffcea1e081cb',
@@ -98,52 +122,22 @@ VALUES (
         '7a2dc44b-1eac-4810-8a1c-322cb14ce5c8'
     ),
     (
-        '28b6995b-811f-44bb-af9f-768d078e010e',
-        'Hard',
-        NULL,
-        '5508c6d9-49c7-462e-9e45-f6e6c78abe6c'
-    ),
-    (
-        '3147336a-2903-4e63-b3a4-3d0b770acf52',
-        'Gram[|s]',
-        NULL,
-        '6c46dcdf-1afe-4e29-9b4b-542306ae5a99'
-    ),
-    (
-        '46839022-4057-4722-b2c0-0f376b5ad2f9',
-        '$$',
-        'Mid-range',
-        'e6167e53-7115-475d-ade0-6261e486f4ce'
-    ),
-    (
-        '570ac8b5-82f0-4fab-8b29-2c8b48c9e78b',
-        'Vegan',
-        NULL,
-        '038e3305-b679-4822-bc57-6e6fda8eb766'
-    ),
-    (
-        '59d12a4d-f9f5-4939-bdcd-f581511e87bc',
-        'Tablespoon[|s]',
-        'Tbsp[|s]',
-        '6c46dcdf-1afe-4e29-9b4b-542306ae5a99'
-    ),
-    (
-        '61ee0516-1987-4b6b-a59a-251cc07b2995',
-        'Dinner',
+        '4a021129-6fe1-48a9-ae53-014a16a8fe74',
+        'Dessert',
         NULL,
         '7a2dc44b-1eac-4810-8a1c-322cb14ce5c8'
     ),
     (
-        '95a5cc8c-3f69-4652-9810-6597002899bd',
-        'Easy',
-        NULL,
-        '5508c6d9-49c7-462e-9e45-f6e6c78abe6c'
+        '2f6fb407-9914-4636-9ed4-2fe7259130f6',
+        'Preparation',
+        'A sub-recipe / component used in other recipes',
+        '7a2dc44b-1eac-4810-8a1c-322cb14ce5c8'
     ),
     (
-        'c403667a-343f-4af0-9bbe-d8350afdb474',
-        '$$$',
-        'Expensive',
-        'e6167e53-7115-475d-ade0-6261e486f4ce'
+        'bb5f54d1-47a6-4a6a-a6e8-6b2d8b37e7d5',
+        'Cusine',
+        'Recipe styles',
+        NULL
     ),
     (
         'c5db7042-4aae-49fd-ae09-0e7514a2a369',
@@ -152,34 +146,39 @@ VALUES (
         'bb5f54d1-47a6-4a6a-a6e8-6b2d8b37e7d5'
     ),
     (
-        'd8f703fe-b0b5-43f4-ae15-7ecce6bf03c5',
-        'Gluten free',
-        NULL,
-        '038e3305-b679-4822-bc57-6e6fda8eb766'
-    ),
-    (
-        'dcc05093-5e18-4d87-a238-a2160396a70e',
-        'Cup[|s]',
-        NULL,
-        '6c46dcdf-1afe-4e29-9b4b-542306ae5a99'
-    ),
-    (
         'dsfe4567-ghkf-sdf3-a456-32661417vcx0',
         'Indian',
         NULL,
         'bb5f54d1-47a6-4a6a-a6e8-6b2d8b37e7d5'
     ),
     (
-        'ff629e93-cc6a-4dbf-bc5e-6969f89eed47',
-        'Medium',
-        NULL,
-        '5508c6d9-49c7-462e-9e45-f6e6c78abe6c'
-    ),
-    (
         'xbcv4567-cbxv-fsad-kljw-4xcbv4174000',
         'Italian',
         NULL,
         'bb5f54d1-47a6-4a6a-a6e8-6b2d8b37e7d5'
+    ) (
+        'e6167e53-7115-475d-ade0-6261e486f4ce',
+        'Cost',
+        'Price range to cook based on ingredients',
+        NULL
+    ),
+    (
+        '06158727-fc25-4d99-b356-7a36a07a8993',
+        '$',
+        'Budget',
+        'e6167e53-7115-475d-ade0-6261e486f4ce'
+    ),
+    (
+        '46839022-4057-4722-b2c0-0f376b5ad2f9',
+        '$$',
+        'Mid-range',
+        'e6167e53-7115-475d-ade0-6261e486f4ce'
+    ),
+    (
+        'c403667a-343f-4af0-9bbe-d8350afdb474',
+        '$$$',
+        'Expensive',
+        'e6167e53-7115-475d-ade0-6261e486f4ce'
     );
 
 INSERT INTO `ingredient`

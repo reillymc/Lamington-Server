@@ -9,10 +9,12 @@ services:
         environment:
             - MYSQL_ROOT_PASSWORD=$DB_PASSWORD
             - MYSQL_DATABASE=$DB_NAME
+            - MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1
         ports:
             - $DB_LOCAL_PORT:$DB_DOCKER_PORT
         volumes:
             - db:/var/lib/mysql
+            - ../database/schema:/docker-entrypoint-initdb.d/:ro
 
     mariadb_testdb:
         image: mariadb:10.4
@@ -21,6 +23,7 @@ services:
         environment:
             - MYSQL_ROOT_PASSWORD=$DB_PASSWORD
             - MYSQL_DATABASE=$DB_NAME
+            - MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1
         ports:
             - $DB_TEST_LOCAL_PORT:$DB_TEST_DOCKER_PORT
         volumes:

@@ -1,0 +1,42 @@
+{
+    "cSpell.words": [
+        "fieldname",
+        "knexfile",
+        "openapi",
+        "originalname",
+        "prestart",
+        "sslcert",
+        "wcaserver"
+    ],
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "mariadb",
+            "port": 3306,
+            "driver": "MariaDB",
+            "name": "Development",
+            "database": "lamingtondb",
+            "username": "root",
+            "password": ""
+        },
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "mariadb_testdb",
+            "port": 3306,
+            "driver": "MariaDB",
+            "name": "Testing",
+            "database": "lamingtondb",
+            "username": "root",
+            "password": ""
+        }
+    ]
+}
