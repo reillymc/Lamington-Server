@@ -9,6 +9,7 @@ import db, {
     CreateQuery,
     DeleteResponse,
     lamington,
+    ReadMyService,
     ReadQuery,
     ReadResponse,
     SaveService,
@@ -23,7 +24,7 @@ import { BookMemberActions, CreateBookMemberParams } from "./bookMember";
  * @returns an array of all books in the database
  */
 const readAllBooks = async (): ReadResponse<Book> => {
-    const query = db<Book>(lamington.book).select(book.bookId, book.name, book.description, book.createdBy);
+    const query = db<Book>(lamington.book).select(book.bookId, book.name, book.createdBy);
     return query;
 };
 
@@ -42,7 +43,7 @@ interface ReadBookRow extends Pick<Book, "bookId" | "name" | "description" | "cu
  * Get all books from a user
  * @returns an array of all books created by given user
  */
-const readMyBooks = async ({ userId }: GetMyBooksParams): ReadResponse<ReadBookRow> => {
+const readMyBooks: ReadMyService<ReadBookRow> = async ({ userId }) => {
     const query = db<ReadBookRow>(lamington.book)
         .select(
             book.bookId,
@@ -96,7 +97,8 @@ const readBooks = async ({ bookId, userId }: GetBookParams): ReadResponse<ReadBo
     return query;
 };
 
-export interface CreateBookParams extends Pick<Book, "bookId" | "name" | "description" | "createdBy"> {
+export interface CreateBookParams
+    extends Pick<Book, "bookId" | "name" | "description" | "customisations" | "createdBy"> {
     members?: Array<EntityMember>;
 }
 

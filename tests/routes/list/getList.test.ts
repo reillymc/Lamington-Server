@@ -7,13 +7,19 @@ import {
     CleanTables,
     CreateUsers,
     PrepareAuthenticatedUser,
-    randomBit,
     randomNumber,
     randomBoolean,
 } from "../../helpers";
 import { GetListResponse } from "../../../src/routes/spec";
 import { ListActions, ListMemberActions, ListItemActions } from "../../../src/controllers";
-import { ListItem, ServiceParams } from "../../../src/database";
+import { ServiceParams } from "../../../src/database";
+import { ListCustomisations } from "../../../src/routes/helpers";
+
+const getListCustomisations = (): ListCustomisations => {
+    return {
+        icon: uuid(),
+    };
+};
 
 beforeEach(async () => {
     await CleanTables("list", "user", "list_item", "list_member");
@@ -58,10 +64,13 @@ test("should not return list user doesn't have access to", async () => {
 test("should return correct list details for list id", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
 
+    const customisations = getListCustomisations();
+
     const createListParams = {
         listId: uuid(),
         name: uuid(),
         description: uuid(),
+        customisations: JSON.stringify(customisations),
         createdBy: user.userId,
     } satisfies ServiceParams<ListActions, "save">;
 
@@ -75,6 +84,7 @@ test("should return correct list details for list id", async () => {
 
     expect(data?.listId).toEqual(createListParams.listId);
     expect(data?.name).toEqual(createListParams.name);
+    expect(data?.icon).toEqual(customisations.icon);
     expect(data?.description).toEqual(createListParams.description);
     expect(data?.createdBy.userId).toEqual(createListParams.createdBy);
     expect(data?.createdBy.firstName).toEqual(user.firstName);

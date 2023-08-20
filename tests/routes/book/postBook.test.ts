@@ -15,6 +15,7 @@ import { BookActions, BookMemberActions } from "../../../src/controllers";
 import { PostBookRequestBody } from "../../../src/routes/spec";
 import { EntityMember } from "../../../src/controllers/entity";
 import { ServiceParams } from "../../../src/database";
+import { parseBookCustomisations } from "../../../src/routes/helpers";
 
 beforeEach(async () => {
     await CleanTables("book", "user", "book_member");
@@ -91,6 +92,8 @@ test("should create book", async () => {
             bookId: uuid(),
             name: uuid(),
             description: uuid(),
+            color: uuid(),
+            icon: uuid(),
             members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean() })),
         })),
     } satisfies PostBookRequestBody;
@@ -111,8 +114,12 @@ test("should create book", async () => {
         const expectedBook = books.data.find(({ bookId }) => bookId === book.bookId);
         const actualBookMembers = savedBookMembers.filter(({ bookId }) => bookId === book.bookId);
 
+        const { color, icon } = parseBookCustomisations(book.customisations);
+
         expect(book?.name).toEqual(expectedBook!.name);
         expect(book?.description).toEqual(expectedBook!.description);
+        expect(color).toEqual(expectedBook!.color);
+        expect(icon).toEqual(expectedBook!.icon);
         expect(book?.createdBy).toEqual(user.userId);
         expect(actualBookMembers.length).toEqual(expectedBook!.members.length);
 

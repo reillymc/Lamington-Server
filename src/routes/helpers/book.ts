@@ -50,17 +50,17 @@ export const prepareGetBookResponseBody = (
 });
 
 type BookCustomisationsV1 = Pick<Book, "color" | "icon">;
-type BookCustomisations = BookCustomisationsV1;
+export type BookCustomisations = BookCustomisationsV1;
 const DefaultBookColor = "variant1";
 const DefaultBookIcon = "variant1";
 
-const parseBookCustomisations = (customisations?: string): BookCustomisations => {
+export const parseBookCustomisations = (customisations?: string): BookCustomisations => {
     const parsed = JSON.parse(customisations ?? "{}") as Partial<BookCustomisationsV1>;
 
     return { color: parsed.color ?? DefaultBookColor, icon: parsed.icon ?? DefaultBookIcon };
 };
 
-const stringifyBookCustomisations = (customisations: Partial<BookCustomisations>): string => {
+export const stringifyBookCustomisations = (customisations: Partial<BookCustomisations>): string => {
     const { color = DefaultBookColor, icon = DefaultBookIcon } = customisations;
 
     return JSON.stringify({ color, icon });

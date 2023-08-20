@@ -7,8 +7,8 @@ import { UserEndpoint } from "../../../helpers/api";
 import {
     BookRecipeActions,
     InternalBookActions,
+    InternalListActions,
     InternalPlannerMealActions,
-    ListActions,
     ListItemActions,
     PlannerActions,
     RecipeActions,
@@ -38,7 +38,7 @@ test("should create sample data for pending => registered user", async () => {
     const [updatedUser] = await UserActions.read({ userId: user.userId });
     expect(updatedUser?.status).toEqual(UserStatus.Registered);
 
-    const lists = await ListActions.readAll();
+    const lists = await InternalListActions.readAll();
     expect(lists.length).toEqual(1);
 
     const [list] = lists;

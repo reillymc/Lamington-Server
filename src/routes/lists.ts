@@ -1,5 +1,4 @@
 import express from "express";
-import { v4 as Uuid } from "uuid";
 
 import { AppError, MessageAction, userMessage } from "../services";
 import { ListActions, InternalListActions, ListItemActions, ListMemberActions } from "../controllers";
@@ -19,7 +18,6 @@ import {
     GetListsRequestBody,
     GetListsRequestParams,
     GetListsResponse,
-    List,
     ListEndpoint,
     Lists,
     PostListItemRequestBody,
@@ -32,8 +30,7 @@ import {
     PostListRequestParams,
     PostListResponse,
 } from "./spec";
-import { BisectOnValidItems, EnsureDefinedArray } from "../utils";
-import { ServiceParams } from "../database";
+import { prepareGetListResponseBody, validatePostListBody, validatePostListItemBody } from "./helpers";
 
 const router = express.Router();
 
@@ -52,16 +49,14 @@ router.get<GetListsRequestParams, GetListsResponse, GetListsRequestBody>(
                 results.map(({ listId }) => ({ listId }))
             );
 
+            const outstandingItemsDict = Object.fromEntries(
+                outstandingItemCounts.map(({ listId, count }) => [listId, count])
+            );
+
             const data: Lists = Object.fromEntries(
                 results.map(list => [
                     list.listId,
-                    {
-                        ...list,
-                        outstandingItemCount: outstandingItemCounts.find(({ listId }) => listId === list.listId)?.count,
-                        createdBy: { userId: list.createdBy, firstName: list.createdByName },
-                        accepted: list.createdBy === userId ? true : !!list.accepted,
-                        canEdit: list.createdBy === userId ? true : !!list.canEdit,
-                    },
+                    prepareGetListResponseBody(list, userId, outstandingItemsDict[list.listId]),
                 ])
             );
 
@@ -113,22 +108,7 @@ router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(
             const listItemsResponse = await ListItemActions.read({ listId });
             const listMembersResponse = await ListMemberActions.read({ entityId: listId });
 
-            const data: List = {
-                ...list,
-                createdBy: { userId: list.createdBy, firstName: list.createdByName },
-                items: listItemsResponse.filter(item => item.listId === list.listId),
-                members: Object.fromEntries(
-                    listMembersResponse.map(({ userId, canEdit, firstName, lastName }) => [
-                        userId,
-                        { userId, allowEditing: !!canEdit, firstName, lastName },
-                    ])
-                ),
-                accepted:
-                    list.createdBy === userId
-                        ? true
-                        : !!listMembersResponse.find(({ userId }) => userId === userId)?.accepted,
-                canEdit: list.createdBy === userId ? true : !!list.canEdit,
-            };
+            const data = prepareGetListResponseBody(list, userId, undefined, listItemsResponse, listMembersResponse);
 
             return res.status(200).json({ error: false, data });
         } catch (e: unknown) {
@@ -359,7 +339,7 @@ router.delete<DeleteListRequestParams, DeleteListResponse, DeleteListRequestBody
                 );
             }
 
-            await ListActions.delete({ listId });
+            await ListActions.delete(listId);
             return res.status(201).json({ error: false, message: "List deleted." });
         } catch (e: unknown) {
             next(
@@ -503,46 +483,3 @@ router.delete<DeleteListMemberRequestParams, DeleteListMemberResponse, DeleteLis
 );
 
 export default router;
-
-const validatePostListBody = ({ data }: PostListRequestBody, userId: string) => {
-    const filteredData = EnsureDefinedArray(data);
-
-    return BisectOnValidItems(filteredData, ({ listId = Uuid(), name, ...item }) => {
-        if (!name) return;
-
-        const validItem: ServiceParams<ListActions, "save"> = {
-            listId,
-            name,
-            description: item.description,
-            members: item.members,
-            createdBy: userId,
-        };
-
-        return validItem;
-    });
-};
-
-const validatePostListItemBody = ({ data }: PostListItemRequestBody, userId: string, listId: string) => {
-    const filteredData = EnsureDefinedArray(data);
-
-    return BisectOnValidItems(filteredData, ({ itemId = Uuid(), name, ...item }) => {
-        if (!name) return;
-
-        const parsedDate = item.dateAdded ? new Date(item.dateAdded) : new Date();
-
-        const validItem: ServiceParams<ListItemActions, "save"> = {
-            itemId,
-            listId,
-            name,
-            amount: item.amount,
-            completed: item.completed ?? false,
-            dateAdded: parsedDate.toISOString().slice(0, 19).replace("T", " "),
-            ingredientId: item.ingredientId,
-            notes: item.notes,
-            unit: item.unit,
-            createdBy: userId,
-        };
-
-        return validItem;
-    });
-};

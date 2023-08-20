@@ -13,6 +13,14 @@ import {
 import { GetBookResponse } from "../../../src/routes/spec";
 import { BookActions, BookMemberActions, BookRecipeActions, RecipeActions } from "../../../src/controllers";
 import { BookRecipe, ServiceParams } from "../../../src/database";
+import { BookCustomisations } from "../../../src/routes/helpers";
+
+const getBookCustomisations = (): BookCustomisations => {
+    return {
+        color: uuid(),
+        icon: uuid(),
+    };
+};
 
 beforeEach(async () => {
     await CleanTables("book", "user", "recipe", "book_recipe", "book_member");
@@ -57,10 +65,13 @@ test("should not return book user doesn't have access to", async () => {
 test("should return correct book details for book id", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
 
+    const customisations = getBookCustomisations();
+
     const createBookParams = {
         bookId: uuid(),
         name: uuid(),
         description: uuid(),
+        customisations: JSON.stringify(customisations),
         createdBy: user.userId,
     } satisfies ServiceParams<BookActions, "save">;
 
@@ -76,6 +87,8 @@ test("should return correct book details for book id", async () => {
     expect(data?.name).toEqual(createBookParams.name);
     expect(data?.description).toEqual(createBookParams.description);
     expect(data?.createdBy.userId).toEqual(createBookParams.createdBy);
+    expect(data?.color).toEqual(customisations.color);
+    expect(data?.icon).toEqual(customisations.icon);
     expect(data?.createdBy.firstName).toEqual(user.firstName);
 });
 

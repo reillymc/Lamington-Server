@@ -26,6 +26,7 @@ export type List = {
     name: string;
     createdBy: Pick<User, "userId" | "firstName">;
     description: string | undefined;
+    icon?: string;
     outstandingItemCount?: number;
     accepted?: boolean;
     canEdit?: boolean;
@@ -68,6 +69,7 @@ export type PostListRequestParams = BaseRequestParams;
 export type PostListRequestBody = BaseRequestBody<{
     name?: List["name"];
     listId?: List["listId"];
+    icon?: List["icon"];
     description?: List["description"];
     members?: Array<EntityMember>;
 }>;
