@@ -65,9 +65,10 @@ const readLists: ReadService<ReadListRow, "listId", Pick<User, "userId">> = asyn
             .andWhere(qb => qb.where({ [list.createdBy]: userId }).orWhere({ [listMember.userId]: userId }))
             .orWhere({ [list.createdBy]: userId, [list.listId]: listId })
             .leftJoin(lamington.user, list.createdBy, user.userId)
-            .leftJoin(lamington.listMember, list.listId, listMember.listId);
+            .leftJoin(lamington.listMember, list.listId, listMember.listId)
+            .first();
 
-        response.push(result);
+        if (result) response.push(result);
     }
 
     return response;

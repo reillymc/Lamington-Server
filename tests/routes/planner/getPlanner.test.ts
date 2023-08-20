@@ -2,11 +2,27 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { PlannerEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomCount } from "../../helpers";
+import {
+    PlannerEndpoint,
+    CleanTables,
+    CreateUsers,
+    PrepareAuthenticatedUser,
+    randomCount,
+    randomNumber,
+    randomBoolean,
+    TEST_ITEM_COUNT,
+} from "../../helpers";
 import { GetPlannerResponse } from "../../../src/routes/spec";
 import { PlannerActions, PlannerMemberActions, PlannerMealActions } from "../../../src/controllers";
-import { CreatePlannerParams } from "../../../src/controllers/planner";
 import { PlannerMeal } from "../../../src/controllers/plannerMeal";
+import { PlannerCustomisations } from "../../../src/routes/helpers";
+import { ServiceParams } from "../../../src/database";
+
+const getPlannerCustomisations = (): PlannerCustomisations => {
+    return {
+        color: uuid(),
+    };
+};
 
 beforeEach(async () => {
     await CleanTables("planner", "user", "planner_meal", "planner_member");
@@ -23,7 +39,7 @@ test("route should require authentication", async () => {
 });
 
 test("should return 404 for non-existant planner", async () => {
-    const [token, user] = await PrepareAuthenticatedUser();
+    const [token] = await PrepareAuthenticatedUser();
 
     const res = await request(app).get(PlannerEndpoint.getPlanner(uuid())).set(token);
 
@@ -38,9 +54,8 @@ test("should not return planner user doesn't have access to", async () => {
         plannerId: uuid(),
         name: uuid(),
         description: uuid(),
-        variant: uuid(),
         createdBy: plannerOwner!.userId,
-    } satisfies CreatePlannerParams;
+    } satisfies ServiceParams<PlannerActions, "save">;
 
     await PlannerActions.save(createPlannerParams);
 
@@ -52,13 +67,15 @@ test("should not return planner user doesn't have access to", async () => {
 test("should return correct planner details for planner id", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
 
+    const customisations = getPlannerCustomisations();
+
     const createPlannerParams = {
         plannerId: uuid(),
         name: uuid(),
         description: uuid(),
-        variant: uuid(),
+        customisations: JSON.stringify(customisations),
         createdBy: user.userId,
-    } satisfies CreatePlannerParams;
+    } satisfies ServiceParams<PlannerActions, "save">;
 
     await PlannerActions.save(createPlannerParams);
 
@@ -71,7 +88,7 @@ test("should return correct planner details for planner id", async () => {
     expect(data?.plannerId).toEqual(createPlannerParams.plannerId);
     expect(data?.name).toEqual(createPlannerParams.name);
     expect(data?.description).toEqual(createPlannerParams.description);
-    expect(data?.variant).toEqual(createPlannerParams.variant);
+    expect(data?.color).toEqual(customisations.color);
     expect(data?.createdBy.userId).toEqual(createPlannerParams.createdBy);
     expect(data?.createdBy.firstName).toEqual(user.firstName);
 });
@@ -84,10 +101,9 @@ test("should return a planner that a user is a member of", async () => {
         plannerId: uuid(),
         name: uuid(),
         description: uuid(),
-        variant: uuid(),
         createdBy: plannerOwner!.userId,
         members: [{ userId: user.userId }],
-    } satisfies CreatePlannerParams;
+    } satisfies ServiceParams<PlannerActions, "save">;
 
     await PlannerActions.save(createPlannerParams);
 
@@ -98,6 +114,42 @@ test("should return a planner that a user is a member of", async () => {
     const { data } = res.body as GetPlannerResponse;
 
     expect(data?.plannerId).toEqual(createPlannerParams.plannerId);
+    expect(data?.canEdit).toEqual(false);
+});
+
+test("should return a planner that a user is a member of with correct permissions", async () => {
+    const [token, user] = await PrepareAuthenticatedUser();
+    const [plannerOwner] = await CreateUsers();
+
+    const mainPlanner = {
+        plannerId: uuid(),
+        name: uuid(),
+        description: uuid(),
+        createdBy: plannerOwner!.userId,
+        members: [{ userId: user.userId, allowEditing: false }],
+    } satisfies ServiceParams<PlannerActions, "save">;
+
+    const otherPlanners = Array.from({ length: TEST_ITEM_COUNT }).map(
+        (_, i) =>
+            ({
+                plannerId: uuid(),
+                name: uuid(),
+                description: uuid(),
+                createdBy: plannerOwner!.userId,
+                members: randomBoolean() ? [{ userId: user.userId, allowEditing: randomBoolean() }] : undefined,
+            } satisfies ServiceParams<PlannerActions, "save">)
+    );
+
+    await PlannerActions.save([mainPlanner, ...otherPlanners]);
+
+    const res = await request(app).get(PlannerEndpoint.getPlanner(mainPlanner.plannerId)).set(token);
+
+    expect(res.statusCode).toEqual(200);
+
+    const { data } = res.body as GetPlannerResponse;
+
+    expect(data?.plannerId).toEqual(mainPlanner.plannerId);
+    expect(data?.canEdit).toEqual(mainPlanner.members![0]!.allowEditing);
 });
 
 test("should return planner meals", async () => {
@@ -107,9 +159,8 @@ test("should return planner meals", async () => {
         plannerId: uuid(),
         name: uuid(),
         description: uuid(),
-        variant: uuid(),
         createdBy: user.userId,
-    } satisfies CreatePlannerParams;
+    } satisfies ServiceParams<PlannerActions, "save">;
 
     await PlannerActions.save(planner);
 
@@ -160,9 +211,8 @@ test("should return planner members", async () => {
         plannerId: uuid(),
         name: uuid(),
         description: uuid(),
-        variant: uuid(),
         createdBy: user.userId,
-    } satisfies CreatePlannerParams;
+    } satisfies ServiceParams<PlannerActions, "save">;
 
     await PlannerActions.save(planner);
 

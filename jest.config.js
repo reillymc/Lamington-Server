@@ -7,4 +7,5 @@ module.exports = {
     testTimeout: 200000,
     watchAll: false,
     collectCoverageFrom: ["./src/**"],
+    coveragePathIgnorePatterns: ["/src/docs/"],
 };

@@ -8,14 +8,14 @@ export interface Planner {
     plannerId: string;
     createdBy: string;
     name: string;
-    variant: string;
-    description: string | undefined;
+    customisations?: string;
+    description?: string;
 }
 
 export const planner = {
     plannerId: `${lamington.planner}.plannerId`,
     createdBy: `${lamington.planner}.createdBy`,
     name: `${lamington.planner}.name`,
-    variant: `${lamington.planner}.variant`,
+    customisations: `${lamington.planner}.customisations`,
     description: `${lamington.planner}.description`,
 } satisfies Table<Planner>;

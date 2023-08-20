@@ -55,9 +55,13 @@ const DefaultBookColor = "variant1";
 const DefaultBookIcon = "variant1";
 
 export const parseBookCustomisations = (customisations?: string): BookCustomisations => {
-    const parsed = JSON.parse(customisations ?? "{}") as Partial<BookCustomisationsV1>;
+    try {
+        const parsed = JSON.parse(customisations ?? "{}") as Partial<BookCustomisationsV1>;
 
-    return { color: parsed.color ?? DefaultBookColor, icon: parsed.icon ?? DefaultBookIcon };
+        return { color: parsed.color ?? DefaultBookColor, icon: parsed.icon ?? DefaultBookIcon };
+    } catch {
+        return { color: DefaultBookColor, icon: DefaultBookIcon };
+    }
 };
 
 export const stringifyBookCustomisations = (customisations: Partial<BookCustomisations>): string => {

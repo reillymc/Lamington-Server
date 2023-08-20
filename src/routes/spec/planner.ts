@@ -27,7 +27,7 @@ export type Planner = {
     plannerId: string;
     createdBy: Pick<User, "userId" | "firstName">;
     name: string;
-    variant: string;
+    color: string;
     description: string | undefined;
     accepted?: boolean;
     canEdit?: boolean;
@@ -76,7 +76,7 @@ export type PostPlannerRequestParams = BaseRequestParams;
 export type PostPlannerRequestBody = BaseRequestBody<{
     name?: Planner["name"];
     plannerId?: Planner["plannerId"];
-    variant?: Planner["variant"];
+    color?: Planner["color"];
     description?: Planner["description"];
     members?: Array<EntityMember>;
 }>;

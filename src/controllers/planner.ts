@@ -36,8 +36,7 @@ interface GetMyPlannersParams {
     userId: string;
 }
 
-interface ReadPlannerRow extends Pick<Planner, "plannerId" | "name" | "variant" | "description"> {
-    createdBy: User["userId"];
+interface ReadPlannerRow extends Pick<Planner, "plannerId" | "name" | "customisations" | "createdBy" | "description"> {
     createdByName: User["firstName"];
     accepted: PlannerMember["accepted"];
     canEdit: PlannerMember["canEdit"];
@@ -52,7 +51,7 @@ const readMyPlanners = async ({ userId }: GetMyPlannersParams): ReadResponse<Rea
         .select(
             planner.plannerId,
             planner.name,
-            planner.variant,
+            planner.customisations,
             planner.description,
             planner.createdBy,
             `${user.firstName} as createdByName`,
@@ -77,19 +76,16 @@ interface GetPlannerParams {
  * @returns an array of planners matching given ids
  */
 const readPlanners = async ({ plannerId, userId }: GetPlannerParams): ReadResponse<ReadPlannerRow> => {
-    // if (!Array.isArray(params)) {
-    //     params = [params];
-    // }
-    // const plannerIds = params.map(({ plannerId }) => plannerId);
-
     const query = db<ReadPlannerRow>(lamington.planner)
         .select(
             planner.plannerId,
             planner.name,
-            planner.variant,
+            planner.customisations,
             planner.description,
             planner.createdBy,
-            `${user.firstName} as createdByName`
+            `${user.firstName} as createdByName`,
+            plannerMember.accepted,
+            plannerMember.canEdit
         )
         .whereIn(
             planner.plannerId,
@@ -98,25 +94,19 @@ const readPlanners = async ({ plannerId, userId }: GetPlannerParams): ReadRespon
                 .where({ [plannerMember.userId]: userId, [plannerMember.plannerId]: plannerId })
         )
         .orWhere({ [planner.createdBy]: userId, [planner.plannerId]: plannerId })
-        .leftJoin(lamington.user, planner.createdBy, user.userId);
+        .leftJoin(lamington.user, planner.createdBy, user.userId)
+        .leftJoin(lamington.plannerMember, planner.plannerId, plannerMember.plannerId);
 
     return query;
 };
-
-export interface CreatePlannerParams {
-    plannerId: string;
-    description: string | undefined;
-    name: string;
-    variant: string;
-    createdBy: string;
-    members?: Array<EntityMember>;
-}
 
 /**
  * Creates a new planner from params
  * @returns the newly created planners
  */
-const savePlanners = async (planners: CreateQuery<CreatePlannerParams>): CreateResponse<Planner> => {
+const savePlanners = async (
+    planners: CreateQuery<Planner & { members?: Array<EntityMember> }>
+): CreateResponse<Planner> => {
     if (!Array.isArray(planners)) {
         planners = [planners];
     }
@@ -142,7 +132,7 @@ const savePlanners = async (planners: CreateQuery<CreatePlannerParams>): CreateR
     if (memberData.length > 0) await PlannerMemberActions.save(memberData, { preserveAccepted: true, trimNotIn: true });
 
     return db<Planner>(lamington.planner)
-        .select(planner.plannerId, planner.name, planner.variant, planner.description, planner.createdBy)
+        .select(planner.plannerId, planner.name, planner.customisations, planner.description, planner.createdBy)
         .whereIn(planner.plannerId, plannerIds);
 };
 
@@ -179,7 +169,7 @@ const readPlannersInternal = async (params: ReadQuery<ReadPlannerInternalParams>
     const plannerIds = params.map(({ plannerId }) => plannerId);
 
     const query = db<Planner>(lamington.planner)
-        .select(planner.plannerId, planner.name, planner.variant, planner.description, planner.createdBy)
+        .select(planner.plannerId, planner.name, planner.customisations, planner.description, planner.createdBy)
         .whereIn(planner.plannerId, plannerIds);
     return query;
 };

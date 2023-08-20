@@ -1,5 +1,4 @@
 import express from "express";
-import { v4 as Uuid } from "uuid";
 
 import { AppError, MessageAction, userMessage } from "../services";
 import { InternalPlannerActions, PlannerActions, PlannerMemberActions, PlannerMealActions } from "../controllers";
@@ -27,13 +26,11 @@ import {
     PostPlannerRequestBody,
     PostPlannerRequestParams,
     PostPlannerResponse,
-    Planner,
     GetPlannerRequestBody,
     GetPlannerRequestParams,
     GetPlannerResponse,
 } from "./spec";
-import { ServiceParams } from "../database";
-import { BisectOnValidItems, EnsureDefinedArray } from "../utils";
+import { prepareGetPlannerResponseBody, validatePostPlannerBody, validatePostPlannerMealBody } from "./helpers";
 
 const router = express.Router();
 
@@ -49,15 +46,7 @@ router.get<GetPlannersRequestParams, GetPlannersResponse, GetPlannersRequestBody
         try {
             const results = await PlannerActions.readMy({ userId });
             const data: Planners = Object.fromEntries(
-                results.map(planner => [
-                    planner.plannerId,
-                    {
-                        ...planner,
-                        createdBy: { userId: planner.createdBy, firstName: planner.createdByName },
-                        accepted: planner.createdBy === userId ? true : !!planner.accepted,
-                        canEdit: planner.createdBy === userId ? true : !!planner.canEdit,
-                    },
-                ])
+                results.map(planner => [planner.plannerId, prepareGetPlannerResponseBody(planner, userId)])
             );
 
             return res.status(200).json({ error: false, data });
@@ -115,25 +104,7 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
                     ? await PlannerMealActions.read({ plannerId, year: parsedYear, month: parsedMonth })
                     : undefined;
 
-            const data: Planner = {
-                ...planner,
-                createdBy: { userId: planner.createdBy, firstName: planner.createdByName },
-                members: Object.fromEntries(
-                    plannerMembersResponse.map(({ userId, canEdit, firstName, lastName }) => [
-                        userId,
-                        { userId, allowEditing: !!canEdit, firstName, lastName },
-                    ])
-                ),
-                accepted:
-                    planner.createdBy === userId
-                        ? true
-                        : !!plannerMembersResponse.find(({ userId }) => userId === userId)?.accepted,
-                canEdit:
-                    planner.createdBy === userId
-                        ? true
-                        : !!plannerMembersResponse.find(({ userId }) => userId === userId)?.canEdit,
-                meals: plannerMealsResponse,
-            };
+            const data = prepareGetPlannerResponseBody(planner, userId, plannerMealsResponse, plannerMembersResponse);
 
             return res.status(200).json({ error: false, data });
         } catch (e: unknown) {
@@ -512,45 +483,3 @@ router.delete<DeletePlannerMemberRequestParams, DeletePlannerMemberResponse, Del
 );
 
 export default router;
-
-const validatePostPlannerBody = ({ data }: PostPlannerRequestBody, userId: string) => {
-    const filteredData = EnsureDefinedArray(data);
-
-    return BisectOnValidItems(filteredData, ({ plannerId = Uuid(), name, variant, ...item }) => {
-        if (!name || !variant) return;
-
-        const validItem: ServiceParams<PlannerActions, "save"> = {
-            plannerId,
-            name,
-            variant,
-            description: item.description,
-            members: item.members,
-            createdBy: userId,
-        };
-
-        return validItem;
-    });
-};
-
-const validatePostPlannerMealBody = ({ data }: PostPlannerMealRequestBody, userId: string, plannerId: string) => {
-    const filteredData = EnsureDefinedArray(data);
-
-    return BisectOnValidItems(filteredData, ({ id = Uuid(), dayOfMonth, month, meal, year, ...item }) => {
-        if (!dayOfMonth || !month || !meal || !year) return;
-
-        const validItem: ServiceParams<PlannerMealActions, "save"> = {
-            id,
-            meal,
-            year,
-            month,
-            dayOfMonth,
-            plannerId,
-            createdBy: userId,
-            recipeId: item.recipeId,
-            description: item.description,
-            source: item.source,
-        };
-
-        return validItem;
-    });
-};

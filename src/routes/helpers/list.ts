@@ -84,9 +84,13 @@ export type ListCustomisations = ListCustomisationsV1;
 const DefaultListIcon = "variant1";
 
 export const parseListCustomisations = (customisations?: string): ListCustomisations => {
-    const parsed = JSON.parse(customisations ?? "{}") as Partial<ListCustomisationsV1>;
+    try {
+        const parsed = JSON.parse(customisations ?? "{}") as Partial<ListCustomisationsV1>;
 
-    return { icon: parsed.icon ?? DefaultListIcon };
+        return { icon: parsed.icon ?? DefaultListIcon };
+    } catch {
+        return { icon: DefaultListIcon };
+    }
 };
 
 export const stringifyListCustomisations = (customisations: Partial<ListCustomisations>): string => {

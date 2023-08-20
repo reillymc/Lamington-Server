@@ -11,9 +11,16 @@ import {
     randomCount,
 } from "../../helpers";
 import { PlannerActions, PlannerMemberActions } from "../../../src/controllers";
-import { CreatePlannerParams } from "../../../src/controllers/planner";
 import { PostPlannerRequestBody } from "../../../src/routes/spec";
 import { EntityMember } from "../../../src/controllers/entity";
+import { ServiceParams } from "../../../src/database";
+import { PlannerCustomisations, parsePlannerCustomisations } from "../../../src/routes/helpers/planner";
+
+const getPlannerCustomisations = (): PlannerCustomisations => {
+    return {
+        color: uuid(),
+    };
+};
 
 beforeEach(async () => {
     await CleanTables("planner", "user", "planner_member");
@@ -37,9 +44,8 @@ test("should not allow editing if not planner owner", async () => {
         plannerId: uuid(),
         name: uuid(),
         description: uuid(),
-        variant: uuid(),
         createdBy: plannerOwner!.userId,
-    } satisfies CreatePlannerParams;
+    } satisfies ServiceParams<PlannerActions, "save">;
 
     await PlannerActions.save(planner);
 
@@ -47,7 +53,7 @@ test("should not allow editing if not planner owner", async () => {
         .post(PlannerEndpoint.postPlanner)
         .set(token)
         .send({
-            data: { plannerId: planner.plannerId, name: uuid(), variant: uuid() },
+            data: { plannerId: planner.plannerId, name: uuid() },
         } satisfies PostPlannerRequestBody);
 
     expect(res.statusCode).toEqual(403);
@@ -61,9 +67,8 @@ test("should not allow editing if planner member but not planner owner", async (
         plannerId: uuid(),
         name: uuid(),
         description: uuid(),
-        variant: uuid(),
         createdBy: plannerOwner!.userId,
-    } satisfies CreatePlannerParams;
+    } satisfies ServiceParams<PlannerActions, "save">;
 
     await PlannerActions.save(planner);
     await PlannerMemberActions.save({
@@ -81,7 +86,7 @@ test("should not allow editing if planner member but not planner owner", async (
         .post(PlannerEndpoint.postPlanner)
         .set(token)
         .send({
-            data: { plannerId: planner.plannerId, name: uuid(), variant: uuid() },
+            data: { plannerId: planner.plannerId, name: uuid() },
         } satisfies PostPlannerRequestBody);
 
     expect(res.statusCode).toEqual(403);
@@ -95,7 +100,7 @@ test("should create planner", async () => {
         data: {
             name: uuid(),
             description: uuid(),
-            variant: uuid(),
+            color: uuid(),
             members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean() })),
         },
     } satisfies Partial<PostPlannerRequestBody>;
@@ -111,8 +116,10 @@ test("should create planner", async () => {
     const [savedPlanner] = savedPlanners;
     const savedPlannerMembers = await PlannerMemberActions.read({ entityId: savedPlanner!.plannerId });
 
+    const { color } = parsePlannerCustomisations(savedPlanner?.customisations);
+
     expect(savedPlanner?.name).toEqual(planner.data.name);
-    expect(savedPlanner?.variant).toEqual(planner.data.variant);
+    expect(color).toEqual(planner.data.color);
     expect(savedPlanner?.description).toEqual(planner.data.description);
     expect(savedPlanner?.createdBy).toEqual(user.userId);
     expect(savedPlannerMembers.length).toEqual(planner.data.members!.length);
@@ -129,13 +136,15 @@ test("should create planner", async () => {
 test("should save updated planner details as planner owner", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
 
+    const customisations = getPlannerCustomisations();
+
     const planner = {
         plannerId: uuid(),
         name: uuid(),
         description: uuid(),
-        variant: uuid(),
+        customisations: JSON.stringify(getPlannerCustomisations()),
         createdBy: user.userId,
-    } satisfies CreatePlannerParams;
+    } satisfies ServiceParams<PlannerActions, "save">;
 
     await PlannerActions.save(planner);
 
@@ -144,7 +153,7 @@ test("should save updated planner details as planner owner", async () => {
             plannerId: planner.plannerId,
             name: uuid(),
             description: uuid(),
-            variant: uuid(),
+            color: uuid(),
         },
     } satisfies PostPlannerRequestBody;
 
@@ -154,8 +163,10 @@ test("should save updated planner details as planner owner", async () => {
 
     const [savedPlanner] = await PlannerActions.read({ plannerId: planner.plannerId, userId: user.userId });
 
+    const { color } = parsePlannerCustomisations(savedPlanner?.customisations);
+
     expect(savedPlanner?.name).toEqual(updatedPlanner.data!.name);
-    expect(savedPlanner?.variant).toEqual(updatedPlanner.data!.variant);
+    expect(color).toEqual(updatedPlanner.data!.color);
     expect(savedPlanner?.description).toEqual(updatedPlanner.data!.description);
     expect(savedPlanner?.plannerId).toEqual(planner.plannerId);
     expect(savedPlanner?.createdBy).toEqual(planner.createdBy);
@@ -175,7 +186,6 @@ test("should save additional planner members", async () => {
         createdBy: user.userId,
         name: uuid(),
         description: uuid(),
-        variant: uuid(),
         members: initialMembers,
     });
 
@@ -215,7 +225,6 @@ test("should remove some planner members", async () => {
         createdBy: user.userId,
         name: uuid(),
         description: uuid(),
-        variant: uuid(),
         members,
     });
 
@@ -249,7 +258,6 @@ test("should remove all planner members", async () => {
         createdBy: user.userId,
         name: uuid(),
         description: uuid(),
-        variant: uuid(),
         members: members.map(({ userId }) => ({ userId })),
     });
 
