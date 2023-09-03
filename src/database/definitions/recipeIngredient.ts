@@ -14,17 +14,17 @@ export interface RecipeIngredient {
     /**
      * Used when linking an ingredient item
      */
-    ingredientId: string | undefined;
+    ingredientId?: string;
 
     /**
      * Used when linking another recipe as an ingredient
      */
-    subrecipeId: string | undefined;
-    index: number | undefined;
-    unit: string | undefined;
-    amount: number | undefined;
-    multiplier: number | undefined;
-    description: string | undefined;
+    subrecipeId?: string;
+    index?: number;
+    unit?: string;
+    amount?: number;
+    multiplier?: number;
+    description?: string;
 }
 
 export const recipeIngredient: Table<RecipeIngredient> = {

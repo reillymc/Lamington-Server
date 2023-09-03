@@ -2,15 +2,13 @@
 import { RecipeIngredients } from "../../routes/spec";
 
 // DB Specs
-import { DefaultSection, RecipeIngredient } from "../../database";
-import { IngredientReadByRecipeIdResponse } from "../recipeIngredient";
-import { SectionsReadByRecipeIdResponse } from "../recipeSection";
+import { DefaultSection, RecipeIngredient, RecipeSection } from "../../database";
 
 import { Undefined } from "../../utils";
 
 export const recipeIngredientRowsToResponse = (
-    ingredients: Array<IngredientReadByRecipeIdResponse>,
-    sections: Array<SectionsReadByRecipeIdResponse>
+    ingredients: Array<RecipeIngredient>,
+    sections: Array<RecipeSection>
 ): RecipeIngredients => {
     const recipeIngredients: RecipeIngredients = sections
         .sort((a, b) => (a.name === DefaultSection ? -1 : a.index - b.index))
@@ -20,8 +18,7 @@ export const recipeIngredientRowsToResponse = (
             description,
             items: ingredients
                 .filter(ingredient => ingredient.sectionId === sectionId)
-                .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-                .map(({ recipeName, ingredientName, ...rest }) => ({ ...rest, name: ingredientName ?? recipeName })),
+                .sort((a, b) => (a.index ?? 0) - (b.index ?? 0)),
         }))
         .filter(({ items, name }) => (name === DefaultSection ? true : items.length));
 

@@ -10,6 +10,7 @@ import {
     randomNumber,
     randomBoolean,
     TEST_ITEM_COUNT,
+    CleanAllTables,
 } from "../../helpers";
 import {
     GetAllRecipesResponse,
@@ -19,7 +20,13 @@ import {
     RecipeMethodStep,
     RecipeTags,
 } from "../../../src/routes/spec";
-import { RecipeActions, TagActions } from "../../../src/controllers";
+import {
+    IngredientActions,
+    RecipeActions,
+    RecipeIngredientActions,
+    RecipeSectionActions,
+    TagActions,
+} from "../../../src/controllers";
 import { ServiceParams } from "../../../src/database";
 import config from "../../../src/config";
 import { Undefined, randomElement } from "../../../src/utils";
@@ -120,11 +127,11 @@ const assertRecipeTagsAreEqual = (tags1: RecipeTags = {}, tags2: RecipeTags = {}
 };
 
 beforeEach(async () => {
-    await CleanTables("recipe", "user", "recipe_ingredient", "ingredient", "tag");
+    await CleanAllTables();
 });
 
 afterAll(async () => {
-    await CleanTables("recipe", "user", "recipe_ingredient", "ingredient", "tag");
+    await CleanAllTables();
 });
 
 test("route should require authentication", async () => {
@@ -507,6 +514,205 @@ test("should respect category filtering", async () => {
         .filter(recipe => recipe.tags.some(({ tagId }) => tagsToFilterBy.includes(tagId)))
         .map(({ recipeId }) => recipeId)
         .sort();
+
+    const actualRecipeIds = Object.values(data!)
+        .map(({ recipeId }) => recipeId)
+        .sort();
+
+    expect(actualRecipeIds).toEqual(expectedRecipeIds);
+});
+
+test("should respect ingredient filtering", async () => {
+    const [token, user] = await PrepareAuthenticatedUser();
+
+    const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
+        () =>
+            ({
+                recipeId: uuid(),
+                name: uuid(),
+                createdBy: user.userId,
+                prepTime: randomNumber(5),
+                public: 1,
+            } satisfies ServiceParams<RecipeActions, "save">)
+    );
+
+    const ingredients = Array.from({ length: randomNumber(TEST_ITEM_COUNT * 2, TEST_ITEM_COUNT) }).map(
+        () =>
+            ({
+                ingredientId: uuid(),
+                name: uuid(),
+                createdBy: user.userId,
+            } satisfies ServiceParams<IngredientActions, "save">)
+    );
+
+    const recipeSections = recipes.map(
+        recipe =>
+            ({
+                recipeId: recipe.recipeId,
+                sections: [
+                    {
+                        sectionId: "default",
+                        name: uuid(),
+                        description: uuid(),
+                        index: randomNumber(),
+                    },
+                ],
+            } satisfies ServiceParams<RecipeSectionActions, "save">)
+    );
+
+    const recipeIngredients = recipes.map(recipe => {
+        const randomIngredientIds = Array.from({ length: randomNumber(ingredients.length / 4) }).map(
+            () => randomElement(ingredients)!.ingredientId
+        );
+        return {
+            recipeId: recipe.recipeId,
+            ingredients: randomIngredientIds.map(ingredientId => ({
+                ingredientId,
+                description: uuid(),
+                amount: 1,
+                id: uuid(),
+                sectionId: "default",
+            })),
+        } satisfies ServiceParams<RecipeIngredientActions, "save">;
+    });
+
+    const ingredientsToFilterBy = ingredients
+        .slice(0, randomNumber(ingredients.length / 2))
+        .map(({ ingredientId }) => ingredientId);
+
+    await IngredientActions.save(ingredients);
+    await RecipeActions.save(recipes);
+    await RecipeSectionActions.save(recipeSections);
+    await RecipeIngredientActions.save(recipeIngredients);
+
+    const res = await request(app)
+        .get(RecipeEndpoint.getAllRecipes({ ingredients: ingredientsToFilterBy }))
+        .set(token);
+
+    expect(res.statusCode).toEqual(200);
+
+    const { data } = res.body as GetAllRecipesResponse;
+
+    const expectedRecipeIds = recipeIngredients
+        .filter(recipe => recipe.ingredients.some(({ ingredientId }) => ingredientsToFilterBy.includes(ingredientId)))
+        .map(({ recipeId }) => recipeId)
+        .sort();
+
+    const actualRecipeIds = Object.values(data!)
+        .map(({ recipeId }) => recipeId)
+        .sort();
+
+    expect(actualRecipeIds).toEqual(expectedRecipeIds);
+});
+
+test("should respect ingredient and category filtering together", async () => {
+    const [token, user] = await PrepareAuthenticatedUser();
+
+    const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
+        () =>
+            ({
+                recipeId: uuid(),
+                name: uuid(),
+                createdBy: user.userId,
+                prepTime: randomNumber(5),
+                public: 1,
+            } satisfies ServiceParams<RecipeActions, "save">)
+    );
+
+    const ingredients = Array.from({ length: randomNumber(TEST_ITEM_COUNT * 2, TEST_ITEM_COUNT) }).map(
+        () =>
+            ({
+                ingredientId: uuid(),
+                name: uuid(),
+                createdBy: user.userId,
+            } satisfies ServiceParams<IngredientActions, "save">)
+    );
+
+    const tags = Array.from({ length: randomNumber(TEST_ITEM_COUNT, TEST_ITEM_COUNT / 2) }).map(
+        () =>
+            ({
+                tagId: uuid(),
+                name: uuid(),
+                description: uuid(),
+            } satisfies ServiceParams<TagActions, "save">)
+    );
+
+    const recipeSections = recipes.map(
+        recipe =>
+            ({
+                recipeId: recipe.recipeId,
+                sections: [
+                    {
+                        sectionId: "default",
+                        name: uuid(),
+                        description: uuid(),
+                        index: randomNumber(),
+                    },
+                ],
+            } satisfies ServiceParams<RecipeSectionActions, "save">)
+    );
+
+    const recipeIngredients = recipes.map(recipe => {
+        const randomIngredientIds = Array.from({ length: randomNumber(ingredients.length / 4) }).map(
+            () => randomElement(ingredients)!.ingredientId
+        );
+        return {
+            recipeId: recipe.recipeId,
+            ingredients: randomIngredientIds.map(ingredientId => ({
+                ingredientId,
+                description: uuid(),
+                amount: 1,
+                id: uuid(),
+                sectionId: "default",
+            })),
+        } satisfies ServiceParams<RecipeIngredientActions, "save">;
+    });
+
+    const recipeTags = recipes.map(
+        recipe =>
+            ({ recipeId: recipe.recipeId, tags: [randomElement(tags)!] } satisfies ServiceParams<
+                RecipeTagActions,
+                "save"
+            >)
+    );
+
+    const ingredientsToFilterBy = ingredients
+        .slice(0, randomNumber(ingredients.length / 2))
+        .map(({ ingredientId }) => ingredientId);
+
+    const tagsToFilterBy = tags.slice(0, randomNumber(tags.length / 2)).map(({ tagId }) => tagId);
+
+    await IngredientActions.save(ingredients);
+    await TagActions.save(tags);
+    await RecipeActions.save(recipes);
+    await RecipeSectionActions.save(recipeSections);
+    await RecipeIngredientActions.save(recipeIngredients);
+    await RecipeTagActions.save(recipeTags);
+
+    const res = await request(app)
+        .get(
+            RecipeEndpoint.getAllRecipes({
+                ingredients: ingredientsToFilterBy,
+                categories: tagsToFilterBy,
+            })
+        )
+        .set(token);
+
+    expect(res.statusCode).toEqual(200);
+
+    const { data } = res.body as GetAllRecipesResponse;
+
+    const expectedRecipeIdByIngredient = recipeIngredients
+        .filter(recipe => recipe.ingredients.some(({ ingredientId }) => ingredientsToFilterBy.includes(ingredientId)))
+        .map(({ recipeId }) => recipeId)
+        .sort();
+
+    const expectedRecipeIdByTag = recipeTags
+        .filter(recipe => recipe.tags.some(({ tagId }) => tagsToFilterBy.includes(tagId)))
+        .map(({ recipeId }) => recipeId)
+        .sort();
+
+    const expectedRecipeIds = expectedRecipeIdByIngredient.filter(recipeId => expectedRecipeIdByTag.includes(recipeId));
 
     const actualRecipeIds = Object.values(data!)
         .map(({ recipeId }) => recipeId)

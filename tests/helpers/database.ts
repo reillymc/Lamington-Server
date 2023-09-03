@@ -32,6 +32,8 @@ export const CreateUsers = async ({ count = 1, status = UserStatus.Registered } 
 
 type Table = `${lamington}`;
 
+export const CleanAllTables = async () => await CleanTables(...Object.values(lamington));
+
 export const CleanTables = async (...tables: Table[]) => {
     if (tables.includes("recipe_ingredient")) await db.table("recipe_ingredient").del();
     if (tables.includes("recipe_rating")) await db.table("recipe_rating").del();

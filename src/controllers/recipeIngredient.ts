@@ -1,5 +1,14 @@
-import db, { RecipeIngredient, lamington, recipeIngredient, ingredient, ReadResponse, recipe } from "../database";
-import { Undefined } from "../utils";
+import db, {
+    RecipeIngredient,
+    lamington,
+    recipeIngredient,
+    ingredient,
+    recipe,
+    SaveService,
+    Recipe,
+    QueryService,
+} from "../database";
+import { EnsureArray, Undefined } from "../utils";
 
 /**
  * Delete all RecipeIngredient rows for specified recipeId EXCEPT for the list of ingredient ids provided
@@ -26,25 +35,31 @@ const insertRows = async (recipeIngredients: RecipeIngredient[]) =>
  * @param recipeId recipe to modify
  * @param recipeIngredients ingredients to include in recipe
  */
-const save = async (recipeId: string, recipeIngredients: RecipeIngredient[]) => {
-    const ingredientIds = recipeIngredients.map(({ id }) => id).filter(Undefined);
+const save: SaveService<
+    Pick<Recipe, "recipeId"> & { ingredients: Array<Omit<RecipeIngredient, "recipeId">> }
+> = async params => {
+    const recipeIngredients = EnsureArray(params);
 
-    await deleteExcessRows(recipeId, ingredientIds);
-    if (recipeIngredients.length > 0) await insertRows(recipeIngredients);
-};
+    for (const { recipeId, ingredients } of recipeIngredients) {
+        await deleteExcessRows(recipeId, ingredients.map(({ id }) => id).filter(Undefined));
+    }
 
-export type IngredientReadByRecipeIdResponse = Omit<RecipeIngredient, "recipeId"> & {
-    recipeName?: string;
-    ingredientName?: string;
+    const ingredients = recipeIngredients.flatMap(({ recipeId, ingredients }) =>
+        ingredients.map((recipeIngredient): RecipeIngredient => ({ ...recipeIngredient, recipeId }))
+    );
+
+    if (ingredients.length > 0) await insertRows(ingredients);
+
+    return [];
 };
 
 /**
  * Get all ingredients for a recipe
  * @param recipeId recipe to retrieve ingredients from
- * @returns RecipeIngredientsResults
+ * @returns RecipeIngredient
  */
-const readByRecipeId = async (recipeId: string): ReadResponse<IngredientReadByRecipeIdResponse> =>
-    db(lamington.recipeIngredient)
+const queryByRecipeId: QueryService<RecipeIngredient, Pick<Recipe, "recipeId">> = async ({ recipeId }) => {
+    const data = await db(lamington.recipeIngredient)
         .where({ [recipeIngredient.recipeId]: recipeId })
         .select(
             recipeIngredient.id,
@@ -62,7 +77,17 @@ const readByRecipeId = async (recipeId: string): ReadResponse<IngredientReadByRe
         .leftJoin(lamington.ingredient, recipeIngredient.ingredientId, ingredient.ingredientId)
         .leftJoin(lamington.recipe, recipeIngredient.subrecipeId, recipe.recipeId);
 
+    const result = data.map(({ recipeName, ingredientName, ...rest }) => ({
+        ...rest,
+        name: ingredientName ?? recipeName,
+    }));
+
+    return { result };
+};
+
+export type RecipeIngredientActions = typeof RecipeIngredientActions;
+
 export const RecipeIngredientActions = {
-    readByRecipeId,
+    queryByRecipeId,
     save,
 };

@@ -30,11 +30,13 @@ const parseRecipesQuerySort = (sort: QueryParam) => {
 export const parseRecipeQuery = ({
     sort: rawSort,
     categories: rawCategories,
+    ingredients: rawIngredients,
     ...baseParams
 }: ToQueryParams<QueryParams>): ToQueryMetadata<QueryParams> => {
     const { page, search, order } = parseBaseQuery(baseParams);
     const sort = parseRecipesQuerySort(rawSort);
     const categories = (Array.isArray(rawCategories) ? rawCategories : [rawCategories]).filter(Undefined);
+    const ingredients = (Array.isArray(rawIngredients) ? rawIngredients : [rawIngredients]).filter(Undefined);
 
-    return { page, search, sort, order, categories };
+    return { page, search, sort, order, categories, ingredients };
 };

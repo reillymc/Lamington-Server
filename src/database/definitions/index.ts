@@ -97,6 +97,7 @@ export type DeleteResponse = Promise<number>;
 
 export type DeleteService<T extends {}, K extends keyof T> = (params: DeleteRequest<T, K>) => DeleteResponse;
 
+// Helpers
 export type ServiceParams<T extends Record<string, any>, K extends keyof T> = Exclude<Parameters<T[K]>[0], any[]>;
 
 export const PAGE_SIZE = config.database.pageSize ?? 50;

@@ -11,5 +11,7 @@ export { ListMemberActions } from "./listMember";
 export { PlannerActions, InternalPlannerActions } from "./planner";
 export { PlannerMealActions, InternalPlannerMealActions } from "./plannerMeal";
 export { PlannerMemberActions } from "./plannerMember";
+export { RecipeIngredientActions } from "./recipeIngredient";
 export { RecipeRatingActions } from "./recipeRating";
+export { RecipeSectionActions } from "./recipeSection";
 export { TagActions } from "./tag";

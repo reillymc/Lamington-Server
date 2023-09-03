@@ -15,6 +15,7 @@ import db, {
     DeleteService,
     Book,
     recipeTag,
+    recipeIngredient,
 } from "../database";
 
 import { RecipeIngredients, RecipeMethod, RecipeTags } from "../routes/spec";
@@ -56,12 +57,12 @@ const read: ReadService<ReadRecipeResponse, "recipeId", Pick<User, "userId">> = 
 
     for (const { recipeId, userId } of recipeRequests) {
         // Fetch from database
-        const [recipe, tagRows, ingredientRows, methodRows, sectionRows] = await Promise.all([
+        const [recipe, tagRows, { result: ingredientRows }, methodRows, { result: sectionRows }] = await Promise.all([
             getFullRecipe(recipeId, userId),
             RecipeTagActions.readByRecipeId(recipeId),
-            RecipeIngredientActions.readByRecipeId(recipeId),
+            RecipeIngredientActions.queryByRecipeId({ recipeId }),
             RecipeStepActions.readByRecipeId(recipeId),
-            RecipeSectionActions.readByRecipeId(recipeId),
+            RecipeSectionActions.queryByRecipeId({ recipeId }),
         ]);
 
         // Process results
@@ -106,9 +107,9 @@ type RecipeQuerySortOptions = "name" | "rating" | "time";
 
 const query: QueryService<
     QueryRecipesResult,
-    Pick<User, "userId"> & { categories?: string[] },
+    Pick<User, "userId"> & { categories?: string[]; ingredients?: string[] },
     RecipeQuerySortOptions
-> = async ({ page = 1, search, sort = "name", order = "asc", categories, userId }) => {
+> = async ({ page = 1, search, sort = "name", order = "asc", categories, ingredients, userId }) => {
     // Fetch from database
     const recipeAliasName = "recipe_1";
     const recipeAlias = Alias(recipe, lamington.recipe, recipeAliasName);
@@ -159,6 +160,18 @@ const query: QueryService<
                   )
                 : undefined
         )
+        .where(builder =>
+            ingredients?.length
+                ? builder.whereIn(
+                      recipeAlias.recipeId,
+                      db
+                          .select(recipeIngredient.recipeId)
+                          .from(lamington.recipeIngredient)
+                          .whereIn(recipeIngredient.ingredientId, ingredients)
+                          .groupBy(recipeIngredient.recipeId)
+                  )
+                : undefined
+        )
         .orderBy([{ column: sortColumn, order }, recipeAlias.recipeId])
         .limit(PAGE_SIZE + 1)
         .offset((page - 1) * PAGE_SIZE);
@@ -185,9 +198,9 @@ const query: QueryService<
 
 const queryByUser: QueryService<
     QueryRecipesResult,
-    Pick<User, "userId"> & { categories?: string[] },
+    Pick<User, "userId"> & { categories?: string[]; ingredients?: string[] },
     RecipeQuerySortOptions
-> = async ({ page = 1, search, sort = "name", order = "asc", categories, userId }) => {
+> = async ({ page = 1, search, sort = "name", order = "asc", categories, ingredients, userId }) => {
     // Fetch from database
     const recipeAliasName = "m1";
     const recipeAlias = Alias(recipe, lamington.recipe, recipeAliasName);
@@ -238,6 +251,18 @@ const queryByUser: QueryService<
                 ? builder.whereIn(
                       recipeAlias.recipeId,
                       db.select(recipeTag.recipeId).from(lamington.recipeTag).whereIn(recipeTag.tagId, categories)
+                  )
+                : undefined
+        )
+        .where(builder =>
+            ingredients
+                ? builder.whereIn(
+                      recipeAlias.recipeId,
+                      db
+                          .select(recipeIngredient.recipeId)
+                          .from(lamington.recipeIngredient)
+                          .whereIn(recipeIngredient.ingredientId, ingredients)
+                          .groupBy(recipeIngredient.recipeId)
                   )
                 : undefined
         )
@@ -355,8 +380,8 @@ const save: SaveService<
         recipeId: recipeItem.recipeId,
         rows: recipeSectionRequestToRows(recipeItem),
     }));
-    for (const recipeSections of recipesSections) {
-        if (recipeSections.rows) await RecipeSectionActions.save(recipeSections.recipeId, recipeSections.rows);
+    for (const { recipeId, rows } of recipesSections) {
+        if (rows) await RecipeSectionActions.save({ recipeId, sections: rows });
     }
 
     // Create new Ingredients rows
@@ -370,10 +395,8 @@ const save: SaveService<
         recipeId: recipeItem.recipeId,
         rows: recipeIngredientsRequestToRows(recipeItem),
     }));
-    for (const recipeIngredients of recipesIngredients) {
-        if (recipeIngredients.rows) {
-            await RecipeIngredientActions.save(recipeIngredients.recipeId, recipeIngredients.rows);
-        }
+    for (const { recipeId, rows } of recipesIngredients) {
+        if (rows) await RecipeIngredientActions.save({ recipeId, ingredients: rows });
     }
 
     // Update RecipeSteps rows
@@ -381,8 +404,8 @@ const save: SaveService<
         recipeId: recipeItem.recipeId,
         rows: recipeMethodRequestToRows(recipeItem),
     }));
-    for (const recipeSteps of recipesSteps) {
-        if (recipeSteps.rows) await RecipeStepActions.save(recipeSteps.recipeId, recipeSteps.rows);
+    for (const { recipeId, rows } of recipesSteps) {
+        if (rows) await RecipeStepActions.save(recipeId, rows);
     }
 
     // Update RecipeTags rows
@@ -390,8 +413,8 @@ const save: SaveService<
         recipeId,
         rows: recipeTagsRequestToRows(recipeId, tags),
     }));
-    for (const recipeTags of recipesTags) {
-        if (recipeTags.rows) await RecipeTagActions.save({ recipeId: recipeTags.recipeId, tags: recipeTags.rows });
+    for (const { recipeId, rows } of recipesTags) {
+        if (rows) await RecipeTagActions.save({ recipeId: recipeId, tags: rows });
     }
 
     // Update Recipe Rating row

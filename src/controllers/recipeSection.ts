@@ -1,4 +1,5 @@
-import db, { lamington, ReadResponse, recipeSection, RecipeSection } from "../database";
+import db, { lamington, QueryService, Recipe, recipeSection, RecipeSection, SaveService } from "../database";
+import { EnsureArray } from "../utils";
 
 /**
  * Delete all RecipeSection rows for specified recipeId EXCEPT for the list of section ids provided
@@ -28,27 +29,49 @@ const insertRows = async (recipeSections: RecipeSection[]) =>
  * @param recipeId recipe to modify
  * @param recipeSections steps to include in recipe
  */
-const updateRows = async (recipeId: string, recipeSections: RecipeSection[]) => {
-    await deleteExcessRows(
-        recipeId,
-        recipeSections.map(({ sectionId }) => sectionId)
-    );
-    await insertRows(recipeSections);
-};
+const updateRows: SaveService<
+    Pick<Recipe, "recipeId"> & { sections: Array<Omit<RecipeSection, "recipeId">> }
+> = async params => {
+    const recipeSections = EnsureArray(params);
 
-export type SectionsReadByRecipeIdResponse = Omit<RecipeSection, "recipeId">;
+    for (const { recipeId, sections } of recipeSections) {
+        await deleteExcessRows(
+            recipeId,
+            sections.map(({ sectionId }) => sectionId)
+        );
+    }
+
+    const sections = recipeSections.flatMap(({ recipeId, sections }) =>
+        sections.map((section): RecipeSection => ({ ...section, recipeId }))
+    );
+
+    if (sections.length > 0) await insertRows(sections);
+
+    return [];
+};
 
 /**
  * Get all method steps for a recipe
  * @param recipeId recipe to retrieve steps from
  * @returns RecipeSection array
  */
-const selectByRecipeId = async (recipeId: string): ReadResponse<SectionsReadByRecipeIdResponse> =>
-    db(lamington.recipeSection)
+const queryByRecipeId: QueryService<RecipeSection, Pick<Recipe, "recipeId">> = async ({ recipeId }) => {
+    const result = await db(lamington.recipeSection)
         .where({ [recipeSection.recipeId]: recipeId })
-        .select(recipeSection.sectionId, recipeSection.index, recipeSection.name, recipeSection.description);
+        .select(
+            recipeSection.recipeId,
+            recipeSection.sectionId,
+            recipeSection.index,
+            recipeSection.name,
+            recipeSection.description
+        );
+
+    return { result };
+};
+
+export type RecipeSectionActions = typeof RecipeSectionActions;
 
 export const RecipeSectionActions = {
-    readByRecipeId: selectByRecipeId,
+    queryByRecipeId,
     save: updateRows,
 };

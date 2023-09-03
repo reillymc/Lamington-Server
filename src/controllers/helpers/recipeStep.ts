@@ -2,13 +2,12 @@
 import { RecipeMethod } from "../../routes/spec";
 
 // DB Specs
-import { DefaultSection, RecipeStep } from "../../database";
-import { SectionsReadByRecipeIdResponse } from "../recipeSection";
+import { DefaultSection, RecipeSection, RecipeStep } from "../../database";
 import { StepReadByIdResponse } from "../recipeStep";
 
 export const recipeStepRowsToResponse = (
     method: Array<StepReadByIdResponse>,
-    sections: Array<SectionsReadByRecipeIdResponse>
+    sections: Array<RecipeSection>
 ): RecipeMethod => {
     const recipeMethod: RecipeMethod = sections
         .sort((a, b) => (a.name === DefaultSection ? -1 : a.index - b.index))
