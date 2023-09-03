@@ -28,10 +28,12 @@ export const parseBaseQuery = ({
     page: rawPage,
     search: rawSearch,
     sort: rawSort,
+    order: rawOrder,
 }: BasePaginatedRequestQuery): QueryMetadata => {
     const page = parsePage(rawPage);
     const search = parseSearch(rawSearch);
     const sort = parseSort(rawSort);
+    const order = rawOrder === "asc" ? "asc" : "desc";
 
-    return { page, search, sort };
+    return { page, search, sort, order };
 };

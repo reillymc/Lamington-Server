@@ -76,7 +76,7 @@ export type RecipeMethod = Array<Section<RecipeMethodStep>>;
 export type RecipeTags = { [tagGroup: string]: Partial<Tag> & { tags?: Array<Tag> } };
 
 // Get all recipes
-export type GetAllRecipesRequestQuery = BasePaginatedRequestQuery;
+export type GetAllRecipesRequestQuery = BasePaginatedRequestQuery<{ categories?: string[] }>;
 export type GetAllRecipesRequestParams = BaseRequestParams;
 export type GetAllRecipesRequestBody = BaseRequestBody;
 

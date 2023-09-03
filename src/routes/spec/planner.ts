@@ -27,7 +27,7 @@ export type Planner = {
     plannerId: string;
     createdBy: Pick<User, "userId" | "firstName">;
     name: string;
-    color: string;
+    color?: string;
     description: string | undefined;
     accepted?: boolean;
     canEdit?: boolean;

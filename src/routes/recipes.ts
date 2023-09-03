@@ -28,7 +28,7 @@ import {
 } from "./spec";
 import { BisectOnValidItems, EnsureDefinedArray } from "../utils";
 import { ServiceParams } from "../database";
-import { parseBaseQuery } from "./helpers";
+import { parseRecipeQuery } from "./helpers";
 
 const router = express.Router();
 
@@ -39,12 +39,12 @@ router.get<GetAllRecipesRequestParams, GetAllRecipesResponse, GetAllRecipesReque
     RecipeEndpoint.getAllRecipes,
     async ({ query, session }, res, next) => {
         // Extract request fields
-        const { page, search, sort } = parseBaseQuery(query);
+        const { page, ...options } = parseRecipeQuery(query);
         const { userId } = session;
 
         // Fetch and return result
         try {
-            const { result, nextPage } = await RecipeActions.query({ userId, page, search, sort });
+            const { result, nextPage } = await RecipeActions.query({ userId, page, ...options });
             const data = Object.fromEntries(result.map(row => [row.recipeId, row]));
             return res.status(200).json({ error: false, data, page, nextPage });
         } catch (e: unknown) {
@@ -65,12 +65,12 @@ router.get<GetMyRecipesRequestParams, GetMyRecipesResponse, GetMyRecipesRequestB
     RecipeEndpoint.getMyRecipes,
     async ({ query, session }, res, next) => {
         // Extract request fields
-        const { page, search, sort } = parseBaseQuery(query);
+        const { page, ...options } = parseRecipeQuery(query);
         const { userId } = session;
 
         // Fetch and return result
         try {
-            const { result, nextPage } = await RecipeActions.queryByUser({ userId, page, search, sort });
+            const { result, nextPage } = await RecipeActions.queryByUser({ userId, page, ...options });
             const data = Object.fromEntries(result.map(row => [row.recipeId, row]));
             return res.status(200).json({ error: false, data, page, nextPage });
         } catch (e: unknown) {

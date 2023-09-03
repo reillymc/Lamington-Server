@@ -60,16 +60,18 @@ export type ReadService<T extends {}, K extends keyof T = never, C extends Recor
 ) => ReadResponse<T>;
 
 // QUERY
-export type QueryMetadata = {
+export type DefaultSortOptions = "name" | "date";
+export type QueryMetadata<TSort extends string = DefaultSortOptions> = {
     page?: number;
     search?: string;
-    sort?: "name" | "date";
+    sort?: TSort;
+    order?: "asc" | "desc";
 };
 
-export type QueryRequest<R extends {}> = R & QueryMetadata;
+export type QueryRequest<R extends {}, TSort extends string = DefaultSortOptions> = R & QueryMetadata<TSort>;
 
-export type QueryService<T extends {}, R extends {} = {}> = (
-    params: QueryRequest<R>
+export type QueryService<T extends {}, R extends {} = {}, TSort extends string = DefaultSortOptions> = (
+    params: QueryRequest<R, TSort>
 ) => Promise<{ result: Array<T>; nextPage?: number }>;
 
 // READ MY

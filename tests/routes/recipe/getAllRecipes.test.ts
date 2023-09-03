@@ -9,6 +9,7 @@ import {
     PrepareAuthenticatedUser,
     randomNumber,
     randomBoolean,
+    TEST_ITEM_COUNT,
 } from "../../helpers";
 import {
     GetAllRecipesResponse,
@@ -22,6 +23,7 @@ import { RecipeActions, TagActions } from "../../../src/controllers";
 import { ServiceParams } from "../../../src/database";
 import config from "../../../src/config";
 import { Undefined, randomElement } from "../../../src/utils";
+import { RecipeTagActions } from "../../../src/controllers/recipeTag";
 
 const generateRandomRecipeIngredientSections = (): RecipeIngredients =>
     Array.from({ length: randomNumber() }).map(() => ({
@@ -359,4 +361,156 @@ test("should respect substring search", async () => {
     const { data: dataMiddle } = resMiddle.body as GetAllRecipesResponse;
 
     expect(dataMiddle![recipe.recipeId]?.recipeId).toEqual(recipe.recipeId);
+});
+
+test("should respect name sorting and ordering", async () => {
+    const [token, user] = await PrepareAuthenticatedUser();
+
+    const order = randomBoolean() ? "asc" : "desc";
+
+    const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
+        () =>
+            ({
+                recipeId: uuid(),
+                name: uuid(),
+                createdBy: user.userId,
+                public: 1,
+            } satisfies ServiceParams<RecipeActions, "save">)
+    );
+
+    await RecipeActions.save(recipes);
+
+    const res = await request(app)
+        .get(RecipeEndpoint.getAllRecipes({ sort: "name" }))
+        .set(token);
+
+    expect(res.statusCode).toEqual(200);
+
+    const { data } = res.body as GetAllRecipesResponse;
+
+    expect(Object.keys(data ?? {}).length).toEqual(TEST_ITEM_COUNT);
+
+    const recipeNames = Object.values(data!).map(({ name }) => name);
+    expect(recipeNames).toEqual(order === "asc" ? recipeNames.sort() : recipeNames.sort().reverse());
+});
+
+test("should respect rating sorting and ordering", async () => {
+    const [token, user] = await PrepareAuthenticatedUser();
+
+    const order = randomBoolean() ? "asc" : "desc";
+
+    const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
+        () =>
+            ({
+                recipeId: uuid(),
+                name: uuid(),
+                createdBy: user.userId,
+                ratingPersonal: randomNumber(),
+                public: 1,
+            } satisfies ServiceParams<RecipeActions, "save">)
+    );
+
+    await RecipeActions.save(recipes);
+
+    const res = await request(app)
+        .get(RecipeEndpoint.getAllRecipes({ sort: "rating" }))
+        .set(token);
+
+    expect(res.statusCode).toEqual(200);
+
+    const { data } = res.body as GetAllRecipesResponse;
+
+    expect(Object.keys(data ?? {}).length).toEqual(TEST_ITEM_COUNT);
+
+    const recipeRatings = Object.values(data!).map(({ ratingPersonal }) => ratingPersonal);
+    expect(recipeRatings).toEqual(order === "asc" ? recipeRatings.sort() : recipeRatings.sort().reverse());
+});
+
+test("should respect time sorting and ordering", async () => {
+    const [token, user] = await PrepareAuthenticatedUser();
+
+    const order = randomBoolean() ? "asc" : "desc";
+
+    const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
+        () =>
+            ({
+                recipeId: uuid(),
+                name: uuid(),
+                createdBy: user.userId,
+                prepTime: randomNumber(5),
+                public: 1,
+            } satisfies ServiceParams<RecipeActions, "save">)
+    );
+
+    await RecipeActions.save(recipes);
+
+    const res = await request(app)
+        .get(RecipeEndpoint.getAllRecipes({ sort: "time", order }))
+        .set(token);
+
+    expect(res.statusCode).toEqual(200);
+
+    const { data } = res.body as GetAllRecipesResponse;
+
+    expect(Object.keys(data ?? {}).length).toEqual(TEST_ITEM_COUNT);
+
+    const recipeRatings = Object.values(data!).map(({ prepTime }) => prepTime);
+    expect(recipeRatings).toEqual(order === "asc" ? recipeRatings.sort() : recipeRatings.sort().reverse());
+});
+
+test("should respect category filtering", async () => {
+    const [token, user] = await PrepareAuthenticatedUser();
+
+    const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
+        () =>
+            ({
+                recipeId: uuid(),
+                name: uuid(),
+                createdBy: user.userId,
+                prepTime: randomNumber(5),
+                public: 1,
+            } satisfies ServiceParams<RecipeActions, "save">)
+    );
+
+    const tags = Array.from({ length: randomNumber(TEST_ITEM_COUNT, TEST_ITEM_COUNT / 2) }).map(
+        () =>
+            ({
+                tagId: uuid(),
+                name: uuid(),
+                description: uuid(),
+            } satisfies ServiceParams<TagActions, "save">)
+    );
+
+    const recipeTags = recipes.map(
+        recipe =>
+            ({ recipeId: recipe.recipeId, tags: [randomElement(tags)!] } satisfies ServiceParams<
+                RecipeTagActions,
+                "save"
+            >)
+    );
+
+    const tagsToFilterBy = tags.slice(0, randomNumber(tags.length / 2)).map(({ tagId }) => tagId);
+
+    await RecipeActions.save(recipes);
+    await TagActions.save(tags);
+    await RecipeTagActions.save(recipeTags);
+
+    const res = await request(app)
+        .get(RecipeEndpoint.getAllRecipes({ categories: tagsToFilterBy }))
+        .set(token);
+
+    expect(res.statusCode).toEqual(200);
+
+    const { data } = res.body as GetAllRecipesResponse;
+
+    const expectedRecipeIds = recipeTags
+        .filter(recipe => recipe.tags.some(({ tagId }) => tagsToFilterBy.includes(tagId)))
+        .map(({ recipeId }) => recipeId)
+        .sort();
+
+    const actualRecipeIds = Object.values(data!)
+        .map(({ recipeId }) => recipeId)
+        .sort();
+
+    expect(actualRecipeIds).toEqual(expectedRecipeIds);
 });

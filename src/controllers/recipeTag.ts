@@ -1,4 +1,5 @@
-import db, { lamington, recipeTag, tag, Tag, CreateQuery, RecipeTag } from "../database";
+import db, { lamington, recipeTag, tag, Tag, CreateQuery, RecipeTag, SaveService, Recipe } from "../database";
+import { EnsureArray } from "../utils";
 
 /**
  * Delete RecipeTags from list of recipe tags
@@ -40,12 +41,21 @@ const insertRows = async (recipeTags: CreateQuery<RecipeTag>) =>
  * @param recipeId recipe to modify
  * @param recipeTags tags to include in recipe
  */
-const updateRows = async (recipeId: string, recipeTags: RecipeTag[]) => {
-    await deleteExcessRows(
-        recipeId,
-        recipeTags.map(({ tagId }) => tagId)
-    );
-    if (recipeTags.length > 0) await insertRows(recipeTags);
+const updateRows: SaveService<Pick<Recipe, "recipeId"> & { tags: Array<Pick<RecipeTag, "tagId">> }> = async params => {
+    const recipeTags = EnsureArray(params);
+
+    for (const recipeTagList of recipeTags) {
+        await deleteExcessRows(
+            recipeTagList.recipeId,
+            recipeTagList.tags.map(({ tagId }) => tagId)
+        );
+    }
+
+    const tags = recipeTags.flatMap(({ recipeId, tags }) => tags.map(({ tagId }) => ({ recipeId, tagId })));
+
+    if (tags.length) await insertRows(tags);
+
+    return [];
 };
 
 export type TagReadByRecipeIdResults = Array<RecipeTag & Pick<Tag, "parentId" | "name">>;
@@ -77,6 +87,8 @@ const readByRecipeId = async (recipeIds: string | string[]): Promise<TagReadByRe
                 )
         );
 };
+
+export type RecipeTagActions = typeof RecipeTagActions;
 
 export const RecipeTagActions = {
     readByRecipeId,

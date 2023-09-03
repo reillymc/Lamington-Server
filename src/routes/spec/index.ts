@@ -24,7 +24,7 @@ export type BaseRequest<T = null> = T extends null ? {} : T;
 
 export type BaseRequestParams<T = null> = T extends null ? {} : { [P in keyof T]: string };
 
-type LamingtonQueryParams = { page: QueryParam; sort: QueryParam; search: QueryParam };
+type LamingtonQueryParams = { page?: QueryParam; sort?: QueryParam; search?: QueryParam; order?: QueryParam };
 
 export type BasePaginatedRequestQuery<T = null> = T extends null ? LamingtonQueryParams : T & LamingtonQueryParams;
 

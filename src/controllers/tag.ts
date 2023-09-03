@@ -61,6 +61,8 @@ const createTags = async (tags: CreateQuery<Partial<Tag>>): CreateResponse<Tag> 
     return query;
 };
 
+export type TagActions = typeof TagActions;
+
 export const TagActions = {
     readAll: readAllTags,
     save: createTags,

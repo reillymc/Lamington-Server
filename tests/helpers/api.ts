@@ -31,15 +31,22 @@ import {
     uploadDirectory,
     usersEndpoint,
     CookListServices,
+    GetAllRecipesRequestQuery,
+    GetMyRecipesRequestQuery,
 } from "../../src/routes/spec";
 
 const ServerURL = "";
 const ApiVersion = "v1";
 const ApiUrl = `${ServerURL}/${ApiVersion}` as const;
 
-type Endpoint = string | ((...param: Array<string | number | undefined | LamingtonQueryParams>) => string);
+type Endpoint = string | ((...param: Array<string | number | undefined | unknown>) => string);
 
-type LamingtonQueryParams = { page?: number; sort?: string; search?: string };
+type LamingtonQueryParams<T> = Omit<T, "page"> & {
+    page?: number;
+    sort?: string;
+    search?: string;
+    direction?: string;
+};
 
 export const AttachmentEndpoint = {
     postImage: `${ApiUrl}${attachmentEndpoint}/${imageSubpath}` as const,
@@ -109,8 +116,10 @@ export const ListEndpoint = {
 export const RecipeEndpoint = {
     deleteRecipe: (recipeId: string) => `${ApiUrl}${recipeEndpoint}/${recipeId}` as const,
     getRecipe: (recipeId: string) => `${ApiUrl}${recipeEndpoint}/${recipeId}` as const,
-    getAllRecipes: (query?: LamingtonQueryParams) => `${ApiUrl}${recipeEndpoint}${appendQuery(query)}` as const,
-    getMyRecipes: (query: LamingtonQueryParams) => `${ApiUrl}${recipeEndpoint}/my${appendQuery(query)}` as const,
+    getAllRecipes: (query?: LamingtonQueryParams<GetAllRecipesRequestQuery>) =>
+        `${ApiUrl}${recipeEndpoint}${appendQuery(query)}` as const,
+    getMyRecipes: (query?: LamingtonQueryParams<GetMyRecipesRequestQuery>) =>
+        `${ApiUrl}${recipeEndpoint}/my${appendQuery(query)}` as const,
     postRecipe: `${ApiUrl}${recipeEndpoint}`,
     postRecipeRating: (recipeId: string) => `${ApiUrl}${recipeEndpoint}/${recipeId}/${rateSubpath}` as const,
 } as const satisfies Record<keyof RecipeServices, Endpoint>;
@@ -125,16 +134,25 @@ export const UserEndpoint = {
     getUsers: `${ApiUrl}${usersEndpoint}`,
 } as const satisfies Record<keyof UserServices, Endpoint>;
 
-const appendQuery = (query: LamingtonQueryParams | undefined) => {
+const appendQuery = <T extends Record<string, unknown> | undefined>(query: T) => {
     if (!query) return "";
 
-    const { page, sort, search } = query;
-    if (!page && !sort && !search) return "";
-
     let uri = "?";
-    if (page) uri = `${uri === "?" ? `${uri}&` : uri}page=${page}`;
-    if (sort) uri = `${uri === "?" ? `${uri}&` : uri}sort=${sort}`;
-    if (search) uri = `${uri === "?" ? `${uri}&` : uri}search=${search}`;
+
+    for (const [key, value] of Object.entries(query)) {
+        if (!value) continue;
+
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                uri += `${key}=${item}&`;
+            }
+        } else {
+            uri += `${key}=${value}&`;
+        }
+    }
+
+    // remove last ampersand / question mark
+    uri = uri.slice(0, -1);
 
     return uri;
 };
