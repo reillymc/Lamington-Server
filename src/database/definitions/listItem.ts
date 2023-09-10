@@ -8,7 +8,7 @@ export type ListItem = {
     itemId: string;
     listId: string;
     name: string;
-    dateAdded: string;
+    dateUpdated: string;
     completed: boolean;
     ingredientId?: string;
     unit?: string;
@@ -21,7 +21,7 @@ export type ListItemModel = {
     itemId: string;
     listId: string;
     name: string;
-    dateAdded: string;
+    dateUpdated?: string;
     completed: number; // 0 | 1
     ingredientId?: string;
     unit?: string;
@@ -32,9 +32,8 @@ export type ListItemModel = {
 export const listItem: Table<ListItem> = {
     itemId: `${lamington.listItem}.itemId`,
     listId: `${lamington.listItem}.listId`,
-    // index : `${lamington.listItem}.index`,
     name: `${lamington.listItem}.name`,
-    dateAdded: `${lamington.listItem}.dateAdded`,
+    dateUpdated: `${lamington.listItem}.dateUpdated`,
     completed: `${lamington.listItem}.completed`,
     ingredientId: `${lamington.listItem}.ingredientId`,
     unit: `${lamington.listItem}.unit`,

@@ -59,11 +59,39 @@ const countOutstandingItems = async (params: ReadQuery<CountListItemsParams>): R
     return query;
 };
 
+interface GetMostRecentModifiedDateParams {
+    listId: string;
+}
+
+interface GetMostRecentModifiedDateResponse {
+    listId: string;
+    dateUpdated: string;
+}
+
+/**
+ * Get most recent modified date for list by querying its items and returning the date of the most recently modified item
+ * @returns most recent modified date for list
+ */
+const getLatestDateUpdated = async (
+    params: ReadQuery<GetMostRecentModifiedDateParams>
+): ReadResponse<GetMostRecentModifiedDateResponse> => {
+    if (!Array.isArray(params)) {
+        params = [params];
+    }
+    const listIds = params.map(({ listId }) => listId);
+
+    const query = db(lamington.listItem)
+        .select(listItem.listId)
+        .max<GetMostRecentModifiedDateResponse[]>(listItem.dateUpdated)
+        .whereIn(listItem.listId, listIds)
+        .groupBy(listItem.listId);
+    return query;
+};
+
 interface CreateListItemParams {
     itemId: string;
     listId: string;
     name: string;
-    dateAdded: string;
     completed: boolean;
     ingredientId?: string;
     unit?: string;
@@ -120,6 +148,7 @@ export const ListItemActions = {
     read: readListItems,
     save: saveListItems,
     countOutstandingItems,
+    getLatestDateUpdated,
 };
 
 export type ListItemActions = typeof ListItemActions;

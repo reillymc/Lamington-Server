@@ -14,7 +14,6 @@ export const CreateUsers = async ({ count = 1, status = UserStatus.Registered } 
         firstName: uuid(),
         lastName: uuid(),
         password: uuid(),
-        created: new Date().toISOString().slice(0, 19).replace("T", " "),
         status,
     }));
 

@@ -6,7 +6,8 @@ VALUES (
         'T. Lamington',
         '',
         '2021-06-06 12:00:00',
-        'R'
+        'R',
+        '{}'
     ),
     (
         '3812f892-31d7-4ac8-bca0-5f5819b100cc',
@@ -15,7 +16,8 @@ VALUES (
         'E. Lamington',
         '',
         '2021-06-06 12:00:00',
-        'R'
+        'R',
+        '{}'
     ),
     (
         '4df86d9d-e2a4-4ca3-b895-6f325451b33c',
@@ -24,7 +26,8 @@ VALUES (
         'S. Lamington',
         '',
         '2021-06-06 12:00:00',
-        'A'
+        'A',
+        '{}'
     ),
     (
         '839c1893-e03b-4479-85f2-138e4d42a2e8',
@@ -33,7 +36,8 @@ VALUES (
         'D. Lamington',
         '',
         '2023-05-20 06:23:10',
-        'R'
+        'R',
+        '{}'
     );
 
 INSERT INTO `tag`
@@ -156,7 +160,8 @@ VALUES (
         'Italian',
         NULL,
         'bb5f54d1-47a6-4a6a-a6e8-6b2d8b37e7d5'
-    ) (
+    ),
+    (
         'e6167e53-7115-475d-ade0-6261e486f4ce',
         'Cost',
         'Price range to cook based on ingredients',
@@ -440,54 +445,63 @@ VALUES (
         '00ba8d00-7360-46dc-ba97-858d5bfee24b',
         '3812f892-31d7-4ac8-bca0-5f5819b100cc',
         'Example book',
+        '{}',
         NULL
     ),
     (
         '4b1e6d4d-6095-4201-b803-4f6249f0ef6f',
         '2a596f2e-d604-4a99-af8f-ffb370ca6286',
         'Lunch Ideas',
+        '{}',
         NULL
     ),
     (
         '5395c629-2251-4af5-90f0-8b0bd2b2ac73',
         '2a596f2e-d604-4a99-af8f-ffb370ca6286',
         'Testolinieousesb',
+        '{}',
         'A basic cookbookie'
     ),
     (
         '566a1593-78fa-4d73-a40e-5359b14a8b85',
         '839c1893-e03b-4479-85f2-138e4d42a2e8',
         'Healthy Dinners',
+        '{}',
         'Tasty recipes that are good for you'
     ),
     (
         '58f62e77-3a63-41bf-8d6c-bd26bf1ccb5c',
         '3812f892-31d7-4ac8-bca0-5f5819b100cc',
         'My boo',
+        '{}',
         NULL
     ),
     (
         '6e9e66ed-d39c-47f1-956b-f455e8f2e166',
         '4df86d9d-e2a4-4ca3-b895-6f325451b33c',
         'Yo',
+        '{}',
         NULL
     ),
     (
         'b7a49a84-f39a-44b0-a8db-fc3d12a23a38',
         '839c1893-e03b-4479-85f2-138e4d42a2e8',
         'Favourite Recipes',
+        '{}',
         'My top recipes to cook'
     ),
     (
         'ddcb92f8-9a00-48d1-839d-b1080c9d0263',
         '2a596f2e-d604-4a99-af8f-ffb370ca6286',
         'Hoe',
+        '{}',
         NULL
     ),
     (
         'f7d6f62e-7d1e-4b1a-a5a9-b24ed0fb4425',
         '3812f892-31d7-4ac8-bca0-5f5819b100cc',
         'Zeb',
+        '{}',
         NULL
     );
 
@@ -503,7 +517,9 @@ VALUES (
         30,
         0,
         '839c1893-e03b-4479-85f2-138e4d42a2e8',
-        0
+        0,
+        '2023-05-21 00:00:00',
+        '2023-05-20 00:00:00'
     ),
     (
         '99656745-3325-4a47-9361-caba8849a4e2',
@@ -516,7 +532,9 @@ VALUES (
         40,
         0,
         '839c1893-e03b-4479-85f2-138e4d42a2e8',
-        0
+        0,
+        '2023-06-25 00:00:00',
+        '2023-05-10 00:00:00'
     );
 
 INSERT INTO `book_recipe`
@@ -762,12 +780,14 @@ VALUES (
         '3f94889b-3125-4052-9dc1-7f41bb15971e',
         'Fruit and Vegetable Market',
         '839c1893-e03b-4479-85f2-138e4d42a2e8',
+        '{}',
         'Fresh produce'
     ),
     (
         '517959f9-02d8-42a3-9dc9-5934f68561d0',
         'My Shopping List',
         '839c1893-e03b-4479-85f2-138e4d42a2e8',
+        '{}',
         'A list of all the items I need to buy'
     );
 
@@ -775,7 +795,6 @@ INSERT INTO `list_item`
 VALUES (
         '01177fd7-89d9-44b6-a9f2-e79949451d04',
         '517959f9-02d8-42a3-9dc9-5934f68561d0',
-        0,
         'Onions',
         '2023-05-21 06:46:38',
         0,
@@ -788,7 +807,6 @@ VALUES (
     (
         '0400a0ec-c7aa-4a4a-bd38-81a4db0fed87',
         '517959f9-02d8-42a3-9dc9-5934f68561d0',
-        0,
         'Garlic',
         '2023-05-21 06:46:31',
         0,
@@ -801,7 +819,6 @@ VALUES (
     (
         '144ac6a8-38a4-4308-9cba-3f8e504bf38c',
         '517959f9-02d8-42a3-9dc9-5934f68561d0',
-        0,
         'Butter',
         '2023-05-21 06:48:38',
         0,
@@ -814,7 +831,6 @@ VALUES (
     (
         '65ec0dce-d4c7-4147-b1c4-d17a591b7994',
         '3f94889b-3125-4052-9dc1-7f41bb15971e',
-        0,
         'Spinach',
         '2023-05-21 06:51:16',
         0,
@@ -827,7 +843,6 @@ VALUES (
     (
         '76be7e77-afee-4e1d-866a-61e68ee09354',
         '517959f9-02d8-42a3-9dc9-5934f68561d0',
-        0,
         'Banana[|s]',
         '2023-05-21 06:48:14',
         0,
@@ -840,7 +855,6 @@ VALUES (
     (
         'a80b8f6f-e755-4c91-9050-68e081bf2ef7',
         '3f94889b-3125-4052-9dc1-7f41bb15971e',
-        0,
         'Apples',
         '2023-05-21 06:51:23',
         0,
@@ -853,7 +867,6 @@ VALUES (
     (
         'bdf37677-b8ca-4f38-9ff0-3a1f557d371c',
         '517959f9-02d8-42a3-9dc9-5934f68561d0',
-        0,
         'Egg[|s]',
         '2023-05-21 06:46:16',
         0,
@@ -866,7 +879,6 @@ VALUES (
     (
         'cbaaaa0a-fcd8-42fe-8ac4-1cf995f90098',
         '517959f9-02d8-42a3-9dc9-5934f68561d0',
-        0,
         'Flour',
         '2023-05-21 06:46:21',
         0,
@@ -882,7 +894,7 @@ VALUES (
         'eabedc0b-8b45-4432-9ddd-4b9855cb06ce',
         '839c1893-e03b-4479-85f2-138e4d42a2e8',
         'My Meal Planner',
-        'variant1',
+        '{}',
         'A planner for all the meals I want to cook'
     );
 

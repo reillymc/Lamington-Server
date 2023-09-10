@@ -161,7 +161,6 @@ const createDefaultUserData = async (userId: string) => {
         createdBy: userId,
         name: "Example item",
         completed: false,
-        dateAdded: new Date().toISOString().slice(0, 19).replace("T", " "),
         notes: "You can edit or delete this item by swiping left on it",
     });
 

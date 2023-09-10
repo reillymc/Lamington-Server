@@ -16,6 +16,8 @@ export interface Recipe {
     public: number;
     timesCooked?: number;
     createdBy: string;
+    dateCreated: string;
+    dateUpdated: string;
 }
 
 export type RecipeTable = Table<Recipe>;
@@ -32,4 +34,6 @@ export const recipe: RecipeTable = {
     public: `${lamington.recipe}.public`,
     createdBy: `${lamington.recipe}.createdBy`,
     timesCooked: `${lamington.recipe}.timesCooked`,
+    dateCreated: `${lamington.recipe}.dateCreated`,
+    dateUpdated: `${lamington.recipe}.dateUpdated`,
 } as const;

@@ -43,7 +43,6 @@ router.post<RegisterRequestParams, RegisterResponse, RegisterRequestBody>(
                 firstName,
                 lastName,
                 password: await hashPassword(password),
-                created: new Date().toISOString().slice(0, 19).replace("T", " "),
                 status: UserStatus.Pending,
             });
 

@@ -68,7 +68,6 @@ test("should not allow editing if list member without edit permission", async ()
         itemId: uuid(),
         name: uuid(),
         completed: randomBoolean(),
-        dateAdded: new Date().toISOString().slice(0, 19).replace("T", " "),
         listId: list.listId,
         createdBy: user.userId,
     } satisfies ServiceParams<ListItemActions, "save">;
@@ -109,7 +108,6 @@ test("should allow editing if list member with edit permission", async () => {
         itemId: uuid(),
         name: uuid(),
         completed: randomBoolean(),
-        dateAdded: new Date().toISOString().slice(0, 19).replace("T", " "),
         listId: list.listId,
         createdBy: user.userId,
     } satisfies ServiceParams<ListItemActions, "save">;
@@ -164,7 +162,6 @@ test("should allow editing if list owner", async () => {
         itemId: uuid(),
         name: uuid(),
         completed: randomBoolean(),
-        dateAdded: new Date().toISOString().slice(0, 19).replace("T", " "),
         listId: list.listId,
         createdBy: user.userId,
     } satisfies ServiceParams<ListItemActions, "save">;

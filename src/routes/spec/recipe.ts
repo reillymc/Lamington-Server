@@ -43,6 +43,8 @@ export interface Recipe {
     servings?: number;
     public?: boolean;
     timesCooked?: number;
+    dateUpdated?: string;
+    dateCreated?: string;
 }
 
 export interface RecipeIngredientItem {
@@ -75,8 +77,11 @@ export type RecipeMethod = Array<Section<RecipeMethodStep>>;
 
 export type RecipeTags = { [tagGroup: string]: Partial<Tag> & { tags?: Array<Tag> } };
 
-// Get all recipes
-export type GetAllRecipesRequestQuery = BasePaginatedRequestQuery<{ categories?: string[]; ingredients?: string[] }>;
+/**
+ * Get all recipes
+ * Query params also support ...{ [parentCategoryId: string]: string[] }[]
+ */
+export type GetAllRecipesRequestQuery = BasePaginatedRequestQuery<{ ingredients?: string[] }>;
 export type GetAllRecipesRequestParams = BaseRequestParams;
 export type GetAllRecipesRequestBody = BaseRequestBody;
 
@@ -86,8 +91,11 @@ export type GetAllRecipesRequest = BaseRequest<
 export type GetAllRecipesResponse = BasePaginatedResponse<Recipes>;
 export type GetAllRecipesService = (request: GetAllRecipesRequest) => GetAllRecipesResponse;
 
-// Get all recipes for user
-export type GetMyRecipesRequestQuery = BasePaginatedRequestQuery;
+/**
+ * Get all recipes for user
+ * Query params also support ...{ [parentCategoryId: string]: string[] }[]
+ */
+export type GetMyRecipesRequestQuery = BasePaginatedRequestQuery<{ ingredients?: string[] }>;
 export type GetMyRecipesRequestParams = BaseRequestParams;
 export type GetMyRecipesRequestBody = BaseRequestBody;
 
@@ -115,7 +123,6 @@ export type PostRecipeRequestBody = BaseRequestBody<{
     method?: RecipeMethod;
     notes?: string;
     photo?: string;
-    ratingAverage?: number;
     ratingPersonal?: number;
     tags?: RecipeTags;
     cookTime?: number;

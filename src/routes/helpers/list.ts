@@ -30,15 +30,12 @@ export const validatePostListItemBody = ({ data }: PostListItemRequestBody, user
     return BisectOnValidItems(filteredData, ({ itemId = Uuid(), name, ...item }) => {
         if (!name) return;
 
-        const parsedDate = item.dateAdded ? new Date(item.dateAdded) : new Date();
-
         const validItem: ServiceParams<ListItemActions, "save"> = {
             itemId,
             listId,
             name,
             amount: item.amount,
             completed: item.completed ?? false,
-            dateAdded: parsedDate.toISOString().slice(0, 19).replace("T", " "),
             ingredientId: item.ingredientId,
             notes: item.notes,
             unit: item.unit,
@@ -53,18 +50,29 @@ type ListResponse = Awaited<ReturnType<ListActions["read"]>>[number];
 type ListItemsResponse = Awaited<ReturnType<ListItemActions["read"]>>;
 type MembersResponse = Awaited<ReturnType<ListMemberActions["read"]>>;
 
-export const prepareGetListResponseBody = (
-    list: ListResponse,
-    userId: string,
-    outstandingItemCount?: number,
-    listItems?: ListItemsResponse,
-    members?: MembersResponse
-): List => ({
+interface PrepareGetListResponseBodyParams {
+    list: ListResponse;
+    userId: string;
+    outstandingItemCount?: number;
+    listItems?: ListItemsResponse;
+    members?: MembersResponse;
+    lastUpdated?: string;
+}
+
+export const prepareGetListResponseBody = ({
+    list,
+    userId,
+    listItems,
+    members,
+    outstandingItemCount,
+    lastUpdated,
+}: PrepareGetListResponseBodyParams): List => ({
     listId: list.listId,
     name: list.name,
     description: list.description,
-    ...parseListCustomisations(list.customisations),
     outstandingItemCount,
+    lastUpdated,
+    ...parseListCustomisations(list.customisations),
     createdBy: { userId: list.createdBy, firstName: list.createdByName },
     items: listItems ? listItems.filter(item => item.listId === list.listId) : undefined,
     members: members

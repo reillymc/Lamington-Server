@@ -45,18 +45,26 @@ router.get<GetListsRequestParams, GetListsResponse, GetListsRequestBody>(
         // Fetch and return result
         try {
             const results = await ListActions.readMy({ userId });
-            const outstandingItemCounts = await ListItemActions.countOutstandingItems(
-                results.map(({ listId }) => ({ listId }))
-            );
+            const outstandingItemCounts = await ListItemActions.countOutstandingItems(results);
+            const datesUpdated = await ListItemActions.getLatestDateUpdated(results);
 
             const outstandingItemsDict = Object.fromEntries(
                 outstandingItemCounts.map(({ listId, count }) => [listId, count])
             );
 
+            const datesUpdatedDict = Object.fromEntries(
+                datesUpdated.map(({ listId, dateUpdated }) => [listId, dateUpdated])
+            );
+
             const data: Lists = Object.fromEntries(
                 results.map(list => [
                     list.listId,
-                    prepareGetListResponseBody(list, userId, outstandingItemsDict[list.listId]),
+                    prepareGetListResponseBody({
+                        list,
+                        userId,
+                        outstandingItemCount: outstandingItemsDict[list.listId],
+                        lastUpdated: datesUpdatedDict[list.listId],
+                    }),
                 ])
             );
 
@@ -108,7 +116,12 @@ router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(
             const listItemsResponse = await ListItemActions.read({ listId });
             const listMembersResponse = await ListMemberActions.read({ entityId: listId });
 
-            const data = prepareGetListResponseBody(list, userId, undefined, listItemsResponse, listMembersResponse);
+            const data = prepareGetListResponseBody({
+                list,
+                userId,
+                listItems: listItemsResponse,
+                members: listMembersResponse,
+            });
 
             return res.status(200).json({ error: false, data });
         } catch (e: unknown) {

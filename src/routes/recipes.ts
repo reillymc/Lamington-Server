@@ -72,6 +72,7 @@ router.get<GetMyRecipesRequestParams, GetMyRecipesResponse, GetMyRecipesRequestB
         try {
             const { result, nextPage } = await RecipeActions.queryByUser({ userId, page, ...options });
             const data = Object.fromEntries(result.map(row => [row.recipeId, row]));
+
             return res.status(200).json({ error: false, data, page, nextPage });
         } catch (e: unknown) {
             next(

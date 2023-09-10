@@ -32,6 +32,7 @@ export type List = {
     canEdit?: boolean;
     items?: Array<ListItem>;
     members?: EntityMembers;
+    lastUpdated?: string;
 };
 
 /**
@@ -40,7 +41,7 @@ export type List = {
 export type ListItem = {
     itemId: string;
     name: string;
-    dateAdded: string;
+    dateUpdated: string;
     completed: boolean;
     ingredientId?: string;
     unit?: string;
@@ -83,7 +84,7 @@ export type PostListItemRequestParams = BaseRequestParams<{ [listIdParam]: List[
 export type PostListItemRequestBody = BaseRequestBody<{
     name: ListItem["name"];
     itemId: ListItem["itemId"];
-    dateAdded?: ListItem["dateAdded"];
+    dateUpdated?: ListItem["dateUpdated"];
     completed?: ListItem["completed"];
     ingredientId?: ListItem["ingredientId"];
     unit?: ListItem["unit"];

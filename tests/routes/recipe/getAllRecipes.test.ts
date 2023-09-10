@@ -4,22 +4,18 @@ import { v4 as uuid } from "uuid";
 import app from "../../../src/app";
 import {
     RecipeEndpoint,
-    CleanTables,
     CreateUsers,
     PrepareAuthenticatedUser,
     randomNumber,
     randomBoolean,
     TEST_ITEM_COUNT,
     CleanAllTables,
+    createRandomRecipeTags,
+    generateRandomRecipeIngredientSections,
+    generateRandomRecipeMethodSections,
+    assertRecipeTagsAreEqual,
 } from "../../helpers";
-import {
-    GetAllRecipesResponse,
-    RecipeIngredientItem,
-    RecipeIngredients,
-    RecipeMethod,
-    RecipeMethodStep,
-    RecipeTags,
-} from "../../../src/routes/spec";
+import { GetAllRecipesResponse, RecipeTags } from "../../../src/routes/spec";
 import {
     IngredientActions,
     RecipeActions,
@@ -29,102 +25,8 @@ import {
 } from "../../../src/controllers";
 import { ServiceParams } from "../../../src/database";
 import config from "../../../src/config";
-import { Undefined, randomElement } from "../../../src/utils";
+import { randomElement } from "../../../src/utils";
 import { RecipeTagActions } from "../../../src/controllers/recipeTag";
-
-const generateRandomRecipeIngredientSections = (): RecipeIngredients =>
-    Array.from({ length: randomNumber() }).map(() => ({
-        sectionId: uuid(),
-        name: uuid(),
-        description: uuid(),
-        items: Array.from({ length: randomNumber() }).map(
-            (): RecipeIngredientItem => ({
-                id: uuid(),
-                name: uuid(),
-                amount: randomNumber(),
-                description: uuid(),
-                multiplier: randomNumber(),
-                unit: uuid(),
-                ingredientId: uuid(),
-            })
-        ),
-    }));
-
-const generateRandomRecipeMethodSections = (): RecipeMethod =>
-    Array.from({ length: randomNumber() }).map(() => ({
-        sectionId: uuid(),
-        name: uuid(),
-        description: uuid(),
-        items: Array.from({ length: randomNumber() }).map(
-            (): RecipeMethodStep => ({
-                id: uuid(),
-                description: uuid(),
-                photo: uuid(),
-            })
-        ),
-    }));
-
-const createRandomRecipeTags = async (): Promise<RecipeTags> => {
-    const tags: RecipeTags = Object.fromEntries(
-        Array.from({ length: randomNumber() }).map(() => {
-            const parentTagId = uuid();
-            return [
-                parentTagId,
-                {
-                    tagId: parentTagId,
-                    name: uuid(),
-                    description: uuid(),
-                    tags: Array.from({ length: randomNumber() }).map(() => ({
-                        tagId: uuid(),
-                        name: uuid(),
-                        description: uuid(),
-                    })),
-                },
-            ];
-        })
-    );
-
-    const parentTags = Object.values(tags).map(({ tags, ...tag }) => tag);
-
-    const childTags = Object.values(tags)
-        .flatMap(({ tags, tagId }) => tags?.map(tag => ({ ...tag, parentId: tagId })))
-        .filter(Undefined);
-
-    await TagActions.save(parentTags);
-    await TagActions.save(childTags);
-
-    return tags;
-};
-
-const assertRecipeTagsAreEqual = (tags1: RecipeTags = {}, tags2: RecipeTags = {}) => {
-    const tagGroups1 = Object.keys(tags1);
-    const tagGroups2 = Object.keys(tags2);
-
-    expect(tagGroups1.length).toEqual(tagGroups2.length);
-
-    tagGroups1.forEach(tagGroup => {
-        const tag1 = tags1[tagGroup];
-        const tag2 = tags2[tagGroup];
-
-        expect(tag1?.tagId).toEqual(tag2?.tagId);
-        expect(tag1?.name).toEqual(tag2?.name);
-        // expect(tag1?.description).toEqual(tag2?.description); Parent tag description currently not returned
-
-        const childTags1 = tag1?.tags ?? [];
-        const childTags2 = tag2?.tags ?? [];
-
-        expect(childTags1.length).toEqual(childTags2.length);
-
-        childTags1.forEach(childTag => {
-            const childTag1 = childTags1.find(({ tagId }) => tagId === childTag.tagId);
-
-            expect(childTag1).toBeDefined();
-            expect(childTag1?.tagId).toEqual(childTag.tagId);
-            expect(childTag1?.name).toEqual(childTag.name);
-            expect(childTag1?.description).toEqual(childTag.description);
-        });
-    });
-};
 
 beforeEach(async () => {
     await CleanAllTables();
@@ -190,6 +92,7 @@ test("should return correct recipe details", async () => {
     expect(recipeResponse.source).toBeUndefined();
     expect(recipeResponse.timesCooked).toEqual(recipe.timesCooked);
     expect(recipeResponse.ratingAverage).toEqual(recipe.ratingPersonal);
+    expect(recipeResponse.dateCreated).toBeDefined();
 
     assertRecipeTagsAreEqual(recipeResponse.tags, recipe.tags);
 });
@@ -479,9 +382,16 @@ test("should respect category filtering", async () => {
             } satisfies ServiceParams<RecipeActions, "save">)
     );
 
+    const parentTag = {
+        tagId: uuid(),
+        name: uuid(),
+        description: uuid(),
+    } satisfies ServiceParams<TagActions, "save">;
+
     const tags = Array.from({ length: randomNumber(TEST_ITEM_COUNT, TEST_ITEM_COUNT / 2) }).map(
         () =>
             ({
+                parentId: parentTag.tagId,
                 tagId: uuid(),
                 name: uuid(),
                 description: uuid(),
@@ -496,14 +406,16 @@ test("should respect category filtering", async () => {
             >)
     );
 
-    const tagsToFilterBy = tags.slice(0, randomNumber(tags.length / 2)).map(({ tagId }) => tagId);
+    const tagsToFilterBy = {
+        [parentTag.tagId]: tags.slice(0, randomNumber(tags.length / 2)).map(({ tagId }) => tagId),
+    };
 
     await RecipeActions.save(recipes);
-    await TagActions.save(tags);
+    await TagActions.save([parentTag, ...tags]);
     await RecipeTagActions.save(recipeTags);
 
     const res = await request(app)
-        .get(RecipeEndpoint.getAllRecipes({ categories: tagsToFilterBy }))
+        .get(RecipeEndpoint.getAllRecipes({ ...tagsToFilterBy }))
         .set(token);
 
     expect(res.statusCode).toEqual(200);
@@ -511,7 +423,7 @@ test("should respect category filtering", async () => {
     const { data } = res.body as GetAllRecipesResponse;
 
     const expectedRecipeIds = recipeTags
-        .filter(recipe => recipe.tags.some(({ tagId }) => tagsToFilterBy.includes(tagId)))
+        .filter(recipe => recipe.tags.some(({ tagId }) => tagsToFilterBy[parentTag.tagId]!.includes(tagId)))
         .map(({ recipeId }) => recipeId)
         .sort();
 
@@ -628,9 +540,16 @@ test("should respect ingredient and category filtering together", async () => {
             } satisfies ServiceParams<IngredientActions, "save">)
     );
 
+    const parentTag = {
+        tagId: uuid(),
+        name: uuid(),
+        description: uuid(),
+    } satisfies ServiceParams<TagActions, "save">;
+
     const tags = Array.from({ length: randomNumber(TEST_ITEM_COUNT, TEST_ITEM_COUNT / 2) }).map(
         () =>
             ({
+                parentId: parentTag.tagId,
                 tagId: uuid(),
                 name: uuid(),
                 description: uuid(),
@@ -680,10 +599,12 @@ test("should respect ingredient and category filtering together", async () => {
         .slice(0, randomNumber(ingredients.length / 2))
         .map(({ ingredientId }) => ingredientId);
 
-    const tagsToFilterBy = tags.slice(0, randomNumber(tags.length / 2)).map(({ tagId }) => tagId);
+    const tagsToFilterBy = {
+        [parentTag.tagId]: tags.slice(0, randomNumber(tags.length / 2)).map(({ tagId }) => tagId),
+    };
 
     await IngredientActions.save(ingredients);
-    await TagActions.save(tags);
+    await TagActions.save([parentTag, ...tags]);
     await RecipeActions.save(recipes);
     await RecipeSectionActions.save(recipeSections);
     await RecipeIngredientActions.save(recipeIngredients);
@@ -693,7 +614,7 @@ test("should respect ingredient and category filtering together", async () => {
         .get(
             RecipeEndpoint.getAllRecipes({
                 ingredients: ingredientsToFilterBy,
-                categories: tagsToFilterBy,
+                ...tagsToFilterBy,
             })
         )
         .set(token);
@@ -708,7 +629,7 @@ test("should respect ingredient and category filtering together", async () => {
         .sort();
 
     const expectedRecipeIdByTag = recipeTags
-        .filter(recipe => recipe.tags.some(({ tagId }) => tagsToFilterBy.includes(tagId)))
+        .filter(recipe => recipe.tags.some(({ tagId }) => tagsToFilterBy[parentTag.tagId]!.includes(tagId)))
         .map(({ recipeId }) => recipeId)
         .sort();
 

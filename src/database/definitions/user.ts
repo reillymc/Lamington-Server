@@ -10,7 +10,7 @@ export type User = {
     firstName: string;
     lastName: string;
     password: string;
-    created: string;
+    dateCreated: string;
     status: string;
 };
 
@@ -20,6 +20,6 @@ export const user: Table<User> = {
     firstName: `${lamington.user}.firstName`,
     lastName: `${lamington.user}.lastName`,
     password: `${lamington.user}.password`,
-    created: `${lamington.user}.created`,
+    dateCreated: `${lamington.user}.dateCreated`,
     status: `${lamington.user}.status`,
 } as const;

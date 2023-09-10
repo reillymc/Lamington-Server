@@ -40,7 +40,10 @@ import {
 } from "./helpers";
 import { EnsureArray, Undefined } from "../utils";
 
-type ReadRecipeResponse = Pick<Recipe, "recipeId" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime"> & {
+type ReadRecipeResponse = Pick<
+    Recipe,
+    "recipeId" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime" | "dateCreated" | "dateUpdated"
+> & {
     public: boolean;
     ratingAverage: RecipeRating["rating"];
     ratingPersonal: RecipeRating["rating"];
@@ -65,6 +68,8 @@ const read: ReadService<ReadRecipeResponse, "recipeId", Pick<User, "userId">> = 
             RecipeSectionActions.queryByRecipeId({ recipeId }),
         ]);
 
+        if (!recipe) continue;
+
         // Process results
         const ingredients = recipeIngredientRowsToResponse(ingredientRows, sectionRows);
         const method = recipeStepRowsToResponse(methodRows, sectionRows);
@@ -86,7 +91,10 @@ const read: ReadService<ReadRecipeResponse, "recipeId", Pick<User, "userId">> = 
     return response;
 };
 
-type QueryRecipesResult = Pick<Recipe, "recipeId" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime"> & {
+type QueryRecipesResult = Pick<
+    Recipe,
+    "recipeId" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime" | "dateCreated"
+> & {
     public: boolean;
     ratingAverage: RecipeRating["rating"];
     ratingPersonal: RecipeRating["rating"];
@@ -96,7 +104,7 @@ type QueryRecipesResult = Pick<Recipe, "recipeId" | "name" | "photo" | "timesCoo
 
 type RecipeQueryItem = Pick<
     Recipe,
-    "recipeId" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime" | "public" | "createdBy"
+    "recipeId" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime" | "public" | "createdBy" | "dateCreated"
 > & {
     createdByName: User["firstName"];
     ratingAverage: string;
@@ -107,9 +115,9 @@ type RecipeQuerySortOptions = "name" | "rating" | "time";
 
 const query: QueryService<
     QueryRecipesResult,
-    Pick<User, "userId"> & { categories?: string[]; ingredients?: string[] },
+    Pick<User, "userId"> & { categoryGroups?: Record<string, string[]>; ingredients?: string[] },
     RecipeQuerySortOptions
-> = async ({ page = 1, search, sort = "name", order = "asc", categories, ingredients, userId }) => {
+> = async ({ page = 1, search, sort = "name", order = "asc", categoryGroups, ingredients, userId }) => {
     // Fetch from database
     const recipeAliasName = "recipe_1";
     const recipeAlias = Alias(recipe, lamington.recipe, recipeAliasName);
@@ -124,6 +132,8 @@ const query: QueryService<
         time: recipeAlias.prepTime,
     }[sort];
 
+    const categories = Object.entries(categoryGroups ?? {});
+
     const recipeList: RecipeQueryItem[] = await db<RecipeQueryItem>(`${lamington.recipe} as ${recipeAliasName}`)
         .select(
             recipeAlias.recipeId,
@@ -134,6 +144,7 @@ const query: QueryService<
             recipeAlias.prepTime,
             recipeAlias.public,
             recipeAlias.createdBy,
+            recipeAlias.dateCreated,
             `${user.firstName} as createdByName`,
             db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ratingAverage`),
             db
@@ -152,14 +163,18 @@ const query: QueryService<
         .groupBy(recipeAlias.recipeId)
         .where(builder => (search ? builder.where(recipeAlias.name, "like", `%${search}%`) : undefined))
         .where(builder => builder.where({ [recipeAlias.public]: 1 }).orWhere({ [recipeAlias.createdBy]: userId }))
-        .where(builder =>
-            categories?.length
-                ? builder.whereIn(
-                      recipeAlias.recipeId,
-                      db.select(recipeTag.recipeId).from(lamington.recipeTag).whereIn(recipeTag.tagId, categories)
-                  )
-                : undefined
-        )
+        .where(builder => {
+            if (!categories.length) return undefined;
+
+            categories.forEach(([_, categoryIds]) => {
+                builder.whereIn(
+                    recipeAlias.recipeId,
+                    db.select(recipeTag.recipeId).from(lamington.recipeTag).whereIn(recipeTag.tagId, categoryIds)
+                );
+            });
+
+            return builder;
+        })
         .where(builder =>
             ingredients?.length
                 ? builder.whereIn(
@@ -198,9 +213,9 @@ const query: QueryService<
 
 const queryByUser: QueryService<
     QueryRecipesResult,
-    Pick<User, "userId"> & { categories?: string[]; ingredients?: string[] },
+    Pick<User, "userId"> & { categoryGroups?: Record<string, string[]>; ingredients?: string[] },
     RecipeQuerySortOptions
-> = async ({ page = 1, search, sort = "name", order = "asc", categories, ingredients, userId }) => {
+> = async ({ page = 1, search, sort = "name", order = "asc", categoryGroups, ingredients, userId }) => {
     // Fetch from database
     const recipeAliasName = "m1";
     const recipeAlias = Alias(recipe, lamington.recipe, recipeAliasName);
@@ -216,6 +231,8 @@ const queryByUser: QueryService<
         time: recipeAlias.prepTime,
     }[sort];
 
+    const categories = Object.entries(categoryGroups ?? {});
+
     const recipeList: RecipeQueryItem[] = await db
         .from(`${lamington.recipe} as ${recipeAliasName}`)
         .where({ [recipeAlias.createdBy]: userId })
@@ -228,6 +245,7 @@ const queryByUser: QueryService<
             recipeAlias.prepTime,
             recipeAlias.public,
             recipeAlias.createdBy,
+            recipeAlias.dateCreated,
             `${user.firstName} as createdByName`,
             db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ratingAverage`),
             db.raw(
@@ -246,16 +264,20 @@ const queryByUser: QueryService<
         .leftJoin(lamington.user, recipeAlias.createdBy, user.userId)
         .groupBy(recipeAlias.recipeId)
         .where(builder => (search ? builder.where(recipeAlias.name, "like", `%${search}%`) : undefined))
+        .where(builder => {
+            if (!categories.length) return undefined;
+
+            categories.forEach(([_, categoryIds]) => {
+                builder.whereIn(
+                    recipeAlias.recipeId,
+                    db.select(recipeTag.recipeId).from(lamington.recipeTag).whereIn(recipeTag.tagId, categoryIds)
+                );
+            });
+
+            return builder;
+        })
         .where(builder =>
-            categories
-                ? builder.whereIn(
-                      recipeAlias.recipeId,
-                      db.select(recipeTag.recipeId).from(lamington.recipeTag).whereIn(recipeTag.tagId, categories)
-                  )
-                : undefined
-        )
-        .where(builder =>
-            ingredients
+            ingredients?.length
                 ? builder.whereIn(
                       recipeAlias.recipeId,
                       db
@@ -319,6 +341,7 @@ const queryByBook: QueryService<QueryRecipesResult, Pick<User, "userId"> & Pick<
             recipeAlias.prepTime,
             recipeAlias.public,
             recipeAlias.createdBy,
+            recipeAlias.dateCreated,
             `${user.firstName} as createdByName`,
             db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ratingAverage`),
             db.raw(
@@ -354,13 +377,15 @@ const queryByBook: QueryService<QueryRecipesResult, Pick<User, "userId"> & Pick<
     return { result };
 };
 
+type SaveRecipe = Omit<Recipe, "dateCreated" | "dateUpdated">;
+
 /**
  * Creates new recipes or updates existing ones
  *
  * Insecure - route authentication check required (user save permission on recipes)
  */
 const save: SaveService<
-    Recipe & {
+    SaveRecipe & {
         ingredients?: RecipeIngredients;
         method?: RecipeMethod;
         ratingPersonal?: number;
@@ -369,7 +394,7 @@ const save: SaveService<
 > = async params => {
     const recipes = EnsureArray(params);
 
-    const recipeData: Recipe[] = recipes.map(
+    const recipeData: SaveRecipe[] = recipes.map(
         ({ ingredients, method, tags, ratingPersonal, ...recipeItem }) => recipeItem
     );
 
@@ -456,24 +481,28 @@ export const InternalRecipeActions = {
     read: readInternal,
 };
 
-type GetFullRecipeResults = Pick<
-    Recipe,
-    | "recipeId"
-    | "name"
-    | "photo"
-    | "timesCooked"
-    | "cookTime"
-    | "prepTime"
-    | "public"
-    | "createdBy"
-    | "notes"
-    | "servings"
-    | "source"
-> & {
-    ratingAverage: string;
-    ratingPersonal: RecipeRating["rating"];
-    createdByName: User["firstName"];
-};
+type GetFullRecipeResults =
+    | (Pick<
+          Recipe,
+          | "recipeId"
+          | "name"
+          | "photo"
+          | "timesCooked"
+          | "cookTime"
+          | "prepTime"
+          | "public"
+          | "createdBy"
+          | "notes"
+          | "servings"
+          | "source"
+          | "dateCreated"
+          | "dateUpdated"
+      > & {
+          ratingAverage: string;
+          ratingPersonal: RecipeRating["rating"];
+          createdByName: User["firstName"];
+      })
+    | undefined;
 
 const getFullRecipe = async (recipeId: string, userId: string): Promise<GetFullRecipeResults> => {
     const query = db<Recipe>(lamington.recipe)
@@ -489,6 +518,8 @@ const getFullRecipe = async (recipeId: string, userId: string): Promise<GetFullR
             recipe.public,
             recipe.timesCooked,
             recipe.createdBy,
+            recipe.dateCreated,
+            recipe.dateUpdated,
             `${user.firstName} as createdByName`,
             db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ratingAverage`),
             db.raw(

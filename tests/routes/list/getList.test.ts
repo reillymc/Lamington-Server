@@ -138,7 +138,6 @@ test("should return list items", async () => {
                 itemId: uuid(),
                 name: uuid(),
                 completed: randomBoolean(),
-                dateAdded: new Date().toISOString().slice(0, 19).replace("T", " "),
                 listId: list.listId,
                 createdBy: user.userId,
             } satisfies ServiceParams<ListItemActions, "save">)
@@ -150,7 +149,6 @@ test("should return list items", async () => {
                 itemId: uuid(),
                 name: uuid(),
                 completed: randomBoolean(),
-                dateAdded: new Date().toISOString().slice(0, 19).replace("T", " "),
                 listId: otherList.listId,
                 createdBy: user.userId,
             } satisfies ServiceParams<ListItemActions, "save">)

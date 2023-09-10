@@ -29,14 +29,26 @@ const parseRecipesQuerySort = (sort: QueryParam) => {
 
 export const parseRecipeQuery = ({
     sort: rawSort,
-    categories: rawCategories,
     ingredients: rawIngredients,
+    order: rawOrder,
+    page: rawPage,
+    search: rawSearch,
     ...baseParams
-}: ToQueryParams<QueryParams>): ToQueryMetadata<QueryParams> => {
-    const { page, search, order } = parseBaseQuery(baseParams);
+}: ToQueryParams<QueryParams>): ToQueryMetadata<
+    Omit<QueryParams, "categories"> & { categoryGroups?: Record<string, string[]> }
+> => {
+    const { page, search, order } = parseBaseQuery({ page: rawPage, search: rawSearch, order: rawOrder });
     const sort = parseRecipesQuerySort(rawSort);
-    const categories = (Array.isArray(rawCategories) ? rawCategories : [rawCategories]).filter(Undefined);
+
+    const categoryGroups: Record<string, string[]> = Object.entries(baseParams).reduce((acc, [key, value]) => {
+        if (value === undefined) return acc;
+        const val = (Array.isArray(value) ? value : [value]).filter(Undefined);
+
+        if (!val.every((v): v is string => typeof v === "string")) return acc;
+
+        return { ...acc, [key]: val };
+    }, {} as Record<string, string[]>);
     const ingredients = (Array.isArray(rawIngredients) ? rawIngredients : [rawIngredients]).filter(Undefined);
 
-    return { page, search, sort, order, categories, ingredients };
+    return { page, search, sort, order, categoryGroups, ingredients };
 };

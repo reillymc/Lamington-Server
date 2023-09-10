@@ -43,7 +43,6 @@ test("should not allow deletion if not list owner", async () => {
         itemId: uuid(),
         name: uuid(),
         completed: randomBoolean(),
-        dateAdded: new Date().toISOString().slice(0, 19).replace("T", " "),
         listId: list.listId,
         createdBy: listOwner!.userId,
     } satisfies ServiceParams<ListItemActions, "save">;
@@ -71,7 +70,6 @@ test("should not allow deletion if list member without edit permission", async (
         itemId: uuid(),
         name: uuid(),
         completed: randomBoolean(),
-        dateAdded: new Date().toISOString().slice(0, 19).replace("T", " "),
         listId: list.listId,
         createdBy: user.userId,
     } satisfies ServiceParams<ListItemActions, "save">;
@@ -109,7 +107,6 @@ test("should allow deletion if list member with edit permission", async () => {
         itemId: uuid(),
         name: uuid(),
         completed: randomBoolean(),
-        dateAdded: new Date().toISOString().slice(0, 19).replace("T", " "),
         listId: list.listId,
         createdBy: user.userId,
     } satisfies ServiceParams<ListItemActions, "save">;
@@ -150,7 +147,6 @@ test("should allow deletion if list owner", async () => {
         itemId: uuid(),
         name: uuid(),
         completed: randomBoolean(),
-        dateAdded: new Date().toISOString().slice(0, 19).replace("T", " "),
         listId: list.listId,
         createdBy: user.userId,
     } satisfies ServiceParams<ListItemActions, "save">;
