@@ -111,7 +111,7 @@ type RecipeQueryItem = Pick<
     ratingPersonal: RecipeRating["rating"];
 };
 
-type RecipeQuerySortOptions = "name" | "rating" | "time";
+type RecipeQuerySortOptions = "name" | "ratingPersonal" | "ratingAverage" | "time";
 
 const query: QueryService<
     QueryRecipesResult,
@@ -125,11 +125,13 @@ const query: QueryService<
     const recipeRatingAliasName = "recipe_rating_1";
     const recipeRatingAlias = Alias(recipeRating, lamington.recipeRating, recipeRatingAliasName);
     const ratingPersonalName = "ratingPersonal";
+    const ratingAverageName = "ratingAverage";
 
     const sortColumn = {
         name: recipeAlias.name,
-        rating: ratingPersonalName,
-        time: recipeAlias.prepTime,
+        ratingPersonal: ratingPersonalName,
+        ratingAverage: ratingAverageName,
+        time: recipeAlias.cookTime,
     }[sort];
 
     const categories = Object.entries(categoryGroups ?? {});
@@ -146,7 +148,7 @@ const query: QueryService<
             recipeAlias.createdBy,
             recipeAlias.dateCreated,
             `${user.firstName} as createdByName`,
-            db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ratingAverage`),
+            db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ${ratingAverageName}`),
             db
                 .select(recipeRatingAlias.rating)
                 .from(`${lamington.recipeRating} as ${recipeRatingAliasName}`)
@@ -223,12 +225,13 @@ const queryByUser: QueryService<
     const recipeRatingAliasName = "mr1";
     const recipeRatingAlias = Alias(recipeRating, lamington.recipeRating, recipeRatingAliasName);
     const ratingPersonalName = "ratingPersonal";
+    const ratingAverageName = "ratingAverage";
 
     const sortColumn = {
         name: recipeAlias.name,
-        date: recipeAlias.createdBy,
-        rating: ratingPersonalName,
-        time: recipeAlias.prepTime,
+        ratingPersonal: ratingPersonalName,
+        ratingAverage: ratingAverageName,
+        time: recipeAlias.cookTime,
     }[sort];
 
     const categories = Object.entries(categoryGroups ?? {});
@@ -247,18 +250,17 @@ const queryByUser: QueryService<
             recipeAlias.createdBy,
             recipeAlias.dateCreated,
             `${user.firstName} as createdByName`,
-            db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ratingAverage`),
-            db.raw(
-                `(${db
-                    .select(recipeRatingAlias.rating)
-                    .from(`${lamington.recipeRating} as ${recipeRatingAliasName}`)
-                    .where({
-                        [recipeAlias.recipeId]: db.raw(recipeRatingAlias.recipeId),
-                        [recipeRatingAlias.raterId]: userId,
-                    })
-                    .join(lamington.recipe, recipeAlias.recipeId, recipeRatingAlias.recipeId)
-                    .groupBy(recipeAlias.recipeId)}) as ratingPersonal`
-            )
+            db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ${ratingAverageName}`),
+            db
+                .select(recipeRatingAlias.rating)
+                .from(`${lamington.recipeRating} as ${recipeRatingAliasName}`)
+                .where({
+                    [recipeAlias.recipeId]: db.raw(recipeRatingAlias.recipeId),
+                    [recipeRatingAlias.raterId]: userId,
+                })
+                .join(lamington.recipe, recipeAlias.recipeId, recipeRatingAlias.recipeId)
+                .groupBy(recipeAlias.recipeId)
+                .as(ratingPersonalName)
         )
         .leftJoin(lamington.recipeRating, recipeAlias.recipeId, recipeRating.recipeId)
         .leftJoin(lamington.user, recipeAlias.createdBy, user.userId)

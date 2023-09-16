@@ -20,8 +20,10 @@ const parseRecipesQuerySort = (sort: QueryParam) => {
     switch (sort) {
         case "name":
             return "name";
-        case "rating":
-            return "rating";
+        case "ratingPersonal":
+            return "ratingPersonal";
+        case "ratingAverage":
+            return "ratingAverage";
         case "time":
             return "time";
     }

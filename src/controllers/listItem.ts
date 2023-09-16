@@ -82,7 +82,7 @@ const getLatestDateUpdated = async (
 
     const query = db(lamington.listItem)
         .select(listItem.listId)
-        .max<GetMostRecentModifiedDateResponse[]>(listItem.dateUpdated)
+        .max<GetMostRecentModifiedDateResponse[]>(listItem.dateUpdated, { as: "dateUpdated" })
         .whereIn(listItem.listId, listIds)
         .groupBy(listItem.listId);
     return query;
