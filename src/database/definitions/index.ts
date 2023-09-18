@@ -99,6 +99,11 @@ export type DeleteService<T extends {}, K extends keyof T> = (params: DeleteRequ
 
 // Helpers
 export type ServiceParams<T extends Record<string, any>, K extends keyof T> = Exclude<Parameters<T[K]>[0], any[]>;
+export type ServiceResponse<T extends Record<string, any>, K extends keyof T> = Awaited<ReturnType<T[K]>> extends {
+    result: Array<any>;
+}
+    ? Awaited<ReturnType<T[K]>>["result"][number]
+    : Awaited<ReturnType<T[K]>>[number];
 
 export const PAGE_SIZE = config.database.pageSize ?? 50;
 

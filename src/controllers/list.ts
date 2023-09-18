@@ -1,40 +1,23 @@
 import { v4 as Uuid } from "uuid";
 
 import { EnsureArray, Undefined } from "../utils";
-import db, {
-    ReadResponse,
-    list,
-    lamington,
-    listMember,
-    user,
-    ListMember,
-    List,
-    User,
-    ReadMyService,
-    ReadService,
-    SaveService,
-    DeleteService,
-} from "../database";
-import { EntityMember } from "./entity";
+import db, { list, lamington, listMember, user, List, GetColumns } from "../database";
 import { CreateListMemberParams, ListMemberActions } from "./listMember";
+import { ListService } from "./spec";
 
-interface ReadListRow extends Pick<List, "listId" | "name" | "customisations" | "createdBy" | "description"> {
-    createdByName: User["firstName"];
-    accepted: ListMember["accepted"];
-    canEdit: ListMember["canEdit"];
-}
-
-const readMyLists: ReadMyService<ReadListRow> = async ({ userId }) => {
-    const query = db<ReadListRow>(lamington.list)
+const readMyLists: ListService["ReadByUser"] = async ({ userId }) => {
+    const query = db(lamington.list)
         .select(
-            list.listId,
-            list.name,
-            list.customisations,
-            list.description,
-            list.createdBy,
-            `${user.firstName} as createdByName`,
-            listMember.accepted,
-            listMember.canEdit
+            GetColumns<ListService, "ReadByUser">({
+                listId: list.listId,
+                name: list.name,
+                customisations: list.customisations,
+                createdBy: list.createdBy,
+                description: list.description,
+                createdByName: `${user.firstName} as createdByName`,
+                accepted: listMember.accepted,
+                canEdit: listMember.canEdit,
+            })
         )
         .where({ [list.createdBy]: userId })
         .orWhere({ [listMember.userId]: userId })
@@ -44,22 +27,24 @@ const readMyLists: ReadMyService<ReadListRow> = async ({ userId }) => {
     return query;
 };
 
-const readLists: ReadService<ReadListRow, "listId", Pick<User, "userId">> = async params => {
+const readLists: ListService["Read"] = async params => {
     const requests = EnsureArray(params);
 
-    const response: ReadListRow[] = [];
+    const response = [];
 
     for (const { listId, userId } of requests) {
-        const result: ReadListRow = await db<ReadListRow>(lamington.list)
+        const result = await db(lamington.list)
             .select(
-                list.listId,
-                list.name,
-                list.customisations,
-                list.description,
-                list.createdBy,
-                `${user.firstName} as createdByName`,
-                listMember.accepted,
-                listMember.canEdit
+                GetColumns<ListService, "Read">({
+                    listId: list.listId,
+                    name: list.name,
+                    customisations: list.customisations,
+                    createdBy: list.createdBy,
+                    description: list.description,
+                    createdByName: `${user.firstName} as createdByName`,
+                    accepted: listMember.accepted,
+                    canEdit: listMember.canEdit,
+                })
             )
             .where({ [list.listId]: listId })
             .andWhere(qb => qb.where({ [list.createdBy]: userId }).orWhere({ [listMember.userId]: userId }))
@@ -74,7 +59,7 @@ const readLists: ReadService<ReadListRow, "listId", Pick<User, "userId">> = asyn
     return response;
 };
 
-const saveLists: SaveService<List & { members?: Array<EntityMember> }> = async params => {
+const saveLists: ListService["Save"] = async params => {
     const lists = EnsureArray(params);
 
     const data = lists.map(({ listId, ...params }) => ({ listId: listId ?? Uuid(), ...params })).filter(Undefined);
@@ -104,67 +89,50 @@ const saveLists: SaveService<List & { members?: Array<EntityMember> }> = async p
         );
 };
 
-const deleteLists: DeleteService<List, "listId"> = async params =>
+const deleteLists: ListService["Delete"] = async params =>
     db(lamington.list).whereIn(list.listId, EnsureArray(params)).delete();
 
-export const ListActions = {
+const readListsInternal: ListService["ReadSummary"] = async params => {
+    const listIds = EnsureArray(params).map(({ listId }) => listId);
+
+    const query = db(lamington.list)
+        .select(GetColumns<ListService, "ReadSummary">({ listId: list.listId, createdBy: list.createdBy }))
+        .whereIn(list.listId, listIds);
+
+    return query;
+};
+
+export const ListActions: ListService = {
     /**
      * Deletes lists by list ids
      * @security Insecure: route authentication check required (user delete permission on lists)
      */
-    delete: deleteLists,
+    Delete: deleteLists,
 
     /**
      * Get lists by id or ids
      * @security Secure: no authentication checks required
      * @returns an array of lists matching given ids
      */
-    read: readLists,
+    Read: readLists,
 
     /**
      * Get users lists. Includes lists created by the user and lists the user is a member of.
      * @security Secure: no authentication checks required.
      * @returns an array of lists.
      */
-    readMy: readMyLists,
+    ReadByUser: readMyLists,
 
     /**
      * Creates a new list from params
      * @security Insecure: route authentication check required (user save permission on lists)
      * @returns the newly created lists
      */
-    save: saveLists,
-};
+    Save: saveLists,
 
-export type ListActions = typeof ListActions;
-
-const readListsInternal: ReadService<List, "listId"> = async params => {
-    const listIds = EnsureArray(params).map(({ listId }) => listId);
-
-    const query = db<List>(lamington.list)
-        .select(list.listId, list.name, list.description, list.createdBy)
-        .whereIn(list.listId, listIds);
-
-    return query;
-};
-
-const readAllLists = async (): ReadResponse<List> => {
-    const query = db<List>(lamington.list).select(list.listId, list.name, list.createdBy);
-    return query;
-};
-
-export const InternalListActions = {
     /**
      * Get lists by id or ids
-     * @returns an array of lists matching given ids
+     * @returns an array of lists matching given ids, but only with minimal required fields to ensure performance
      */
-    read: readListsInternal,
-
-    /**
-     * Get all lists
-     * @returns an array of all lists in the database
-     */
-    readAll: readAllLists,
+    ReadSummary: readListsInternal,
 };
-
-export type InternalListActions = typeof InternalListActions;

@@ -15,6 +15,8 @@ import { PostPlannerRequestBody } from "../../../src/routes/spec";
 import { EntityMember } from "../../../src/controllers/entity";
 import { ServiceParams } from "../../../src/database";
 
+// TODO: Test whether a user can move a meal from a planner they dont own to their own - therefore deleting the other user's planner's meal. Test general copying/movind of meals, and moving from cooklist
+
 beforeEach(async () => {
     await CleanTables("planner", "user", "planner_member");
 });

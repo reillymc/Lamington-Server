@@ -45,6 +45,8 @@ const selectByRecipeId = async (recipeId: string): ReadResponse<StepReadByIdResp
         .where({ [recipeStep.recipeId]: recipeId })
         .select(recipeStep.id, recipeStep.sectionId, recipeStep.index, recipeStep.description);
 
+export type RecipeStepActions = typeof RecipeStepActions;
+
 export const RecipeStepActions = {
     readByRecipeId: selectByRecipeId,
     save: updateRows,

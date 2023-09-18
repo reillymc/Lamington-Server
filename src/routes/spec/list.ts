@@ -11,6 +11,16 @@ export const listIdParam = "listId" as const;
 export const itemIdParam = "itemId" as const;
 export const listMemberIdParam = "userId" as const;
 
+export type ListItemIngredientAmount =
+    | {
+          representation: "fraction" | "range";
+          value: [number, number];
+      }
+    | {
+          representation: "number";
+          value: number;
+      };
+
 /**
  * Lists
  */
@@ -45,7 +55,7 @@ export type ListItem = {
     completed: boolean;
     ingredientId?: string;
     unit?: string;
-    amount?: number;
+    amount?: ListItemIngredientAmount;
     notes?: string;
 };
 

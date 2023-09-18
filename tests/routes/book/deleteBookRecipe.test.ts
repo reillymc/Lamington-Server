@@ -5,6 +5,7 @@ import app from "../../../src/app";
 import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBit } from "../../helpers";
 import { BookActions, BookMemberActions, BookRecipeActions, RecipeActions } from "../../../src/controllers";
 import { ServiceParams } from "../../../src/database";
+import { RecipeService } from "../../../src/controllers/spec";
 
 beforeEach(async () => {
     await CleanTables("book", "user", "book_member", "book_recipe");
@@ -44,7 +45,7 @@ test("should not allow deletion if not book owner", async () => {
         name: uuid(),
         createdBy: bookOwner!.userId,
         public: randomBit(),
-    } satisfies ServiceParams<RecipeActions, "save">;
+    } satisfies ServiceParams<RecipeService, "Save">;
 
     const bookRecipe = {
         recipeId: recipe.recipeId,
@@ -52,7 +53,7 @@ test("should not allow deletion if not book owner", async () => {
     } satisfies ServiceParams<BookRecipeActions, "save">;
 
     await BookActions.save(book);
-    await RecipeActions.save(recipe);
+    await RecipeActions.Save(recipe);
     await BookRecipeActions.save(bookRecipe);
 
     const res = await request(app)
@@ -79,7 +80,7 @@ test("should not allow deletion if book member without edit permission", async (
         name: uuid(),
         createdBy: bookOwner!.userId,
         public: randomBit(),
-    } satisfies ServiceParams<RecipeActions, "save">;
+    } satisfies ServiceParams<RecipeService, "Save">;
 
     const bookRecipe = {
         recipeId: recipe.recipeId,
@@ -87,7 +88,7 @@ test("should not allow deletion if book member without edit permission", async (
     } satisfies ServiceParams<BookRecipeActions, "save">;
 
     await BookActions.save(book);
-    await RecipeActions.save(recipe);
+    await RecipeActions.Save(recipe);
     await BookRecipeActions.save(bookRecipe);
     await BookMemberActions.save({
         bookId: book.bookId,
@@ -124,7 +125,7 @@ test("should allow deletion if book member with edit permission", async () => {
         name: uuid(),
         createdBy: bookOwner!.userId,
         public: randomBit(),
-    } satisfies ServiceParams<RecipeActions, "save">;
+    } satisfies ServiceParams<RecipeService, "Save">;
 
     const bookRecipe = {
         recipeId: recipe.recipeId,
@@ -132,7 +133,7 @@ test("should allow deletion if book member with edit permission", async () => {
     } satisfies ServiceParams<BookRecipeActions, "save">;
 
     await BookActions.save(book);
-    await RecipeActions.save(recipe);
+    await RecipeActions.Save(recipe);
     await BookRecipeActions.save(bookRecipe);
     await BookMemberActions.save({
         bookId: book.bookId,
@@ -172,7 +173,7 @@ test("should allow deletion if book owner", async () => {
         name: uuid(),
         createdBy: user!.userId,
         public: randomBit(),
-    } satisfies ServiceParams<RecipeActions, "save">;
+    } satisfies ServiceParams<RecipeService, "Save">;
 
     const bookRecipe = {
         recipeId: recipe.recipeId,
@@ -180,7 +181,7 @@ test("should allow deletion if book owner", async () => {
     } satisfies ServiceParams<BookRecipeActions, "save">;
 
     await BookActions.save(book);
-    await RecipeActions.save(recipe);
+    await RecipeActions.Save(recipe);
     await BookRecipeActions.save(bookRecipe);
 
     const res = await request(app)

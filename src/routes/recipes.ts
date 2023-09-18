@@ -1,8 +1,7 @@
 import express from "express";
-import { v4 as Uuid } from "uuid";
 
 import { AppError, AttachmentService, MessageAction, userMessage } from "../services";
-import { InternalRecipeActions, RecipeActions, RecipeRatingActions } from "../controllers";
+import { RecipeActions, RecipeRatingActions } from "../controllers";
 import {
     DeleteRecipeRequestBody,
     DeleteRecipeRequestParams,
@@ -26,9 +25,12 @@ import {
     GetAllRecipesRequestQuery,
     GetMyRecipesRequestQuery,
 } from "./spec";
-import { BisectOnValidItems, EnsureDefinedArray } from "../utils";
-import { ServiceParams } from "../database";
-import { parseRecipeQuery } from "./helpers";
+import {
+    RecipeQueryResponseToRecipe,
+    RecipeReadResponseToRecipe,
+    parseRecipeQuery,
+    validatePostRecipeBody,
+} from "./helpers";
 
 const router = express.Router();
 
@@ -44,8 +46,8 @@ router.get<GetAllRecipesRequestParams, GetAllRecipesResponse, GetAllRecipesReque
 
         // Fetch and return result
         try {
-            const { result, nextPage } = await RecipeActions.query({ userId, page, ...options });
-            const data = Object.fromEntries(result.map(row => [row.recipeId, row]));
+            const { result, nextPage } = await RecipeActions.Query({ userId, page, ...options });
+            const data = Object.fromEntries(result.map(row => [row.recipeId, RecipeQueryResponseToRecipe(row)]));
             return res.status(200).json({ error: false, data, page, nextPage });
         } catch (e: unknown) {
             next(
@@ -70,8 +72,8 @@ router.get<GetMyRecipesRequestParams, GetMyRecipesResponse, GetMyRecipesRequestB
 
         // Fetch and return result
         try {
-            const { result, nextPage } = await RecipeActions.queryByUser({ userId, page, ...options });
-            const data = Object.fromEntries(result.map(row => [row.recipeId, row]));
+            const { result, nextPage } = await RecipeActions.QueryByUser({ userId, page, ...options });
+            const data = Object.fromEntries(result.map(row => [row.recipeId, RecipeQueryResponseToRecipe(row)]));
 
             return res.status(200).json({ error: false, data, page, nextPage });
         } catch (e: unknown) {
@@ -91,10 +93,10 @@ router.get<GetMyRecipesRequestParams, GetMyRecipesResponse, GetMyRecipesRequestB
  */
 router.get<GetRecipeRequestParams, GetRecipeResponse, GetRecipeRequestBody>(
     RecipeEndpoint.getRecipe,
-    async (req, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
-        const { recipeId } = req.params;
-        const { userId } = req.session;
+        const { recipeId } = params;
+        const { userId } = session;
 
         // Check all required fields are present
         if (!recipeId) {
@@ -108,7 +110,18 @@ router.get<GetRecipeRequestParams, GetRecipeResponse, GetRecipeRequestBody>(
 
         // Fetch and return result
         try {
-            const [data] = await RecipeActions.read({ recipeId, userId });
+            const [recipe] = await RecipeActions.Read({ recipeId, userId });
+
+            if (!recipe) {
+                return next(
+                    new AppError({
+                        status: 404,
+                        message: `Error getting recipe: Recipe not found.`,
+                    })
+                );
+            }
+
+            const data = RecipeReadResponseToRecipe(recipe);
 
             return res.status(200).json({ error: false, data });
         } catch (e: unknown) {
@@ -142,7 +155,7 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
 
         // Update database and return status
         try {
-            const [existingRecipe] = await InternalRecipeActions.read({ recipeId });
+            const [existingRecipe] = await RecipeActions.ReadSummary({ recipeId });
 
             if (!existingRecipe) {
                 return next(
@@ -162,7 +175,7 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
                 );
             }
 
-            const data = await RecipeActions.delete(recipeId);
+            const data = await RecipeActions.Delete(recipeId);
 
             if (existingRecipe.photo) AttachmentService.deleteImage(existingRecipe.photo);
 
@@ -202,7 +215,7 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
         }
 
         try {
-            const existingRecipes = await InternalRecipeActions.read(validRecipes);
+            const existingRecipes = await RecipeActions.ReadSummary(validRecipes);
 
             if (existingRecipes.some(recipe => recipe.createdBy !== userId)) {
                 return next(
@@ -225,7 +238,7 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
                 }
             }
 
-            await RecipeActions.save(validRecipes);
+            await RecipeActions.Save(validRecipes);
 
             return res.status(201).json({ error: false, message: `Recipe${validRecipes.length > 1 ? "s" : ""} saved` });
         } catch (e: unknown) {
@@ -272,31 +285,3 @@ router.post<PostRecipeRatingRequestParams, PostRecipeRatingResponse, PostRecipeR
 );
 
 export default router;
-
-const validatePostRecipeBody = ({ data }: PostRecipeRequestBody, userId: string) => {
-    const filteredData = EnsureDefinedArray(data);
-
-    return BisectOnValidItems(filteredData, ({ recipeId = Uuid(), name, ...item }) => {
-        if (!name) return;
-
-        const validItem: ServiceParams<RecipeActions, "save"> = {
-            cookTime: item.cookTime,
-            prepTime: item.prepTime,
-            servings: item.servings,
-            ingredients: item.ingredients,
-            method: item.method,
-            notes: item.notes,
-            photo: item.photo,
-            public: item.public ? 1 : 0,
-            source: item.source,
-            tags: item.tags,
-            timesCooked: item.timesCooked,
-            ratingPersonal: item.ratingPersonal,
-            recipeId,
-            name,
-            createdBy: userId,
-        };
-
-        return validItem;
-    });
-};

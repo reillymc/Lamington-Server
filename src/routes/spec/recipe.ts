@@ -16,6 +16,16 @@ export const rateSubpath = "rate" as const;
 
 export const recipeIdParam = "recipeId" as const;
 
+export type RecipeIngredientAmount =
+    | {
+          representation: "fraction" | "range";
+          value: [number, number];
+      }
+    | {
+          representation: "number";
+          value: number;
+      };
+
 /**
  * Recipes
  */
@@ -32,7 +42,8 @@ export interface Recipe {
     source?: string;
     ingredients?: RecipeIngredients;
     method?: RecipeMethod;
-    notes?: string;
+    summary?: string;
+    tips?: string;
     photo?: string;
     ratingAverage?: number;
     ratingPersonal?: number;
@@ -40,7 +51,8 @@ export interface Recipe {
     createdBy: Pick<User, "userId" | "firstName">;
     cookTime?: number;
     prepTime?: number;
-    servings?: number;
+    servingsLower?: number;
+    servingsUpper?: number;
     public?: boolean;
     timesCooked?: number;
     dateUpdated?: string;
@@ -51,7 +63,7 @@ export interface RecipeIngredientItem {
     id: string;
     ingredientId?: string;
     subrecipeId?: string;
-    amount?: number;
+    amount?: RecipeIngredientAmount;
     description?: string;
     unit?: string;
     multiplier?: number;
@@ -115,22 +127,27 @@ export type GetRecipeService = (request: GetRecipeRequest) => GetRecipeResponse;
 
 // Post recipe
 export type PostRecipeRequestParams = BaseRequestParams;
-export type PostRecipeRequestBody = BaseRequestBody<{
-    recipeId: string;
-    name: string;
-    source?: string;
-    ingredients?: RecipeIngredients;
-    method?: RecipeMethod;
-    notes?: string;
-    photo?: string;
-    ratingPersonal?: number;
-    tags?: RecipeTags;
-    cookTime?: number;
-    prepTime?: number;
-    servings?: number;
-    public?: boolean;
-    timesCooked?: number;
-}>;
+export type PostRecipeRequestBody = BaseRequestBody<
+    Pick<
+        Recipe,
+        | "recipeId"
+        | "name"
+        | "source"
+        | "ingredients"
+        | "method"
+        | "summary"
+        | "tips"
+        | "photo"
+        | "ratingPersonal"
+        | "tags"
+        | "cookTime"
+        | "prepTime"
+        | "servingsLower"
+        | "servingsUpper"
+        | "public"
+        | "timesCooked"
+    >
+>;
 
 export type PostRecipeRequest = BaseRequest<PostRecipeRequestBody & PostRecipeRequestParams>;
 export type PostRecipeResponse = BaseResponse;

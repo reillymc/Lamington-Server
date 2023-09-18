@@ -6,6 +6,7 @@ import { ListEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from
 import { ListActions, ListMemberActions } from "../../../src/controllers";
 import { DeleteListRequestParams } from "../../../src/routes/spec";
 import { ServiceParams } from "../../../src/database";
+import { ListService } from "../../../src/controllers/spec";
 
 beforeEach(async () => {
     await CleanTables("list", "user", "list_member");
@@ -41,9 +42,9 @@ test("should not allow deletion if not list owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
 
     const res = await request(app)
         .delete(ListEndpoint.deleteList(list.listId))
@@ -62,9 +63,9 @@ test("should not allow deletion if list member but not list owner", async () => 
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
     await ListMemberActions.save({
         listId: list.listId,
         members: [
@@ -92,15 +93,15 @@ test("should delete list", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: user!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
 
     const res = await request(app).delete(ListEndpoint.deleteList(list.listId)).set(token).send(list);
 
     expect(res.statusCode).toEqual(201);
 
-    const lists = await ListActions.read({ listId: list.listId, userId: user.userId });
+    const lists = await ListActions.Read({ listId: list.listId, userId: user.userId });
 
     expect(lists.length).toEqual(0);
 });

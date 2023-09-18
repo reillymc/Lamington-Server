@@ -2,7 +2,9 @@ import { v4 as Uuid } from "uuid";
 
 import { BisectOnValidPartialItems, EnsureDefinedArray } from "../../utils";
 import { Book, PostBookRequestBody, RequestValidator } from "../spec";
-import { BookActions, BookMemberActions, RecipeActions } from "../../controllers";
+import { BookActions, BookMemberActions } from "../../controllers";
+import { RecipeService } from "../../controllers/spec";
+import { RecipeQueryResponseToRecipe } from "./recipe";
 
 export const validatePostBookBody: RequestValidator<PostBookRequestBody> = ({ data }, userId) => {
     const filteredData = EnsureDefinedArray(data);
@@ -22,7 +24,7 @@ export const validatePostBookBody: RequestValidator<PostBookRequestBody> = ({ da
 };
 
 type BookResponse = Awaited<ReturnType<BookActions["read"]>>[number];
-type RecipesResponse = Awaited<ReturnType<RecipeActions["queryByBook"]>>["result"];
+type RecipesResponse = Awaited<ReturnType<RecipeService["QueryByBook"]>>["result"];
 type MembersResponse = Awaited<ReturnType<BookMemberActions["read"]>>;
 
 export const prepareGetBookResponseBody = (
@@ -36,7 +38,9 @@ export const prepareGetBookResponseBody = (
     description: book.description,
     ...parseBookCustomisations(book.customisations),
     createdBy: { userId: book.createdBy, firstName: book.createdByName },
-    recipes: recipes ? Object.fromEntries(recipes.map(recipe => [recipe.recipeId, recipe])) : undefined,
+    recipes: recipes
+        ? Object.fromEntries(recipes.map(recipe => [recipe.recipeId, RecipeQueryResponseToRecipe(recipe)]))
+        : undefined,
     members: members
         ? Object.fromEntries(
               members.map(({ userId, canEdit, firstName, lastName }) => [

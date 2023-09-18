@@ -14,6 +14,7 @@ import { GetBookResponse } from "../../../src/routes/spec";
 import { BookActions, BookMemberActions, BookRecipeActions, RecipeActions } from "../../../src/controllers";
 import { BookRecipe, ServiceParams } from "../../../src/database";
 import { BookCustomisations } from "../../../src/routes/helpers";
+import { RecipeService } from "../../../src/controllers/spec";
 
 const getBookCustomisations = (): BookCustomisations => {
     return {
@@ -134,7 +135,7 @@ test("should return book recipes", async () => {
                 name: uuid(),
                 createdBy: user.userId,
                 public: randomBit(),
-            } satisfies ServiceParams<RecipeActions, "save">)
+            } satisfies ServiceParams<RecipeService, "Save">)
     );
 
     const recipesNotInBook = Array.from({ length: randomNumber() }).map(
@@ -144,10 +145,10 @@ test("should return book recipes", async () => {
                 name: uuid(),
                 createdBy: user.userId,
                 public: randomBit(),
-            } satisfies ServiceParams<RecipeActions, "save">)
+            } satisfies ServiceParams<RecipeService, "Save">)
     );
 
-    await RecipeActions.save(recipesInBook);
+    await RecipeActions.Save(recipesInBook);
 
     const bookRecipes = recipesInBook.map(
         ({ recipeId }) =>

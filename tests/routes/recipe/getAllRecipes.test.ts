@@ -27,6 +27,7 @@ import { ServiceParams } from "../../../src/database";
 import config from "../../../src/config";
 import { randomElement } from "../../../src/utils";
 import { RecipeTagActions } from "../../../src/controllers/recipeTag";
+import { RecipeService } from "../../../src/controllers/spec";
 
 beforeEach(async () => {
     await CleanAllTables();
@@ -53,19 +54,17 @@ test("should return correct recipe details", async () => {
         cookTime: randomNumber(),
         ingredients: generateRandomRecipeIngredientSections(),
         method: generateRandomRecipeMethodSections(),
-        notes: uuid(),
         photo: uuid(),
         prepTime: randomNumber(),
         ratingPersonal: randomNumber(),
-        servings: randomNumber(),
         source: uuid(),
         tags: await createRandomRecipeTags(),
         timesCooked: randomNumber(),
-    } satisfies ServiceParams<RecipeActions, "save">;
+    } satisfies ServiceParams<RecipeService, "Save">;
 
     const nonAssociatedTags = await createRandomRecipeTags();
 
-    await RecipeActions.save(recipe);
+    await RecipeActions.Save(recipe);
 
     const res = await request(app).get(RecipeEndpoint.getAllRecipes()).set(token);
 
@@ -84,11 +83,13 @@ test("should return correct recipe details", async () => {
     expect(recipeResponse.cookTime).toEqual(recipe.cookTime);
     expect(recipeResponse.ingredients).toBeUndefined();
     expect(recipeResponse.method).toBeUndefined();
-    expect(recipeResponse.notes).toBeUndefined();
+    expect(recipeResponse.tips).toBeUndefined();
+    expect(recipeResponse.summary).toBeUndefined();
     expect(recipeResponse.photo).toEqual(recipe.photo);
     expect(recipeResponse.prepTime).toEqual(recipe.prepTime);
     expect(recipeResponse.ratingPersonal).toEqual(recipe.ratingPersonal);
-    expect(recipeResponse.servings).toBeUndefined();
+    expect(recipeResponse.servingsLower).toBeUndefined();
+    expect(recipeResponse.servingsUpper).toBeUndefined();
     expect(recipeResponse.source).toBeUndefined();
     expect(recipeResponse.timesCooked).toEqual(recipe.timesCooked);
     expect(recipeResponse.ratingAverage).toEqual(recipe.ratingPersonal);
@@ -108,10 +109,10 @@ test("should return all public recipes from other users", async () => {
                 name: uuid(),
                 createdBy: randomUsers[i % randomUsers.length]!.userId,
                 public: 1,
-            } satisfies ServiceParams<RecipeActions, "save">)
+            } satisfies ServiceParams<RecipeService, "Save">)
     );
 
-    await RecipeActions.save(recipes);
+    await RecipeActions.Save(recipes);
 
     const res = await request(app).get(RecipeEndpoint.getAllRecipes()).set(token);
 
@@ -133,7 +134,7 @@ test("should not return private recipes", async () => {
                 name: uuid(),
                 createdBy: randomUsers[i % randomUsers.length]!.userId,
                 public: randomBoolean() ? 1 : 0,
-            } satisfies ServiceParams<RecipeActions, "save">)
+            } satisfies ServiceParams<RecipeService, "Save">)
     );
 
     const myRecipes = Array.from({ length: randomNumber() }).map(
@@ -143,12 +144,12 @@ test("should not return private recipes", async () => {
                 name: uuid(),
                 createdBy: user.userId,
                 public: randomBoolean() ? 1 : 0,
-            } satisfies ServiceParams<RecipeActions, "save">)
+            } satisfies ServiceParams<RecipeService, "Save">)
     );
 
     const allRecipes = [...recipes, ...myRecipes];
 
-    RecipeActions.save(allRecipes);
+    RecipeActions.Save(allRecipes);
 
     const res = await request(app).get(RecipeEndpoint.getAllRecipes()).set(token);
 
@@ -172,10 +173,10 @@ test("should respect pagination", async () => {
                 name: uuid(),
                 createdBy: randomUsers[i % randomUsers.length]!.userId,
                 public: 1,
-            } satisfies ServiceParams<RecipeActions, "save">)
+            } satisfies ServiceParams<RecipeService, "Save">)
     );
 
-    await RecipeActions.save(recipes);
+    await RecipeActions.Save(recipes);
 
     const res = await request(app).get(RecipeEndpoint.getAllRecipes()).set(token);
 
@@ -211,10 +212,10 @@ test("should respect search", async () => {
                 name: uuid(),
                 createdBy: randomElement(randomUsers)!.userId,
                 public: 1,
-            } satisfies ServiceParams<RecipeActions, "save">)
+            } satisfies ServiceParams<RecipeService, "Save">)
     );
 
-    await RecipeActions.save(recipes);
+    await RecipeActions.Save(recipes);
 
     const recipeToSearchBy = randomElement(recipes)!;
 
@@ -238,9 +239,9 @@ test("should respect substring search", async () => {
         name: "Hardcoded Recipe Title To Search By",
         createdBy: user.userId,
         public: 1,
-    } satisfies ServiceParams<RecipeActions, "save">;
+    } satisfies ServiceParams<RecipeService, "Save">;
 
-    RecipeActions.save(recipe);
+    RecipeActions.Save(recipe);
 
     const resPrefix = await request(app)
         .get(RecipeEndpoint.getAllRecipes({ search: recipe.name.substring(0, randomNumber()) }))
@@ -285,10 +286,10 @@ test("should respect name sorting and ordering", async () => {
                 name: uuid(),
                 createdBy: user.userId,
                 public: 1,
-            } satisfies ServiceParams<RecipeActions, "save">)
+            } satisfies ServiceParams<RecipeService, "Save">)
     );
 
-    await RecipeActions.save(recipes);
+    await RecipeActions.Save(recipes);
 
     const res = await request(app)
         .get(RecipeEndpoint.getAllRecipes({ sort: "name" }))
@@ -317,10 +318,10 @@ test("should respect rating sorting and ordering", async () => {
                 createdBy: user.userId,
                 ratingPersonal: randomNumber(),
                 public: 1,
-            } satisfies ServiceParams<RecipeActions, "save">)
+            } satisfies ServiceParams<RecipeService, "Save">)
     );
 
-    await RecipeActions.save(recipes);
+    await RecipeActions.Save(recipes);
 
     const res = await request(app)
         .get(RecipeEndpoint.getAllRecipes({ sort: "rating" }))
@@ -349,10 +350,10 @@ test("should respect time sorting and ordering", async () => {
                 createdBy: user.userId,
                 prepTime: randomNumber(5),
                 public: 1,
-            } satisfies ServiceParams<RecipeActions, "save">)
+            } satisfies ServiceParams<RecipeService, "Save">)
     );
 
-    await RecipeActions.save(recipes);
+    await RecipeActions.Save(recipes);
 
     const res = await request(app)
         .get(RecipeEndpoint.getAllRecipes({ sort: "time", order }))
@@ -379,7 +380,7 @@ test("should respect category filtering", async () => {
                 createdBy: user.userId,
                 prepTime: randomNumber(5),
                 public: 1,
-            } satisfies ServiceParams<RecipeActions, "save">)
+            } satisfies ServiceParams<RecipeService, "Save">)
     );
 
     const parentTag = {
@@ -410,7 +411,7 @@ test("should respect category filtering", async () => {
         [parentTag.tagId]: tags.slice(0, randomNumber(tags.length / 2)).map(({ tagId }) => tagId),
     };
 
-    await RecipeActions.save(recipes);
+    await RecipeActions.Save(recipes);
     await TagActions.save([parentTag, ...tags]);
     await RecipeTagActions.save(recipeTags);
 
@@ -445,7 +446,7 @@ test("should respect ingredient filtering", async () => {
                 createdBy: user.userId,
                 prepTime: randomNumber(5),
                 public: 1,
-            } satisfies ServiceParams<RecipeActions, "save">)
+            } satisfies ServiceParams<RecipeService, "Save">)
     );
 
     const ingredients = Array.from({ length: randomNumber(TEST_ITEM_COUNT * 2, TEST_ITEM_COUNT) }).map(
@@ -481,7 +482,7 @@ test("should respect ingredient filtering", async () => {
             ingredients: randomIngredientIds.map(ingredientId => ({
                 ingredientId,
                 description: uuid(),
-                amount: 1,
+                amount: JSON.stringify({ representation: "number", value: randomNumber() }),
                 id: uuid(),
                 sectionId: "default",
             })),
@@ -493,7 +494,7 @@ test("should respect ingredient filtering", async () => {
         .map(({ ingredientId }) => ingredientId);
 
     await IngredientActions.save(ingredients);
-    await RecipeActions.save(recipes);
+    await RecipeActions.Save(recipes);
     await RecipeSectionActions.save(recipeSections);
     await RecipeIngredientActions.save(recipeIngredients);
 
@@ -528,7 +529,7 @@ test("should respect ingredient and category filtering together", async () => {
                 createdBy: user.userId,
                 prepTime: randomNumber(5),
                 public: 1,
-            } satisfies ServiceParams<RecipeActions, "save">)
+            } satisfies ServiceParams<RecipeService, "Save">)
     );
 
     const ingredients = Array.from({ length: randomNumber(TEST_ITEM_COUNT * 2, TEST_ITEM_COUNT) }).map(
@@ -580,7 +581,7 @@ test("should respect ingredient and category filtering together", async () => {
             ingredients: randomIngredientIds.map(ingredientId => ({
                 ingredientId,
                 description: uuid(),
-                amount: 1,
+                amount: JSON.stringify({ representation: "number", value: randomNumber() }),
                 id: uuid(),
                 sectionId: "default",
             })),
@@ -605,7 +606,7 @@ test("should respect ingredient and category filtering together", async () => {
 
     await IngredientActions.save(ingredients);
     await TagActions.save([parentTag, ...tags]);
-    await RecipeActions.save(recipes);
+    await RecipeActions.Save(recipes);
     await RecipeSectionActions.save(recipeSections);
     await RecipeIngredientActions.save(recipeIngredients);
     await RecipeTagActions.save(recipeTags);

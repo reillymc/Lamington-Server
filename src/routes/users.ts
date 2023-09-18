@@ -148,7 +148,7 @@ const createDefaultUserData = async (userId: string) => {
     const recipeId = Uuid();
     const plannerId = Uuid();
 
-    await ListActions.save({
+    await ListActions.Save({
         listId,
         createdBy: userId,
         name: "My Shopping List",
@@ -171,7 +171,7 @@ const createDefaultUserData = async (userId: string) => {
         description: "A recipe book for all my favourite recipes",
     });
 
-    await RecipeActions.save({
+    await RecipeActions.Save({
         name: "Example Recipe",
         recipeId,
         createdBy: userId,
@@ -193,7 +193,7 @@ const createDefaultUserData = async (userId: string) => {
                 items: [],
             },
         ],
-        notes: "There are many other entries you can use to create your recipe, such as adding a photo, recording the prep/cook time, servings, additional details, source and more.",
+        tips: "There are many other entries you can use to create your recipe, such as adding a photo, recording the prep/cook time, servings, additional details, source and more.",
     });
 
     await BookRecipeActions.save({

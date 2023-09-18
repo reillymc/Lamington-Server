@@ -1,37 +1,12 @@
-// API Specs
-import { RecipeIngredients } from "../../routes/spec";
-
-// DB Specs
-import { DefaultSection, RecipeIngredient, RecipeSection } from "../../database";
+import { RecipeIngredient, ServiceParams } from "../../database";
 
 import { Undefined } from "../../utils";
-
-export const recipeIngredientRowsToResponse = (
-    ingredients: Array<RecipeIngredient>,
-    sections: Array<RecipeSection>
-): RecipeIngredients => {
-    const recipeIngredients: RecipeIngredients = sections
-        .sort((a, b) => (a.name === DefaultSection ? -1 : a.index - b.index))
-        .map(({ sectionId, name, description }) => ({
-            sectionId,
-            name,
-            description,
-            items: ingredients
-                .filter(ingredient => ingredient.sectionId === sectionId)
-                .sort((a, b) => (a.index ?? 0) - (b.index ?? 0)),
-        }))
-        .filter(({ items, name }) => (name === DefaultSection ? true : items.length));
-
-    return recipeIngredients;
-};
+import { RecipeService } from "../spec";
 
 export const recipeIngredientsRequestToRows = ({
     recipeId,
     ingredients,
-}: {
-    recipeId: string;
-    ingredients?: RecipeIngredients;
-}): RecipeIngredient[] | undefined => {
+}: ServiceParams<RecipeService, "Save">): RecipeIngredient[] | undefined => {
     if (!ingredients?.length) return;
 
     return ingredients.flatMap(({ sectionId, items }) =>
@@ -47,7 +22,7 @@ export const recipeIngredientsRequestToRows = ({
                     index,
                     description: ingItem.description,
                     unit: ingItem.unit,
-                    amount: ingItem.amount,
+                    amount: JSON.stringify(ingItem.amount),
                     multiplier: ingItem.multiplier,
                 };
             })

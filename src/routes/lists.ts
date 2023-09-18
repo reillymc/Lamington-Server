@@ -1,7 +1,7 @@
 import express from "express";
 
 import { AppError, MessageAction, userMessage } from "../services";
-import { ListActions, InternalListActions, ListItemActions, ListMemberActions } from "../controllers";
+import { ListActions, ListItemActions, ListMemberActions } from "../controllers";
 import {
     DeleteListItemRequestBody,
     DeleteListItemRequestParams,
@@ -44,7 +44,7 @@ router.get<GetListsRequestParams, GetListsResponse, GetListsRequestBody>(
 
         // Fetch and return result
         try {
-            const results = await ListActions.readMy({ userId });
+            const results = await ListActions.ReadByUser({ userId });
             const outstandingItemCounts = await ListItemActions.countOutstandingItems(results);
             const datesUpdated = await ListItemActions.getLatestDateUpdated(results);
 
@@ -102,7 +102,7 @@ router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(
 
         // Fetch and return result
         try {
-            const [list] = await ListActions.read({ listId, userId });
+            const [list] = await ListActions.Read({ listId, userId });
             if (!list) {
                 return next(
                     new AppError({
@@ -153,7 +153,7 @@ router.post<PostListRequestParams, PostListResponse, PostListRequestBody>(
 
         // Update database and return status
         try {
-            const existingLists = await InternalListActions.read(validLists);
+            const existingLists = await ListActions.ReadSummary(validLists);
 
             if (existingLists.some(list => list.createdBy !== userId)) {
                 return next(
@@ -165,7 +165,7 @@ router.post<PostListRequestParams, PostListResponse, PostListRequestBody>(
                 );
             }
 
-            await ListActions.save(validLists);
+            await ListActions.Save(validLists);
             return res.status(201).json({ error: false, message: `List saved` });
         } catch (e: unknown) {
             next(
@@ -205,7 +205,7 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
 
         // Update database and return status
         try {
-            const [existingList] = await InternalListActions.read({ listId });
+            const [existingList] = await ListActions.ReadSummary({ listId });
 
             if (!existingList) {
                 return next(
@@ -271,7 +271,7 @@ router.post<PostListMemberRequestParams, PostListMemberResponse, PostListMemberR
 
         // Update database and return status
         try {
-            const [existingList] = await InternalListActions.read({ listId });
+            const [existingList] = await ListActions.ReadSummary({ listId });
             if (!existingList) {
                 return next(
                     new AppError({
@@ -332,7 +332,7 @@ router.delete<DeleteListRequestParams, DeleteListResponse, DeleteListRequestBody
 
         // Update database and return status
         try {
-            const [existingList] = await InternalListActions.read({ listId });
+            const [existingList] = await ListActions.ReadSummary({ listId });
 
             if (!existingList) {
                 return next(
@@ -352,7 +352,7 @@ router.delete<DeleteListRequestParams, DeleteListResponse, DeleteListRequestBody
                 );
             }
 
-            await ListActions.delete(listId);
+            await ListActions.Delete(listId);
             return res.status(201).json({ error: false, message: "List deleted." });
         } catch (e: unknown) {
             next(
@@ -388,7 +388,7 @@ router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListIte
 
         // Update database and return status
         try {
-            const [existingList] = await InternalListActions.read({ listId });
+            const [existingList] = await ListActions.ReadSummary({ listId });
             if (!existingList) {
                 return next(
                     new AppError({
@@ -448,7 +448,7 @@ router.delete<DeleteListMemberRequestParams, DeleteListMemberResponse, DeleteLis
 
         // Update database and return status
         try {
-            const [existingList] = await InternalListActions.read({ listId });
+            const [existingList] = await ListActions.ReadSummary({ listId });
             if (!existingList) {
                 return next(
                     new AppError({

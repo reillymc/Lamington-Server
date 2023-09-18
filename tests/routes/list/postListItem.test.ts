@@ -6,6 +6,7 @@ import { ListEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, rando
 import { ListActions, ListMemberActions, ListItemActions } from "../../../src/controllers";
 import { PostListItemRequestBody } from "../../../src/routes/spec";
 import { ServiceParams } from "../../../src/database";
+import { ListService } from "../../../src/controllers/spec";
 
 beforeEach(async () => {
     await CleanTables("list", "user", "list_member", "list_item");
@@ -41,9 +42,9 @@ test("should not allow editing if not list owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
 
     const res = await request(app)
         .post(ListEndpoint.postListItem(list.listId))
@@ -62,7 +63,7 @@ test("should not allow editing if list member without edit permission", async ()
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
     const item = {
         itemId: uuid(),
@@ -72,7 +73,7 @@ test("should not allow editing if list member without edit permission", async ()
         createdBy: user.userId,
     } satisfies ServiceParams<ListItemActions, "save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
     await ListItemActions.save(item);
     await ListMemberActions.save({
         listId: list.listId,
@@ -102,7 +103,7 @@ test("should allow editing if list member with edit permission", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
     const item = {
         itemId: uuid(),
@@ -112,7 +113,7 @@ test("should allow editing if list member with edit permission", async () => {
         createdBy: user.userId,
     } satisfies ServiceParams<ListItemActions, "save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
     await ListItemActions.save(item);
     await ListMemberActions.save({
         listId: list.listId,
@@ -156,7 +157,7 @@ test("should allow editing if list owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: user.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
     const item = {
         itemId: uuid(),
@@ -166,7 +167,7 @@ test("should allow editing if list owner", async () => {
         createdBy: user.userId,
     } satisfies ServiceParams<ListItemActions, "save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
     await ListItemActions.save(item);
 
     const updatedItem = {

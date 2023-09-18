@@ -14,6 +14,7 @@ import { GetListResponse } from "../../../src/routes/spec";
 import { ListActions, ListMemberActions, ListItemActions } from "../../../src/controllers";
 import { ServiceParams } from "../../../src/database";
 import { ListCustomisations } from "../../../src/routes/helpers";
+import { ListService } from "../../../src/controllers/spec";
 
 const getListCustomisations = (): ListCustomisations => {
     return {
@@ -52,9 +53,9 @@ test("should not return list user doesn't have access to", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(createListParams);
+    await ListActions.Save(createListParams);
 
     const res = await request(app).get(ListEndpoint.getList(createListParams.listId)).set(token);
 
@@ -72,9 +73,9 @@ test("should return correct list details for list id", async () => {
         description: uuid(),
         customisations: JSON.stringify(customisations),
         createdBy: user.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(createListParams);
+    await ListActions.Save(createListParams);
 
     const res = await request(app).get(ListEndpoint.getList(createListParams.listId)).set(token);
 
@@ -100,9 +101,9 @@ test("should return a list that a user is a member of", async () => {
         description: uuid(),
         createdBy: listOwner!.userId,
         members: [{ userId: user.userId }],
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(createListParams);
+    await ListActions.Save(createListParams);
 
     const res = await request(app).get(ListEndpoint.getList(createListParams.listId)).set(token);
 
@@ -121,16 +122,16 @@ test("should return list items", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: user.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
     const otherList = {
         listId: uuid(),
         name: uuid(),
         description: uuid(),
         createdBy: user.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save([list, otherList]);
+    await ListActions.Save([list, otherList]);
 
     const itemsInList = Array.from({ length: randomNumber() }).map(
         () =>
@@ -178,9 +179,9 @@ test("should return list members", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: user.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
 
     await ListMemberActions.save({
         listId: list.listId,

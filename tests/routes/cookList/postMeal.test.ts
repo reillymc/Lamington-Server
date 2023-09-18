@@ -13,6 +13,7 @@ import {
 import { PostCookListMealRequestBody } from "../../../src/routes/spec";
 import { CookListMealActions, CookListMealActionsInternal, RecipeActions } from "../../../src/controllers";
 import { ServiceParams } from "../../../src/database";
+import { RecipeService } from "../../../src/controllers/spec";
 
 beforeEach(async () => {
     await CleanTables("user", "planner_meal", "recipe");
@@ -78,9 +79,9 @@ test("should update meal", async () => {
         name: uuid(),
         createdBy: user.userId,
         public: randomBit(),
-    } satisfies ServiceParams<RecipeActions, "save">;
+    } satisfies ServiceParams<RecipeService, "Save">;
 
-    await RecipeActions.save(recipe);
+    await RecipeActions.Save(recipe);
 
     await CookListMealActions.save(meal);
 

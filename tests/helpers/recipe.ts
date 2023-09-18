@@ -9,8 +9,26 @@ import {
 import { randomNumber } from "./data";
 import { Undefined } from "../../src/utils";
 import { TagActions } from "../../src/controllers";
+import { ServiceResponse } from "../../src/database";
+import { RecipeService } from "../../src/controllers/spec/recipe";
 
-export const generateRandomRecipeIngredientSections = (): RecipeIngredients =>
+export const generateRandomRecipeIngredientSections = (): ServiceResponse<RecipeService, "Save">["ingredients"] =>
+    Array.from({ length: randomNumber() }).map(() => ({
+        sectionId: uuid(),
+        name: uuid(),
+        description: uuid(),
+        items: Array.from({ length: randomNumber() }).map(() => ({
+            id: uuid(),
+            name: uuid(),
+            amount: JSON.stringify({ representation: "number", value: randomNumber() }),
+            description: uuid(),
+            multiplier: randomNumber(),
+            unit: uuid(),
+            ingredientId: uuid(),
+        })),
+    }));
+
+export const generateRandomPostRecipeIngredientSections = (): RecipeIngredients =>
     Array.from({ length: randomNumber() }).map(() => ({
         sectionId: uuid(),
         name: uuid(),
@@ -19,7 +37,7 @@ export const generateRandomRecipeIngredientSections = (): RecipeIngredients =>
             (): RecipeIngredientItem => ({
                 id: uuid(),
                 name: uuid(),
-                amount: randomNumber(),
+                amount: { representation: "number", value: randomNumber() },
                 description: uuid(),
                 multiplier: randomNumber(),
                 unit: uuid(),

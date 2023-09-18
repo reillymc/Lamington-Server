@@ -39,7 +39,6 @@ export type RequestValidator<T extends BaseRequestBody<unknown>> = (
 
 interface ResponseBodyBase {
     error: boolean;
-    schema?: 1; // TODO make mandatory / remove
     code?: string;
     message?: string;
 }

@@ -12,7 +12,11 @@ export type ListItem = {
     completed: boolean;
     ingredientId?: string;
     unit?: string;
-    amount?: number;
+    /**
+     * JSON stringified object containing the amount of the ingredient, as type number, fraction
+     * or range with its representation explicitly denoted.
+     */
+    amount?: string;
     notes?: string;
     createdBy: string;
 };
@@ -25,7 +29,11 @@ export type ListItemModel = {
     completed: number; // 0 | 1
     ingredientId?: string;
     unit?: string;
-    amount?: number;
+    /**
+     * JSON stringified object containing the amount of the ingredient, as type number, fraction
+     * or range with its representation explicitly denoted.
+     */
+    amount?: string;
     notes?: string;
 };
 

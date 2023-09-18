@@ -6,6 +6,7 @@ import { ListEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from
 import { ListActions, ListMemberActions } from "../../../src/controllers";
 import { PostListMemberRequestBody } from "../../../src/routes/spec";
 import { ServiceParams } from "../../../src/database";
+import { ListService } from "../../../src/controllers/spec";
 
 beforeEach(async () => {
     await CleanTables("list", "user", "list_member");
@@ -41,9 +42,9 @@ test("should not allow editing if not existing list member", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
 
     const res = await request(app)
         .post(ListEndpoint.postListMember(list.listId))
@@ -62,9 +63,9 @@ test("should allow accepting if existing list member", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
     await ListMemberActions.save({
         listId: list.listId,
         members: [

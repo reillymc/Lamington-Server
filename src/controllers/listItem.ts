@@ -95,7 +95,7 @@ interface CreateListItemParams {
     completed: boolean;
     ingredientId?: string;
     unit?: string;
-    amount?: number;
+    amount?: string;
     notes?: string;
     createdBy: string;
 }

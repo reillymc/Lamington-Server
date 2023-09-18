@@ -1,9 +1,41 @@
 import { v4 as Uuid } from "uuid";
 
 import { BisectOnValidItems, EnsureDefinedArray } from "../../utils";
-import { List, PostListItemRequestBody, PostListRequestBody } from "../spec";
+import { List, ListItemIngredientAmount, PostListItemRequestBody, PostListRequestBody } from "../spec";
 import { ListActions, ListItemActions, ListMemberActions } from "../../controllers";
 import { ServiceParams } from "../../database";
+import { ListService } from "../../controllers/spec";
+
+const parseAmount = (amountJSON: string | undefined) => {
+    if (!amountJSON) return;
+
+    try {
+        const amount = JSON.parse(amountJSON) as ListItemIngredientAmount;
+
+        if (!["number", "fraction", "range"].includes(amount.representation)) return;
+
+        return amount;
+    } catch {
+        return;
+    }
+};
+
+const stringifyAmount = (amount: ListItemIngredientAmount | undefined) => {
+    if (!amount) return;
+
+    switch (amount.representation) {
+        case "number":
+            if (typeof amount.value !== "number") return JSON.stringify(amount);
+        case "fraction":
+        case "range":
+            if (
+                Array.isArray(amount.value) &&
+                amount.value.length === 2 &&
+                amount.value.every(v => typeof v === "number")
+            )
+                return JSON.stringify(amount);
+    }
+};
 
 export const validatePostListBody = ({ data }: PostListRequestBody, userId: string) => {
     const filteredData = EnsureDefinedArray(data);
@@ -11,7 +43,7 @@ export const validatePostListBody = ({ data }: PostListRequestBody, userId: stri
     return BisectOnValidItems(filteredData, ({ listId = Uuid(), name, ...item }) => {
         if (!name) return;
 
-        const validItem: ServiceParams<ListActions, "save"> = {
+        const validItem: ServiceParams<ListService, "Save"> = {
             listId,
             name,
             description: item.description,
@@ -34,7 +66,7 @@ export const validatePostListItemBody = ({ data }: PostListItemRequestBody, user
             itemId,
             listId,
             name,
-            amount: item.amount,
+            amount: stringifyAmount(item.amount),
             completed: item.completed ?? false,
             ingredientId: item.ingredientId,
             notes: item.notes,
@@ -46,7 +78,7 @@ export const validatePostListItemBody = ({ data }: PostListItemRequestBody, user
     });
 };
 
-type ListResponse = Awaited<ReturnType<ListActions["read"]>>[number];
+type ListResponse = Awaited<ReturnType<ListService["Read"]>>[number];
 type ListItemsResponse = Awaited<ReturnType<ListItemActions["read"]>>;
 type MembersResponse = Awaited<ReturnType<ListMemberActions["read"]>>;
 
@@ -74,7 +106,9 @@ export const prepareGetListResponseBody = ({
     lastUpdated,
     ...parseListCustomisations(list.customisations),
     createdBy: { userId: list.createdBy, firstName: list.createdByName },
-    items: listItems ? listItems.filter(item => item.listId === list.listId) : undefined,
+    items: listItems
+        ?.filter(item => item.listId === list.listId)
+        .map(({ amount, ...item }) => ({ ...item, amount: parseAmount(amount) })),
     members: members
         ? Object.fromEntries(
               members.map(({ userId, canEdit, firstName, lastName }) => [

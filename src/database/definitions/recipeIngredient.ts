@@ -4,7 +4,8 @@ import { lamington } from "./lamington";
 /**
  * RecipeIngredient
  *
- * Contains the mapping for each of the recipe's ingredients to the Ingredient item, with additional information stored in the properties.
+ * Contains the mapping for each of the recipe's ingredients to the Ingredient item, with additional
+ * information stored in the properties.
  */
 export interface RecipeIngredient {
     id: string;
@@ -22,7 +23,12 @@ export interface RecipeIngredient {
     subrecipeId?: string;
     index?: number;
     unit?: string;
-    amount?: number;
+
+    /**
+     * JSON stringified object containing the amount of the ingredient, as type number, fraction
+     * or range with its representation explicitly denoted.
+     */
+    amount?: string;
     multiplier?: number;
     description?: string;
 }

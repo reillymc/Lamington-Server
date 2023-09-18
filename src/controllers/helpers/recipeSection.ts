@@ -1,18 +1,11 @@
-// API Specs
-import { RecipeIngredients, RecipeMethod } from "../../routes/spec";
-
-// DB Specs
-import { RecipeSection } from "../../database";
+import { RecipeSection, ServiceParams } from "../../database";
+import { RecipeService } from "../spec";
 
 export const recipeSectionRequestToRows = ({
     recipeId,
     ingredients = [],
     method = [],
-}: {
-    recipeId: string;
-    ingredients?: RecipeIngredients;
-    method?: RecipeMethod;
-}): Array<RecipeSection> | undefined => {
+}: ServiceParams<RecipeService, "Save">): Array<RecipeSection> | undefined => {
     const ingSectionRequests: Array<RecipeSection> = ingredients.map(({ sectionId, name, description }, index) => ({
         sectionId,
         recipeId,

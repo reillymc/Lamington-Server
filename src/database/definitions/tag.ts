@@ -6,8 +6,8 @@ import { Table } from ".";
 export interface Tag {
     tagId: string;
     name: string;
-    description: string | undefined;
-    parentId: string | undefined;
+    description?: string;
+    parentId?: string;
 }
 
 export const tag: Table<Tag> = {

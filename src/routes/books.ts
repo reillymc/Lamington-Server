@@ -95,7 +95,7 @@ router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(
                 );
             }
 
-            const { result: bookRecipesResponse } = await RecipeActions.queryByBook({ userId, bookId });
+            const { result: bookRecipesResponse } = await RecipeActions.QueryByBook({ userId, bookId });
             const bookMembersResponse = await BookMemberActions.read({ entityId: bookId });
 
             const data = prepareGetBookResponseBody(book, userId, bookRecipesResponse, bookMembersResponse);

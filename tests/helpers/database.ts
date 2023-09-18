@@ -1,5 +1,6 @@
 import { v4 as uuid } from "uuid";
 
+import { ListService } from "../../src/controllers/spec";
 import { BookActions, ListActions, UserActions } from "../../src/controllers";
 import { UserStatus } from "../../src/routes/spec";
 import { ServiceParams, lamington } from "../../src/database";
@@ -84,16 +85,16 @@ export const CreateLists = async ({
 }: {
     count?: number;
     createdBy: string;
-}): Promise<[ServiceParams<ListActions, "save">[], number]> => {
+}): Promise<[ServiceParams<ListService, "Save">[], number]> => {
     const books = Array.from({ length: count }, () => ({
         listId: uuid(),
         createdBy,
         description: uuid(),
         name: uuid(),
         members: [],
-    })) satisfies ServiceParams<ListActions, "save">[];
+    })) satisfies ServiceParams<ListService, "Save">[];
 
-    await ListActions.save(books);
+    await ListActions.Save(books);
 
     return [books, count];
 };

@@ -7,13 +7,13 @@ import { UserEndpoint } from "../../../helpers/api";
 import {
     BookRecipeActions,
     InternalBookActions,
-    InternalListActions,
     InternalPlannerMealActions,
     ListItemActions,
     PlannerActions,
     RecipeActions,
     UserActions,
 } from "../../../../src/controllers";
+import { readAllLists } from "../../../helpers/list";
 
 beforeEach(async () => {
     await CleanTables("user", "list", "list_item", "book", "recipe", "book_recipe", "planner", "planner_meal");
@@ -38,7 +38,7 @@ test("should create sample data for pending => registered user", async () => {
     const [updatedUser] = await UserActions.read({ userId: user.userId });
     expect(updatedUser?.status).toEqual(UserStatus.Registered);
 
-    const lists = await InternalListActions.readAll();
+    const lists = await readAllLists();
     expect(lists.length).toEqual(1);
 
     const [list] = lists;
@@ -55,12 +55,12 @@ test("should create sample data for pending => registered user", async () => {
     if (!book) throw new Error("Book not created");
     expect(book.createdBy).toEqual(user.userId);
 
-    const { result: recipes } = await RecipeActions.queryByUser({ userId: user.userId });
+    const { result: recipes } = await RecipeActions.QueryByUser({ userId: user.userId });
     expect(recipes.length).toEqual(1);
 
     const [recipe] = recipes;
     if (!recipe) throw new Error("Recipe not created");
-    expect(recipe.createdBy.userId).toEqual(user.userId);
+    expect(recipe.createdBy).toEqual(user.userId);
 
     const bookRecipes = await BookRecipeActions.read({ bookId: book.bookId });
     expect(bookRecipes.length).toEqual(1);

@@ -6,6 +6,7 @@ import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, rando
 import { BookActions, BookMemberActions, BookRecipeActions, RecipeActions } from "../../../src/controllers";
 import { PostBookRecipeRequestBody } from "../../../src/routes/spec";
 import { ServiceParams } from "../../../src/database";
+import { RecipeService } from "../../../src/controllers/spec";
 
 beforeEach(async () => {
     await CleanTables("book", "user", "book_member", "book_recipe");
@@ -69,10 +70,10 @@ test("should not allow editing if book member without edit permission", async ()
         name: uuid(),
         createdBy: user!.userId,
         public: randomBit(),
-    } satisfies ServiceParams<RecipeActions, "save">;
+    } satisfies ServiceParams<RecipeService, "Save">;
 
     await BookActions.save(book);
-    await RecipeActions.save(recipe);
+    await RecipeActions.Save(recipe);
     await BookMemberActions.save({
         bookId: book.bookId,
         members: [
@@ -108,10 +109,10 @@ test("should allow editing if book member with edit permission", async () => {
         name: uuid(),
         createdBy: user!.userId,
         public: randomBit(),
-    } satisfies ServiceParams<RecipeActions, "save">;
+    } satisfies ServiceParams<RecipeService, "Save">;
 
     await BookActions.save(book);
-    await RecipeActions.save(recipe);
+    await RecipeActions.Save(recipe);
     await BookMemberActions.save({
         bookId: book.bookId,
         members: [
@@ -155,10 +156,10 @@ test("should allow editing if book owner", async () => {
         name: uuid(),
         createdBy: user!.userId,
         public: randomBit(),
-    } satisfies ServiceParams<RecipeActions, "save">;
+    } satisfies ServiceParams<RecipeService, "Save">;
 
     await BookActions.save(book);
-    await RecipeActions.save(recipe);
+    await RecipeActions.Save(recipe);
 
     const res = await request(app)
         .post(BookEndpoint.postBookRecipe(book.bookId))

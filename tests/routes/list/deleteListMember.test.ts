@@ -5,6 +5,7 @@ import app from "../../../src/app";
 import { ListEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 import { ListActions, ListMemberActions } from "../../../src/controllers";
 import { ServiceParams } from "../../../src/database";
+import { ListService } from "../../../src/controllers/spec";
 
 beforeEach(async () => {
     await CleanTables("list", "user", "list_member");
@@ -37,9 +38,9 @@ test("should not allow leaving a list the user owns", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
 
     const res = await request(app)
         .delete(ListEndpoint.deleteListMember(list.listId, listOwner!.userId))
@@ -58,9 +59,9 @@ test("should allow removing member if list owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
     await ListMemberActions.save({
         listId: list.listId,
         members: [
@@ -90,7 +91,7 @@ test("should not allow removing other member if list member with edit permission
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
     const listMembers = {
         listId: list.listId,
@@ -108,7 +109,7 @@ test("should not allow removing other member if list member with edit permission
         ],
     } satisfies ServiceParams<ListMemberActions, "save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
     await ListMemberActions.save(listMembers);
 
     const res = await request(app)
@@ -128,9 +129,9 @@ test("should allow removing self if list member", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
     await ListMemberActions.save({
         listId: list.listId,
         members: [

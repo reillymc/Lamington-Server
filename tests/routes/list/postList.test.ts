@@ -16,6 +16,7 @@ import { PostListRequestBody } from "../../../src/routes/spec";
 import { EntityMember } from "../../../src/controllers/entity";
 import { ServiceParams } from "../../../src/database";
 import { parseListCustomisations } from "../../../src/routes/helpers/list";
+import { ListService } from "../../../src/controllers/spec";
 
 beforeEach(async () => {
     await CleanTables("list", "user", "list_member");
@@ -40,9 +41,9 @@ test("should not allow editing if not list owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
 
     const res = await request(app)
         .post(ListEndpoint.postList)
@@ -61,9 +62,9 @@ test("should not allow editing if list member but not list owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
     await ListMemberActions.save({
         listId: list.listId,
         members: [
@@ -101,7 +102,7 @@ test("should create list", async () => {
 
     expect(res.statusCode).toEqual(201);
 
-    const savedLists = await ListActions.readMy({ userId: user.userId });
+    const savedLists = await ListActions.ReadByUser({ userId: user.userId });
 
     expect(savedLists.length).toEqual(lists.data.length);
 
@@ -139,9 +140,9 @@ test("should save updated list details as list owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: user.userId,
-    } satisfies ServiceParams<ListActions, "save">;
+    } satisfies ServiceParams<ListService, "Save">;
 
-    await ListActions.save(list);
+    await ListActions.Save(list);
 
     const updatedList = {
         data: {
@@ -155,7 +156,7 @@ test("should save updated list details as list owner", async () => {
 
     expect(res.statusCode).toEqual(201);
 
-    const [savedList] = await ListActions.read({ listId: list.listId, userId: user.userId });
+    const [savedList] = await ListActions.Read({ listId: list.listId, userId: user.userId });
 
     expect(savedList?.name).toEqual(updatedList.data.name);
     expect(savedList?.description).toEqual(updatedList.data.description);
@@ -172,7 +173,7 @@ test("should save additional list members", async () => {
     const additionalMembers: EntityMember[] = additionalUsers.map(({ userId }) => ({ userId }));
     const allMembers = [...initialMembers, ...additionalMembers];
 
-    const [list] = await ListActions.save({
+    const [list] = await ListActions.Save({
         listId: uuid(),
         createdBy: user.userId,
         name: uuid(),
@@ -211,7 +212,7 @@ test("should remove some list members", async () => {
         ({ userId }) => !reducedMembers.find(({ userId: savedUserId }) => savedUserId === userId)
     );
 
-    const [list] = await ListActions.save({
+    const [list] = await ListActions.Save({
         listId: uuid(),
         createdBy: user.userId,
         name: uuid(),
@@ -244,7 +245,7 @@ test("should remove all list members", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
     const members = await CreateUsers({ count: randomCount });
 
-    const [list] = await ListActions.save({
+    const [list] = await ListActions.Save({
         listId: uuid(),
         createdBy: user.userId,
         name: uuid(),

@@ -9,10 +9,12 @@ export interface Recipe {
     name: string;
     source?: string;
     photo?: string;
-    servings?: number;
+    servingsLower?: number;
+    servingsUpper?: number;
     prepTime?: number;
     cookTime?: number;
-    notes?: string;
+    summary?: string;
+    tips?: string;
     public: number;
     timesCooked?: number;
     createdBy: string;
@@ -26,9 +28,11 @@ export const recipe: RecipeTable = {
     recipeId: `${lamington.recipe}.recipeId`,
     name: `${lamington.recipe}.name`,
     source: `${lamington.recipe}.source`,
-    notes: `${lamington.recipe}.notes`,
+    summary: `${lamington.recipe}.summary`,
+    tips: `${lamington.recipe}.tips`,
     photo: `${lamington.recipe}.photo`,
-    servings: `${lamington.recipe}.servings`,
+    servingsLower: `${lamington.recipe}.servingsLower`,
+    servingsUpper: `${lamington.recipe}.servingsUpper`,
     prepTime: `${lamington.recipe}.prepTime`,
     cookTime: `${lamington.recipe}.cookTime`,
     public: `${lamington.recipe}.public`,
