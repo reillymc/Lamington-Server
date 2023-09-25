@@ -9,6 +9,7 @@ import {
     RecipeIngredientAmount,
     RecipeIngredients,
     RecipeMethod,
+    RecipeServings,
     RecipeTags,
 } from "../spec";
 import { RecipeService } from "../../controllers/spec";
@@ -42,13 +43,49 @@ const stringifyAmount = (amount: RecipeIngredientAmount | undefined) => {
 
     switch (amount.representation) {
         case "number":
-            if (typeof amount.value !== "number") return JSON.stringify(amount);
+            if (typeof amount.value === "string") return JSON.stringify(amount);
         case "fraction":
+            if (
+                Array.isArray(amount.value) &&
+                amount.value.length === 3 &&
+                amount.value.every(v => typeof v === "string")
+            )
+                return JSON.stringify(amount);
         case "range":
             if (
                 Array.isArray(amount.value) &&
                 amount.value.length === 2 &&
-                amount.value.every(v => typeof v === "number")
+                amount.value.every(v => typeof v === "string")
+            )
+                return JSON.stringify(amount);
+    }
+};
+
+const parseServings = (servingsString: string | undefined) => {
+    if (!servingsString) return;
+
+    try {
+        const servings = JSON.parse(servingsString) as RecipeServings;
+
+        if (!["number", "range"].includes(servings.count.representation)) return;
+
+        return servings;
+    } catch {
+        return;
+    }
+};
+
+const stringifyServings = (amount: RecipeServings | undefined) => {
+    if (!amount) return;
+
+    switch (amount.count.representation) {
+        case "number":
+            if (typeof amount.count === "string") return JSON.stringify(amount);
+        case "range":
+            if (
+                Array.isArray(amount.count) &&
+                amount.count.length === 2 &&
+                amount.count.every(v => typeof v === "string")
             )
                 return JSON.stringify(amount);
     }
@@ -105,8 +142,7 @@ export const validatePostRecipeBody = ({ data }: PostRecipeRequestBody, userId: 
         const validItem: ServiceParams<RecipeService, "Save"> = {
             cookTime: item.cookTime,
             prepTime: item.prepTime,
-            servingsLower: item.servingsLower,
-            servingsUpper: item.servingsUpper,
+            servings: stringifyServings(item.servings),
             ingredients: item.ingredients?.map(({ items, ...section }) => ({
                 ...section,
                 items: items
@@ -151,7 +187,7 @@ const recipeIngredientRowsToResponse = ({
                 .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
                 .map(({ amount, ...ingredient }) => ({
                     ...ingredient,
-                    amount: amount ? parseAmount(amount) : undefined,
+                    amount: parseAmount(amount),
                 })),
         }))
         .filter(({ items, name }) => (name === DefaultSection ? true : items.length));
@@ -210,6 +246,7 @@ export const RecipeReadResponseToRecipe = (recipe: ServiceResponse<RecipeService
     ingredients: recipeIngredientRowsToResponse(recipe),
     method: recipeStepRowsToResponse(recipe),
     tags: recipeTagRowsToResponse(recipe),
+    servings: parseServings(recipe.servings),
     createdBy: { userId: recipe.createdBy, firstName: recipe.createdByName },
     public: !!recipe.public,
 });

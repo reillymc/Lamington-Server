@@ -511,8 +511,9 @@ VALUES (
         'Gnocchi with Tomato Cream Sauce',
         NULL,
         NULL,
+        NULL,
         'lamington:dev/839c1893-e03b-4479-85f2-138e4d42a2e8/recipe/02eab0b9-d8f2-4d64-bc76-cbac36e4c59f_0.jpg',
-        4,
+        '{"unit": "people", "count": {"representation": "number", "value": "4"}',
         20,
         30,
         0,
@@ -526,8 +527,9 @@ VALUES (
         'Black Bean Enchiladas',
         NULL,
         NULL,
+        NULL,
         'lamington:dev/839c1893-e03b-4479-85f2-138e4d42a2e8/recipe/99656745-3325-4a47-9361-caba8849a4e2_0.jpg',
-        3,
+        '{"unit": "people", "count": {"representation": "number", "value": "3"}}',
         20,
         40,
         0,
@@ -620,7 +622,7 @@ VALUES (
         NULL,
         7,
         'tsp',
-        0.5,
+        '{"representation": "number", "value": "0.5"}',
         NULL,
         NULL
     ),
@@ -632,7 +634,7 @@ VALUES (
         NULL,
         0,
         'g',
-        500,
+        '{"representation": "number", "value": "500"}',
         NULL,
         NULL
     ),
@@ -644,7 +646,7 @@ VALUES (
         NULL,
         1,
         'tbsp',
-        2,
+        '{"representation": "number", "value": "2"}',
         NULL,
         NULL
     ),
@@ -656,7 +658,7 @@ VALUES (
         NULL,
         5,
         'cup',
-        0.5,
+        '{"representation": "fraction", "value": ["","1","2"]}',
         NULL,
         NULL
     ),
@@ -668,7 +670,7 @@ VALUES (
         NULL,
         6,
         'cup',
-        0.333,
+        '{"representation": "fraction", "value": ["","1","3"]}',
         NULL,
         NULL
     ),
@@ -680,7 +682,7 @@ VALUES (
         NULL,
         4,
         'g',
-        400,
+        '{"representation": "number", "value": "400"}',
         NULL,
         NULL
     ),
@@ -692,7 +694,7 @@ VALUES (
         NULL,
         3,
         'tsp',
-        3,
+        '{"representation": "number", "value": "3"}',
         NULL,
         NULL
     ),
@@ -704,7 +706,7 @@ VALUES (
         NULL,
         2,
         'tsp',
-        3,
+        '{"representation": "number", "value": "3"}',
         NULL,
         NULL
     );
@@ -848,7 +850,7 @@ VALUES (
         0,
         NULL,
         'bunch',
-        2,
+        '{"representation": "number", "value": "2"}',
         NULL,
         '839c1893-e03b-4479-85f2-138e4d42a2e8'
     ),
@@ -884,7 +886,7 @@ VALUES (
         0,
         NULL,
         'g',
-        500,
+        '{"representation": "number", "value": "500"}',
         NULL,
         '839c1893-e03b-4479-85f2-138e4d42a2e8'
     );

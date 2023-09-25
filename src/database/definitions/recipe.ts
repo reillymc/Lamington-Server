@@ -9,8 +9,11 @@ export interface Recipe {
     name: string;
     source?: string;
     photo?: string;
-    servingsLower?: number;
-    servingsUpper?: number;
+
+    /**
+     * JSON blob with data on unit and number or number range.
+     */
+    servings?: string;
     prepTime?: number;
     cookTime?: number;
     summary?: string;
@@ -31,8 +34,7 @@ export const recipe: RecipeTable = {
     summary: `${lamington.recipe}.summary`,
     tips: `${lamington.recipe}.tips`,
     photo: `${lamington.recipe}.photo`,
-    servingsLower: `${lamington.recipe}.servingsLower`,
-    servingsUpper: `${lamington.recipe}.servingsUpper`,
+    servings: `${lamington.recipe}.servings`,
     prepTime: `${lamington.recipe}.prepTime`,
     cookTime: `${lamington.recipe}.cookTime`,
     public: `${lamington.recipe}.public`,

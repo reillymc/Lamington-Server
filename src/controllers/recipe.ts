@@ -432,8 +432,7 @@ type GetFullRecipeResults =
           | "createdBy"
           | "tips"
           | "summary"
-          | "servingsLower"
-          | "servingsUpper"
+          | "servings"
           | "source"
           | "dateCreated"
           | "dateUpdated"
@@ -451,8 +450,7 @@ const getFullRecipe = async (recipeId: string, userId: string): Promise<GetFullR
             recipe.name,
             recipe.source,
             recipe.photo,
-            recipe.servingsLower,
-            recipe.servingsUpper,
+            recipe.servings,
             recipe.prepTime,
             recipe.cookTime,
             recipe.tips,

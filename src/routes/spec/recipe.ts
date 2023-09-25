@@ -6,7 +6,8 @@ import {
     BaseRequestParams,
     BaseResponse,
     BaseSimpleRequestBody,
-} from ".";
+} from "./";
+import { FractionValue, NumberValue, RangeValue } from "./common";
 import { Tag } from "./tag";
 import { User } from "./user";
 
@@ -16,15 +17,12 @@ export const rateSubpath = "rate" as const;
 
 export const recipeIdParam = "recipeId" as const;
 
-export type RecipeIngredientAmount =
-    | {
-          representation: "fraction" | "range";
-          value: [number, number];
-      }
-    | {
-          representation: "number";
-          value: number;
-      };
+export type RecipeIngredientAmount = FractionValue | RangeValue | NumberValue;
+
+export type RecipeServings = {
+    unit: string;
+    count: RangeValue | NumberValue;
+};
 
 /**
  * Recipes
@@ -51,8 +49,7 @@ export interface Recipe {
     createdBy: Pick<User, "userId" | "firstName">;
     cookTime?: number;
     prepTime?: number;
-    servingsLower?: number;
-    servingsUpper?: number;
+    servings?: RecipeServings;
     public?: boolean;
     timesCooked?: number;
     dateUpdated?: string;
@@ -142,8 +139,7 @@ export type PostRecipeRequestBody = BaseRequestBody<
         | "tags"
         | "cookTime"
         | "prepTime"
-        | "servingsLower"
-        | "servingsUpper"
+        | "servings"
         | "public"
         | "timesCooked"
     >

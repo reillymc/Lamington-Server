@@ -2,7 +2,7 @@ import { v4 as Uuid } from "uuid";
 
 import { BisectOnValidItems, EnsureDefinedArray } from "../../utils";
 import { List, ListItemIngredientAmount, PostListItemRequestBody, PostListRequestBody } from "../spec";
-import { ListActions, ListItemActions, ListMemberActions } from "../../controllers";
+import { ListItemActions, ListMemberActions } from "../../controllers";
 import { ServiceParams } from "../../database";
 import { ListService } from "../../controllers/spec";
 
@@ -25,13 +25,19 @@ const stringifyAmount = (amount: ListItemIngredientAmount | undefined) => {
 
     switch (amount.representation) {
         case "number":
-            if (typeof amount.value !== "number") return JSON.stringify(amount);
+            if (typeof amount.value === "string") return JSON.stringify(amount);
         case "fraction":
+            if (
+                Array.isArray(amount.value) &&
+                amount.value.length === 3 &&
+                amount.value.every(v => typeof v === "string")
+            )
+                return JSON.stringify(amount);
         case "range":
             if (
                 Array.isArray(amount.value) &&
                 amount.value.length === 2 &&
-                amount.value.every(v => typeof v === "number")
+                amount.value.every(v => typeof v === "string")
             )
                 return JSON.stringify(amount);
     }
@@ -61,6 +67,7 @@ export const validatePostListItemBody = ({ data }: PostListItemRequestBody, user
 
     return BisectOnValidItems(filteredData, ({ itemId = Uuid(), name, ...item }) => {
         if (!name) return;
+        console.log(item.amount);
 
         const validItem: ServiceParams<ListItemActions, "save"> = {
             itemId,

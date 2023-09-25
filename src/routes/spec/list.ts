@@ -1,5 +1,5 @@
 import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from ".";
-import { EntityMember, EntityMembers } from "./common";
+import { EntityMember, EntityMembers, FractionValue, NumberValue, RangeValue } from "./common";
 import { User } from "./user";
 
 export const listEndpoint = "/lists" as const;
@@ -11,15 +11,7 @@ export const listIdParam = "listId" as const;
 export const itemIdParam = "itemId" as const;
 export const listMemberIdParam = "userId" as const;
 
-export type ListItemIngredientAmount =
-    | {
-          representation: "fraction" | "range";
-          value: [number, number];
-      }
-    | {
-          representation: "number";
-          value: number;
-      };
+export type ListItemIngredientAmount = FractionValue | RangeValue | NumberValue;
 
 /**
  * Lists
