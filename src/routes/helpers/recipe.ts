@@ -67,6 +67,7 @@ const parseServings = (servingsString: string | undefined) => {
     try {
         const servings = JSON.parse(servingsString) as RecipeServings;
 
+        if (!Object.keys(servings).includes("unit") || !Object.keys(servings).includes("count")) return;
         if (!["number", "range"].includes(servings.count.representation)) return;
 
         return servings;
@@ -75,20 +76,24 @@ const parseServings = (servingsString: string | undefined) => {
     }
 };
 
-const stringifyServings = (amount: RecipeServings | undefined) => {
-    if (!amount) return;
+const stringifyServings = (servings: RecipeServings | undefined) => {
+    if (!servings) return;
 
-    switch (amount.count.representation) {
+    switch (servings.count.representation) {
         case "number":
-            if (typeof amount.count === "string") return JSON.stringify(amount);
+            if (typeof servings.count.value !== "string") return;
+            break;
         case "range":
             if (
-                Array.isArray(amount.count) &&
-                amount.count.length === 2 &&
-                amount.count.every(v => typeof v === "string")
+                !Array.isArray(servings.count.value) ||
+                servings.count.value.length !== 2 ||
+                servings.count.value.some(v => typeof v !== "string")
             )
-                return JSON.stringify(amount);
+                return;
+            break;
     }
+
+    return JSON.stringify(servings);
 };
 
 const parseRecipesQuerySort = (sort: QueryParam) => {
@@ -154,7 +159,10 @@ export const validatePostRecipeBody = ({ data }: PostRecipeRequestBody, userId: 
                     })
                     .filter(Undefined),
             })),
-            method: item.method,
+            method: item.method?.map(methodSection => ({
+                ...methodSection,
+                items: methodSection.items.filter(step => !!step.description),
+            })),
             tips: item.tips,
             photo: item.photo,
             public: item.public ? 1 : 0,

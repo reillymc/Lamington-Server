@@ -9,10 +9,11 @@ import { list } from "./list";
 import { listItem } from "./listItem";
 import { listMember } from "./listMember";
 import { planner } from "./planner";
-import { plannerMember } from "./plannerMember";
 import { plannerMeal } from "./meal";
+import { plannerMember } from "./plannerMember";
 import { recipe } from "./recipe";
 import { recipeIngredient } from "./recipeIngredient";
+import { recipeNote } from "./recipeNote";
 import { recipeRating } from "./recipeRating";
 import { recipeSection } from "./recipeSection";
 import { recipeStep } from "./recipeStep";
@@ -37,6 +38,7 @@ export const Lamington = {
     [lamington.recipe]: recipe,
     [lamington.recipeIngredient]: recipeIngredient,
     [lamington.recipeRating]: recipeRating,
+    [lamington.recipeNote]: recipeNote,
     [lamington.recipeSection]: recipeSection,
     [lamington.recipeStep]: recipeStep,
     [lamington.recipeTag]: recipeTag,

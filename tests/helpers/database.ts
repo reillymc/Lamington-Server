@@ -37,6 +37,7 @@ export const CleanAllTables = async () => await CleanTables(...Object.values(lam
 export const CleanTables = async (...tables: Table[]) => {
     if (tables.includes("recipe_ingredient")) await db.table("recipe_ingredient").del();
     if (tables.includes("recipe_rating")) await db.table("recipe_rating").del();
+    if (tables.includes("recipe_note")) await db.table("recipe_note").del();
     if (tables.includes("recipe_section")) await db.table("recipe_ingredient").del();
     if (tables.includes("recipe_step")) await db.table("recipe_step").del();
     if (tables.includes("recipe_tag")) await db.table("recipe_tag").del();

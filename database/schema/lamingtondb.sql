@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS `lamingtondb`.`recipe` (
   `servings` JSON NULL,
   `prepTime` INT NULL,
   `cookTime` INT NULL,
+  `nutritionalInformation` JSON NULL,
   `public` TINYINT NULL DEFAULT 0,
   `createdBy` CHAR(36) NULL,
   `timesCooked` INT NULL DEFAULT 0,
@@ -78,6 +79,24 @@ CREATE TABLE IF NOT EXISTS `lamingtondb`.`recipe_rating` (
   INDEX `fk-meal_ratings-rater_id_idx` (`raterId` ASC),
   CONSTRAINT `fk-meal_rating-meal_id` FOREIGN KEY (`recipeId`) REFERENCES `lamingtondb`.`recipe` (`recipeId`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk-meal_rating-rater_id` FOREIGN KEY (`raterId`) REFERENCES `lamingtondb`.`user` (`userId`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4;
+
+-- -----------------------------------------------------
+-- Table `lamingtondb`.`recipe_note`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `lamingtondb`.`recipe_note`;
+
+CREATE TABLE IF NOT EXISTS `lamingtondb`.`recipe_note` (
+  `recipeId` CHAR(36) NOT NULL,
+  `authorId` CHAR(36) NOT NULL,
+  `content` TEXT NULL,
+  `public` TINYINT NULL DEFAULT 0,
+  `dateUpdated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `dateCreated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`recipeId`, `authorId`),
+  INDEX `fk-recipe_note-authorId_idx` (`authorId` ASC),
+  CONSTRAINT `fk-recipe_note-recipeId` FOREIGN KEY (`recipeId`) REFERENCES `lamingtondb`.`recipe` (`recipeId`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk-recipe_note-authorId` FOREIGN KEY (`authorId`) REFERENCES `lamingtondb`.`user` (`userId`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4;
 
 -- -----------------------------------------------------

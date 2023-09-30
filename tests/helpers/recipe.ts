@@ -4,9 +4,10 @@ import {
     RecipeIngredients,
     RecipeMethod,
     RecipeMethodStep,
+    RecipeServings,
     RecipeTags,
 } from "../../src/routes/spec";
-import { randomNumber } from "./data";
+import { randomBoolean, randomNumber } from "./data";
 import { Undefined } from "../../src/utils";
 import { TagActions } from "../../src/controllers";
 import { ServiceResponse } from "../../src/database";
@@ -20,7 +21,7 @@ export const generateRandomRecipeIngredientSections = (): ServiceResponse<Recipe
         items: Array.from({ length: randomNumber() }).map(() => ({
             id: uuid(),
             name: uuid(),
-            amount: JSON.stringify({ representation: "number", value: randomNumber() }),
+            amount: JSON.stringify({ representation: "number", value: randomNumber().toString() }),
             description: uuid(),
             multiplier: randomNumber(),
             unit: uuid(),
@@ -37,7 +38,7 @@ export const generateRandomPostRecipeIngredientSections = (): RecipeIngredients 
             (): RecipeIngredientItem => ({
                 id: uuid(),
                 name: uuid(),
-                amount: { representation: "number", value: randomNumber() },
+                amount: { representation: "number", value: randomNumber().toString() },
                 description: uuid(),
                 multiplier: randomNumber(),
                 unit: uuid(),
@@ -59,6 +60,26 @@ export const generateRandomRecipeMethodSections = (): RecipeMethod =>
             })
         ),
     }));
+
+export const generateRandomRecipeServings = (): RecipeServings => {
+    if (randomBoolean()) {
+        return {
+            unit: uuid(),
+            count: {
+                representation: "number",
+                value: randomNumber().toString(),
+            },
+        };
+    }
+
+    return {
+        unit: uuid(),
+        count: {
+            representation: "range",
+            value: [randomNumber().toString(), randomNumber().toString()],
+        },
+    };
+};
 
 export const createRandomRecipeTags = async (): Promise<RecipeTags> => {
     const tags: RecipeTags = Object.fromEntries(
@@ -90,6 +111,19 @@ export const createRandomRecipeTags = async (): Promise<RecipeTags> => {
     await TagActions.save(childTags);
 
     return tags;
+};
+
+export const assertRecipeServingsAreEqual = (
+    servings1: RecipeServings | string | undefined,
+    servings2: RecipeServings | string | undefined
+) => {
+    if (!(servings1 && !!servings2) || (!servings2 && !!servings1)) throw new Error("Serving parameter undefined");
+    const servings1Parsed = typeof servings1 === "string" ? JSON.parse(servings1) : servings1;
+    const servings2Parsed = typeof servings2 === "string" ? JSON.parse(servings2) : servings2;
+
+    expect(servings1Parsed.unit).toEqual(servings2Parsed.unit);
+    expect(servings1Parsed.count.representation).toEqual(servings2Parsed.count.representation);
+    expect(servings1Parsed.count.value).toEqual(servings2Parsed.count.value);
 };
 
 export const assertRecipeTagsAreEqual = (tags1: RecipeTags = {}, tags2: RecipeTags = {}) => {

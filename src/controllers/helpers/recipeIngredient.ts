@@ -22,7 +22,7 @@ export const recipeIngredientsRequestToRows = ({
                     index,
                     description: ingItem.description,
                     unit: ingItem.unit,
-                    amount: JSON.stringify(ingItem.amount),
+                    amount: ingItem.amount,
                     multiplier: ingItem.multiplier,
                 };
             })

@@ -14,6 +14,7 @@ import {
     generateRandomRecipeIngredientSections,
     generateRandomRecipeMethodSections,
     assertRecipeTagsAreEqual,
+    generateRandomRecipeServings,
 } from "../../helpers";
 import { GetAllRecipesResponse, RecipeTags } from "../../../src/routes/spec";
 import {
@@ -54,6 +55,7 @@ test("should return correct recipe details", async () => {
         cookTime: randomNumber(),
         ingredients: generateRandomRecipeIngredientSections(),
         method: generateRandomRecipeMethodSections(),
+        servings: JSON.stringify(generateRandomRecipeServings()),
         photo: uuid(),
         prepTime: randomNumber(),
         ratingPersonal: randomNumber(),
@@ -88,8 +90,7 @@ test("should return correct recipe details", async () => {
     expect(recipeResponse.photo).toEqual(recipe.photo);
     expect(recipeResponse.prepTime).toEqual(recipe.prepTime);
     expect(recipeResponse.ratingPersonal).toEqual(recipe.ratingPersonal);
-    expect(recipeResponse.servingsLower).toBeUndefined();
-    expect(recipeResponse.servingsUpper).toBeUndefined();
+    expect(recipeResponse.servings).toBeUndefined();
     expect(recipeResponse.source).toBeUndefined();
     expect(recipeResponse.timesCooked).toEqual(recipe.timesCooked);
     expect(recipeResponse.ratingAverage).toEqual(recipe.ratingPersonal);

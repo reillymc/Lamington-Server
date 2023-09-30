@@ -12,6 +12,7 @@ export enum lamington {
     recipe = "recipe",
     recipeIngredient = "recipe_ingredient",
     recipeRating = "recipe_rating",
+    recipeNote = "recipe_note",
     recipeSection = "recipe_section",
     recipeStep = "recipe_step",
     recipeTag = "recipe_tag",

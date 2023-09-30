@@ -6,9 +6,11 @@ import {
     CleanTables,
     PrepareAuthenticatedUser,
     RecipeEndpoint,
+    assertRecipeServingsAreEqual,
     createRandomRecipeTags,
     generateRandomPostRecipeIngredientSections,
     generateRandomRecipeMethodSections,
+    generateRandomRecipeServings,
     randomNumber,
 } from "../../helpers";
 import { PostRecipeRequestBody } from "../../../src/routes/spec";
@@ -43,8 +45,7 @@ test("should create correct recipe details", async () => {
         photo: uuid(),
         prepTime: randomNumber(),
         ratingPersonal: randomNumber(),
-        servingsLower: randomNumber(),
-        servingsUpper: randomNumber(),
+        servings: generateRandomRecipeServings(),
         source: uuid(),
         tags: await createRandomRecipeTags(),
         timesCooked: randomNumber(),
@@ -72,13 +73,12 @@ test("should create correct recipe details", async () => {
     expect(recipeResponse!.summary).toEqual(recipe.summary);
     expect(recipeResponse!.source).toEqual(recipe.source);
     expect(recipeResponse!.tips).toEqual(recipe.tips);
-    expect(recipeResponse!.servingsLower).toEqual(recipe.servingsLower);
-    expect(recipeResponse!.servingsUpper).toEqual(recipe.servingsUpper);
     expect(recipeResponse!.prepTime).toEqual(recipe.prepTime);
     expect(recipeResponse!.ratingPersonal).toEqual(recipe.ratingPersonal);
     expect(recipeResponse!.timesCooked).toEqual(recipe.timesCooked);
     expect(recipeResponse!.ratingAverage).toEqual(recipe.ratingPersonal);
     expect(recipeResponse!.dateCreated).toEqual(recipeResponse?.dateUpdated);
+    assertRecipeServingsAreEqual(recipeResponse!.servings, recipe.servings);
     // expect(recipeResponse!.ingredients).toEqual(recipe.ingredients); TODO create validator functions
     // expect(recipeResponse!.method).toEqual(recipe.method);
     // assertRecipeTagsAreEqual(recipeResponse!.tags, recipe.tags);
@@ -99,8 +99,7 @@ test("should update correct recipe details", async () => {
         photo: uuid(),
         prepTime: randomNumber(),
         ratingPersonal: randomNumber(),
-        servingsLower: randomNumber(),
-        servingsUpper: randomNumber(),
+        servings: generateRandomRecipeServings(),
         source: uuid(),
         tags: await createRandomRecipeTags(),
         timesCooked: randomNumber(),
@@ -132,8 +131,7 @@ test("should update correct recipe details", async () => {
         photo: uuid(),
         prepTime: randomNumber(),
         ratingPersonal: randomNumber(),
-        servingsLower: randomNumber(),
-        servingsUpper: randomNumber(),
+        servings: generateRandomRecipeServings(),
         source: uuid(),
         tags: await createRandomRecipeTags(),
         timesCooked: randomNumber(),
@@ -160,8 +158,6 @@ test("should update correct recipe details", async () => {
     expect(recipeResponse!.summary).toEqual(recipe2.summary);
     expect(recipeResponse!.source).toEqual(recipe2.source);
     expect(recipeResponse!.tips).toEqual(recipe2.tips);
-    expect(recipeResponse!.servingsLower).toEqual(recipe2.servingsLower);
-    expect(recipeResponse!.servingsUpper).toEqual(recipe2.servingsUpper);
     expect(recipeResponse!.prepTime).toEqual(recipe2.prepTime);
     expect(recipeResponse!.ratingPersonal).toEqual(recipe2.ratingPersonal);
     expect(recipeResponse!.timesCooked).toEqual(recipe2.timesCooked);
@@ -169,7 +165,7 @@ test("should update correct recipe details", async () => {
     expect(new Date(recipeResponse!.dateCreated!).getTime()).toBeLessThan(
         new Date(recipeResponse?.dateUpdated!).getTime()
     );
-
+    assertRecipeServingsAreEqual(recipeResponse!.servings, recipe2.servings);
     // expect(recipeResponse!.ingredients).toEqual(recipe.ingredients); TODO create validator functions
     // expect(recipeResponse!.method).toEqual(recipe.method);
     // assertRecipeTagsAreEqual(recipeResponse!.tags, recipe2.tags);
