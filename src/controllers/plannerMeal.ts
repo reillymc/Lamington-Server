@@ -15,13 +15,18 @@ const readPlannerMeals: ReadService<PlannerMeal, "plannerId" | "year" | "month">
 
     const response: PlannerMeal[] = [];
     for (const planner of planners) {
+        // Include the previous and next month in addition to the current month to avoid overlap issues
+        // on first/last weeks of the month
+        const previousMonth = (planner.month + 11) % 12;
+        const nextMonth = (planner.month + 1) % 12;
+
         const plannerItem = await db<PlannerMeal>(lamington.plannerMeal)
             .where(plannerMeal.plannerId, planner.plannerId)
             .andWhere(plannerMeal.year, planner.year)
             .andWhere(plannerMeal.month, planner.month)
-            .orWhere(plannerMeal.month, planner.month - 1)
+            .orWhere(plannerMeal.month, previousMonth)
             .andWhere(plannerMeal.dayOfMonth, ">=", 21)
-            .orWhere(plannerMeal.month, planner.month + 1)
+            .orWhere(plannerMeal.month, nextMonth)
             .andWhere(plannerMeal.dayOfMonth, "<=", 7);
 
         response.push(...plannerItem);
