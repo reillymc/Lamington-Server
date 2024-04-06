@@ -1,9 +1,16 @@
-FROM node:latest
+FROM node:20-bullseye
 
-WORKDIR /
+RUN mkdir -p /home/node/app && chown -R node:node /home/node/app
 
-COPY package.json .
-RUN npm install -g nodemon typescript
-RUN npm install
-COPY . .
-CMD npm start
+WORKDIR /home/node/app
+
+USER node
+
+COPY package*.json .
+RUN npm ci
+
+COPY dist ./src
+
+EXPOSE 3000
+
+CMD npm run prod

@@ -1,35 +1,46 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  db:
-    image: mariadb:10.4
-    restart: unless-stopped
-    env_file: ./.env
-    environment:
-      - MYSQL_ROOT_PASSWORD=$DB_PASSWORD
-      - MYSQL_DATABASE=$DB_NAME
-    ports:
-      - $DB_LOCAL_PORT:$DB_DOCKER_PORT
-    volumes:
-      - /home/reilly/Services/LamingtonDB:/var/lib/mysql
-      # - db:/var/lib/mysql
-  app:
-    depends_on:
-      - db
-    build: .
-    restart: unless-stopped
-    env_file: ./.env
-    network_mode: service:db
-    ports:
-      - $NODE_LOCAL_PORT:$NODE_DOCKER_PORT
-    environment:
-      - DB_HOST=mariadb
-      - DB_USER=$DB_USER
-      - DB_PASSWORD=$DB_PASSWORD
-      - DB_NAME=$DB_NAME
-      - DB_PORT=$DB_DOCKER_PORT
-    stdin_open: true
-    tty: true
+    lamington_server:
+        image: lamington_server:latest
+        container_name: lamington_server
+        depends_on:
+            - mariadb
+        build: .
+        restart: unless-stopped
+        env_file: .env
+        ports:
+            - $NODE_LOCAL_PORT:$NODE_DOCKER_PORT
+        environment:
+            - DB_HOST=$DB_HOST
+            - DB_USER=$DB_USER
+            - DB_PASSWORD=$DB_PASSWORD
+            - DB_NAME=$DB_NAME
+            - DB_PORT=$DB_DOCKER_PORT
+        volumes:
+            - .:/home/node/app
+            - node_modules:/home/node/app/node_modules
+        networks:
+            - lamington-network
+    mariadb:
+        image: mariadb:10.4
+        container_name: mariadb
+        restart: unless-stopped
+        env_file: .env
+        environment:
+            - MYSQL_ROOT_PASSWORD=$DB_PASSWORD
+            - MYSQL_DATABASE=$DB_NAME
+        ports:
+            - $DB_LOCAL_PORT:$DB_DOCKER_PORT
+        volumes:
+            - db:/var/lib/mysql
+            - ./database/schema:/docker-entrypoint-initdb.d/:ro
+        networks:
+            - lamington-network
+volumes:
+    db:
+    node_modules:
 
-# volumes: 
-#   db:
+networks:
+    lamington-network:
+        driver: bridge

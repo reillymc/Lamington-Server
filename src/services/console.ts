@@ -59,4 +59,6 @@ export const printConfig = (config: LamingtonConfig): void => {
 
     const attachments = formatAttachmentConfig(config.attachments);
     console.info(applyColor(attachments));
+
+    console.info(applyColor({message: `Listening on http://localhost:${config.app.port}`}));
 };

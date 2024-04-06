@@ -30,6 +30,20 @@ services:
             - db_test:/var/lib/mysql
             - ../database/schema:/docker-entrypoint-initdb.d/:ro
 
+    mariadb_mirrordb:
+        image: mariadb:10.4
+        restart: unless-stopped
+        env_file: .env
+        environment:
+            - MYSQL_ROOT_PASSWORD=$DB_PASSWORD
+            - MYSQL_DATABASE=$DB_NAME
+            - MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1
+        ports:
+            - $DB_MIRROR_LOCAL_PORT:$DB_MIRROR_DOCKER_PORT
+        volumes:
+            - db_mirror:/var/lib/mysql
+            - ../database/schema:/docker-entrypoint-initdb.d/:ro
+
     app:
         image: app:latest
         depends_on:
@@ -53,3 +67,4 @@ services:
 volumes:
     db:
     db_test:
+    db_mirror:
