@@ -1,9 +1,6 @@
-ARG VARIANT=18-bullseye
-FROM mcr.microsoft.com/vscode/devcontainers/typescript-node:0-${VARIANT}
-
-# FROM node:latest
+FROM node:20-bullseye
 
 # WORKDIR /
 
-RUN npm install -g nodemon
+RUN npm install -g nodemon knex
 

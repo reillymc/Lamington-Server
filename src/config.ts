@@ -30,15 +30,7 @@ const config: LamingtonConfig = {
         logDetail: parseLogLevel(process.env.LOG_LEVEL),
     },
     database: {
-        client: "mysql2",
-        name: process.env.NODE_ENV === "test" ? process.env.DB_TEST_NAME : process.env.DB_NAME,
-        host: process.env.NODE_ENV === "test" ? process.env.DB_TEST_HOST : process.env.DB_HOST,
-        port: parseInt(
-            (process.env.NODE_ENV === "test" ? process.env.DB_TEST_PORT : process.env.DB_PORT) ?? "3306",
-            10
-        ),
-        user: process.env.NODE_ENV === "test" ? process.env.DB_TEST_USER : process.env.DB_USER,
-        password: process.env.NODE_ENV === "test" ? process.env.DB_TEST_PASSWORD : process.env.DB_PASSWORD,
+        client: "pg",
         pageSize: parseInt(process.env.DB_PAGE_SIZE ?? "10", 10),
     },
     authentication: {
@@ -62,12 +54,7 @@ export interface LamingtonConfig {
         logDetail: "tiny" | "short" | "dev";
     };
     database: {
-        client: "mysql2";
-        host: string | undefined;
-        port: number | undefined;
-        name: string | undefined;
-        user: string | undefined;
-        password: string | undefined;
+        client: "pg";
         pageSize: number | undefined;
     };
     authentication: {
