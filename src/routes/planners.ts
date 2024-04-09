@@ -30,6 +30,7 @@ import {
     PostPlannerRequestBody,
     PostPlannerRequestParams,
     PostPlannerResponse,
+    UserStatus,
 } from "./spec";
 
 const router = express.Router();
@@ -260,7 +261,11 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
             if (existingPlanner.createdBy !== userId) {
                 const existingPlannerMembers = await PlannerMemberActions.read({ entityId: plannerId });
 
-                if (!existingPlannerMembers?.some(member => member.userId === userId && member.canEdit)) {
+                if (
+                    !existingPlannerMembers?.some(
+                        member => member.userId === userId && member.status === UserStatus.Administrator
+                    )
+                ) {
                     return next(
                         new AppError({
                             status: 403,
@@ -295,7 +300,7 @@ router.post<PostPlannerMemberRequestParams, PostPlannerMemberResponse, PostPlann
     async ({ body, params, session }, res, next) => {
         // Extract request fields
         const { plannerId } = params;
-        const { accepted } = body;
+        const { status } = body;
         const { userId } = session;
 
         // Check all required fields are present
@@ -334,7 +339,7 @@ router.post<PostPlannerMemberRequestParams, PostPlannerMemberResponse, PostPlann
                 );
             }
 
-            await PlannerMemberActions.save({ plannerId, members: [{ userId, accepted }] });
+            await PlannerMemberActions.save({ plannerId, members: [{ userId, status }] });
             return res.status(201).json({ error: false, message: "Planner member removed." });
         } catch (e: unknown) {
             next(
@@ -387,7 +392,11 @@ router.delete<DeletePlannerMealRequestParams, DeletePlannerMealResponse, DeleteP
             if (existingPlanner.createdBy !== userId) {
                 const existingPlannerMembers = await PlannerMemberActions.read({ entityId: plannerId });
 
-                if (!existingPlannerMembers?.some(member => member.userId === userId && member.canEdit)) {
+                if (
+                    !existingPlannerMembers?.some(
+                        member => member.userId === userId && member.status === UserStatus.Administrator
+                    )
+                ) {
                     return next(
                         new AppError({
                             status: 403,

@@ -1,22 +1,20 @@
-import { v4 as Uuid } from "uuid";
-
-import { Undefined } from "../utils";
 import db, {
-    planner,
-    Planner,
-    PlannerMember,
-    plannerMember,
     CreateQuery,
     CreateResponse,
     DeleteResponse,
-    lamington,
+    Planner,
+    PlannerMember,
     ReadQuery,
     ReadResponse,
-    user,
     User,
+    lamington,
+    planner,
+    plannerMember,
+    user,
 } from "../database";
+import { EnsureArray } from "../utils";
 import { EntityMember } from "./entity";
-import { CreatePlannerMemberParams, PlannerMemberActions } from "./plannerMember";
+import { PlannerMemberActions } from "./plannerMember";
 
 /**
  * Get all planners
@@ -38,8 +36,7 @@ interface GetMyPlannersParams {
 
 interface ReadPlannerRow extends Pick<Planner, "plannerId" | "name" | "customisations" | "createdBy" | "description"> {
     createdByName: User["firstName"];
-    accepted: PlannerMember["accepted"];
-    canEdit: PlannerMember["canEdit"];
+    status: PlannerMember["status"];
 }
 
 /**
@@ -55,8 +52,7 @@ const readMyPlanners = async ({ userId }: GetMyPlannersParams): ReadResponse<Rea
             planner.description,
             planner.createdBy,
             `${user.firstName} as createdByName`,
-            plannerMember.accepted,
-            plannerMember.canEdit
+            plannerMember.status
         )
         .where({ [planner.createdBy]: userId })
         .orWhere({ [plannerMember.userId]: userId })
@@ -84,8 +80,7 @@ const readPlanners = async ({ plannerId, userId }: GetPlannerParams): ReadRespon
             planner.description,
             planner.createdBy,
             `${user.firstName} as createdByName`,
-            plannerMember.accepted,
-            plannerMember.canEdit
+            plannerMember.status
         )
         .whereIn(
             planner.plannerId,
@@ -105,31 +100,17 @@ const readPlanners = async ({ plannerId, userId }: GetPlannerParams): ReadRespon
  * @returns the newly created planners
  */
 const savePlanners = async (
-    planners: CreateQuery<Planner & { members?: Array<EntityMember> }>
+    params: CreateQuery<Planner & { members?: Array<EntityMember> }>
 ): CreateResponse<Planner> => {
-    if (!Array.isArray(planners)) {
-        planners = [planners];
-    }
+    const planners = EnsureArray(params);
 
-    const data = planners
-        .map(({ plannerId, ...params }) => ({ plannerId: plannerId ?? Uuid(), ...params }))
-        .filter(Undefined);
-    const plannerIds = data.map(({ plannerId }) => plannerId);
+    const plannerIds = planners.map(({ plannerId }) => plannerId);
 
-    const plannerData: Planner[] = data.map(({ members, ...plannerItem }) => plannerItem);
-    const memberData: CreatePlannerMemberParams[] = data.flatMap(({ plannerId, members }) => ({
-        plannerId,
-        members:
-            members?.map(({ userId, allowEditing }) => ({
-                userId,
-                allowEditing,
-                accepted: false,
-            })) ?? [],
-    }));
+    const plannerData: Planner[] = planners.map(({ members, ...plannerItem }) => plannerItem);
 
     const result = await db(lamington.planner).insert(plannerData).onConflict(planner.plannerId).merge();
 
-    if (memberData.length > 0) await PlannerMemberActions.save(memberData, { preserveAccepted: true, trimNotIn: true });
+    if (planners.length > 0) await PlannerMemberActions.save(planners, { trimNotIn: true });
 
     return db<Planner>(lamington.planner)
         .select(planner.plannerId, planner.name, planner.customisations, planner.description, planner.createdBy)

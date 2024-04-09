@@ -1,5 +1,6 @@
 import { v4 as Uuid } from "uuid";
 
+import { RecipeService } from "../../controllers/spec";
 import { DefaultSection, QueryMetadata, ServiceParams, ServiceResponse } from "../../database";
 import { BisectOnValidItems, EnsureDefinedArray, ObjectFromEntries, Undefined } from "../../utils";
 import {
@@ -12,7 +13,6 @@ import {
     RecipeServings,
     RecipeTags,
 } from "../spec";
-import { RecipeService } from "../../controllers/spec";
 
 import { parseBaseQuery } from "./queryParams";
 
@@ -165,7 +165,7 @@ export const validatePostRecipeBody = ({ data }: PostRecipeRequestBody, userId: 
             })),
             tips: item.tips,
             photo: item.photo,
-            public: item.public ? 1 : 0,
+            public: item.public ?? false,
             source: item.source,
             tags: item.tags,
             summary: item.summary,

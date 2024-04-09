@@ -1,15 +1,15 @@
 import { v4 as Uuid } from "uuid";
 
 import db, {
-    ReadResponse,
-    lamington,
-    ReadQuery,
     CreateQuery,
-    ListItem,
-    listItem,
-    ListItemModel,
     DeleteResponse,
+    ListItem,
+    ListItemModel,
+    ReadQuery,
+    ReadResponse,
     SaveService,
+    lamington,
+    listItem,
 } from "../database";
 import { EnsureArray, Undefined } from "../utils";
 
@@ -65,14 +65,14 @@ interface GetMostRecentModifiedDateParams {
 
 interface GetMostRecentModifiedDateResponse {
     listId: string;
-    dateUpdated: string;
+    updatedAt: string;
 }
 
 /**
- * Get most recent modified date for list by querying its items and returning the date of the most recently modified item
- * @returns most recent modified date for list
+ * Get most recent modified timestamp for list by querying its items and returning the timestamp of the most recently modified item
+ * @returns most recent modified timestamp for list
  */
-const getLatestDateUpdated = async (
+const getLatestUpdatedTimestamp = async (
     params: ReadQuery<GetMostRecentModifiedDateParams>
 ): ReadResponse<GetMostRecentModifiedDateResponse> => {
     if (!Array.isArray(params)) {
@@ -82,7 +82,7 @@ const getLatestDateUpdated = async (
 
     const query = db(lamington.listItem)
         .select(listItem.listId)
-        .max<GetMostRecentModifiedDateResponse[]>(listItem.dateUpdated, { as: "dateUpdated" })
+        .max<GetMostRecentModifiedDateResponse[]>(listItem.updatedAt, { as: "updatedAt" })
         .whereIn(listItem.listId, listIds)
         .groupBy(listItem.listId);
     return query;
@@ -108,9 +108,8 @@ const saveListItems: SaveService<CreateListItemParams> = async params => {
     const listItems = EnsureArray(params);
 
     const data: ListItemModel[] = listItems
-        .map(({ itemId, completed, ...params }) => ({
-            itemId: itemId ?? Uuid(),
-            completed: completed ? 1 : 0,
+        .map(({ itemId = Uuid(), ...params }) => ({
+            itemId,
             ...params,
         }))
         .filter(Undefined);
@@ -148,7 +147,7 @@ export const ListItemActions = {
     read: readListItems,
     save: saveListItems,
     countOutstandingItems,
-    getLatestDateUpdated,
+    getLatestUpdatedTimestamp,
 };
 
 export type ListItemActions = typeof ListItemActions;

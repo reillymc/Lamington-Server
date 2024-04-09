@@ -1,6 +1,6 @@
 import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from ".";
 import { EntityMember, EntityMembers } from "./common";
-import { User } from "./user";
+import { User, UserStatus } from "./user";
 
 export const plannerEndpoint = "/planners" as const;
 
@@ -29,8 +29,7 @@ export type Planner = {
     name: string;
     color?: string;
     description: string | undefined;
-    accepted?: boolean;
-    canEdit?: boolean;
+    status?: UserStatus;
     members?: EntityMembers;
     meals?: PlannerMeal[];
 };
@@ -116,7 +115,7 @@ export type DeletePlannerMealService = (request: DeletePlannerMealRequest) => De
 export type PostPlannerMemberRequestParams = BaseRequestParams<{
     [plannerIdParam]: Planner["plannerId"];
 }>;
-export type PostPlannerMemberRequestBody = BaseSimpleRequestBody<Pick<Planner, "accepted">>;
+export type PostPlannerMemberRequestBody = BaseSimpleRequestBody<Pick<Planner, "status">>;
 
 export type PostPlannerMemberRequest = BaseRequest<PostPlannerMemberRequestParams & PostPlannerMemberRequestBody>;
 export type PostPlannerMemberResponse = BaseResponse;

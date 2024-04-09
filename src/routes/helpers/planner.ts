@@ -4,6 +4,7 @@ import { PlannerActions, PlannerMealActions, PlannerMemberActions } from "../../
 import { ServiceParams } from "../../database";
 import { BisectOnValidItems, EnsureDefinedArray } from "../../utils";
 import { Planner, PostPlannerMealRequestBody, PostPlannerRequestBody } from "../spec";
+import { getStatus } from "./entityMember";
 
 export const validatePostPlannerBody = ({ data }: PostPlannerRequestBody, userId: string) => {
     const filteredData = EnsureDefinedArray(data);
@@ -69,14 +70,13 @@ export const prepareGetPlannerResponseBody = (
     meals: plannerMeals,
     members: members
         ? Object.fromEntries(
-              members.map(({ userId, canEdit, firstName, lastName }) => [
+              members.map(({ userId, status, firstName, lastName }) => [
                   userId,
-                  { userId, allowEditing: !!canEdit, firstName, lastName },
+                  { userId, status: getStatus(status), firstName, lastName },
               ])
           )
         : undefined,
-    accepted: planner.createdBy === userId ? true : !!planner.accepted,
-    canEdit: planner.createdBy === userId ? true : !!planner.canEdit,
+    status: getStatus(planner.status, planner.createdBy === userId),
 });
 
 type PlannerCustomisationsV1 = Pick<Planner, "color">;

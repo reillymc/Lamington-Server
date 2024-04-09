@@ -2,10 +2,10 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 import { BookActions, BookMemberActions } from "../../../src/controllers";
-import { PostBookMemberRequestBody } from "../../../src/routes/spec";
 import { ServiceParams } from "../../../src/database";
+import { PostBookMemberRequestBody, UserStatus } from "../../../src/routes/spec";
+import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 
 beforeEach(async () => {
     await CleanTables("book", "user", "book_member");
@@ -27,7 +27,7 @@ test("should return 404 for non-existant book", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBookMember(uuid()))
         .set(token)
-        .send({ accepted: true } satisfies PostBookMemberRequestBody);
+        .send({ status: UserStatus.Registered } satisfies PostBookMemberRequestBody);
 
     expect(res.statusCode).toEqual(404);
 });
@@ -48,7 +48,7 @@ test("should not allow editing if not existing book member", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBookMember(book.bookId))
         .set(token)
-        .send({ accepted: true } satisfies PostBookMemberRequestBody);
+        .send({ status: UserStatus.Registered } satisfies PostBookMemberRequestBody);
 
     expect(res.statusCode).toEqual(403);
 });
@@ -70,8 +70,7 @@ test("should allow accepting if existing book member", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: false,
-                allowEditing: false,
+                status: UserStatus.Pending,
             },
         ],
     });
@@ -79,7 +78,7 @@ test("should allow accepting if existing book member", async () => {
     const res = await request(app)
         .post(BookEndpoint.postBookMember(book.bookId))
         .set(token)
-        .send({ accepted: true } satisfies PostBookMemberRequestBody);
+        .send({ status: UserStatus.Registered } satisfies PostBookMemberRequestBody);
 
     expect(res.statusCode).toEqual(201);
 
@@ -89,7 +88,6 @@ test("should allow accepting if existing book member", async () => {
 
     const [bookMember] = bookMembers;
 
-    expect(bookMember?.accepted).toEqual(1);
-    expect(bookMember?.canEdit).toEqual(0);
+    expect(bookMember?.status).toEqual(UserStatus.Registered);
     expect(bookMember?.userId).toEqual(user.userId);
 });

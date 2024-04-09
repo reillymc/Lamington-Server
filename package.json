@@ -11,7 +11,9 @@
         "test:coverage": "NODE_ENV=testing jest --runInBand --forceExit --coverage",
         "migrate:dev": "NODE_ENV=development knex migrate:latest --knexfile src/database/knexfile.ts",
         "migrate:test": "NODE_ENV=testing knex migrate:latest --knexfile src/database/knexfile.ts",
-        "migrate:prod": "NODE_ENV=production knex migrate:latest --knexfile src/database/knexfile.ts"
+        "migrate:prod": "NODE_ENV=production knex migrate:latest --knexfile src/database/knexfile.ts",
+        "rollback:dev": "NODE_ENV=development knex migrate:rollback --knexfile src/database/knexfile.ts",
+        "seed:dev": "NODE_ENV=development knex seed:run --knexfile src/database/knexfile.ts"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.294.0",

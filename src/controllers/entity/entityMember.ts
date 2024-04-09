@@ -1,42 +1,41 @@
 import db, {
-    ReadResponse,
-    lamington,
-    ReadQuery,
     CreateQuery,
-    user,
     DeleteResponse,
-    User,
-    LamingtonMemberTables,
     Lamington,
+    LamingtonMemberTables,
+    ReadQuery,
+    ReadResponse,
+    User,
+    lamington,
+    user,
 } from "../../database";
-import { EntityMember } from "../../database/definitions/entity";
+import { UserStatus } from "../../routes/spec";
 import { EnsureArray } from "../../utils";
+
+export type EntityMember = {
+    userId: User["userId"];
+    status?: UserStatus;
+};
 
 export type SaveEntityMemberRequest<
     T extends keyof typeof LamingtonMemberTables,
     K extends keyof (typeof Lamington)[T]
 > = Pick<(typeof Lamington)[T], K> & {
-    members: Array<{
-        userId: string;
-        allowEditing?: boolean;
-        accepted?: boolean;
-    }>;
+    members?: Array<EntityMember>;
 };
 
 interface CreateEntityMemberOptions {
-    preserveAccepted?: boolean;
     trimNotIn?: boolean;
 }
 
 const saveEntityMembers =
     <T extends keyof typeof LamingtonMemberTables, K extends keyof (typeof Lamington)[T]>(entity: T, idField: K) =>
     async (saveRequests: CreateQuery<SaveEntityMemberRequest<T, K>>, options?: CreateEntityMemberOptions) => {
-        for (const { members, [idField]: entityId } of EnsureArray(saveRequests)) {
-            const data = members.map(({ allowEditing, accepted, userId }) => ({
+        for (const { members = [], [idField]: entityId } of EnsureArray(saveRequests)) {
+            const data = members.map(({ status, userId }) => ({
                 [idField]: entityId,
                 userId,
-                canEdit: allowEditing ? 1 : 0,
-                accepted: accepted ? 1 : 0,
+                status,
             }));
 
             const entityIdField = Lamington[entity][idField] as string;
@@ -54,11 +53,7 @@ const saveEntityMembers =
 
             if (!data.length) return;
 
-            await db
-                .insert(data)
-                .into(entity)
-                .onConflict([entityIdField, memberIdField])
-                .merge(options?.preserveAccepted ? ["canEdit"] : undefined); // Knex seems to disallow columns prefixed with table name
+            await db.insert(data).into(entity).onConflict([entityIdField, memberIdField]).merge(["status"]); // Knex seems to disallow columns prefixed with table name
         }
     };
 
@@ -90,8 +85,7 @@ interface GetEntityMembersParams {
 type GetEntityMembersResponse<
     T extends keyof typeof LamingtonMemberTables,
     K extends keyof (typeof Lamington)[T]
-> = Pick<EntityMember, "userId" | "accepted"> &
-    Pick<User, "firstName" | "lastName"> & { canEdit: number } & Pick<(typeof Lamington)[T], K>;
+> = Pick<EntityMember, "userId" | "status"> & Pick<User, "firstName" | "lastName"> & Pick<(typeof Lamington)[T], K>;
 
 const readEntityMembers =
     <T extends keyof typeof LamingtonMemberTables, K extends keyof (typeof Lamington)[T]>(entity: T, idField: K) =>
@@ -103,11 +97,10 @@ const readEntityMembers =
 
         const entityIdField = Lamington[entity][idField] as string;
         const memberIdField = LamingtonMemberTables[entity]["userId"];
-        const canEditField = LamingtonMemberTables[entity]["canEdit"];
-        const acceptedField = LamingtonMemberTables[entity]["accepted"];
+        const statusField = LamingtonMemberTables[entity]["status"];
 
         const query = db(entity)
-            .select(entityIdField, memberIdField, canEditField, acceptedField, user.firstName, user.lastName)
+            .select(entityIdField, memberIdField, statusField, user.firstName, user.lastName)
             .whereIn(entityIdField, entityIds)
             .leftJoin(lamington.user, memberIdField, user.userId);
 

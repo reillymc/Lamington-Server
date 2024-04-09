@@ -1,10 +1,10 @@
 import request from "supertest";
 
 import app from "../../../src/app";
-import { ListEndpoint, CleanTables, CreateLists, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
-import { GetListsResponse } from "../../../src/routes/spec";
 import { ListMemberActions } from "../../../src/controllers";
 import { CreateListMemberParams } from "../../../src/controllers/listMember";
+import { GetListsResponse, UserStatus } from "../../../src/routes/spec";
+import { CleanTables, CreateLists, CreateUsers, ListEndpoint, PrepareAuthenticatedUser } from "../../helpers";
 
 beforeEach(async () => {
     await CleanTables("list", "user");
@@ -51,8 +51,7 @@ test("should return correct list membership details for user", async () => {
                 members: [
                     {
                         userId: user.userId,
-                        allowEditing: true,
-                        accepted: true,
+                        status: UserStatus.Administrator,
                     },
                 ],
             })
@@ -63,14 +62,16 @@ test("should return correct list membership details for user", async () => {
                 members: [
                     {
                         userId: user.userId,
-                        allowEditing: false,
-                        accepted: true,
+                        status: UserStatus.Registered,
                     },
                 ],
             })
         ),
         ...nonAcceptedLists.map(
-            ({ listId }): CreateListMemberParams => ({ listId, members: [{ userId: user.userId, accepted: false }] })
+            ({ listId }): CreateListMemberParams => ({
+                listId,
+                members: [{ userId: user.userId, status: UserStatus.Pending }],
+            })
         ),
     ]);
 
@@ -89,17 +90,14 @@ test("should return correct list membership details for user", async () => {
     const nonAcceptedListIds = nonAcceptedLists.map(({ listId }) => listId);
 
     Object.keys(data ?? {}).forEach(listId => {
-        const { canEdit, accepted } = data![listId]!;
+        const { status } = data![listId]!;
 
         if (editableListIds.includes(listId)) {
-            expect(canEdit).toEqual(true);
-            expect(accepted).toEqual(true);
+            expect(status).toEqual(UserStatus.Administrator);
         } else if (acceptedListIds.includes(listId)) {
-            expect(canEdit).toEqual(false);
-            expect(accepted).toEqual(true);
+            expect(status).toEqual(UserStatus.Registered);
         } else if (nonAcceptedListIds.includes(listId)) {
-            expect(canEdit).toEqual(false);
-            expect(accepted).toEqual(false);
+            expect(status).toEqual(UserStatus.Pending);
         }
     });
 });

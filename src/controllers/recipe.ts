@@ -104,7 +104,7 @@ const query: RecipeService["Query"] = async ({
                 prepTime: recipeAlias.prepTime,
                 public: recipeAlias.public,
                 createdBy: recipeAlias.createdBy,
-                dateCreated: recipeAlias.dateCreated,
+                createdAt: recipeAlias.createdAt,
                 createdByName: `${user.firstName} as createdByName`,
                 ratingAverage: db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ${ratingAverageName}`),
                 ratingPersonal: db
@@ -207,7 +207,7 @@ const queryByUser: RecipeService["QueryByUser"] = async ({
             recipeAlias.prepTime,
             recipeAlias.public,
             recipeAlias.createdBy,
-            recipeAlias.dateCreated,
+            recipeAlias.createdAt,
             `${user.firstName} as createdByName`,
             db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ${ratingAverageName}`),
             db
@@ -292,7 +292,7 @@ const queryByBook: RecipeService["QueryByBook"] = async ({ bookId, page, search,
             recipeAlias.prepTime,
             recipeAlias.public,
             recipeAlias.createdBy,
-            recipeAlias.dateCreated,
+            recipeAlias.createdAt,
             `${user.firstName} as createdByName`,
             db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ratingAverage`),
             db.raw(
@@ -434,8 +434,8 @@ type GetFullRecipeResults =
           | "summary"
           | "servings"
           | "source"
-          | "dateCreated"
-          | "dateUpdated"
+          | "createdAt"
+          | "updatedAt"
       > & {
           ratingAverage: string;
           ratingPersonal: RecipeRating["rating"];
@@ -458,8 +458,8 @@ const getFullRecipe = async (recipeId: string, userId: string): Promise<GetFullR
             recipe.public,
             recipe.timesCooked,
             recipe.createdBy,
-            recipe.dateCreated,
-            recipe.dateUpdated,
+            recipe.createdAt,
+            recipe.updatedAt,
             `${user.firstName} as createdByName`,
             db.raw(`COALESCE(ROUND(AVG(${recipeRating.rating}),1), 0) AS ratingAverage`),
             db.raw(

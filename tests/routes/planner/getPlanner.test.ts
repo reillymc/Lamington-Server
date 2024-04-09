@@ -2,21 +2,20 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
+import { PlannerActions, PlannerMealActions, PlannerMemberActions } from "../../../src/controllers";
+import { PlannerMeal } from "../../../src/controllers/plannerMeal";
+import { ServiceParams } from "../../../src/database";
+import { PlannerCustomisations } from "../../../src/routes/helpers";
+import { GetPlannerResponse, UserStatus } from "../../../src/routes/spec";
 import {
-    PlannerEndpoint,
     CleanTables,
     CreateUsers,
+    PlannerEndpoint,
     PrepareAuthenticatedUser,
-    randomCount,
-    randomNumber,
-    randomBoolean,
     TEST_ITEM_COUNT,
+    randomBoolean,
+    randomCount,
 } from "../../helpers";
-import { GetPlannerResponse } from "../../../src/routes/spec";
-import { PlannerActions, PlannerMemberActions, PlannerMealActions } from "../../../src/controllers";
-import { PlannerMeal } from "../../../src/controllers/plannerMeal";
-import { PlannerCustomisations } from "../../../src/routes/helpers";
-import { ServiceParams } from "../../../src/database";
 
 const getPlannerCustomisations = (): PlannerCustomisations => {
     return {
@@ -114,7 +113,7 @@ test("should return a planner that a user is a member of", async () => {
     const { data } = res.body as GetPlannerResponse;
 
     expect(data?.plannerId).toEqual(createPlannerParams.plannerId);
-    expect(data?.canEdit).toEqual(false);
+    expect(data?.status).toEqual(UserStatus.Pending);
 });
 
 test("should return a planner that a user is a member of with correct permissions", async () => {
@@ -126,7 +125,7 @@ test("should return a planner that a user is a member of with correct permission
         name: uuid(),
         description: uuid(),
         createdBy: plannerOwner!.userId,
-        members: [{ userId: user.userId, allowEditing: false }],
+        members: [{ userId: user.userId, status: UserStatus.Registered }],
     } satisfies ServiceParams<PlannerActions, "save">;
 
     const otherPlanners = Array.from({ length: TEST_ITEM_COUNT }).map(
@@ -136,7 +135,14 @@ test("should return a planner that a user is a member of with correct permission
                 name: uuid(),
                 description: uuid(),
                 createdBy: plannerOwner!.userId,
-                members: randomBoolean() ? [{ userId: user.userId, allowEditing: randomBoolean() }] : undefined,
+                members: randomBoolean()
+                    ? [
+                          {
+                              userId: user.userId,
+                              status: randomBoolean() ? UserStatus.Administrator : UserStatus.Registered,
+                          },
+                      ]
+                    : undefined,
             } satisfies ServiceParams<PlannerActions, "save">)
     );
 
@@ -149,7 +155,7 @@ test("should return a planner that a user is a member of with correct permission
     const { data } = res.body as GetPlannerResponse;
 
     expect(data?.plannerId).toEqual(mainPlanner.plannerId);
-    expect(data?.canEdit).toEqual(mainPlanner.members![0]!.allowEditing);
+    expect(data?.status).toEqual(mainPlanner.members![0]!.status);
 });
 
 test("should return planner meals", async () => {
@@ -221,8 +227,7 @@ test("should return planner members", async () => {
         members: [
             {
                 userId: plannerMember!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });

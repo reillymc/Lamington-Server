@@ -1,18 +1,41 @@
 import { Knex } from "knex";
+import { UserStatus } from "../../routes/spec";
 
-export async function up(knex: Knex): Promise<void> {
-    return knex.schema
-        .createTable("user", table => {
+export enum tables {
+    book = "book",
+    bookMember = "book_member",
+    bookRecipe = "book_recipe",
+    ingredient = "ingredient",
+    list = "list",
+    listItem = "list_item",
+    listMember = "list_member",
+    planner = "planner",
+    plannerMember = "planner_member",
+    plannerMeal = "planner_meal",
+    recipe = "recipe",
+    recipeIngredient = "recipe_ingredient",
+    recipeRating = "recipe_rating",
+    recipeNote = "recipe_note",
+    recipeSection = "recipe_section",
+    recipeStep = "recipe_step",
+    recipeTag = "recipe_tag",
+    tag = "tag",
+    user = "user",
+}
+
+export const up = async (knex: Knex): Promise<void> =>
+    knex.schema
+        .createTable(tables.user, table => {
             table.uuid("userId", { primaryKey: true });
             table.string("email", 255).notNullable().unique();
             table.string("firstName", 255).notNullable();
             table.string("lastName", 255).notNullable();
             table.string("password", 255).notNullable();
             table.dateTime("createdAt").notNullable().defaultTo(knex.fn.now());
-            table.tinyint("permissions").notNullable().defaultTo(0);
+            table.text("status").notNullable().defaultTo(UserStatus.Pending);
             table.jsonb("preferences");
         })
-        .createTable("recipe", table => {
+        .createTable(tables.recipe, table => {
             table.uuid("recipeId", { primaryKey: true });
             table.string("name", 255).notNullable();
             table.string("source", 255);
@@ -24,147 +47,202 @@ export async function up(knex: Knex): Promise<void> {
             table.smallint("cookTime");
             table.jsonb("nutritionalInformation");
             table.boolean("public").defaultTo(false);
-            table.uuid("createdBy").references("userId").inTable("user").onDelete("SET NULL").onUpdate("SET NULL");
+            table.uuid("createdBy").references("userId").inTable(tables.user).onDelete("SET NULL").onUpdate("SET NULL");
             table.smallint("timesCooked").defaultTo(0);
-            table.dateTime("dateUpdated").notNullable().defaultTo(knex.fn.now());
-            table.dateTime("dateCreated").notNullable().defaultTo(knex.fn.now());
+            table.dateTime("updatedAt").notNullable().defaultTo(knex.fn.now());
+            table.dateTime("createdAt").notNullable().defaultTo(knex.fn.now());
         })
-        .createTable("recipe_rating", table => {
-            table.uuid("recipeId").references("recipeId").inTable("recipe").onDelete("CASCADE").onUpdate("CASCADE");
-            table.uuid("raterId").references("userId").inTable("user").onDelete("CASCADE").onUpdate("CASCADE");
+        .createTable(tables.recipeRating, table => {
+            table
+                .uuid("recipeId")
+                .references("recipeId")
+                .inTable(tables.recipe)
+                .onDelete("CASCADE")
+                .onUpdate("CASCADE");
+            table.uuid("raterId").references("userId").inTable(tables.user).onDelete("CASCADE").onUpdate("CASCADE");
             table.integer("rating").notNullable();
             table.primary(["recipeId", "raterId"]);
         })
-        .createTable("recipe_note", table => {
+        .createTable(tables.recipeNote, table => {
             table.uuid("noteId", { primaryKey: true });
-            table.uuid("recipeId").references("recipeId").inTable("recipe").onDelete("CASCADE").onUpdate("CASCADE");
-            table.uuid("authorId").references("userId").inTable("user").onDelete("SET NULL").onUpdate("CASCADE");
+            table
+                .uuid("recipeId")
+                .references("recipeId")
+                .inTable(tables.recipe)
+                .onDelete("CASCADE")
+                .onUpdate("CASCADE");
+            table.uuid("authorId").references("userId").inTable(tables.user).onDelete("SET NULL").onUpdate("CASCADE");
             table.string("title", 255);
             table.text("content");
             table.boolean("public").defaultTo(false);
-            table.dateTime("dateUpdated").notNullable().defaultTo(knex.fn.now());
-            table.uuid("parentId").references("noteId").inTable("recipe_note").onDelete("SET NULL").onUpdate("CASCADE");
+            table.dateTime("updatedAt").notNullable().defaultTo(knex.fn.now());
+            table
+                .uuid("parentId")
+                .references("noteId")
+                .inTable(tables.recipeNote)
+                .onDelete("SET NULL")
+                .onUpdate("CASCADE");
         })
-        .createTable("tag", table => {
+        .createTable(tables.tag, table => {
             table.uuid("tagId", { primaryKey: true });
             table.string("name", 255).notNullable();
             table.string("description", 255);
-            table.uuid("parentId").references("tagId").inTable("tag").onDelete("CASCADE").onUpdate("NO ACTION");
+            table.uuid("parentId").references("tagId").inTable(tables.tag).onDelete("CASCADE").onUpdate("NO ACTION");
         })
-        .createTable("recipe_tag", table => {
-            table.uuid("recipeId").references("recipeId").inTable("recipe").onDelete("CASCADE").onUpdate("CASCADE");
-            table.uuid("tagId").references("tagId").inTable("tag").onDelete("CASCADE").onUpdate("CASCADE");
+        .createTable(tables.recipeTag, table => {
+            table
+                .uuid("recipeId")
+                .references("recipeId")
+                .inTable(tables.recipe)
+                .onDelete("CASCADE")
+                .onUpdate("CASCADE");
+            table.uuid("tagId").references("tagId").inTable(tables.tag).onDelete("CASCADE").onUpdate("CASCADE");
             table.primary(["recipeId", "tagId"]);
         })
-        .createTable("ingredient", table => {
+        .createTable(tables.ingredient, table => {
             table.uuid("ingredientId", { primaryKey: true });
             table.string("name", 255).notNullable();
             table.string("description");
             table.string("photo", 255);
-            table.uuid("createdBy").references("userId").inTable("user").onDelete("SET NULL").onUpdate("CASCADE");
+            table.uuid("createdBy").references("userId").inTable(tables.user).onDelete("SET NULL").onUpdate("CASCADE");
         })
-        .createTable("recipe_section", table => {
-            table.uuid("recipeId").references("recipeId").inTable("recipe").onDelete("CASCADE").onUpdate("CASCADE");
+        .createTable(tables.recipeSection, table => {
+            table
+                .uuid("recipeId")
+                .references("recipeId")
+                .inTable(tables.recipe)
+                .onDelete("CASCADE")
+                .onUpdate("CASCADE");
             table.uuid("sectionId").unique();
             table.tinyint("index").notNullable();
             table.string("name", 255);
             table.string("description", 255);
             table.primary(["recipeId", "sectionId"]);
         })
-        .createTable("recipe_ingredient", table => {
+        .createTable(tables.recipeIngredient, table => {
             table.uuid("id", { primaryKey: true });
-            table.uuid("recipeId").references("recipeId").inTable("recipe").onDelete("CASCADE").onUpdate("CASCADE");
+            table
+                .uuid("recipeId")
+                .references("recipeId")
+                .inTable(tables.recipe)
+                .onDelete("CASCADE")
+                .onUpdate("CASCADE");
             table
                 .uuid("sectionId")
                 .references("sectionId")
-                .inTable("recipe_section")
+                .inTable(tables.recipeSection)
                 .onDelete("CASCADE")
                 .onUpdate("CASCADE");
             table
                 .uuid("ingredientId")
                 .references("ingredientId")
-                .inTable("ingredient")
+                .inTable(tables.ingredient)
                 .onDelete("RESTRICT")
                 .onUpdate("CASCADE");
-            table.uuid("subrecipeId").references("recipeId").inTable("recipe").onDelete("SET NULL").onUpdate("CASCADE");
+            table
+                .uuid("subrecipeId")
+                .references("recipeId")
+                .inTable(tables.recipe)
+                .onDelete("SET NULL")
+                .onUpdate("CASCADE");
             table.tinyint("index").notNullable();
             table.string("unit", 45);
             table.jsonb("amount");
             table.tinyint("multiplier");
             table.string("description", 255);
         })
-        .createTable("recipe_step", table => {
+        .createTable(tables.recipeStep, table => {
             table.uuid("id", { primaryKey: true });
-            table.uuid("recipeId").references("recipeId").inTable("recipe").onDelete("CASCADE").onUpdate("CASCADE");
+            table
+                .uuid("recipeId")
+                .references("recipeId")
+                .inTable(tables.recipe)
+                .onDelete("CASCADE")
+                .onUpdate("CASCADE");
             table
                 .uuid("sectionId")
                 .references("sectionId")
-                .inTable("recipe_section")
+                .inTable(tables.recipeSection)
                 .onDelete("CASCADE")
                 .onUpdate("CASCADE");
             table.tinyint("index").notNullable();
             table.text("description");
             table.string("photo", 255);
         })
-        .createTable("list", table => {
+        .createTable(tables.list, table => {
             table.uuid("listId", { primaryKey: true });
             table.string("name", 255).notNullable();
-            table.uuid("createdBy").references("userId").inTable("user").onDelete("CASCADE").onUpdate("CASCADE");
+            table.uuid("createdBy").references("userId").inTable(tables.user).onDelete("CASCADE").onUpdate("CASCADE");
             table.jsonb("customisations");
             table.string("description", 255);
         })
-        .createTable("list_item", table => {
+        .createTable(tables.listItem, table => {
             table.uuid("itemId", { primaryKey: true });
-            table.uuid("listId").references("listId").inTable("list").onDelete("CASCADE").onUpdate("CASCADE");
+            table.uuid("listId").references("listId").inTable(tables.list).onDelete("CASCADE").onUpdate("CASCADE");
             table.string("name", 255).notNullable();
-            table.dateTime("dateUpdated").notNullable().defaultTo(knex.fn.now());
+            table.dateTime("updatedAt").notNullable().defaultTo(knex.fn.now());
             table.boolean("completed").defaultTo(false);
             table
                 .uuid("ingredientId")
                 .references("ingredientId")
-                .inTable("ingredient")
+                .inTable(tables.ingredient)
                 .onDelete("NO ACTION")
                 .onUpdate("CASCADE");
             table.string("unit", 45);
             table.jsonb("amount");
             table.string("notes", 255);
-            table.uuid("createdBy").references("userId").inTable("user").onDelete("NO ACTION").onUpdate("NO ACTION");
+            table
+                .uuid("createdBy")
+                .references("userId")
+                .inTable(tables.user)
+                .onDelete("NO ACTION")
+                .onUpdate("NO ACTION");
         })
-        .createTable("list_member", table => {
-            table.uuid("listId").references("listId").inTable("list").onDelete("CASCADE").onUpdate("CASCADE");
-            table.uuid("userId").references("userId").inTable("user").onDelete("CASCADE").onUpdate("CASCADE");
-            table.tinyint("permissions").notNullable().defaultTo(0);
+        .createTable(tables.listMember, table => {
+            table.uuid("listId").references("listId").inTable(tables.list).onDelete("CASCADE").onUpdate("CASCADE");
+            table.uuid("userId").references("userId").inTable(tables.user).onDelete("CASCADE").onUpdate("CASCADE");
+            table.text("status").notNullable().defaultTo(UserStatus.Pending);
             table.primary(["listId", "userId"]);
         })
-        .createTable("book", table => {
+        .createTable(tables.book, table => {
             table.uuid("bookId", { primaryKey: true });
-            table.uuid("createdBy").references("userId").inTable("user").onDelete("CASCADE").onUpdate("CASCADE");
+            table.uuid("createdBy").references("userId").inTable(tables.user).onDelete("CASCADE").onUpdate("CASCADE");
             table.string("name", 255);
             table.jsonb("customisations");
             table.string("description", 255);
         })
-        .createTable("book_recipe", table => {
-            table.uuid("bookId").references("bookId").inTable("book").onDelete("CASCADE").onUpdate("CASCADE");
-            table.uuid("recipeId").references("recipeId").inTable("recipe").onDelete("CASCADE").onUpdate("CASCADE");
+        .createTable(tables.bookRecipe, table => {
+            table.uuid("bookId").references("bookId").inTable(tables.book).onDelete("CASCADE").onUpdate("CASCADE");
+            table
+                .uuid("recipeId")
+                .references("recipeId")
+                .inTable(tables.recipe)
+                .onDelete("CASCADE")
+                .onUpdate("CASCADE");
             table.primary(["bookId", "recipeId"]);
         })
-        .createTable("book_member", table => {
-            table.uuid("bookId").references("bookId").inTable("book").onDelete("CASCADE").onUpdate("CASCADE");
-            table.uuid("userId").references("userId").inTable("user").onDelete("CASCADE").onUpdate("CASCADE");
-            table.tinyint("permissions").notNullable().defaultTo(0);
+        .createTable(tables.bookMember, table => {
+            table.uuid("bookId").references("bookId").inTable(tables.book).onDelete("CASCADE").onUpdate("CASCADE");
+            table.uuid("userId").references("userId").inTable(tables.user).onDelete("CASCADE").onUpdate("CASCADE");
+            table.text("status").notNullable().defaultTo(UserStatus.Pending);
             table.primary(["bookId", "userId"]);
         })
-        .createTable("planner", table => {
+        .createTable(tables.planner, table => {
             table.uuid("plannerId", { primaryKey: true });
-            table.uuid("createdBy").references("userId").inTable("user").onDelete("CASCADE").onUpdate("CASCADE");
+            table.uuid("createdBy").references("userId").inTable(tables.user).onDelete("CASCADE").onUpdate("CASCADE");
             table.string("name", 255).notNullable();
             table.jsonb("customisations");
             table.string("description", 255);
         })
-        .createTable("planner_meal", table => {
+        .createTable(tables.plannerMeal, table => {
             table.uuid("id", { primaryKey: true });
-            table.uuid("plannerId").references("plannerId").inTable("planner").onDelete("CASCADE").onUpdate("CASCADE");
-            table.uuid("createdBy").references("userId").inTable("user").onDelete("CASCADE").onUpdate("CASCADE");
+            table
+                .uuid("plannerId")
+                .references("plannerId")
+                .inTable(tables.planner)
+                .onDelete("CASCADE")
+                .onUpdate("CASCADE");
+            table.uuid("createdBy").references("userId").inTable(tables.user).onDelete("CASCADE").onUpdate("CASCADE");
             table.smallint("year");
             table.tinyint("month");
             table.tinyint("dayOfMonth");
@@ -173,36 +251,44 @@ export async function up(knex: Knex): Promise<void> {
             table.string("description", 255);
             table.string("source", 255);
             table.tinyint("sequence");
-            table.uuid("recipeId").references("recipeId").inTable("recipe").onDelete("SET NULL").onUpdate("SET NULL");
+            table
+                .uuid("recipeId")
+                .references("recipeId")
+                .inTable(tables.recipe)
+                .onDelete("SET NULL")
+                .onUpdate("SET NULL");
             table.string("notes", 255);
         })
-        .createTable("planner_member", table => {
-            table.uuid("plannerId").references("plannerId").inTable("planner").onDelete("CASCADE").onUpdate("CASCADE");
-            table.uuid("userId").references("userId").inTable("user").onDelete("CASCADE").onUpdate("CASCADE");
-            table.tinyint("permissions").notNullable().defaultTo(0);
+        .createTable(tables.plannerMember, table => {
+            table
+                .uuid("plannerId")
+                .references("plannerId")
+                .inTable(tables.planner)
+                .onDelete("CASCADE")
+                .onUpdate("CASCADE");
+            table.uuid("userId").references("userId").inTable(tables.user).onDelete("CASCADE").onUpdate("CASCADE");
+            table.text("status").notNullable().defaultTo(UserStatus.Pending);
             table.primary(["plannerId", "userId"]);
         });
-}
 
-export async function down(knex: Knex): Promise<void> {
-    return knex.schema
-        .dropTable("user")
-        .dropTable("recipe")
-        .dropTable("recipe_rating")
-        .dropTable("recipe_note")
-        .dropTable("tag")
-        .dropTable("recipe_tag")
-        .dropTable("ingredient")
-        .dropTable("recipe_section")
-        .dropTable("recipe_ingredient")
-        .dropTable("recipe_step")
-        .dropTable("list")
-        .dropTable("list_item")
-        .dropTable("list_member")
-        .dropTable("book")
-        .dropTable("book_recipe")
-        .dropTable("book_member")
-        .dropTable("planner")
-        .dropTable("planner_meal")
-        .dropTable("planner_member");
-}
+export const down = async (knex: Knex): Promise<void> =>
+    knex.schema
+        .dropTable(tables.bookMember)
+        .dropTable(tables.listMember)
+        .dropTable(tables.plannerMember)
+        .dropTable(tables.listItem)
+        .dropTable(tables.recipeTag)
+        .dropTable(tables.bookRecipe)
+        .dropTable(tables.plannerMeal)
+        .dropTable(tables.recipeRating)
+        .dropTable(tables.recipeIngredient)
+        .dropTable(tables.recipeStep)
+        .dropTable(tables.recipeSection)
+        .dropTable(tables.recipeNote)
+        .dropTable(tables.tag)
+        .dropTable(tables.book)
+        .dropTable(tables.ingredient)
+        .dropTable(tables.list)
+        .dropTable(tables.planner)
+        .dropTable(tables.recipe)
+        .dropTable(tables.user);

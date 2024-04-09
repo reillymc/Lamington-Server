@@ -1,9 +1,10 @@
 import { v4 as Uuid } from "uuid";
 
-import { BisectOnValidPartialItems, EnsureDefinedArray } from "../../utils";
-import { Book, PostBookRequestBody, RequestValidator } from "../spec";
 import { BookActions, BookMemberActions } from "../../controllers";
 import { RecipeService } from "../../controllers/spec";
+import { BisectOnValidPartialItems, EnsureDefinedArray } from "../../utils";
+import { Book, PostBookRequestBody, RequestValidator } from "../spec";
+import { getStatus } from "./entityMember";
 import { RecipeQueryResponseToRecipe } from "./recipe";
 
 export const validatePostBookBody: RequestValidator<PostBookRequestBody> = ({ data }, userId) => {
@@ -43,14 +44,13 @@ export const prepareGetBookResponseBody = (
         : undefined,
     members: members
         ? Object.fromEntries(
-              members.map(({ userId, canEdit, firstName, lastName }) => [
+              members.map(({ userId, status, firstName, lastName }) => [
                   userId,
-                  { userId, allowEditing: !!canEdit, firstName, lastName },
+                  { userId, status: getStatus(status), firstName, lastName },
               ])
           )
         : undefined,
-    accepted: book.createdBy === userId ? true : !!book.accepted,
-    canEdit: book.createdBy === userId ? true : !!book.canEdit,
+    status: getStatus(book.status, book.createdBy === userId),
 });
 
 type BookCustomisationsV1 = Pick<Book, "color" | "icon">;

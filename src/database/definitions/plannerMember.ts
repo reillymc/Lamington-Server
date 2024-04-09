@@ -10,6 +10,5 @@ export type PlannerMember = EntityMember<{ plannerId: string }>;
 export const plannerMember: Table<PlannerMember> = {
     plannerId: `${lamington.plannerMember}.plannerId`,
     userId: `${lamington.plannerMember}.userId`,
-    accepted: `${lamington.plannerMember}.accepted`,
-    canEdit: `${lamington.plannerMember}.canEdit`,
+    status: `${lamington.plannerMember}.status`,
 } as const;

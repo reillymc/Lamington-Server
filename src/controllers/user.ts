@@ -1,6 +1,6 @@
 import { v4 as Uuid } from "uuid";
 
-import db, { CreateResponse, ReadResponse, user, lamington, ReadQuery, CreateQuery, User } from "../database";
+import db, { CreateQuery, CreateResponse, ReadQuery, ReadResponse, User, lamington, user } from "../database";
 import { UserStatus } from "../routes/spec";
 import { Undefined } from "../utils";
 
@@ -38,14 +38,14 @@ interface GetUserParams {
  */
 const readUsers = async (
     params: ReadQuery<GetUserParams>
-): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "status" | "dateCreated">> => {
+): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "status" | "createdAt">> => {
     if (!Array.isArray(params)) {
         params = [params];
     }
     const userIds = params.map(({ userId }) => userId);
 
     const query = db<User>(lamington.user)
-        .select(user.userId, user.firstName, user.lastName, user.status, user.dateCreated)
+        .select(user.userId, user.firstName, user.lastName, user.status, user.createdAt)
         .whereIn(user.userId, userIds);
     return query;
 };
@@ -59,7 +59,7 @@ type CreateUserParams = {
     status: UserStatus;
 };
 
-type SaveUser = Omit<User, "dateCreated">;
+type SaveUser = Omit<User, "createdAt" | "preferences">;
 
 /**
  * Saves a user from params
@@ -123,7 +123,7 @@ const readUsersInternal = async (params: ReadQuery<ReadUserInternalParams>): Rea
     const userEmails = params.map(({ email }) => email);
 
     const query = db<User>(lamington.user)
-        .select(user.userId, user.firstName, user.lastName, user.email, user.status, user.dateCreated, user.password)
+        .select(user.userId, user.firstName, user.lastName, user.email, user.status, user.createdAt, user.password)
         .whereIn(user.email, userEmails);
     return query;
 };

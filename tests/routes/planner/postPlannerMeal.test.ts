@@ -2,18 +2,18 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
+import { PlannerActions, PlannerMemberActions } from "../../../src/controllers";
+import { EntityMember } from "../../../src/controllers/entity";
+import { ServiceParams } from "../../../src/database";
+import { PostPlannerRequestBody, UserStatus } from "../../../src/routes/spec";
 import {
-    PlannerEndpoint,
     CleanTables,
     CreateUsers,
+    PlannerEndpoint,
     PrepareAuthenticatedUser,
     randomBoolean,
     randomCount,
 } from "../../helpers";
-import { PlannerActions, PlannerMemberActions } from "../../../src/controllers";
-import { PostPlannerRequestBody } from "../../../src/routes/spec";
-import { EntityMember } from "../../../src/controllers/entity";
-import { ServiceParams } from "../../../src/database";
 
 // TODO: Test whether a user can move a meal from a planner they dont own to their own - therefore deleting the other user's planner's meal. Test general copying/movind of meals, and moving from cooklist
 
@@ -71,8 +71,7 @@ test("should not allow editing if planner member but not planner owner", async (
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });
@@ -95,7 +94,10 @@ test("should create planner", async () => {
         data: {
             name: uuid(),
             description: uuid(),
-            members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean() })),
+            members: users!.map(({ userId }) => ({
+                userId,
+                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Registered,
+            })),
         },
     } satisfies Partial<PostPlannerRequestBody>;
 
@@ -115,12 +117,12 @@ test("should create planner", async () => {
     expect(savedPlanner?.createdBy).toEqual(user.userId);
     expect(savedPlannerMembers.length).toEqual(planner.data.members!.length);
 
-    for (const { userId, allowEditing } of planner.data.members!) {
+    for (const { userId, status } of planner.data.members!) {
         const savedPlannerMember = savedPlannerMembers.find(({ userId: savedUserId }) => savedUserId === userId);
 
         expect(savedPlannerMember).toBeTruthy();
 
-        expect(savedPlannerMember?.canEdit).toEqual(allowEditing ? 1 : 0);
+        expect(savedPlannerMember?.canEdit).toEqual(status);
     }
 });
 

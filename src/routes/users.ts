@@ -14,17 +14,17 @@ import {
 import { userStatusToUserStatus } from "../controllers/helpers";
 import { AppError, MessageAction, userMessage } from "../services";
 import {
-    GetUsersRequestParams,
-    GetUsersResponse,
-    GetUsersRequestBody,
-    UserEndpoint,
-    UserStatus,
-    PostUserApprovalRequestParams,
-    PostUserApprovalResponse,
-    PostUserApprovalRequestBody,
     GetPendingUsersRequestBody,
     GetPendingUsersRequestParams,
     GetPendingUsersResponse,
+    GetUsersRequestBody,
+    GetUsersRequestParams,
+    GetUsersResponse,
+    PostUserApprovalRequestBody,
+    PostUserApprovalRequestParams,
+    PostUserApprovalResponse,
+    UserEndpoint,
+    UserStatus,
 } from "./spec";
 
 const router = express.Router();
@@ -175,7 +175,7 @@ const createDefaultUserData = async (userId: string) => {
         name: "Example Recipe",
         recipeId,
         createdBy: userId,
-        public: 0,
+        public: false,
         ingredients: [
             {
                 sectionId: Uuid(),

@@ -2,6 +2,11 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
+import { BookActions, BookMemberActions } from "../../../src/controllers";
+import { EntityMember } from "../../../src/controllers/entity";
+import { ServiceParams } from "../../../src/database";
+import { parseBookCustomisations } from "../../../src/routes/helpers";
+import { PostBookRequestBody, UserStatus } from "../../../src/routes/spec";
 import {
     BookEndpoint,
     CleanTables,
@@ -11,11 +16,6 @@ import {
     randomCount,
     randomNumber,
 } from "../../helpers";
-import { BookActions, BookMemberActions } from "../../../src/controllers";
-import { PostBookRequestBody } from "../../../src/routes/spec";
-import { EntityMember } from "../../../src/controllers/entity";
-import { ServiceParams } from "../../../src/database";
-import { parseBookCustomisations } from "../../../src/routes/helpers";
 
 beforeEach(async () => {
     await CleanTables("book", "user", "book_member");
@@ -69,8 +69,7 @@ test("should not allow editing if book member but not book owner", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });
@@ -94,7 +93,10 @@ test("should create book", async () => {
             description: uuid(),
             color: uuid(),
             icon: uuid(),
-            members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean() })),
+            members: users!.map(({ userId }) => ({
+                userId,
+                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Registered,
+            })),
         })),
     } satisfies PostBookRequestBody;
 
@@ -123,12 +125,12 @@ test("should create book", async () => {
         expect(book?.createdBy).toEqual(user.userId);
         expect(actualBookMembers.length).toEqual(expectedBook!.members.length);
 
-        for (const { userId, allowEditing } of expectedBook!.members) {
+        for (const { userId, status } of expectedBook!.members) {
             const savedBookMember = actualBookMembers.find(({ userId: savedUserId }) => savedUserId === userId);
 
             expect(savedBookMember).toBeTruthy();
 
-            expect(savedBookMember?.canEdit).toEqual(allowEditing ? 1 : 0);
+            expect(savedBookMember?.canEdit).toEqual(status);
         }
     }
 });

@@ -1,10 +1,10 @@
 import request from "supertest";
 
 import app from "../../../src/app";
-import { BookEndpoint, CleanTables, CreateBooks, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
-import { GetBooksResponse } from "../../../src/routes/spec";
 import { BookMemberActions } from "../../../src/controllers";
 import { CreateBookMemberParams } from "../../../src/controllers/bookMember";
+import { GetBooksResponse, UserStatus } from "../../../src/routes/spec";
+import { BookEndpoint, CleanTables, CreateBooks, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 
 beforeEach(async () => {
     await CleanTables("book", "user");
@@ -51,8 +51,7 @@ test("should return correct book membership details for user", async () => {
                 members: [
                     {
                         userId: user.userId,
-                        allowEditing: true,
-                        accepted: true,
+                        status: UserStatus.Administrator,
                     },
                 ],
             })
@@ -63,14 +62,16 @@ test("should return correct book membership details for user", async () => {
                 members: [
                     {
                         userId: user.userId,
-                        allowEditing: false,
-                        accepted: true,
+                        status: UserStatus.Registered,
                     },
                 ],
             })
         ),
         ...nonAcceptedBooks.map(
-            ({ bookId }): CreateBookMemberParams => ({ bookId, members: [{ userId: user.userId, accepted: false }] })
+            ({ bookId }): CreateBookMemberParams => ({
+                bookId,
+                members: [{ userId: user.userId, status: UserStatus.Pending }],
+            })
         ),
     ]);
 
@@ -89,17 +90,14 @@ test("should return correct book membership details for user", async () => {
     const nonAcceptedBookIds = nonAcceptedBooks.map(({ bookId }) => bookId);
 
     Object.keys(data ?? {}).forEach(bookId => {
-        const { canEdit, accepted } = data![bookId]!;
+        const { status } = data![bookId]!;
 
         if (editableBookIds.includes(bookId)) {
-            expect(canEdit).toEqual(true);
-            expect(accepted).toEqual(true);
+            expect(status).toEqual(UserStatus.Administrator);
         } else if (acceptedBookIds.includes(bookId)) {
-            expect(canEdit).toEqual(false);
-            expect(accepted).toEqual(true);
+            expect(status).toEqual(UserStatus.Registered);
         } else if (nonAcceptedBookIds.includes(bookId)) {
-            expect(canEdit).toEqual(false);
-            expect(accepted).toEqual(false);
+            expect(status).toEqual(UserStatus.Pending);
         }
     });
 });

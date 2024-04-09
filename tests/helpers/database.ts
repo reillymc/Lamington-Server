@@ -1,11 +1,10 @@
 import { v4 as uuid } from "uuid";
 
-import { ListService } from "../../src/controllers/spec";
 import { BookActions, ListActions, UserActions } from "../../src/controllers";
+import { ListService } from "../../src/controllers/spec";
+import db, { ServiceParams, lamington } from "../../src/database";
 import { UserStatus } from "../../src/routes/spec";
-import { ServiceParams, lamington } from "../../src/database";
 import { hashPassword } from "../../src/services";
-import db from "../../src/database/config";
 import { randomCount } from "./data";
 
 export const CreateUsers = async ({ count = 1, status = UserStatus.Registered } = {}) => {
@@ -35,29 +34,29 @@ type Table = `${lamington}`;
 export const CleanAllTables = async () => await CleanTables(...Object.values(lamington));
 
 export const CleanTables = async (...tables: Table[]) => {
-    if (tables.includes("recipe_ingredient")) await db.table("recipe_ingredient").del();
-    if (tables.includes("recipe_rating")) await db.table("recipe_rating").del();
-    if (tables.includes("recipe_note")) await db.table("recipe_note").del();
-    if (tables.includes("recipe_section")) await db.table("recipe_ingredient").del();
-    if (tables.includes("recipe_step")) await db.table("recipe_step").del();
-    if (tables.includes("recipe_tag")) await db.table("recipe_tag").del();
+    if (tables.includes(lamington.recipeIngredient)) await db.table(lamington.recipeIngredient).del();
+    if (tables.includes(lamington.recipeRating)) await db.table(lamington.recipeRating).del();
+    if (tables.includes(lamington.recipeNote)) await db.table(lamington.recipeNote).del();
+    if (tables.includes(lamington.recipeSection)) await db.table(lamington.recipeIngredient).del();
+    if (tables.includes(lamington.recipeStep)) await db.table(lamington.recipeStep).del();
+    if (tables.includes(lamington.tag)) await db.table(lamington.tag).del();
 
-    if (tables.includes("list_item")) await db.table("list_item").del();
-    if (tables.includes("list_member")) await db.table("list_member").del();
+    if (tables.includes(lamington.listItem)) await db.table(lamington.listItem).del();
+    if (tables.includes(lamington.listMember)) await db.table(lamington.listMember).del();
 
-    if (tables.includes("planner_meal")) await db.table("planner_meal").del();
-    if (tables.includes("planner_member")) await db.table("planner_member").del();
+    if (tables.includes(lamington.plannerMeal)) await db.table(lamington.plannerMeal).del();
+    if (tables.includes(lamington.plannerMember)) await db.table(lamington.plannerMember).del();
 
-    if (tables.includes("book_recipe")) await db.table("book_recipe").del();
-    if (tables.includes("book_member")) await db.table("book_member").del();
+    if (tables.includes(lamington.bookRecipe)) await db.table(lamington.bookRecipe).del();
+    if (tables.includes(lamington.bookMember)) await db.table(lamington.bookMember).del();
 
-    if (tables.includes("ingredient")) await db.table("ingredient").del();
-    if (tables.includes("recipe")) await db.table("recipe").del();
-    if (tables.includes("list")) await db.table("list").del();
-    if (tables.includes("planner")) await db.table("planner").del();
-    if (tables.includes("book")) await db.table("book").del();
-    if (tables.includes("tag")) await db.table("tag").del();
-    if (tables.includes("user")) await db.table("user").del();
+    if (tables.includes(lamington.ingredient)) await db.table(lamington.ingredient).del();
+    if (tables.includes(lamington.recipe)) await db.table(lamington.recipe).del();
+    if (tables.includes(lamington.list)) await db.table(lamington.list).del();
+    if (tables.includes(lamington.planner)) await db.table(lamington.planner).del();
+    if (tables.includes(lamington.book)) await db.table(lamington.book).del();
+    if (tables.includes(lamington.tag)) await db.table(lamington.tag).del();
+    if (tables.includes(lamington.user)) await db.table(lamington.user).del();
 };
 
 export const CreateBooks = async ({

@@ -1,10 +1,10 @@
-import { User } from "./user";
+import { User, UserStatus } from "./user";
 
 export type EntityMember = {
     userId: User["userId"];
     firstName?: User["firstName"];
     lastName?: User["lastName"];
-    allowEditing?: boolean;
+    status?: UserStatus;
 };
 
 export type EntityMembers = {

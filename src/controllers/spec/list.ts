@@ -1,10 +1,9 @@
-import { ListMember, List, User, ReadMyService, ReadService, SaveService, DeleteService } from "../../database";
+import { DeleteService, List, ListMember, ReadMyService, ReadService, SaveService, User } from "../../database";
 import { EntityMember } from "../entity";
 
 interface ListReadResponse extends Pick<List, "listId" | "name" | "customisations" | "createdBy" | "description"> {
     createdByName: User["firstName"];
-    accepted: ListMember["accepted"];
-    canEdit: ListMember["canEdit"];
+    status: ListMember["status"];
 }
 
 interface ListReadSummaryResponse extends Pick<List, "listId" | "createdBy"> {}

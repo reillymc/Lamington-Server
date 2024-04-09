@@ -1,10 +1,11 @@
 import { v4 as Uuid } from "uuid";
 
+import { ListItemActions, ListMemberActions } from "../../controllers";
+import { ListService } from "../../controllers/spec";
+import { ServiceParams } from "../../database";
 import { BisectOnValidItems, EnsureDefinedArray } from "../../utils";
 import { List, ListItemIngredientAmount, PostListItemRequestBody, PostListRequestBody } from "../spec";
-import { ListItemActions, ListMemberActions } from "../../controllers";
-import { ServiceParams } from "../../database";
-import { ListService } from "../../controllers/spec";
+import { getStatus } from "./entityMember";
 
 const parseAmount = (amountJSON: string | undefined) => {
     if (!amountJSON) return;
@@ -118,14 +119,13 @@ export const prepareGetListResponseBody = ({
         .map(({ amount, ...item }) => ({ ...item, amount: parseAmount(amount) })),
     members: members
         ? Object.fromEntries(
-              members.map(({ userId, canEdit, firstName, lastName }) => [
+              members.map(({ userId, status, firstName, lastName }) => [
                   userId,
-                  { userId, allowEditing: !!canEdit, firstName, lastName },
+                  { userId, status: getStatus(status), firstName, lastName },
               ])
           )
         : undefined,
-    accepted: list.createdBy === userId ? true : !!list.accepted,
-    canEdit: list.createdBy === userId ? true : !!list.canEdit,
+    status: getStatus(list.status, list.createdBy === userId),
 });
 
 type ListCustomisationsV1 = Pick<List, "icon">;

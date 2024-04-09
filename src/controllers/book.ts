@@ -1,23 +1,21 @@
-import { v4 as Uuid } from "uuid";
-
-import { EnsureArray, Undefined } from "../utils";
 import db, {
-    book,
     Book,
     BookMember,
-    bookMember,
     CreateQuery,
     DeleteResponse,
-    lamington,
     ReadMyService,
     ReadQuery,
     ReadResponse,
     SaveService,
-    user,
     User,
+    book,
+    bookMember,
+    lamington,
+    user,
 } from "../database";
+import { EnsureArray } from "../utils";
+import { BookMemberActions } from "./bookMember";
 import { EntityMember } from "./entity";
-import { BookMemberActions, CreateBookMemberParams } from "./bookMember";
 
 /**
  * Get all books
@@ -35,8 +33,7 @@ interface GetMyBooksParams {
 interface ReadBookRow extends Pick<Book, "bookId" | "name" | "description" | "customisations"> {
     createdBy: User["userId"];
     createdByName: User["firstName"];
-    accepted: BookMember["accepted"];
-    canEdit: BookMember["canEdit"];
+    status: BookMember["status"];
 }
 
 /**
@@ -52,8 +49,7 @@ const readMyBooks: ReadMyService<ReadBookRow> = async ({ userId }) => {
             book.customisations,
             book.createdBy,
             `${user.firstName} as createdByName`,
-            bookMember.accepted,
-            bookMember.canEdit
+            bookMember.status
         )
         .where({ [book.createdBy]: userId })
         .orWhere({ [bookMember.userId]: userId })
@@ -86,8 +82,7 @@ const readBooks = async ({ bookId, userId }: GetBookParams): ReadResponse<ReadBo
             book.customisations,
             book.createdBy,
             `${user.firstName} as createdByName`,
-            bookMember.accepted,
-            bookMember.canEdit
+            bookMember.status
         )
         .where({ [book.bookId]: bookId })
         .andWhere(qb => qb.where({ [book.createdBy]: userId }).orWhere({ [bookMember.userId]: userId }))
@@ -112,19 +107,12 @@ const saveBooks: SaveService<CreateBookParams> = async params => {
     const bookIds = books.map(({ bookId }) => bookId);
 
     const bookData: Book[] = books.map(({ members, ...bookItem }) => bookItem);
-    const memberData: CreateBookMemberParams[] = books.flatMap(({ bookId, members }) => ({
-        bookId,
-        members:
-            members?.map(({ userId, allowEditing }) => ({
-                userId,
-                allowEditing,
-                accepted: false,
-            })) ?? [],
-    }));
 
     const result = await db(lamington.book).insert(bookData).onConflict(book.bookId).merge();
 
-    await BookMemberActions.save(memberData, { preserveAccepted: true, trimNotIn: true });
+    if (books.length > 0) {
+        await BookMemberActions.save(books, { trimNotIn: true });
+    }
 
     return db<Book>(lamington.book).select(book.bookId, book.name).whereIn(book.bookId, bookIds);
 };

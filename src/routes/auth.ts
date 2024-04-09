@@ -1,18 +1,18 @@
 import express from "express";
 
-import { AppError, comparePassword, createToken, hashPassword, userMessage } from "../services";
 import { InternalUserActions } from "../controllers";
+import { userStatusToUserStatus } from "../controllers/helpers";
+import { AppError, comparePassword, createToken, hashPassword, userMessage } from "../services";
 import {
+    AuthEndpoint,
     LoginRequestBody,
     LoginRequestParams,
     LoginResponse,
     RegisterRequestBody,
     RegisterRequestParams,
     RegisterResponse,
-    AuthEndpoint,
     UserStatus,
 } from "./spec";
-import { userStatusToUserStatus } from "../controllers/helpers";
 
 const router = express.Router();
 

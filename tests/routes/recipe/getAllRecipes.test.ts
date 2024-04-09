@@ -2,21 +2,7 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import {
-    RecipeEndpoint,
-    CreateUsers,
-    PrepareAuthenticatedUser,
-    randomNumber,
-    randomBoolean,
-    TEST_ITEM_COUNT,
-    CleanAllTables,
-    createRandomRecipeTags,
-    generateRandomRecipeIngredientSections,
-    generateRandomRecipeMethodSections,
-    assertRecipeTagsAreEqual,
-    generateRandomRecipeServings,
-} from "../../helpers";
-import { GetAllRecipesResponse, RecipeTags } from "../../../src/routes/spec";
+import config from "../../../src/config";
 import {
     IngredientActions,
     RecipeActions,
@@ -24,11 +10,25 @@ import {
     RecipeSectionActions,
     TagActions,
 } from "../../../src/controllers";
-import { ServiceParams } from "../../../src/database";
-import config from "../../../src/config";
-import { randomElement } from "../../../src/utils";
 import { RecipeTagActions } from "../../../src/controllers/recipeTag";
 import { RecipeService } from "../../../src/controllers/spec";
+import { ServiceParams } from "../../../src/database";
+import { GetAllRecipesResponse } from "../../../src/routes/spec";
+import { randomElement } from "../../../src/utils";
+import {
+    CleanAllTables,
+    CreateUsers,
+    PrepareAuthenticatedUser,
+    RecipeEndpoint,
+    TEST_ITEM_COUNT,
+    assertRecipeTagsAreEqual,
+    createRandomRecipeTags,
+    generateRandomRecipeIngredientSections,
+    generateRandomRecipeMethodSections,
+    generateRandomRecipeServings,
+    randomBoolean,
+    randomNumber,
+} from "../../helpers";
 
 beforeEach(async () => {
     await CleanAllTables();
@@ -51,7 +51,7 @@ test("should return correct recipe details", async () => {
         recipeId: uuid(),
         name: uuid(),
         createdBy: user.userId,
-        public: 1,
+        public: true,
         cookTime: randomNumber(),
         ingredients: generateRandomRecipeIngredientSections(),
         method: generateRandomRecipeMethodSections(),
@@ -81,7 +81,7 @@ test("should return correct recipe details", async () => {
     expect(recipeResponse.recipeId).toEqual(recipe.recipeId);
     expect(recipeResponse.name).toEqual(recipe.name);
     expect(recipeResponse.createdBy.userId).toEqual(recipe.createdBy);
-    expect(recipeResponse.public ? 1 : 0).toEqual(recipe.public);
+    expect(recipeResponse.public).toEqual(recipe.public);
     expect(recipeResponse.cookTime).toEqual(recipe.cookTime);
     expect(recipeResponse.ingredients).toBeUndefined();
     expect(recipeResponse.method).toBeUndefined();
@@ -94,7 +94,7 @@ test("should return correct recipe details", async () => {
     expect(recipeResponse.source).toBeUndefined();
     expect(recipeResponse.timesCooked).toEqual(recipe.timesCooked);
     expect(recipeResponse.ratingAverage).toEqual(recipe.ratingPersonal);
-    expect(recipeResponse.dateCreated).toBeDefined();
+    expect(recipeResponse.createdAt).toBeDefined();
 
     assertRecipeTagsAreEqual(recipeResponse.tags, recipe.tags);
 });
@@ -109,7 +109,7 @@ test("should return all public recipes from other users", async () => {
                 recipeId: uuid(),
                 name: uuid(),
                 createdBy: randomUsers[i % randomUsers.length]!.userId,
-                public: 1,
+                public: true,
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 
@@ -134,7 +134,7 @@ test("should not return private recipes", async () => {
                 recipeId: uuid(),
                 name: uuid(),
                 createdBy: randomUsers[i % randomUsers.length]!.userId,
-                public: randomBoolean() ? 1 : 0,
+                public: randomBoolean(),
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 
@@ -144,7 +144,7 @@ test("should not return private recipes", async () => {
                 recipeId: uuid(),
                 name: uuid(),
                 createdBy: user.userId,
-                public: randomBoolean() ? 1 : 0,
+                public: randomBoolean(),
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 
@@ -159,7 +159,7 @@ test("should not return private recipes", async () => {
     const { data } = res.body as GetAllRecipesResponse;
 
     expect(Object.keys(data ?? {}).length).toEqual(
-        allRecipes.filter(recipe => recipe.public === 1 || recipe.createdBy === user.userId).length
+        allRecipes.filter(recipe => recipe.public || recipe.createdBy === user.userId).length
     );
 });
 
@@ -173,7 +173,7 @@ test("should respect pagination", async () => {
                 recipeId: uuid(),
                 name: uuid(),
                 createdBy: randomUsers[i % randomUsers.length]!.userId,
-                public: 1,
+                public: true,
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 
@@ -212,7 +212,7 @@ test("should respect search", async () => {
                 recipeId: uuid(),
                 name: uuid(),
                 createdBy: randomElement(randomUsers)!.userId,
-                public: 1,
+                public: true,
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 
@@ -239,7 +239,7 @@ test("should respect substring search", async () => {
         recipeId: uuid(),
         name: "Hardcoded Recipe Title To Search By",
         createdBy: user.userId,
-        public: 1,
+        public: true,
     } satisfies ServiceParams<RecipeService, "Save">;
 
     RecipeActions.Save(recipe);
@@ -286,7 +286,7 @@ test("should respect name sorting and ordering", async () => {
                 recipeId: uuid(),
                 name: uuid(),
                 createdBy: user.userId,
-                public: 1,
+                public: true,
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 
@@ -318,7 +318,7 @@ test("should respect rating sorting and ordering", async () => {
                 name: uuid(),
                 createdBy: user.userId,
                 ratingPersonal: randomNumber(),
-                public: 1,
+                public: true,
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 
@@ -350,7 +350,7 @@ test("should respect time sorting and ordering", async () => {
                 name: uuid(),
                 createdBy: user.userId,
                 prepTime: randomNumber(5),
-                public: 1,
+                public: true,
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 
@@ -380,7 +380,7 @@ test("should respect category filtering", async () => {
                 name: uuid(),
                 createdBy: user.userId,
                 prepTime: randomNumber(5),
-                public: 1,
+                public: true,
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 
@@ -446,7 +446,7 @@ test("should respect ingredient filtering", async () => {
                 name: uuid(),
                 createdBy: user.userId,
                 prepTime: randomNumber(5),
-                public: 1,
+                public: true,
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 
@@ -529,7 +529,7 @@ test("should respect ingredient and category filtering together", async () => {
                 name: uuid(),
                 createdBy: user.userId,
                 prepTime: randomNumber(5),
-                public: 1,
+                public: true,
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 

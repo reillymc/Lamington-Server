@@ -1,7 +1,8 @@
 import express from "express";
 
-import { AppError, MessageAction, userMessage } from "../services";
 import { ListActions, ListItemActions, ListMemberActions } from "../controllers";
+import { AppError, MessageAction, userMessage } from "../services";
+import { prepareGetListResponseBody, validatePostListBody, validatePostListItemBody } from "./helpers";
 import {
     DeleteListItemRequestBody,
     DeleteListItemRequestParams,
@@ -29,8 +30,8 @@ import {
     PostListRequestBody,
     PostListRequestParams,
     PostListResponse,
+    UserStatus,
 } from "./spec";
-import { prepareGetListResponseBody, validatePostListBody, validatePostListItemBody } from "./helpers";
 
 const router = express.Router();
 
@@ -46,14 +47,14 @@ router.get<GetListsRequestParams, GetListsResponse, GetListsRequestBody>(
         try {
             const results = await ListActions.ReadByUser({ userId });
             const outstandingItemCounts = await ListItemActions.countOutstandingItems(results);
-            const datesUpdated = await ListItemActions.getLatestDateUpdated(results);
+            const datesUpdated = await ListItemActions.getLatestUpdatedTimestamp(results);
 
             const outstandingItemsDict = Object.fromEntries(
                 outstandingItemCounts.map(({ listId, count }) => [listId, count])
             );
 
             const datesUpdatedDict = Object.fromEntries(
-                datesUpdated.map(({ listId, dateUpdated }) => [listId, dateUpdated])
+                datesUpdated.map(({ listId, updatedAt }) => [listId, updatedAt])
             );
 
             const data: Lists = Object.fromEntries(
@@ -220,7 +221,11 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
             if (existingList.createdBy !== userId) {
                 const existingListMembers = await ListMemberActions.read({ entityId: listId });
 
-                if (!existingListMembers?.some(member => member.userId === userId && member.canEdit)) {
+                if (
+                    !existingListMembers?.some(
+                        member => member.userId === userId && member.status === UserStatus.Administrator
+                    )
+                ) {
                     return next(
                         new AppError({
                             status: 403,
@@ -255,7 +260,7 @@ router.post<PostListMemberRequestParams, PostListMemberResponse, PostListMemberR
     async ({ body, params, session }, res, next) => {
         // Extract request fields
         const { listId } = params;
-        const { accepted } = body;
+        const { status } = body;
         const { userId } = session;
 
         // Check all required fields are present
@@ -294,7 +299,7 @@ router.post<PostListMemberRequestParams, PostListMemberResponse, PostListMemberR
                 );
             }
 
-            await ListMemberActions.save({ listId, members: [{ userId, accepted }] });
+            await ListMemberActions.save({ listId, members: [{ userId, status }] });
             return res.status(201).json({ error: false, message: "List member removed." });
         } catch (e: unknown) {
             next(
@@ -400,7 +405,11 @@ router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListIte
             if (existingList.createdBy !== userId) {
                 const existingListMembers = await ListMemberActions.read({ entityId: listId });
 
-                if (!existingListMembers?.some(member => member.userId === userId && member.canEdit)) {
+                if (
+                    !existingListMembers?.some(
+                        member => member.userId === userId && member.status === UserStatus.Administrator
+                    )
+                ) {
                     return next(
                         new AppError({
                             status: 403,
