@@ -114,13 +114,13 @@ router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApp
             return next(new AppError({ status: 400, message: "No user provided" }));
         }
 
-        const [user] = await UserActions.read({ userId: userToUpdate });
-
-        if (!user) {
-            return next(new AppError({ status: 400, message: "User does not exist" }));
-        }
-
         try {
+            const [user] = await UserActions.read({ userId: userToUpdate });
+
+            if (!user) {
+                return next(new AppError({ status: 400, message: "User does not exist" }));
+            }
+
             const [updatedUser] = await UserActions.saveStatus({
                 userId: userToUpdate,
                 status: accept ? UserStatus.Registered : UserStatus.Blacklisted,

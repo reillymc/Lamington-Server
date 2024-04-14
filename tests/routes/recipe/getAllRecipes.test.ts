@@ -465,7 +465,7 @@ test("should respect ingredient filtering", async () => {
                 recipeId: recipe.recipeId,
                 sections: [
                     {
-                        sectionId: "default",
+                        sectionId: "00000000-0000-0000-0000-000000000000",
                         name: uuid(),
                         description: uuid(),
                         index: randomNumber(),
@@ -485,7 +485,8 @@ test("should respect ingredient filtering", async () => {
                 description: uuid(),
                 amount: JSON.stringify({ representation: "number", value: randomNumber() }),
                 id: uuid(),
-                sectionId: "default",
+                index: randomNumber(),
+                sectionId: "00000000-0000-0000-0000-000000000000",
             })),
         } satisfies ServiceParams<RecipeIngredientActions, "save">;
     });
@@ -564,7 +565,7 @@ test("should respect ingredient and category filtering together", async () => {
                 recipeId: recipe.recipeId,
                 sections: [
                     {
-                        sectionId: "default",
+                        sectionId: "00000000-0000-0000-0000-000000000000",
                         name: uuid(),
                         description: uuid(),
                         index: randomNumber(),
@@ -584,7 +585,8 @@ test("should respect ingredient and category filtering together", async () => {
                 description: uuid(),
                 amount: JSON.stringify({ representation: "number", value: randomNumber() }),
                 id: uuid(),
-                sectionId: "default",
+                index: randomNumber(),
+                sectionId: "00000000-0000-0000-0000-000000000000",
             })),
         } satisfies ServiceParams<RecipeIngredientActions, "save">;
     });

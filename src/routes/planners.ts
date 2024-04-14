@@ -293,14 +293,13 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
 );
 
 /**
- * POST request to update a planner member.
+ * POST request to update a planner member. Currently only used to accept self into a planner.
  */
 router.post<PostPlannerMemberRequestParams, PostPlannerMemberResponse, PostPlannerMemberRequestBody>(
     PlannerEndpoint.postPlannerMember,
-    async ({ body, params, session }, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
         const { plannerId } = params;
-        const { status } = body;
         const { userId } = session;
 
         // Check all required fields are present
@@ -339,7 +338,7 @@ router.post<PostPlannerMemberRequestParams, PostPlannerMemberResponse, PostPlann
                 );
             }
 
-            await PlannerMemberActions.save({ plannerId, members: [{ userId, status }] });
+            await PlannerMemberActions.save({ plannerId, members: [{ userId, status: UserStatus.Registered }] });
             return res.status(201).json({ error: false, message: "Planner member removed." });
         } catch (e: unknown) {
             next(

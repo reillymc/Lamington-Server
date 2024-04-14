@@ -6,7 +6,6 @@ import { ListActions, ListMemberActions } from "../../../src/controllers";
 import { EntityMember } from "../../../src/controllers/entity";
 import { ListService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
-import { parseListCustomisations } from "../../../src/routes/helpers/list";
 import { PostListRequestBody, UserStatus } from "../../../src/routes/spec";
 import {
     CleanTables,
@@ -116,11 +115,9 @@ test("should create list", async () => {
         const expectedList = lists.data.find(({ listId }) => listId === list.listId);
         const actualListMembers = savedListMembers.filter(({ listId }) => listId === list.listId);
 
-        const { icon } = parseListCustomisations(list.customisations);
-
         expect(list?.name).toEqual(expectedList!.name);
         expect(list?.description).toEqual(expectedList!.description);
-        expect(icon).toEqual(expectedList!.icon);
+        expect(list.customisations?.icon).toEqual(expectedList!.icon);
         expect(list?.createdBy).toEqual(user.userId);
         expect(actualListMembers.length).toEqual(expectedList!.members.length);
 
@@ -129,7 +126,7 @@ test("should create list", async () => {
 
             expect(savedListMember).toBeTruthy();
 
-            expect(savedListMember?.canEdit).toEqual(status);
+            expect(savedListMember?.status).toEqual(status);
         }
     }
 });

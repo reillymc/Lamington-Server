@@ -108,18 +108,14 @@ const saveListItems: SaveService<CreateListItemParams> = async params => {
     const listItems = EnsureArray(params);
 
     const data: ListItemModel[] = listItems
-        .map(({ itemId = Uuid(), ...params }) => ({
-            itemId,
-            ...params,
-        }))
+        .map(({ itemId = Uuid(), ...params }) => ({ itemId, ...params }))
         .filter(Undefined);
 
-    const result = await db(lamington.listItem).insert(data).onConflict([listItem.listId, listItem.itemId]).merge();
-
-    const listIds = data.map(({ listId }) => listId);
-
-    const query = db<ListItem>(lamington.listItem).select("*").whereIn(listItem.listId, listIds);
-    return query;
+    return db<ListItem>(lamington.listItem)
+        .insert(data)
+        .onConflict(["itemId", "listId"])
+        .merge()
+        .returning(["itemId", "listId", "name", "completed", "createdBy"]);
 };
 
 interface DeleteListItemParams {
@@ -131,15 +127,10 @@ interface DeleteListItemParams {
  * Creates a new list from params
  * @returns the newly created lists
  */
-const deleteListItems = async (listItems: CreateQuery<DeleteListItemParams>): DeleteResponse => {
-    if (!Array.isArray(listItems)) {
-        listItems = [listItems];
-    }
+const deleteListItems = async (params: CreateQuery<DeleteListItemParams>): DeleteResponse => {
+    const listItems = EnsureArray(params).map(({ listId, itemId }) => [listId, itemId]);
 
-    const listIds = listItems.map(({ listId }) => listId);
-    const itemIds = listItems.map(({ itemId }) => itemId);
-
-    return db(lamington.listItem).whereIn(listItem.listId, listIds).whereIn(listItem.itemId, itemIds).delete();
+    return db<ListItem>(lamington.listItem).whereIn(["listId", "itemId"], listItems).delete();
 };
 
 export const ListItemActions = {

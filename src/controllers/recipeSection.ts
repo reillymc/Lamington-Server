@@ -1,4 +1,4 @@
-import db, { lamington, QueryService, Recipe, recipeSection, RecipeSection, SaveService } from "../database";
+import db, { lamington, QueryService, Recipe, RecipeSection, SaveService } from "../database";
 import { EnsureArray } from "../utils";
 
 /**
@@ -8,10 +8,7 @@ import { EnsureArray } from "../utils";
  * @returns
  */
 const deleteExcessRows = async (recipeId: string, retainedSectionIds: string[]) =>
-    db(lamington.recipeSection)
-        .where({ [recipeSection.recipeId]: recipeId })
-        .whereNotIn(recipeSection.sectionId, retainedSectionIds)
-        .del();
+    db<RecipeSection>(lamington.recipeSection).where({ recipeId }).whereNotIn("sectionId", retainedSectionIds).del();
 
 /**
  * Create RecipeSections provided
@@ -19,10 +16,7 @@ const deleteExcessRows = async (recipeId: string, retainedSectionIds: string[]) 
  * @returns
  */
 const insertRows = async (recipeSections: RecipeSection[]) =>
-    db(lamington.recipeSection)
-        .insert(recipeSections)
-        .onConflict([recipeSection.recipeId, recipeSection.sectionId])
-        .merge();
+    db<RecipeSection>(lamington.recipeSection).insert(recipeSections).onConflict(["recipeId", "sectionId"]).merge();
 
 /**
  * Update RecipeSections for recipeId, by deleting all steps not in step list and then creating / updating provided steps in list
@@ -56,15 +50,9 @@ const updateRows: SaveService<
  * @returns RecipeSection array
  */
 const queryByRecipeId: QueryService<RecipeSection, Pick<Recipe, "recipeId">> = async ({ recipeId }) => {
-    const result = await db(lamington.recipeSection)
-        .where({ [recipeSection.recipeId]: recipeId })
-        .select(
-            recipeSection.recipeId,
-            recipeSection.sectionId,
-            recipeSection.index,
-            recipeSection.name,
-            recipeSection.description
-        );
+    const result = await db<RecipeSection>(lamington.recipeSection)
+        .where({ recipeId })
+        .select("recipeId", "sectionId", "index", "name", "description");
 
     return { result };
 };

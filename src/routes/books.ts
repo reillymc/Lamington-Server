@@ -286,14 +286,13 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
 );
 
 /**
- * POST request to update a book member.
+ * POST request to update a book member. Currently only used to accept self into a book.
  */
 router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberRequestBody>(
     BookEndpoint.postBookMember,
-    async ({ body, params, session }, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
         const { bookId } = params;
-        const { status } = body;
         const { userId } = session;
 
         // Check all required fields are present
@@ -332,7 +331,7 @@ router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberR
                 );
             }
 
-            await BookMemberActions.save({ bookId, members: [{ userId, status }] });
+            await BookMemberActions.save({ bookId, members: [{ userId, status: UserStatus.Registered }] });
             return res.status(201).json({ error: false, message: "Book member removed." });
         } catch (e: unknown) {
             next(

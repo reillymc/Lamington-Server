@@ -21,15 +21,9 @@ import { processPagination } from "./helpers";
  */
 const query: QueryService<Ingredient> = async ({ page = 1, search }) => {
     const ingredientsList = await db<Ingredient>(lamington.ingredient)
-        .select(
-            ingredient.ingredientId,
-            ingredient.name,
-            ingredient.photo,
-            ingredient.description,
-            ingredient.createdBy
-        )
-        .where(builder => (search ? builder.where(ingredient.name, "like", `%${search}%`) : undefined))
-        .orderBy([{ column: ingredient.name, order: "asc" }, ingredient.ingredientId])
+        .select("ingredientId", "name", "photo", "description", "createdBy")
+        .where(builder => (search ? builder.where("name", "like", `%${search}%`) : undefined))
+        .orderBy([{ column: ingredient.name, order: "asc" }, "ingredientId"])
         .limit(PAGE_SIZE + 1)
         .offset((page - 1) * PAGE_SIZE);
 
@@ -80,7 +74,9 @@ export const readIngredients = async (params: ReadQuery<GetIngredientParams>): R
  * Creates a new ingredient from params
  * @returns the newly created ingredients
  */
-const save = async (ingredients: CreateQuery<Partial<Ingredient>>): CreateResponse<Ingredient> => {
+const save = async (
+    ingredients: CreateQuery<Partial<Ingredient>>
+): CreateResponse<Pick<Ingredient, "ingredientId">> => {
     if (!Array.isArray(ingredients)) {
         ingredients = [ingredients];
     }
@@ -93,11 +89,11 @@ const save = async (ingredients: CreateQuery<Partial<Ingredient>>): CreateRespon
 
     if (data.length === 0) return [];
 
-    await db(lamington.ingredient).insert(data).onConflict([ingredient.ingredientId]).ignore();
-
-    const ingredientIds = data.map(({ ingredientId }) => ingredientId);
-
-    return db<Ingredient>(lamington.ingredient).select("*").whereIn(ingredient.ingredientId, ingredientIds);
+    return db<Ingredient>(lamington.ingredient)
+        .insert(data)
+        .onConflict("ingredientId")
+        .ignore()
+        .returning("ingredientId");
 };
 
 export const IngredientActions = {

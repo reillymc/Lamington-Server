@@ -121,7 +121,7 @@ export type DeleteListItemService = (request: DeleteListItemRequest) => DeleteLi
 export type PostListMemberRequestParams = BaseRequestParams<{
     [listIdParam]: List["listId"];
 }>;
-export type PostListMemberRequestBody = BaseSimpleRequestBody<Pick<List, "status">>;
+export type PostListMemberRequestBody = BaseSimpleRequestBody;
 
 export type PostListMemberRequest = BaseRequest<PostListMemberRequestParams & PostListMemberRequestBody>;
 export type PostListMemberResponse = BaseResponse;

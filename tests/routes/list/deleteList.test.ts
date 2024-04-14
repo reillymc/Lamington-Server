@@ -2,11 +2,11 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { ListEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 import { ListActions, ListMemberActions } from "../../../src/controllers";
-import { DeleteListRequestParams } from "../../../src/routes/spec";
-import { ServiceParams } from "../../../src/database";
 import { ListService } from "../../../src/controllers/spec";
+import { ServiceParams } from "../../../src/database";
+import { DeleteListRequestParams, UserStatus } from "../../../src/routes/spec";
+import { CleanTables, CreateUsers, ListEndpoint, PrepareAuthenticatedUser } from "../../helpers";
 
 beforeEach(async () => {
     await CleanTables("list", "user", "list_member");
@@ -71,8 +71,7 @@ test("should not allow deletion if list member but not list owner", async () => 
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });

@@ -1,20 +1,18 @@
-import db, { GetColumns, List, lamington, list, listMember, user } from "../database";
+import db, { List, lamington, list, listMember, user } from "../database";
 import { EnsureArray } from "../utils";
 import { ListMemberActions } from "./listMember";
 import { ListService } from "./spec";
 
 const readMyLists: ListService["ReadByUser"] = async ({ userId }) => {
-    const query = db(lamington.list)
+    const query = db<List>(lamington.list)
         .select(
-            GetColumns<ListService, "ReadByUser">({
-                listId: list.listId,
-                name: list.name,
-                customisations: list.customisations,
-                createdBy: list.createdBy,
-                description: list.description,
-                createdByName: `${user.firstName} as createdByName`,
-                status: listMember.status,
-            })
+            list.listId,
+            "name",
+            "customisations",
+            "createdBy",
+            "description",
+            `${user.firstName} as createdByName`,
+            listMember.status
         )
         .where({ [list.createdBy]: userId })
         .orWhere({ [listMember.userId]: userId })
@@ -30,17 +28,15 @@ const readLists: ListService["Read"] = async params => {
     const response = [];
 
     for (const { listId, userId } of requests) {
-        const result = await db(lamington.list)
+        const result = await db<List>(lamington.list)
             .select(
-                GetColumns<ListService, "Read">({
-                    listId: list.listId,
-                    name: list.name,
-                    customisations: list.customisations,
-                    createdBy: list.createdBy,
-                    description: list.description,
-                    createdByName: `${user.firstName} as createdByName`,
-                    status: listMember.status,
-                })
+                list.listId,
+                "name",
+                "customisations",
+                "createdBy",
+                "description",
+                `${user.firstName} as createdByName`,
+                listMember.status
             )
             .where({ [list.listId]: listId })
             .andWhere(qb => qb.where({ [list.createdBy]: userId }).orWhere({ [listMember.userId]: userId }))
@@ -59,29 +55,26 @@ const saveLists: ListService["Save"] = async params => {
     const lists = EnsureArray(params);
 
     const listData: List[] = lists.map(({ members, ...listItem }) => listItem);
-    await db(lamington.list).insert(listData).onConflict(list.listId).merge();
+    const result = await db<List>(lamington.list)
+        .insert(listData)
+        .onConflict("listId")
+        .merge()
+        .returning(["listId", "name", "createdBy"]);
 
     if (lists.length > 0) {
         await ListMemberActions.save(lists, { trimNotIn: true });
     }
 
-    return db<List>(lamington.list)
-        .select(list.listId, list.name)
-        .whereIn(
-            list.listId,
-            lists.map(({ listId }) => listId)
-        );
+    return result;
 };
 
 const deleteLists: ListService["Delete"] = async params =>
-    db(lamington.list).whereIn(list.listId, EnsureArray(params)).delete();
+    db<List>(lamington.list).whereIn("listId", EnsureArray(params)).delete();
 
 const readListsInternal: ListService["ReadSummary"] = async params => {
     const listIds = EnsureArray(params).map(({ listId }) => listId);
 
-    const query = db(lamington.list)
-        .select(GetColumns<ListService, "ReadSummary">({ listId: list.listId, createdBy: list.createdBy }))
-        .whereIn(list.listId, listIds);
+    const query = db<List>(lamington.list).select("listId", "createdBy").whereIn("listId", listIds);
 
     return query;
 };

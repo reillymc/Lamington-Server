@@ -2,11 +2,11 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { ListEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
-import { ListActions, ListMemberActions, ListItemActions } from "../../../src/controllers";
-import { PostListItemRequestBody } from "../../../src/routes/spec";
-import { ServiceParams } from "../../../src/database";
+import { ListActions, ListItemActions, ListMemberActions } from "../../../src/controllers";
 import { ListService } from "../../../src/controllers/spec";
+import { ServiceParams } from "../../../src/database";
+import { PostListItemRequestBody, UserStatus } from "../../../src/routes/spec";
+import { CleanTables, CreateUsers, ListEndpoint, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 
 beforeEach(async () => {
     await CleanTables("list", "user", "list_member", "list_item");
@@ -80,8 +80,7 @@ test("should not allow editing if list member without edit permission", async ()
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: false,
+                status: UserStatus.Registered,
             },
         ],
     });
@@ -120,8 +119,7 @@ test("should allow editing if list member with edit permission", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });

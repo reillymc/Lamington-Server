@@ -74,7 +74,7 @@ const readBooks = async ({ bookId, userId }: GetBookParams): ReadResponse<ReadBo
     // }
     // const bookIds = params.map(({ bookId }) => bookId);
 
-    const query = db<ReadBookRow>(lamington.book)
+    const query = db<Book>(lamington.book)
         .select(
             book.bookId,
             book.name,
@@ -104,17 +104,19 @@ export interface CreateBookParams
 const saveBooks: SaveService<CreateBookParams> = async params => {
     const books = EnsureArray(params);
 
-    const bookIds = books.map(({ bookId }) => bookId);
-
     const bookData: Book[] = books.map(({ members, ...bookItem }) => bookItem);
 
-    const result = await db(lamington.book).insert(bookData).onConflict(book.bookId).merge();
+    const result = await db<Book>(lamington.book)
+        .insert(bookData)
+        .onConflict("bookId")
+        .merge()
+        .returning(["bookId", "name", "createdBy"]);
 
     if (books.length > 0) {
         await BookMemberActions.save(books, { trimNotIn: true });
     }
 
-    return db<Book>(lamington.book).select(book.bookId, book.name).whereIn(book.bookId, bookIds);
+    return result;
 };
 
 interface DeleteBookParams {
@@ -124,14 +126,10 @@ interface DeleteBookParams {
 /**
  * Deletes books by book ids
  */
-const deleteBooks = async (books: CreateQuery<DeleteBookParams>): DeleteResponse => {
-    if (!Array.isArray(books)) {
-        books = [books];
-    }
+const deleteBooks = async (params: CreateQuery<DeleteBookParams>): DeleteResponse => {
+    const bookIds = EnsureArray(params).map(({ bookId }) => bookId);
 
-    const bookIds = books.map(({ bookId }) => bookId);
-
-    return db(lamington.book).whereIn(book.bookId, bookIds).delete();
+    return db<Book>(lamington.book).whereIn("bookId", bookIds).delete();
 };
 
 interface ReadBookInternalParams {

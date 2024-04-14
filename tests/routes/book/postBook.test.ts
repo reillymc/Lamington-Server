@@ -5,7 +5,6 @@ import app from "../../../src/app";
 import { BookActions, BookMemberActions } from "../../../src/controllers";
 import { EntityMember } from "../../../src/controllers/entity";
 import { ServiceParams } from "../../../src/database";
-import { parseBookCustomisations } from "../../../src/routes/helpers";
 import { PostBookRequestBody, UserStatus } from "../../../src/routes/spec";
 import {
     BookEndpoint,
@@ -116,7 +115,7 @@ test("should create book", async () => {
         const expectedBook = books.data.find(({ bookId }) => bookId === book.bookId);
         const actualBookMembers = savedBookMembers.filter(({ bookId }) => bookId === book.bookId);
 
-        const { color, icon } = parseBookCustomisations(book.customisations);
+        const { color, icon } = book.customisations!;
 
         expect(book?.name).toEqual(expectedBook!.name);
         expect(book?.description).toEqual(expectedBook!.description);
@@ -130,7 +129,7 @@ test("should create book", async () => {
 
             expect(savedBookMember).toBeTruthy();
 
-            expect(savedBookMember?.canEdit).toEqual(status);
+            expect(savedBookMember?.status).toEqual(status);
         }
     }
 });

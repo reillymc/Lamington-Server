@@ -7,13 +7,13 @@
         "build:clean": "rm -rf dist/ && tsc && cp -R src/docs/ dist/ && cp package*.json dist/",
         "start": "NODE_ENV=development nodemon src/index.ts",
         "prod": "NODE_ENV=production node index.js",
-        "test": "NODE_ENV=testing jest --runInBand --forceExit",
-        "test:coverage": "NODE_ENV=testing jest --runInBand --forceExit --coverage",
+        "test": "NODE_ENV=test jest --runInBand --forceExit",
+        "test:coverage": "NODE_ENV=test jest --runInBand --forceExit --coverage",
         "migrate:dev": "NODE_ENV=development knex migrate:latest --knexfile src/database/knexfile.ts",
-        "migrate:test": "NODE_ENV=testing knex migrate:latest --knexfile src/database/knexfile.ts",
         "migrate:prod": "NODE_ENV=production knex migrate:latest --knexfile src/database/knexfile.ts",
         "rollback:dev": "NODE_ENV=development knex migrate:rollback --knexfile src/database/knexfile.ts",
-        "seed:dev": "NODE_ENV=development knex seed:run --knexfile src/database/knexfile.ts"
+        "seed:dev": "NODE_ENV=development knex seed:run --knexfile src/database/knexfile.ts",
+        "setup:test": "NODE_ENV=test knex migrate:rollback --knexfile src/database/knexfile.ts && NODE_ENV=test knex migrate:latest --knexfile src/database/knexfile.ts && NODE_ENV=test knex seed:run --knexfile src/database/knexfile.ts"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.294.0",
@@ -26,7 +26,7 @@
         "form-data": "^4.0.0",
         "helmet": "^6.0.0",
         "jsonwebtoken": "^8.5.1",
-        "knex": "^2.3.0",
+        "knex": "^3.1.0",
         "morgan": "^1.10.0",
         "multer": "^1.4.5-lts.1",
         "pg": "^8.11.5",

@@ -2,9 +2,10 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 import { BookActions, BookMemberActions } from "../../../src/controllers";
 import { ServiceParams } from "../../../src/database";
+import { UserStatus } from "../../../src/routes/spec";
+import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 
 beforeEach(async () => {
     await CleanTables("book", "user", "book_member");
@@ -66,8 +67,7 @@ test("should allow removing member if book owner", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: false,
-                allowEditing: false,
+                status: UserStatus.Pending,
             },
         ],
     });
@@ -97,13 +97,11 @@ test("should not allow removing other member if book member with edit permission
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
             {
                 userId: otherMember!.userId,
-                accepted: true,
-                allowEditing: randomBoolean(),
+                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Registered,
             },
         ],
     } satisfies ServiceParams<BookMemberActions, "save">;
@@ -136,8 +134,7 @@ test("should allow removing self if book member", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });

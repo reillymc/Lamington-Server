@@ -98,7 +98,7 @@ export type DeleteBookRecipeService = (request: DeleteBookRecipeRequest) => Dele
 export type PostBookMemberRequestParams = BaseRequestParams<{
     [bookIdParam]: Book["bookId"];
 }>;
-export type PostBookMemberRequestBody = BaseSimpleRequestBody<Pick<Book, "status">>;
+export type PostBookMemberRequestBody = BaseSimpleRequestBody;
 
 export type PostBookMemberRequest = BaseRequest<PostBookMemberRequestParams & PostBookMemberRequestBody>;
 export type PostBookMemberResponse = BaseResponse;

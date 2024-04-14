@@ -1,6 +1,6 @@
 import { v4 as uuid } from "uuid";
 
-import { BookActions, ListActions, UserActions } from "../../src/controllers";
+import { BookActions, IngredientActions, ListActions, UserActions } from "../../src/controllers";
 import { ListService } from "../../src/controllers/spec";
 import db, { ServiceParams, lamington } from "../../src/database";
 import { UserStatus } from "../../src/routes/spec";
@@ -97,4 +97,23 @@ export const CreateLists = async ({
     await ListActions.Save(books);
 
     return [books, count];
+};
+
+export const CreateIngredients = async ({
+    count = randomCount,
+    createdBy,
+}: {
+    count?: number;
+    createdBy: string | string[];
+}): Promise<[ServiceParams<IngredientActions, "save">[], number]> => {
+    const ingredients = Array.from({ length: count }, () => ({
+        ingredientId: uuid(),
+        name: uuid(),
+        description: uuid(),
+        createdBy: Array.isArray(createdBy) ? createdBy[Math.floor(Math.random() * createdBy.length)] : createdBy,
+    })) satisfies ServiceParams<IngredientActions, "save">[];
+
+    await IngredientActions.save(ingredients);
+
+    return [ingredients, count];
 };

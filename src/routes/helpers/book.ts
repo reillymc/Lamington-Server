@@ -37,7 +37,7 @@ export const prepareGetBookResponseBody = (
     bookId: book.bookId,
     name: book.name,
     description: book.description,
-    ...parseBookCustomisations(book.customisations),
+    ...book.customisations,
     createdBy: { userId: book.createdBy, firstName: book.createdByName },
     recipes: recipes
         ? Object.fromEntries(recipes.map(recipe => [recipe.recipeId, RecipeQueryResponseToRecipe(recipe)]))

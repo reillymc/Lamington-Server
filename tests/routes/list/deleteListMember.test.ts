@@ -2,10 +2,11 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { ListEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 import { ListActions, ListMemberActions } from "../../../src/controllers";
-import { ServiceParams } from "../../../src/database";
 import { ListService } from "../../../src/controllers/spec";
+import { ServiceParams } from "../../../src/database";
+import { UserStatus } from "../../../src/routes/spec";
+import { CleanTables, CreateUsers, ListEndpoint, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 
 beforeEach(async () => {
     await CleanTables("list", "user", "list_member");
@@ -67,8 +68,7 @@ test("should allow removing member if list owner", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: false,
-                allowEditing: false,
+                status: UserStatus.Pending,
             },
         ],
     });
@@ -98,13 +98,11 @@ test("should not allow removing other member if list member with edit permission
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
             {
                 userId: otherMember!.userId,
-                accepted: true,
-                allowEditing: randomBoolean(),
+                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Registered,
             },
         ],
     } satisfies ServiceParams<ListMemberActions, "save">;
@@ -137,8 +135,7 @@ test("should allow removing self if list member", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });

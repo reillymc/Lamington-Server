@@ -5,7 +5,7 @@ import app from "../../../src/app";
 import { PlannerActions, PlannerMemberActions } from "../../../src/controllers";
 import { EntityMember } from "../../../src/controllers/entity";
 import { ServiceParams } from "../../../src/database";
-import { PlannerCustomisations, parsePlannerCustomisations } from "../../../src/routes/helpers/planner";
+import { PlannerCustomisations } from "../../../src/routes/helpers/planner";
 import { PostPlannerRequestBody, UserStatus } from "../../../src/routes/spec";
 import {
     CleanTables,
@@ -118,10 +118,8 @@ test("should create planner", async () => {
     const [savedPlanner] = savedPlanners;
     const savedPlannerMembers = await PlannerMemberActions.read({ entityId: savedPlanner!.plannerId });
 
-    const { color } = parsePlannerCustomisations(savedPlanner?.customisations);
-
     expect(savedPlanner?.name).toEqual(planner.data.name);
-    expect(color).toEqual(planner.data.color);
+    expect(savedPlanner?.customisations?.color).toEqual(planner.data.color);
     expect(savedPlanner?.description).toEqual(planner.data.description);
     expect(savedPlanner?.createdBy).toEqual(user.userId);
     expect(savedPlannerMembers.length).toEqual(planner.data.members!.length);
@@ -131,20 +129,18 @@ test("should create planner", async () => {
 
         expect(savedPlannerMember).toBeTruthy();
 
-        expect(savedPlannerMember?.canEdit).toEqual(status);
+        expect(savedPlannerMember?.status).toEqual(status);
     }
 });
 
 test("should save updated planner details as planner owner", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
 
-    const customisations = getPlannerCustomisations();
-
     const planner = {
         plannerId: uuid(),
         name: uuid(),
         description: uuid(),
-        customisations: JSON.stringify(getPlannerCustomisations()),
+        customisations: getPlannerCustomisations(),
         createdBy: user.userId,
     } satisfies ServiceParams<PlannerActions, "save">;
 
@@ -165,10 +161,8 @@ test("should save updated planner details as planner owner", async () => {
 
     const [savedPlanner] = await PlannerActions.read({ plannerId: planner.plannerId, userId: user.userId });
 
-    const { color } = parsePlannerCustomisations(savedPlanner?.customisations);
-
     expect(savedPlanner?.name).toEqual(updatedPlanner.data!.name);
-    expect(color).toEqual(updatedPlanner.data!.color);
+    expect(savedPlanner?.customisations?.color).toEqual(updatedPlanner.data!.color);
     expect(savedPlanner?.description).toEqual(updatedPlanner.data!.description);
     expect(savedPlanner?.plannerId).toEqual(planner.plannerId);
     expect(savedPlanner?.createdBy).toEqual(planner.createdBy);

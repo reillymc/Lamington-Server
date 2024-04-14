@@ -203,51 +203,43 @@ export const seed = async (knex: Knex): Promise<void> => {
             bookId: "00ba8d00-7360-46dc-ba97-858d5bfee24b",
             createdBy: "3812f892-31d7-4ac8-bca0-5f5819b100cc",
             name: "Example book",
-            customisations: "{}",
         },
         {
             bookId: "4b1e6d4d-6095-4201-b803-4f6249f0ef6f",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             name: "Lunch Ideas",
-            customisations: "{}",
         },
         {
             bookId: "5395c629-2251-4af5-90f0-8b0bd2b2ac73",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             name: "Test Book with a Rather Long Title",
-            customisations: "{}",
             description: "A basic cook book!",
         },
         {
             bookId: "58f62e77-3a63-41bf-8d6c-bd26bf1ccb5c",
             createdBy: "3812f892-31d7-4ac8-bca0-5f5819b100cc",
             name: "My recipe book",
-            customisations: "{}",
         },
         {
             bookId: "6e9e66ed-d39c-47f1-956b-f455e8f2e166",
             createdBy: "4df86d9d-e2a4-4ca3-b895-6f325451b33c",
             name: "Short",
-            customisations: "{}",
         },
         {
             bookId: "b7a49a84-f39a-44b0-a8db-fc3d12a23a38",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             name: "Favourite Recipes",
-            customisations: "{}",
             description: "My top recipes to cook",
         },
         {
             bookId: "ddcb92f8-9a00-48d1-839d-b1080c9d0263",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             name: "Healthy Dinners",
-            customisations: "{}",
         },
         {
             bookId: "f7d6f62e-7d1e-4b1a-a5a9-b24ed0fb4425",
             createdBy: "3812f892-31d7-4ac8-bca0-5f5819b100cc",
             name: "Fun",
-            customisations: "{}",
         },
     ]);
 
@@ -557,14 +549,12 @@ export const seed = async (knex: Knex): Promise<void> => {
             listId: "3f94889b-3125-4052-9dc1-7f41bb15971e",
             name: "Fruit and Vegetable Market",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
-            customisations: "{}",
             description: "Fresh produce",
         },
         {
             listId: "517959f9-02d8-42a3-9dc9-5934f68561d0",
             name: "My Shopping List",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
-            customisations: "{}",
             description: "A list of all the items I need to buy",
         },
     ]);
@@ -647,7 +637,6 @@ export const seed = async (knex: Knex): Promise<void> => {
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             name: "My Meal Planner",
-            customisations: "{}",
             description: "A planner for all the meals I want to cook",
         },
     ]);

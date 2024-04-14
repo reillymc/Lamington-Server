@@ -17,4 +17,3 @@ const db = knex(selectDatabaseConfig());
 export default db;
 
 export * from "./definitions";
-export * from "./helpers";

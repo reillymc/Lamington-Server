@@ -2,11 +2,11 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBit } from "../../helpers";
 import { BookActions, BookMemberActions, BookRecipeActions, RecipeActions } from "../../../src/controllers";
-import { PostBookRecipeRequestBody } from "../../../src/routes/spec";
-import { ServiceParams } from "../../../src/database";
 import { RecipeService } from "../../../src/controllers/spec";
+import { ServiceParams } from "../../../src/database";
+import { PostBookRecipeRequestBody, UserStatus } from "../../../src/routes/spec";
+import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 
 beforeEach(async () => {
     await CleanTables("book", "user", "book_member", "book_recipe");
@@ -69,7 +69,7 @@ test("should not allow editing if book member without edit permission", async ()
         recipeId: uuid(),
         name: uuid(),
         createdBy: user!.userId,
-        public: randomBit(),
+        public: randomBoolean(),
     } satisfies ServiceParams<RecipeService, "Save">;
 
     await BookActions.save(book);
@@ -79,8 +79,7 @@ test("should not allow editing if book member without edit permission", async ()
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: false,
+                status: UserStatus.Registered,
             },
         ],
     });
@@ -108,7 +107,7 @@ test("should allow editing if book member with edit permission", async () => {
         recipeId: uuid(),
         name: uuid(),
         createdBy: user!.userId,
-        public: randomBit(),
+        public: randomBoolean(),
     } satisfies ServiceParams<RecipeService, "Save">;
 
     await BookActions.save(book);
@@ -118,8 +117,7 @@ test("should allow editing if book member with edit permission", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });
@@ -155,7 +153,7 @@ test("should allow editing if book owner", async () => {
         recipeId: uuid(),
         name: uuid(),
         createdBy: user!.userId,
-        public: randomBit(),
+        public: randomBoolean(),
     } satisfies ServiceParams<RecipeService, "Save">;
 
     await BookActions.save(book);

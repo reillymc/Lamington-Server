@@ -38,7 +38,7 @@ const saveEntityMembers =
                 status,
             }));
 
-            const entityIdField = Lamington[entity][idField] as string;
+            const entityIdField = idField as string;
             const memberIdField = LamingtonMemberTables[entity]["userId"];
 
             if (options?.trimNotIn) {
@@ -53,7 +53,7 @@ const saveEntityMembers =
 
             if (!data.length) return;
 
-            await db.insert(data).into(entity).onConflict([entityIdField, memberIdField]).merge(["status"]); // Knex seems to disallow columns prefixed with table name
+            await db<EntityMember>(entity).insert(data).onConflict([entityIdField, "userId"]).merge(["status"]);
         }
     };
 
@@ -64,18 +64,15 @@ interface DeleteEntityMemberParams {
 
 const deleteEntityMembers =
     <T extends keyof typeof LamingtonMemberTables, K extends keyof (typeof Lamington)[T]>(entity: T, idField: K) =>
-    async (entityMembers: CreateQuery<DeleteEntityMemberParams>): DeleteResponse => {
-        if (!Array.isArray(entityMembers)) {
-            entityMembers = [entityMembers];
-        }
+    async (params: CreateQuery<DeleteEntityMemberParams>): DeleteResponse => {
+        const entityMembers = EnsureArray(params);
 
         const entityIds = entityMembers.map(({ entityId }) => entityId);
         const userIds = entityMembers.map(({ userId }) => userId);
 
-        const entityIdField = Lamington[entity][idField] as string;
-        const memberIdField = LamingtonMemberTables[entity]["userId"];
+        const entityIdField = idField as string;
 
-        return db(entity).whereIn(entityIdField, entityIds).whereIn(memberIdField, userIds).delete();
+        return db<EntityMember>(entity).whereIn(entityIdField, entityIds).whereIn("userId", userIds).delete();
     };
 
 interface GetEntityMembersParams {
@@ -95,11 +92,11 @@ const readEntityMembers =
         }
         const entityIds = params.map(({ entityId }) => entityId);
 
-        const entityIdField = Lamington[entity][idField] as string;
+        const entityIdField = idField as string;
         const memberIdField = LamingtonMemberTables[entity]["userId"];
         const statusField = LamingtonMemberTables[entity]["status"];
 
-        const query = db(entity)
+        const query = db<EntityMember>(entity)
             .select(entityIdField, memberIdField, statusField, user.firstName, user.lastName)
             .whereIn(entityIdField, entityIds)
             .leftJoin(lamington.user, memberIdField, user.userId);

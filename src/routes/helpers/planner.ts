@@ -9,16 +9,15 @@ import { getStatus } from "./entityMember";
 export const validatePostPlannerBody = ({ data }: PostPlannerRequestBody, userId: string) => {
     const filteredData = EnsureDefinedArray(data);
 
-    return BisectOnValidItems(filteredData, ({ plannerId = Uuid(), name, ...item }) => {
+    return BisectOnValidItems(filteredData, ({ plannerId = Uuid(), name, color, ...item }) => {
         if (!name) return;
 
         const validItem: ServiceParams<PlannerActions, "save"> = {
             plannerId,
             name,
-            description: item.description,
-            customisations: stringifyPlannerCustomisations({ color: item.color }),
-            members: item.members,
+            customisations: { color },
             createdBy: userId,
+            ...item,
         };
 
         return validItem;
@@ -65,7 +64,7 @@ export const prepareGetPlannerResponseBody = (
     plannerId: planner.plannerId,
     name: planner.name,
     description: planner.description,
-    ...parsePlannerCustomisations(planner.customisations),
+    ...planner.customisations,
     createdBy: { userId: planner.createdBy, firstName: planner.createdByName },
     meals: plannerMeals,
     members: members

@@ -11,6 +11,7 @@ export type User = {
     lastName: string;
     password: string;
     createdAt: string;
+    updatedAt: string;
     status: string;
     preferences: string;
 };
@@ -22,6 +23,7 @@ export const user: Table<User> = {
     lastName: `${lamington.user}.lastName`,
     password: `${lamington.user}.password`,
     createdAt: `${lamington.user}.createdAt`,
+    updatedAt: `${lamington.user}.updatedAt`,
     status: `${lamington.user}.status`,
     preferences: `${lamington.user}.preferences`,
 } as const;

@@ -2,19 +2,19 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import {
-    ListEndpoint,
-    CleanTables,
-    CreateUsers,
-    PrepareAuthenticatedUser,
-    randomNumber,
-    randomBoolean,
-} from "../../helpers";
-import { GetListResponse } from "../../../src/routes/spec";
-import { ListActions, ListMemberActions, ListItemActions } from "../../../src/controllers";
+import { ListActions, ListItemActions, ListMemberActions } from "../../../src/controllers";
+import { ListService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
 import { ListCustomisations } from "../../../src/routes/helpers";
-import { ListService } from "../../../src/controllers/spec";
+import { GetListResponse, UserStatus } from "../../../src/routes/spec";
+import {
+    CleanTables,
+    CreateUsers,
+    ListEndpoint,
+    PrepareAuthenticatedUser,
+    randomBoolean,
+    randomNumber,
+} from "../../helpers";
 
 const getListCustomisations = (): ListCustomisations => {
     return {
@@ -71,7 +71,7 @@ test("should return correct list details for list id", async () => {
         listId: uuid(),
         name: uuid(),
         description: uuid(),
-        customisations: JSON.stringify(customisations),
+        customisations,
         createdBy: user.userId,
     } satisfies ServiceParams<ListService, "Save">;
 
@@ -188,8 +188,7 @@ test("should return list members", async () => {
         members: [
             {
                 userId: listMember!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });

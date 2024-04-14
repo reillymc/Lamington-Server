@@ -2,18 +2,18 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
+import { CookListMealActions, CookListMealActionsInternal, RecipeActions } from "../../../src/controllers";
+import { RecipeService } from "../../../src/controllers/spec";
+import { ServiceParams } from "../../../src/database";
+import { PostCookListMealRequestBody } from "../../../src/routes/spec";
 import {
     CleanTables,
     CookListEndpoint,
     CreateUsers,
     PrepareAuthenticatedUser,
-    randomBit,
+    randomBoolean,
     randomNumber,
 } from "../../helpers";
-import { PostCookListMealRequestBody } from "../../../src/routes/spec";
-import { CookListMealActions, CookListMealActionsInternal, RecipeActions } from "../../../src/controllers";
-import { ServiceParams } from "../../../src/database";
-import { RecipeService } from "../../../src/controllers/spec";
 
 beforeEach(async () => {
     await CleanTables("user", "planner_meal", "recipe");
@@ -78,7 +78,7 @@ test("should update meal", async () => {
         recipeId: uuid(),
         name: uuid(),
         createdBy: user.userId,
-        public: randomBit(),
+        public: randomBoolean(),
     } satisfies ServiceParams<RecipeService, "Save">;
 
     await RecipeActions.Save(recipe);

@@ -122,7 +122,7 @@ test("should create planner", async () => {
 
         expect(savedPlannerMember).toBeTruthy();
 
-        expect(savedPlannerMember?.canEdit).toEqual(status);
+        expect(savedPlannerMember?.status).toEqual(status);
     }
 });
 

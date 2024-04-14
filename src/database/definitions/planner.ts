@@ -1,4 +1,5 @@
 import { Table } from ".";
+import { PlannerCustomisations } from "../../routes/helpers";
 import { lamington } from "./lamington";
 
 /**
@@ -8,7 +9,8 @@ export interface Planner {
     plannerId: string;
     createdBy: string;
     name: string;
-    customisations?: string;
+    // TODO - customisations model same as book
+    customisations?: PlannerCustomisations;
     description?: string;
 }
 

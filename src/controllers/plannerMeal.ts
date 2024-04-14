@@ -42,9 +42,7 @@ const readPlannerMeals: ReadService<PlannerMeal, "plannerId" | "year" | "month">
 const savePlannerMeals: SaveService<PlannerMeal> = async params => {
     const meals = EnsureArray(params);
 
-    await db(lamington.plannerMeal).insert(meals).onConflict([plannerMeal.plannerId, plannerMeal.id]).merge();
-
-    return [];
+    return db<PlannerMeal>(lamington.plannerMeal).insert(meals).onConflict(["plannerId", "id"]).merge().returning("id");
 };
 
 /**

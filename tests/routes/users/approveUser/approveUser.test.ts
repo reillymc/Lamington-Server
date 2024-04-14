@@ -1,24 +1,24 @@
 import request from "supertest";
 
 import app from "../../../../src/app";
-import { CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../../helpers";
-import { PostUserApprovalRequestBody, UserStatus } from "../../../../src/routes/spec";
-import { UserEndpoint } from "../../../helpers/api";
 import { UserActions } from "../../../../src/controllers";
+import { PostUserApprovalRequestBody, UserStatus } from "../../../../src/routes/spec";
+import { CleanAllTables, CreateUsers, PrepareAuthenticatedUser } from "../../../helpers";
+import { UserEndpoint } from "../../../helpers/api";
 
 beforeEach(async () => {
-    await CleanTables("user");
+    await CleanAllTables();
 });
 
 afterAll(async () => {
-    await CleanTables("user");
+    await CleanAllTables();
 });
 
 test("route should require admin authentication", async () => {
     const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
     const [registeredToken] = await PrepareAuthenticatedUser(UserStatus.Registered);
 
-    const endpoint = UserEndpoint.approveUser("non-existent-user-id");
+    const endpoint = UserEndpoint.approveUser("00000000-0000-0000-0000-000000000000"); // Non-existent user
 
     const unAuthedResponse = await request(app).post(endpoint);
     expect(unAuthedResponse.statusCode).toEqual(401);

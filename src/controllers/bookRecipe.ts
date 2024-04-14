@@ -8,6 +8,7 @@ import db, {
     ReadQuery,
     ReadResponse,
 } from "../database";
+import { EnsureArray } from "../utils";
 
 interface GetBookRecipesParams {
     bookId: string;
@@ -18,50 +19,35 @@ interface GetBookRecipesParams {
  * @returns an array of books matching given ids
  */
 const readBookRecipes = async (params: ReadQuery<GetBookRecipesParams>): ReadResponse<BookRecipe> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
-    const bookIds = params.map(({ bookId }) => bookId);
+    const bookIds = EnsureArray(params).map(({ bookId }) => bookId);
 
-    const query = db<BookRecipe>(lamington.bookRecipe)
+    return db<BookRecipe>(lamington.bookRecipe)
         .select(bookRecipe.bookId, bookRecipe.recipeId)
         .whereIn(bookRecipe.bookId, bookIds);
-    return query;
 };
 
 /**
  * Creates a new book from params
  * @returns the newly created books
  */
-const createBookRecipes = async (bookRecipes: CreateQuery<BookRecipe>): CreateResponse<number> => {
-    if (!Array.isArray(bookRecipes)) {
-        bookRecipes = [bookRecipes];
-    }
+const createBookRecipes = async (params: CreateQuery<BookRecipe>): CreateResponse<BookRecipe> => {
+    const bookRecipes = EnsureArray(params);
 
-    const result = await db(lamington.bookRecipe)
+    return await db<BookRecipe>(lamington.bookRecipe)
         .insert(bookRecipes)
-        .onConflict([bookRecipe.bookId, bookRecipe.recipeId])
-        .merge();
-
-    return result;
+        .onConflict(["bookId", "recipeId"])
+        .merge()
+        .returning(["bookId", "recipeId"]);
 };
 
 /**
  * Creates a new book from params
  * @returns the newly created books
  */
-const deleteBookRecipes = async (bookRecipes: CreateQuery<BookRecipe>): DeleteResponse => {
-    if (!Array.isArray(bookRecipes)) {
-        bookRecipes = [bookRecipes];
-    }
+const deleteBookRecipes = async (params: CreateQuery<BookRecipe>): DeleteResponse => {
+    const bookRecipes = EnsureArray(params).map(({ bookId, recipeId }) => [bookId, recipeId]);
 
-    const bookIds = bookRecipes.map(({ bookId }) => bookId);
-    const recipeIds = bookRecipes.map(({ recipeId }) => recipeId);
-
-    return db(lamington.bookRecipe)
-        .whereIn(bookRecipe.bookId, bookIds)
-        .and.whereIn(bookRecipe.recipeId, recipeIds)
-        .delete();
+    return db<BookRecipe>(lamington.bookRecipe).whereIn(["bookId", "recipeId"], bookRecipes).delete();
 };
 
 export const BookRecipeActions = {

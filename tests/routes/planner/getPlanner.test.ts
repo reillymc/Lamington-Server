@@ -72,7 +72,7 @@ test("should return correct planner details for planner id", async () => {
         plannerId: uuid(),
         name: uuid(),
         description: uuid(),
-        customisations: JSON.stringify(customisations),
+        customisations,
         createdBy: user.userId,
     } satisfies ServiceParams<PlannerActions, "save">;
 

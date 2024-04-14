@@ -24,7 +24,7 @@ const config: { [key: string]: Knex.Config } = {
         },
     },
 
-    testing: {
+    test: {
         client: appConfig.database.client,
         connection: {
             database: process.env.DB_TEST_NAME,
@@ -34,12 +34,15 @@ const config: { [key: string]: Knex.Config } = {
             password: process.env.DB_TEST_PASSWORD,
         },
         pool: {
-            min: 2,
-            max: 10,
+            min: 0,
+            max: 2,
         },
         migrations: {
             tableName: "knex_migrations",
             directory: __dirname + "/migrations",
+        },
+        seeds: {
+            directory: __dirname + "/seeds/testing",
         },
     },
 

@@ -1,12 +1,12 @@
 import db, {
-    RecipeIngredient,
-    lamington,
-    recipeIngredient,
-    ingredient,
-    recipe,
-    SaveService,
-    Recipe,
     QueryService,
+    Recipe,
+    RecipeIngredient,
+    SaveService,
+    ingredient,
+    lamington,
+    recipe,
+    recipeIngredient,
 } from "../database";
 import { EnsureArray, Undefined } from "../utils";
 
@@ -17,10 +17,7 @@ import { EnsureArray, Undefined } from "../utils";
  * @returns
  */
 const deleteExcessRows = async (recipeId: string, retainedIds: string[]) =>
-    db(lamington.recipeIngredient)
-        .where({ [recipeIngredient.recipeId]: recipeId })
-        .whereNotIn(recipeIngredient.id, retainedIds)
-        .delete();
+    db<RecipeIngredient>(lamington.recipeIngredient).where({ recipeId }).whereNotIn("id", retainedIds).delete();
 
 /**
  * Create RecipeIngredients provided
@@ -28,7 +25,7 @@ const deleteExcessRows = async (recipeId: string, retainedIds: string[]) =>
  * @returns
  */
 const insertRows = async (recipeIngredients: RecipeIngredient[]) =>
-    db(lamington.recipeIngredient).insert(recipeIngredients).onConflict([recipeIngredient.id]).merge();
+    db<RecipeIngredient>(lamington.recipeIngredient).insert(recipeIngredients).onConflict(["id", "recipeId"]).merge();
 
 /**
  * Update RecipeIngredients for recipeId, by deleting all ingredients not in ingredient list and then creating / updating provided ingredients in list

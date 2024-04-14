@@ -104,17 +104,17 @@ const savePlanners = async (
 ): CreateResponse<Planner> => {
     const planners = EnsureArray(params);
 
-    const plannerIds = planners.map(({ plannerId }) => plannerId);
-
     const plannerData: Planner[] = planners.map(({ members, ...plannerItem }) => plannerItem);
 
-    const result = await db(lamington.planner).insert(plannerData).onConflict(planner.plannerId).merge();
+    const result = await db<Planner>(lamington.planner)
+        .insert(plannerData)
+        .onConflict("plannerId")
+        .merge()
+        .returning(["plannerId", "name", "customisations", "description", "createdBy"]);
 
     if (planners.length > 0) await PlannerMemberActions.save(planners, { trimNotIn: true });
 
-    return db<Planner>(lamington.planner)
-        .select(planner.plannerId, planner.name, planner.customisations, planner.description, planner.createdBy)
-        .whereIn(planner.plannerId, plannerIds);
+    return result;
 };
 
 interface DeletePlannerParams {

@@ -1,9 +1,6 @@
 import request from "supertest";
 
 import app from "../../../../src/app";
-import { CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../../helpers";
-import { PostUserApprovalRequestBody, UserStatus } from "../../../../src/routes/spec";
-import { UserEndpoint } from "../../../helpers/api";
 import {
     BookRecipeActions,
     InternalBookActions,
@@ -13,6 +10,9 @@ import {
     RecipeActions,
     UserActions,
 } from "../../../../src/controllers";
+import { PostUserApprovalRequestBody, UserStatus } from "../../../../src/routes/spec";
+import { CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../../helpers";
+import { UserEndpoint } from "../../../helpers/api";
 import { readAllLists } from "../../../helpers/list";
 
 beforeEach(async () => {

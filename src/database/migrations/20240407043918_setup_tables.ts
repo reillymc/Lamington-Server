@@ -23,6 +23,13 @@ export enum tables {
     user = "user",
 }
 
+const onUpdateTrigger = (table: tables) => `
+    CREATE TRIGGER "${table}_updatedAt"
+    BEFORE UPDATE ON "${table}"
+    FOR EACH ROW
+    EXECUTE PROCEDURE on_update_timestamp();
+`;
+
 export const up = async (knex: Knex): Promise<void> =>
     knex.schema
         .createTable(tables.user, table => {
@@ -31,9 +38,9 @@ export const up = async (knex: Knex): Promise<void> =>
             table.string("firstName", 255).notNullable();
             table.string("lastName", 255).notNullable();
             table.string("password", 255).notNullable();
-            table.dateTime("createdAt").notNullable().defaultTo(knex.fn.now());
             table.text("status").notNullable().defaultTo(UserStatus.Pending);
             table.jsonb("preferences");
+            table.timestamps(true, true, true);
         })
         .createTable(tables.recipe, table => {
             table.uuid("recipeId", { primaryKey: true });
@@ -49,8 +56,7 @@ export const up = async (knex: Knex): Promise<void> =>
             table.boolean("public").defaultTo(false);
             table.uuid("createdBy").references("userId").inTable(tables.user).onDelete("SET NULL").onUpdate("SET NULL");
             table.smallint("timesCooked").defaultTo(0);
-            table.dateTime("updatedAt").notNullable().defaultTo(knex.fn.now());
-            table.dateTime("createdAt").notNullable().defaultTo(knex.fn.now());
+            table.timestamps(true, true, true);
         })
         .createTable(tables.recipeRating, table => {
             table
@@ -75,13 +81,13 @@ export const up = async (knex: Knex): Promise<void> =>
             table.string("title", 255);
             table.text("content");
             table.boolean("public").defaultTo(false);
-            table.dateTime("updatedAt").notNullable().defaultTo(knex.fn.now());
             table
                 .uuid("parentId")
                 .references("noteId")
                 .inTable(tables.recipeNote)
                 .onDelete("SET NULL")
                 .onUpdate("CASCADE");
+            table.timestamps(true, true, true);
         })
         .createTable(tables.tag, table => {
             table.uuid("tagId", { primaryKey: true });
@@ -113,26 +119,17 @@ export const up = async (knex: Knex): Promise<void> =>
                 .inTable(tables.recipe)
                 .onDelete("CASCADE")
                 .onUpdate("CASCADE");
-            table.uuid("sectionId").unique();
+            table.uuid("sectionId");
             table.tinyint("index").notNullable();
             table.string("name", 255);
             table.string("description", 255);
+            table.unique(["recipeId", "sectionId"]);
             table.primary(["recipeId", "sectionId"]);
         })
         .createTable(tables.recipeIngredient, table => {
             table.uuid("id", { primaryKey: true });
-            table
-                .uuid("recipeId")
-                .references("recipeId")
-                .inTable(tables.recipe)
-                .onDelete("CASCADE")
-                .onUpdate("CASCADE");
-            table
-                .uuid("sectionId")
-                .references("sectionId")
-                .inTable(tables.recipeSection)
-                .onDelete("CASCADE")
-                .onUpdate("CASCADE");
+            table.uuid("recipeId");
+            table.uuid("sectionId");
             table
                 .uuid("ingredientId")
                 .references("ingredientId")
@@ -150,24 +147,28 @@ export const up = async (knex: Knex): Promise<void> =>
             table.jsonb("amount");
             table.tinyint("multiplier");
             table.string("description", 255);
-        })
-        .createTable(tables.recipeStep, table => {
-            table.uuid("id", { primaryKey: true });
+            table.primary(["id", "recipeId"]);
             table
-                .uuid("recipeId")
-                .references("recipeId")
-                .inTable(tables.recipe)
-                .onDelete("CASCADE")
-                .onUpdate("CASCADE");
-            table
-                .uuid("sectionId")
-                .references("sectionId")
+                .foreign(["recipeId", "sectionId"])
+                .references(["recipeId", "sectionId"])
                 .inTable(tables.recipeSection)
                 .onDelete("CASCADE")
                 .onUpdate("CASCADE");
+        })
+        .createTable(tables.recipeStep, table => {
+            table.uuid("id");
+            table.uuid("recipeId");
+            table.uuid("sectionId");
             table.tinyint("index").notNullable();
             table.text("description");
             table.string("photo", 255);
+            table.primary(["id", "recipeId"]);
+            table
+                .foreign(["recipeId", "sectionId"])
+                .references(["recipeId", "sectionId"])
+                .inTable(tables.recipeSection)
+                .onDelete("CASCADE")
+                .onUpdate("CASCADE");
         })
         .createTable(tables.list, table => {
             table.uuid("listId", { primaryKey: true });
@@ -177,10 +178,9 @@ export const up = async (knex: Knex): Promise<void> =>
             table.string("description", 255);
         })
         .createTable(tables.listItem, table => {
-            table.uuid("itemId", { primaryKey: true });
+            table.uuid("itemId");
             table.uuid("listId").references("listId").inTable(tables.list).onDelete("CASCADE").onUpdate("CASCADE");
             table.string("name", 255).notNullable();
-            table.dateTime("updatedAt").notNullable().defaultTo(knex.fn.now());
             table.boolean("completed").defaultTo(false);
             table
                 .uuid("ingredientId")
@@ -197,6 +197,8 @@ export const up = async (knex: Knex): Promise<void> =>
                 .inTable(tables.user)
                 .onDelete("NO ACTION")
                 .onUpdate("NO ACTION");
+            table.primary(["listId", "itemId"]);
+            table.timestamps(true, true, true);
         })
         .createTable(tables.listMember, table => {
             table.uuid("listId").references("listId").inTable(tables.list).onDelete("CASCADE").onUpdate("CASCADE");
@@ -235,7 +237,7 @@ export const up = async (knex: Knex): Promise<void> =>
             table.string("description", 255);
         })
         .createTable(tables.plannerMeal, table => {
-            table.uuid("id", { primaryKey: true });
+            table.uuid("id").primary();
             table
                 .uuid("plannerId")
                 .references("plannerId")
@@ -258,6 +260,7 @@ export const up = async (knex: Knex): Promise<void> =>
                 .onDelete("SET NULL")
                 .onUpdate("SET NULL");
             table.string("notes", 255);
+            table.unique(["id", "plannerId"]);
         })
         .createTable(tables.plannerMember, table => {
             table
@@ -269,7 +272,11 @@ export const up = async (knex: Knex): Promise<void> =>
             table.uuid("userId").references("userId").inTable(tables.user).onDelete("CASCADE").onUpdate("CASCADE");
             table.text("status").notNullable().defaultTo(UserStatus.Pending);
             table.primary(["plannerId", "userId"]);
-        });
+        })
+        .then(() => knex.raw(onUpdateTrigger(tables.user)))
+        .then(() => knex.raw(onUpdateTrigger(tables.recipe)))
+        .then(() => knex.raw(onUpdateTrigger(tables.recipeNote)))
+        .then(() => knex.raw(onUpdateTrigger(tables.listItem)));
 
 export const down = async (knex: Knex): Promise<void> =>
     knex.schema

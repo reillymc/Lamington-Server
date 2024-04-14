@@ -54,7 +54,7 @@ export const validatePostListBody = ({ data }: PostListRequestBody, userId: stri
             listId,
             name,
             description: item.description,
-            customisations: stringifyListCustomisations({ icon: item.icon }),
+            customisations: { icon: item.icon },
             members: item.members,
             createdBy: userId,
         };
@@ -68,7 +68,6 @@ export const validatePostListItemBody = ({ data }: PostListItemRequestBody, user
 
     return BisectOnValidItems(filteredData, ({ itemId = Uuid(), name, ...item }) => {
         if (!name) return;
-        console.log(item.amount);
 
         const validItem: ServiceParams<ListItemActions, "save"> = {
             itemId,
@@ -112,7 +111,7 @@ export const prepareGetListResponseBody = ({
     description: list.description,
     outstandingItemCount,
     lastUpdated,
-    ...parseListCustomisations(list.customisations),
+    ...list.customisations,
     createdBy: { userId: list.createdBy, firstName: list.createdByName },
     items: listItems
         ?.filter(item => item.listId === list.listId)

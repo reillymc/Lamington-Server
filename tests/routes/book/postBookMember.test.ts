@@ -4,7 +4,7 @@ import { v4 as uuid } from "uuid";
 import app from "../../../src/app";
 import { BookActions, BookMemberActions } from "../../../src/controllers";
 import { ServiceParams } from "../../../src/database";
-import { PostBookMemberRequestBody, UserStatus } from "../../../src/routes/spec";
+import { UserStatus } from "../../../src/routes/spec";
 import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 
 beforeEach(async () => {
@@ -24,10 +24,7 @@ test("route should require authentication", async () => {
 test("should return 404 for non-existant book", async () => {
     const [token] = await PrepareAuthenticatedUser();
 
-    const res = await request(app)
-        .post(BookEndpoint.postBookMember(uuid()))
-        .set(token)
-        .send({ status: UserStatus.Registered } satisfies PostBookMemberRequestBody);
+    const res = await request(app).post(BookEndpoint.postBookMember(uuid())).set(token).send();
 
     expect(res.statusCode).toEqual(404);
 });
@@ -45,10 +42,7 @@ test("should not allow editing if not existing book member", async () => {
 
     await BookActions.save(book);
 
-    const res = await request(app)
-        .post(BookEndpoint.postBookMember(book.bookId))
-        .set(token)
-        .send({ status: UserStatus.Registered } satisfies PostBookMemberRequestBody);
+    const res = await request(app).post(BookEndpoint.postBookMember(book.bookId)).set(token).send();
 
     expect(res.statusCode).toEqual(403);
 });
@@ -75,10 +69,7 @@ test("should allow accepting if existing book member", async () => {
         ],
     });
 
-    const res = await request(app)
-        .post(BookEndpoint.postBookMember(book.bookId))
-        .set(token)
-        .send({ status: UserStatus.Registered } satisfies PostBookMemberRequestBody);
+    const res = await request(app).post(BookEndpoint.postBookMember(book.bookId)).set(token).send();
 
     expect(res.statusCode).toEqual(201);
 
