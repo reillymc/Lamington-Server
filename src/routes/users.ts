@@ -208,7 +208,7 @@ const createDefaultUserData = async (userId: string) => {
         description: "A planner for all the meals I want to cook",
     });
 
-    await PlannerMealActions.save([
+    await PlannerMealActions.Save([
         {
             plannerId,
             createdBy: userId,

@@ -33,7 +33,7 @@ test("should return 404 for non-existant book", async () => {
     expect(res.statusCode).toEqual(404);
 });
 
-test("should not allow editing if not book owner", async () => {
+test("should not allow adding recipe if not book owner", async () => {
     const [token] = await PrepareAuthenticatedUser();
     const [bookOwner] = await CreateUsers();
 
@@ -54,7 +54,7 @@ test("should not allow editing if not book owner", async () => {
     expect(res.statusCode).toEqual(403);
 });
 
-test("should not allow editing if book member without edit permission", async () => {
+test("should not allow adding recipe if book member without edit permission", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
     const [bookOwner] = await CreateUsers();
 
@@ -92,7 +92,7 @@ test("should not allow editing if book member without edit permission", async ()
     expect(res.statusCode).toEqual(403);
 });
 
-test("should allow editing if book member with edit permission", async () => {
+test("should allow adding recipe if book member with edit permission", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
     const [bookOwner] = await CreateUsers();
 

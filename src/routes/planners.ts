@@ -102,7 +102,7 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
 
             const plannerMealsResponse =
                 parsedYear !== undefined && parsedMonth !== undefined
-                    ? await PlannerMealActions.read({ plannerId, year: parsedYear, month: parsedMonth })
+                    ? await PlannerMealActions.Read({ plannerId, year: parsedYear, month: parsedMonth })
                     : undefined;
 
             const data = prepareGetPlannerResponseBody(planner, userId, plannerMealsResponse, plannerMembersResponse);
@@ -251,7 +251,7 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
             if (!existingPlanner) {
                 return next(
                     new AppError({
-                        status: 403,
+                        status: 404,
                         code: "PLANNER_NOT_FOUND",
                         message: "Cannot find planner to add recipe to.",
                     })
@@ -276,7 +276,7 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
                 }
             }
 
-            await PlannerMealActions.save(validPlannerMeals);
+            await PlannerMealActions.Save(validPlannerMeals);
             return res.status(201).json({ error: false, message: "Planner recipe added." });
         } catch (e: unknown) {
             next(
@@ -405,7 +405,7 @@ router.delete<DeletePlannerMealRequestParams, DeletePlannerMealResponse, DeleteP
                 }
             }
 
-            await PlannerMealActions.delete(mealId);
+            await PlannerMealActions.Delete(mealId);
             return res.status(201).json({ error: false, message: "Planner meal deleted." });
         } catch (e: unknown) {
             next(

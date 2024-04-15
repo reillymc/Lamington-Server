@@ -42,5 +42,6 @@
             "username": "root",
             "password": "password"
         }
-    ]
+    ],
+    "jest.runMode": "on-demand"
 }

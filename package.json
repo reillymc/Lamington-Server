@@ -13,6 +13,7 @@
         "migrate:prod": "NODE_ENV=production knex migrate:latest --knexfile src/database/knexfile.ts",
         "rollback:dev": "NODE_ENV=development knex migrate:rollback --knexfile src/database/knexfile.ts",
         "seed:dev": "NODE_ENV=development knex seed:run --knexfile src/database/knexfile.ts",
+        "setup:dev": "NODE_ENV=development knex migrate:rollback --knexfile src/database/knexfile.ts && NODE_ENV=development knex migrate:latest --knexfile src/database/knexfile.ts && NODE_ENV=development knex seed:run --knexfile src/database/knexfile.ts",
         "setup:test": "NODE_ENV=test knex migrate:rollback --knexfile src/database/knexfile.ts && NODE_ENV=test knex migrate:latest --knexfile src/database/knexfile.ts && NODE_ENV=test knex seed:run --knexfile src/database/knexfile.ts"
     },
     "dependencies": {

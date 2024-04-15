@@ -12,7 +12,7 @@ services:
         restart: unless-stopped
         env_file: .env
         ports:
-            - $NODE_LCOAL_PORT:$NODE_DOCKER_PORT
+            - $NODE_LOCAL_PORT:$NODE_DOCKER_PORT
         volumes:
             - ..:/workspace:cached
         stdin_open: true

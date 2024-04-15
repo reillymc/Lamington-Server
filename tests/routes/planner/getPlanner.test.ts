@@ -182,7 +182,7 @@ test("should return planner meals", async () => {
         recipeId: undefined,
     } satisfies PlannerMeal;
 
-    await PlannerMealActions.save(meal);
+    await PlannerMealActions.Save(meal);
 
     const res = await request(app).get(PlannerEndpoint.getPlanner(planner.plannerId, meal.year, meal.month)).set(token);
 

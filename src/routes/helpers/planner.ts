@@ -1,6 +1,7 @@
 import { v4 as Uuid } from "uuid";
 
-import { PlannerActions, PlannerMealActions, PlannerMemberActions } from "../../controllers";
+import { PlannerActions, PlannerMemberActions } from "../../controllers";
+import { PlannerMealService } from "../../controllers/spec";
 import { ServiceParams } from "../../database";
 import { BisectOnValidItems, EnsureDefinedArray } from "../../utils";
 import { Planner, PostPlannerMealRequestBody, PostPlannerRequestBody } from "../spec";
@@ -34,7 +35,7 @@ export const validatePostPlannerMealBody = (
     return BisectOnValidItems(filteredData, ({ id = Uuid(), dayOfMonth, month, meal, year, ...item }) => {
         if (dayOfMonth == undefined || month == undefined || !meal || year == undefined) return;
 
-        const validItem: ServiceParams<PlannerMealActions, "save"> = {
+        const validItem: ServiceParams<PlannerMealService, "Save"> = {
             id,
             meal,
             year,
@@ -52,7 +53,7 @@ export const validatePostPlannerMealBody = (
 };
 
 type PlannerResponse = Awaited<ReturnType<PlannerActions["read"]>>[number];
-type PlannerMealsResponse = Awaited<ReturnType<PlannerMealActions["read"]>>;
+type PlannerMealsResponse = Awaited<ReturnType<PlannerMealService["Read"]>>;
 type MembersResponse = Awaited<ReturnType<PlannerMemberActions["read"]>>;
 
 export const prepareGetPlannerResponseBody = (

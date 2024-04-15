@@ -260,7 +260,6 @@ export const up = async (knex: Knex): Promise<void> =>
                 .onDelete("SET NULL")
                 .onUpdate("SET NULL");
             table.string("notes", 255);
-            table.unique(["id", "plannerId"]);
         })
         .createTable(tables.plannerMember, table => {
             table
