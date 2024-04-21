@@ -7,7 +7,7 @@ import { UserStatus } from "../../src/routes/spec";
 import { hashPassword } from "../../src/services";
 import { randomCount } from "./data";
 
-export const CreateUsers = async ({ count = 1, status = UserStatus.Registered } = {}) => {
+export const CreateUsers = async ({ count = 1, status = UserStatus.Member } = {}) => {
     const users = Array.from({ length: count }, (_, i) => ({
         userId: uuid(),
         email: uuid(),

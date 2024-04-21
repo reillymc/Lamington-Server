@@ -102,7 +102,7 @@ test("should create planner", async () => {
             color: uuid(),
             members: users!.map(({ userId }) => ({
                 userId,
-                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Registered,
+                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Member,
             })),
         },
     } satisfies Partial<PostPlannerRequestBody>;

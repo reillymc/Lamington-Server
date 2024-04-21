@@ -92,6 +92,7 @@ export type PostListItemRequestBody = BaseRequestBody<{
     amount?: ListItem["amount"];
     notes?: ListItem["notes"];
     createdBy: User["userId"];
+    previousListId?: List["listId"];
 }>;
 
 export type PostListItemRequest = BaseRequest<PostListItemRequestParams & PostListItemRequestBody>;

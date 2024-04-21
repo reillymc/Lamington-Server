@@ -57,7 +57,7 @@ test("should not allow deletion if not list owner", async () => {
     expect(res.statusCode).toEqual(403);
 });
 
-test("should not allow deletion if list member without edit permission", async () => {
+test("should not allow item deletion if list member without edit permission", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
     const [listOwner] = await CreateUsers();
 
@@ -83,7 +83,7 @@ test("should not allow deletion if list member without edit permission", async (
         members: [
             {
                 userId: user!.userId,
-                status: UserStatus.Registered,
+                status: UserStatus.Member,
             },
         ],
     });
@@ -93,7 +93,7 @@ test("should not allow deletion if list member without edit permission", async (
     expect(res.statusCode).toEqual(403);
 });
 
-test("should allow deletion if list member with edit permission", async () => {
+test("should allow item deletion if list member with edit permission", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
     const [listOwner] = await CreateUsers();
 

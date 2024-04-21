@@ -3,7 +3,7 @@ import { createToken } from "../../src/services";
 import { CreateUsers } from "./database";
 
 export const PrepareAuthenticatedUser = async (
-    status = UserStatus.Registered
+    status = UserStatus.Member
 ): Promise<[{ Authorization: string }, User]> => {
     const [user] = await CreateUsers({ status });
 

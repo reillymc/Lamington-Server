@@ -1,8 +1,8 @@
 import request from "supertest";
 
 import app from "../../../src/app";
-import { CleanTables, CreateUsers, PrepareAuthenticatedUser, UserEndpoint } from "../../helpers";
 import { GetPendingUsersResponse, UserStatus } from "../../../src/routes/spec";
+import { CleanTables, CreateUsers, PrepareAuthenticatedUser, UserEndpoint } from "../../helpers";
 
 beforeEach(async () => {
     await CleanTables("user");
@@ -20,7 +20,7 @@ test("route should require authentication", async () => {
 
 test("route should require administrator privileges", async () => {
     const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
-    const [registeredToken] = await PrepareAuthenticatedUser(UserStatus.Registered);
+    const [registeredToken] = await PrepareAuthenticatedUser(UserStatus.Member);
 
     const registeredRes = await request(app).get(UserEndpoint.getPendingUsers).set(registeredToken);
 

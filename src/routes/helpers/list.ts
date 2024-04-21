@@ -1,11 +1,11 @@
 import { v4 as Uuid } from "uuid";
 
-import { ListItemActions, ListMemberActions } from "../../controllers";
+import { ListActions, ListItemActions, ListMemberActions } from "../../controllers";
 import { ListService } from "../../controllers/spec";
 import { ServiceParams } from "../../database";
-import { BisectOnValidItems, EnsureDefinedArray } from "../../utils";
-import { List, ListItemIngredientAmount, PostListItemRequestBody, PostListRequestBody } from "../spec";
-import { getStatus } from "./entityMember";
+import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils";
+import { List, ListItemIngredientAmount, PostListItemRequestBody, PostListRequestBody, UserStatus } from "../spec";
+import { getStatus } from "./user";
 
 const parseAmount = (amountJSON: string | undefined) => {
     if (!amountJSON) return;
@@ -65,8 +65,9 @@ export const validatePostListBody = ({ data }: PostListRequestBody, userId: stri
 
 export const validatePostListItemBody = ({ data }: PostListItemRequestBody, userId: string, listId: string) => {
     const filteredData = EnsureDefinedArray(data);
+    let movedItems: Array<ServiceParams<ListItemActions, "delete">> = [];
 
-    return BisectOnValidItems(filteredData, ({ itemId = Uuid(), name, ...item }) => {
+    const result = BisectOnValidItems(filteredData, ({ itemId = Uuid(), name, ...item }) => {
         if (!name) return;
 
         const validItem: ServiceParams<ListItemActions, "save"> = {
@@ -81,8 +82,18 @@ export const validatePostListItemBody = ({ data }: PostListItemRequestBody, user
             createdBy: userId,
         };
 
+        if (item.previousListId) {
+            movedItems.push({ listId: item.previousListId, itemId });
+        }
+
         return validItem;
     });
+
+    return {
+        validListItems: result[0],
+        invalidListItems: result[1],
+        movedItems,
+    };
 };
 
 type ListResponse = Awaited<ReturnType<ListService["Read"]>>[number];
@@ -145,4 +156,55 @@ export const stringifyListCustomisations = (customisations: Partial<ListCustomis
     const { icon = DefaultListIcon } = customisations;
 
     return JSON.stringify({ icon });
+};
+
+interface ValidatedPermissions {
+    permissionsValid: boolean;
+    missingLists: string[];
+}
+
+export const validateListPermissions = async (
+    listIds: string | string[],
+    userId: string,
+    permissionLevel: UserStatus
+): Promise<ValidatedPermissions> => {
+    const listIdsArray = EnsureArray(listIds);
+
+    const existingLists = await ListActions.ReadPermissions([
+        ...EnsureArray(listIdsArray).map(listId => ({ listId, userId })),
+    ]);
+
+    const statuses = existingLists.map(list => getStatus(list.status, list.createdBy === userId));
+    const missingLists = listIdsArray.filter(listId => !existingLists.some(list => list.listId === listId));
+
+    if (statuses.some(status => status === undefined)) {
+        return { permissionsValid: false, missingLists };
+    }
+
+    if (permissionLevel === UserStatus.Owner) {
+        return { permissionsValid: statuses.every(status => status === UserStatus.Owner), missingLists };
+    }
+
+    if (permissionLevel === UserStatus.Administrator) {
+        return {
+            permissionsValid: statuses.every(status => [UserStatus.Owner, UserStatus.Administrator].includes(status!)),
+            missingLists,
+        };
+    }
+
+    if (permissionLevel === UserStatus.Member) {
+        return {
+            permissionsValid: statuses.every(status =>
+                [UserStatus.Owner, UserStatus.Administrator, UserStatus.Member].includes(status!)
+            ),
+            missingLists,
+        };
+    }
+
+    return {
+        permissionsValid: statuses.every(status =>
+            [UserStatus.Owner, UserStatus.Administrator, UserStatus.Member, UserStatus.Pending].includes(status!)
+        ),
+        missingLists,
+    };
 };

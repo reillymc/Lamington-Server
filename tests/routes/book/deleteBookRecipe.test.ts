@@ -96,7 +96,7 @@ test("should not allow deletion if book member without edit permission", async (
         members: [
             {
                 userId: user!.userId,
-                status: UserStatus.Registered,
+                status: UserStatus.Member,
             },
         ],
     });

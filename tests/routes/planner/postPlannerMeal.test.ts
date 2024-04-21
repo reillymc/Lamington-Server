@@ -93,7 +93,7 @@ test("should not allow adding meal if planner member without edit permission", a
         members: [
             {
                 userId: user!.userId,
-                status: UserStatus.Registered,
+                status: UserStatus.Member,
             },
         ],
     });

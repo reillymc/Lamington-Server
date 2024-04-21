@@ -62,7 +62,7 @@ test("should return correct book membership details for user", async () => {
                 members: [
                     {
                         userId: user.userId,
-                        status: UserStatus.Registered,
+                        status: UserStatus.Member,
                     },
                 ],
             })
@@ -95,7 +95,7 @@ test("should return correct book membership details for user", async () => {
         if (editableBookIds.includes(bookId)) {
             expect(status).toEqual(UserStatus.Administrator);
         } else if (acceptedBookIds.includes(bookId)) {
-            expect(status).toEqual(UserStatus.Registered);
+            expect(status).toEqual(UserStatus.Member);
         } else if (nonAcceptedBookIds.includes(bookId)) {
             expect(status).toEqual(UserStatus.Pending);
         }

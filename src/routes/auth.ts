@@ -1,8 +1,8 @@
 import express from "express";
 
 import { InternalUserActions } from "../controllers";
-import { userStatusToUserStatus } from "../controllers/helpers";
 import { AppError, comparePassword, createToken, hashPassword, userMessage } from "../services";
+import { getStatus } from "./helpers";
 import {
     AuthEndpoint,
     LoginRequestBody,
@@ -55,7 +55,7 @@ router.post<RegisterRequestParams, RegisterResponse, RegisterRequestBody>(
                 data: {
                     user: {
                         ...createdUser,
-                        status: userStatusToUserStatus(createdUser.status),
+                        status: getStatus(createdUser.status),
                     },
                 },
             });
@@ -108,7 +108,7 @@ router.post<LoginRequestParams, LoginResponse, LoginRequestBody>(AuthEndpoint.lo
                         email: user.email.toLowerCase(),
                         firstName: user.firstName,
                         lastName: user.lastName,
-                        status: userStatusToUserStatus(user.status),
+                        status: getStatus(user.status),
                     },
                 },
                 message: userPending ? "Account is pending approval" : undefined,

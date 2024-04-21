@@ -79,7 +79,7 @@ test("should not allow adding recipe if book member without edit permission", as
         members: [
             {
                 userId: user!.userId,
-                status: UserStatus.Registered,
+                status: UserStatus.Member,
             },
         ],
     });

@@ -80,7 +80,7 @@ test("should not allow editing if list member without edit permission", async ()
         members: [
             {
                 userId: user!.userId,
-                status: UserStatus.Registered,
+                status: UserStatus.Member,
             },
         ],
     });

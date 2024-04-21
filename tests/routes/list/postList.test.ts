@@ -94,7 +94,7 @@ test("should create list", async () => {
             description: uuid(),
             members: users!.map(({ userId }) => ({
                 userId,
-                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Registered,
+                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Member,
             })),
         })),
     } satisfies PostListRequestBody;

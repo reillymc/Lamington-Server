@@ -31,7 +31,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             firstName: "Alice",
             lastName: "Lamington",
             password: "",
-            status: "R",
+            status: "M",
             preferences: "{}",
         },
         {
@@ -40,7 +40,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             firstName: "Tim",
             lastName: "Lamington",
             password: "",
-            status: "R",
+            status: "M",
             preferences: "{}",
         },
         {

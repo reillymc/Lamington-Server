@@ -31,7 +31,7 @@ test("should return 404 for non-existant list", async () => {
 });
 
 test("should not allow editing if not existing list member", async () => {
-    const [token, user] = await PrepareAuthenticatedUser();
+    const [token] = await PrepareAuthenticatedUser();
     const [listOwner] = await CreateUsers();
 
     const list = {
@@ -80,6 +80,6 @@ test("should allow accepting if existing list member", async () => {
 
     const [listMember] = listMembers;
 
-    expect(listMember?.status).toEqual(UserStatus.Registered);
+    expect(listMember?.status).toEqual(UserStatus.Member);
     expect(listMember?.userId).toEqual(user.userId);
 });

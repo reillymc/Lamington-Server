@@ -125,7 +125,7 @@ test("should return a planner that a user is a member of with correct permission
         name: uuid(),
         description: uuid(),
         createdBy: plannerOwner!.userId,
-        members: [{ userId: user.userId, status: UserStatus.Registered }],
+        members: [{ userId: user.userId, status: UserStatus.Member }],
     } satisfies ServiceParams<PlannerActions, "save">;
 
     const otherPlanners = Array.from({ length: TEST_ITEM_COUNT }).map(
@@ -139,7 +139,7 @@ test("should return a planner that a user is a member of with correct permission
                     ? [
                           {
                               userId: user.userId,
-                              status: randomBoolean() ? UserStatus.Administrator : UserStatus.Registered,
+                              status: randomBoolean() ? UserStatus.Administrator : UserStatus.Member,
                           },
                       ]
                     : undefined,

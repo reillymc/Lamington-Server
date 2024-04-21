@@ -4,8 +4,8 @@ import { BookActions, BookMemberActions } from "../../controllers";
 import { RecipeService } from "../../controllers/spec";
 import { BisectOnValidPartialItems, EnsureDefinedArray } from "../../utils";
 import { Book, PostBookRequestBody, RequestValidator } from "../spec";
-import { getStatus } from "./entityMember";
 import { RecipeQueryResponseToRecipe } from "./recipe";
+import { getStatus } from "./user";
 
 export const validatePostBookBody: RequestValidator<PostBookRequestBody> = ({ data }, userId) => {
     const filteredData = EnsureDefinedArray(data);

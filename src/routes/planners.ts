@@ -338,7 +338,7 @@ router.post<PostPlannerMemberRequestParams, PostPlannerMemberResponse, PostPlann
                 );
             }
 
-            await PlannerMemberActions.save({ plannerId, members: [{ userId, status: UserStatus.Registered }] });
+            await PlannerMemberActions.save({ plannerId, members: [{ userId, status: UserStatus.Member }] });
             return res.status(201).json({ error: false, message: "Planner member removed." });
         } catch (e: unknown) {
             next(

@@ -5,7 +5,7 @@ import { PlannerMealService } from "../../controllers/spec";
 import { ServiceParams } from "../../database";
 import { BisectOnValidItems, EnsureDefinedArray } from "../../utils";
 import { Planner, PostPlannerMealRequestBody, PostPlannerRequestBody } from "../spec";
-import { getStatus } from "./entityMember";
+import { getStatus } from "./user";
 
 export const validatePostPlannerBody = ({ data }: PostPlannerRequestBody, userId: string) => {
     const filteredData = EnsureDefinedArray(data);

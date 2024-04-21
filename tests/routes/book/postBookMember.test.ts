@@ -79,6 +79,6 @@ test("should allow accepting if existing book member", async () => {
 
     const [bookMember] = bookMembers;
 
-    expect(bookMember?.status).toEqual(UserStatus.Registered);
+    expect(bookMember?.status).toEqual(UserStatus.Member);
     expect(bookMember?.userId).toEqual(user.userId);
 });

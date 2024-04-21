@@ -36,7 +36,7 @@ test("should create sample data for pending => registered user", async () => {
     expect(response.statusCode).toEqual(200);
 
     const [updatedUser] = await UserActions.read({ userId: user.userId });
-    expect(updatedUser?.status).toEqual(UserStatus.Registered);
+    expect(updatedUser?.status).toEqual(UserStatus.Member);
 
     const lists = await readAllLists();
     expect(lists.length).toEqual(1);

@@ -62,7 +62,7 @@ test("should return correct list membership details for user", async () => {
                 members: [
                     {
                         userId: user.userId,
-                        status: UserStatus.Registered,
+                        status: UserStatus.Member,
                     },
                 ],
             })
@@ -95,7 +95,7 @@ test("should return correct list membership details for user", async () => {
         if (editableListIds.includes(listId)) {
             expect(status).toEqual(UserStatus.Administrator);
         } else if (acceptedListIds.includes(listId)) {
-            expect(status).toEqual(UserStatus.Registered);
+            expect(status).toEqual(UserStatus.Member);
         } else if (nonAcceptedListIds.includes(listId)) {
             expect(status).toEqual(UserStatus.Pending);
         }

@@ -331,7 +331,7 @@ router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberR
                 );
             }
 
-            await BookMemberActions.save({ bookId, members: [{ userId, status: UserStatus.Registered }] });
+            await BookMemberActions.save({ bookId, members: [{ userId, status: UserStatus.Member }] });
             return res.status(201).json({ error: false, message: "Book member removed." });
         } catch (e: unknown) {
             next(

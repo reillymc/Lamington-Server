@@ -101,7 +101,7 @@ test("should not allow removing other member if book member with edit permission
             },
             {
                 userId: otherMember!.userId,
-                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Registered,
+                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Member,
             },
         ],
     } satisfies ServiceParams<BookMemberActions, "save">;

@@ -11,8 +11,8 @@ import {
     RecipeActions,
     UserActions,
 } from "../controllers";
-import { userStatusToUserStatus } from "../controllers/helpers";
 import { AppError, MessageAction, userMessage } from "../services";
+import { getStatus } from "./helpers";
 import {
     GetPendingUsersRequestBody,
     GetPendingUsersRequestParams,
@@ -35,7 +35,7 @@ const router = express.Router();
 router.get<GetUsersRequestParams, GetUsersResponse, GetUsersRequestBody>(
     UserEndpoint.getUsers,
     async ({ session }, res, next) => {
-        const isAdmin = session.status === UserStatus.Administrator;
+        const isAdmin = session.status === UserStatus.Administrator || session.status === UserStatus.Owner;
 
         try {
             const users = await UserActions.readAll();
@@ -47,7 +47,7 @@ router.get<GetUsersRequestParams, GetUsersResponse, GetUsersRequestBody>(
                         user.userId,
                         {
                             ...user,
-                            status: isAdmin ? userStatusToUserStatus(user.status) : undefined,
+                            status: isAdmin ? getStatus(user.status) : undefined,
                             email: isAdmin ? user.email : undefined,
                         },
                     ])
@@ -68,7 +68,7 @@ router.get<GetUsersRequestParams, GetUsersResponse, GetUsersRequestBody>(
 router.get<GetPendingUsersRequestParams, GetPendingUsersResponse, GetPendingUsersRequestBody>(
     UserEndpoint.getPendingUsers,
     async ({ session }, res, next) => {
-        const isAdmin = session.status === UserStatus.Administrator;
+        const isAdmin = session.status === UserStatus.Administrator || session.status === UserStatus.Owner;
 
         if (!isAdmin) {
             return next(new AppError({ status: 401, message: "Unauthorised action" }));
@@ -82,7 +82,7 @@ router.get<GetPendingUsersRequestParams, GetPendingUsersResponse, GetPendingUser
                     user.userId,
                     {
                         ...user,
-                        status: userStatusToUserStatus(user.status),
+                        status: getStatus(user.status),
                     },
                 ])
             );
@@ -102,7 +102,7 @@ router.get<GetPendingUsersRequestParams, GetPendingUsersResponse, GetPendingUser
 router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApprovalRequestBody>(
     UserEndpoint.approveUser,
     async ({ body, params, session }, res, next) => {
-        const isAdmin = session.status === UserStatus.Administrator;
+        const isAdmin = session.status === UserStatus.Administrator || session.status === UserStatus.Owner;
         const { userId: userToUpdate } = params;
         const { accept } = body;
 
@@ -123,10 +123,10 @@ router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApp
 
             const [updatedUser] = await UserActions.saveStatus({
                 userId: userToUpdate,
-                status: accept ? UserStatus.Registered : UserStatus.Blacklisted,
+                status: accept ? UserStatus.Member : UserStatus.Blacklisted,
             });
 
-            if (user.status === UserStatus.Pending && updatedUser?.status === UserStatus.Registered && accept) {
+            if (user.status === UserStatus.Pending && updatedUser?.status === UserStatus.Member && accept) {
                 await createDefaultUserData(userToUpdate);
             }
 

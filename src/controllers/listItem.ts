@@ -101,8 +101,8 @@ interface CreateListItemParams {
 }
 
 /**
- * Creates new list items from params
- * @returns the newly created list items
+ * Creates or updates list items from params
+ * @returns the created / updated list items
  */
 const saveListItems: SaveService<CreateListItemParams> = async params => {
     const listItems = EnsureArray(params);

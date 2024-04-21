@@ -16,7 +16,7 @@ afterAll(async () => {
 
 test("route should require admin authentication", async () => {
     const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
-    const [registeredToken] = await PrepareAuthenticatedUser(UserStatus.Registered);
+    const [registeredToken] = await PrepareAuthenticatedUser(UserStatus.Member);
 
     const endpoint = UserEndpoint.approveUser("00000000-0000-0000-0000-000000000000"); // Non-existent user
 
@@ -45,7 +45,7 @@ test("should register pending user", async () => {
 
     const [updatedUser] = await UserActions.read({ userId: user.userId });
 
-    expect(updatedUser?.status).toEqual(UserStatus.Registered);
+    expect(updatedUser?.status).toEqual(UserStatus.Member);
 });
 
 test("should blacklist pending user", async () => {
@@ -69,7 +69,7 @@ test("should blacklist pending user", async () => {
 test("should blacklist registered user", async () => {
     const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
 
-    const [user] = await CreateUsers({ status: UserStatus.Registered });
+    const [user] = await CreateUsers({ status: UserStatus.Member });
     if (!user) throw new Error("User not created");
 
     const response = await request(app)

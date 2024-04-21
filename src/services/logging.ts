@@ -1,7 +1,7 @@
 import { createLogger, format, transports } from "winston";
 import "winston-daily-rotate-file";
 
-import { Undefined } from "../utils";
+import { EnsureArray, Undefined } from "../utils";
 
 const logPath = "logs";
 
@@ -26,6 +26,38 @@ export class AppError {
         this.code = code;
         this.message = message;
         this.innerError = innerError;
+    }
+}
+
+export class PermissionError extends AppError {
+    constructor(entity: "list" | "list item" | "list member") {
+        super({
+            status: 403,
+            code: "MISSING_PERMISSIONS",
+            message: `You do not have permission to access this ${entity}.`,
+        });
+    }
+}
+
+export class NotFoundError extends AppError {
+    constructor(entity: "list", entityIds: string | string[]) {
+        super({
+            status: 404,
+            code: "NOT_FOUND",
+            message: `The requested ${entity} entries were not found: ${
+                entityIds.length ? `Ids: ${EnsureArray(entityIds).join(", ")}` : ""
+            }`,
+        });
+    }
+}
+
+export class InsufficientDataError extends AppError {
+    constructor(entity: "list" | "list item" | "list member") {
+        super({
+            status: 400,
+            code: "INSUFFICIENT_DATA",
+            message: `Insufficient data provided to perform the requested operation on this ${entity}.`,
+        });
     }
 }
 

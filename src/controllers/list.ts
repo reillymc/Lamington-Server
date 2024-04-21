@@ -71,12 +71,29 @@ const saveLists: ListService["Save"] = async params => {
 const deleteLists: ListService["Delete"] = async params =>
     db<List>(lamington.list).whereIn("listId", EnsureArray(params)).delete();
 
-const readListsInternal: ListService["ReadSummary"] = async params => {
-    const listIds = EnsureArray(params).map(({ listId }) => listId);
+/**
+ * Get lists by id or ids.
+ * @returns an array of lists matching given ids that the user has permissions to see, as well as the user's
+ * permission level on the list.
+ */
+const readPermissions: ListService["ReadPermissions"] = async params => {
+    const lists = EnsureArray(params);
+    const listsItems = lists.map(({ listId, userId }) => [listId, userId]);
 
-    const query = db<List>(lamington.list).select("listId", "createdBy").whereIn("listId", listIds);
+    if (!listsItems.length) return [];
 
-    return query;
+    return db<List>(lamington.list)
+        .select(list.listId, list.createdBy, listMember.status)
+        .whereIn(
+            list.listId,
+            lists.map(({ listId }) => listId)
+        )
+        .leftJoin(lamington.listMember, builder => {
+            builder.on(list.listId, "=", listMember.listId).andOnIn(
+                listMember.userId,
+                lists.map(({ userId }) => userId)
+            );
+        });
 };
 
 export const ListActions: ListService = {
@@ -111,5 +128,5 @@ export const ListActions: ListService = {
      * Get lists by id or ids
      * @returns an array of lists matching given ids, but only with minimal required fields to ensure performance
      */
-    ReadSummary: readListsInternal,
+    ReadPermissions: readPermissions,
 };
