@@ -405,7 +405,7 @@ router.delete<DeletePlannerMealRequestParams, DeletePlannerMealResponse, DeleteP
                 }
             }
 
-            await PlannerMealActions.Delete(mealId);
+            await PlannerMealActions.Delete({ id: mealId });
             return res.status(201).json({ error: false, message: "Planner meal deleted." });
         } catch (e: unknown) {
             next(

@@ -44,9 +44,13 @@ const saveMeals: SaveService<CookListMeal> = async params => {
  * Insecure - route authentication check required (user delete permission on meals)
  * @returns the number of rows deleted
  */
-const deleteMeals: DeleteService<CookListMeal, "id"> = async params => {
-    return db<Meal>(lamington.plannerMeal).whereIn("id", EnsureArray(params)).delete();
-};
+const deleteMeals: DeleteService<CookListMeal, "id"> = async params =>
+    db<Meal>(lamington.plannerMeal)
+        .whereIn(
+            "id",
+            EnsureArray(params).map(({ id }) => id)
+        )
+        .delete();
 
 /**
  * Get cook List meals by id

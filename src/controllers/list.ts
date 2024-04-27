@@ -69,7 +69,12 @@ const saveLists: ListService["Save"] = async params => {
 };
 
 const deleteLists: ListService["Delete"] = async params =>
-    db<List>(lamington.list).whereIn("listId", EnsureArray(params)).delete();
+    db<List>(lamington.list)
+        .whereIn(
+            "listId",
+            EnsureArray(params).map(({ listId }) => listId)
+        )
+        .delete();
 
 /**
  * Get lists by id or ids.

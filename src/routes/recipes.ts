@@ -175,7 +175,7 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
                 );
             }
 
-            const data = await RecipeActions.Delete(recipeId);
+            const data = await RecipeActions.Delete({ recipeId });
 
             if (existingRecipe.photo) AttachmentService.deleteImage(existingRecipe.photo);
 

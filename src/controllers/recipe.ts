@@ -339,7 +339,12 @@ const save: RecipeService["Save"] = async params => {
 };
 
 const deleteRecipe: RecipeService["Delete"] = async params =>
-    db(lamington.recipe).whereIn(recipe.recipeId, EnsureArray(params)).delete();
+    db(lamington.recipe)
+        .whereIn(
+            recipe.recipeId,
+            EnsureArray(params).map(({ recipeId }) => recipeId)
+        )
+        .delete();
 
 const readInternal: ReadService<Recipe, "recipeId"> = async params => {
     const recipeIds = EnsureArray(params).map(({ recipeId }) => recipeId);

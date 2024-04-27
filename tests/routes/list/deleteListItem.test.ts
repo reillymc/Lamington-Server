@@ -3,7 +3,7 @@ import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
 import { ListActions, ListItemActions, ListMemberActions } from "../../../src/controllers";
-import { ListService } from "../../../src/controllers/spec";
+import { ListItemService, ListService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
 import { UserStatus } from "../../../src/routes/spec";
 import { CreateUsers, ListEndpoint, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
@@ -39,10 +39,10 @@ test("should not allow deletion if not list owner", async () => {
         completed: randomBoolean(),
         listId: list.listId,
         createdBy: listOwner!.userId,
-    } satisfies ServiceParams<ListItemActions, "save">;
+    } satisfies ServiceParams<ListItemService, "Save">;
 
     await ListActions.Save(list);
-    await ListItemActions.save(listItem);
+    await ListItemActions.Save(listItem);
 
     const res = await request(app).delete(ListEndpoint.deleteListItem(list.listId, listItem.itemId)).set(token).send();
 
@@ -66,10 +66,10 @@ test("should not allow item deletion if list member without edit permission", as
         completed: randomBoolean(),
         listId: list.listId,
         createdBy: user.userId,
-    } satisfies ServiceParams<ListItemActions, "save">;
+    } satisfies ServiceParams<ListItemService, "Save">;
 
     await ListActions.Save(list);
-    await ListItemActions.save(listItem);
+    await ListItemActions.Save(listItem);
     await ListMemberActions.save({
         listId: list.listId,
         members: [
@@ -102,10 +102,10 @@ test("should allow item deletion if list member with edit permission", async () 
         completed: randomBoolean(),
         listId: list.listId,
         createdBy: user.userId,
-    } satisfies ServiceParams<ListItemActions, "save">;
+    } satisfies ServiceParams<ListItemService, "Save">;
 
     await ListActions.Save(list);
-    await ListItemActions.save(listItem);
+    await ListItemActions.Save(listItem);
     await ListMemberActions.save({
         listId: list.listId,
         members: [
@@ -120,7 +120,7 @@ test("should allow item deletion if list member with edit permission", async () 
 
     expect(res.statusCode).toEqual(201);
 
-    const listItems = await ListItemActions.read({ listId: list.listId });
+    const listItems = await ListItemActions.Read({ listId: list.listId });
 
     expect(listItems.length).toEqual(0);
 });
@@ -141,16 +141,16 @@ test("should allow deletion if list owner", async () => {
         completed: randomBoolean(),
         listId: list.listId,
         createdBy: user.userId,
-    } satisfies ServiceParams<ListItemActions, "save">;
+    } satisfies ServiceParams<ListItemService, "Save">;
 
     await ListActions.Save(list);
-    await ListItemActions.save(listItem);
+    await ListItemActions.Save(listItem);
 
     const res = await request(app).delete(ListEndpoint.deleteListItem(list.listId, listItem.itemId)).set(token).send();
 
     expect(res.statusCode).toEqual(201);
 
-    const listItems = await ListItemActions.read({ listId: list.listId });
+    const listItems = await ListItemActions.Read({ listId: list.listId });
 
     expect(listItems.length).toEqual(0);
 });

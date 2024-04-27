@@ -155,7 +155,7 @@ const createDefaultUserData = async (userId: string) => {
         description: "A list of all the items I need to buy",
     });
 
-    await ListItemActions.save({
+    await ListItemActions.Save({
         listId,
         itemId: listItemId,
         createdBy: userId,

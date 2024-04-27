@@ -37,7 +37,7 @@ test("should create sample data for pending => registered user", async () => {
     if (!list) throw new Error("List not created");
     expect(list.createdBy).toEqual(user.userId);
 
-    const listItems = await ListItemActions.read({ listId: list.listId });
+    const listItems = await ListItemActions.Read({ listId: list.listId });
     expect(listItems.length).toEqual(1);
 
     const books = await InternalBookActions.readAll();

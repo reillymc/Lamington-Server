@@ -54,8 +54,8 @@ router.get<GetListsRequestParams, GetListsResponse, GetListsRequestBody>(
         // Fetch and return result
         try {
             const results = await ListActions.ReadByUser({ userId });
-            const outstandingItemCounts = await ListItemActions.countOutstandingItems(results);
-            const datesUpdated = await ListItemActions.getLatestUpdatedTimestamp(results);
+            const outstandingItemCounts = await ListItemActions.CountOutstandingItems(results);
+            const datesUpdated = await ListItemActions.ReadLatestUpdatedTimestamp(results);
 
             const outstandingItemsDict = Object.fromEntries(
                 outstandingItemCounts.map(({ listId, count }) => [listId, count])
@@ -114,7 +114,7 @@ router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(
                 );
             }
 
-            const listItemsResponse = await ListItemActions.read({ listId });
+            const listItemsResponse = await ListItemActions.Read({ listId });
             const listMembersResponse = await ListMemberActions.read({ entityId: listId });
 
             const data = prepareGetListResponseBody({
@@ -201,9 +201,9 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
 
             if (!permissionsValid) return next(new PermissionError("list item"));
 
-            await ListItemActions.save(validListItems);
+            await ListItemActions.Save(validListItems);
 
-            if (movedItems.length) await ListItemActions.delete(movedItems);
+            if (movedItems.length) await ListItemActions.Delete(movedItems);
 
             return res.status(201).json({ error: false, message: "List item added." });
         } catch (e: unknown) {
@@ -283,7 +283,7 @@ router.delete<DeleteListRequestParams, DeleteListResponse, DeleteListRequestBody
 
             if (!permissionsValid) return next(new PermissionError("list"));
 
-            await ListActions.Delete(listId);
+            await ListActions.Delete({ listId });
             return res.status(201).json({ error: false, message: "List deleted." });
         } catch (e: unknown) {
             next(
@@ -321,7 +321,7 @@ router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListIte
 
             if (!permissionsValid) return next(new PermissionError("list item"));
 
-            await ListItemActions.delete({ listId, itemId });
+            await ListItemActions.Delete({ listId, itemId });
 
             return res.status(201).json({ error: false, message: "List item deleted." });
         } catch (e: unknown) {

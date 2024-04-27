@@ -3,7 +3,7 @@ import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
 import { ListActions, ListItemActions, ListMemberActions } from "../../../src/controllers";
-import { ListService } from "../../../src/controllers/spec";
+import { ListItemService, ListService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
 import { ListCustomisations } from "../../../src/routes/helpers";
 import { GetListResponse, UserStatus } from "../../../src/routes/spec";
@@ -126,7 +126,7 @@ test("should return list items", async () => {
                 completed: randomBoolean(),
                 listId: list.listId,
                 createdBy: user.userId,
-            } satisfies ServiceParams<ListItemActions, "save">)
+            } satisfies ServiceParams<ListItemService, "Save">)
     );
 
     const itemsNotInList = Array.from({ length: randomNumber() }).map(
@@ -137,10 +137,10 @@ test("should return list items", async () => {
                 completed: randomBoolean(),
                 listId: otherList.listId,
                 createdBy: user.userId,
-            } satisfies ServiceParams<ListItemActions, "save">)
+            } satisfies ServiceParams<ListItemService, "Save">)
     );
 
-    await ListItemActions.save(itemsInList);
+    await ListItemActions.Save(itemsInList);
 
     const res = await request(app).get(ListEndpoint.getList(list.listId)).set(token);
 

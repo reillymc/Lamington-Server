@@ -1,7 +1,7 @@
 import { v4 as Uuid } from "uuid";
 
-import { ListActions, ListItemActions, ListMemberActions } from "../../controllers";
-import { ListService } from "../../controllers/spec";
+import { ListActions, ListMemberActions } from "../../controllers";
+import { ListItemService, ListService } from "../../controllers/spec";
 import { ServiceParams } from "../../database";
 import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils";
 import { List, ListItemIngredientAmount, PostListItemRequestBody, PostListRequestBody, UserStatus } from "../spec";
@@ -65,39 +65,42 @@ export const validatePostListBody = ({ data }: PostListRequestBody, userId: stri
 
 export const validatePostListItemBody = ({ data }: PostListItemRequestBody, userId: string, listId: string) => {
     const filteredData = EnsureDefinedArray(data);
-    let movedItems: Array<ServiceParams<ListItemActions, "delete">> = [];
+    let movedItems: Array<ServiceParams<ListItemService, "Delete">> = [];
 
-    const result = BisectOnValidItems(filteredData, ({ itemId = Uuid(), name, ...item }) => {
-        if (!name) return;
+    const [validListItems, invalidListItems] = BisectOnValidItems(
+        filteredData,
+        ({ itemId = Uuid(), name, ...item }) => {
+            if (!name) return;
 
-        const validItem: ServiceParams<ListItemActions, "save"> = {
-            itemId,
-            listId,
-            name,
-            amount: item.amount,
-            completed: item.completed ?? false,
-            ingredientId: item.ingredientId,
-            notes: item.notes,
-            unit: item.unit,
-            createdBy: userId,
-        };
+            const validItem: ServiceParams<ListItemService, "Save"> = {
+                itemId,
+                listId,
+                name,
+                amount: item.amount,
+                completed: item.completed ?? false,
+                ingredientId: item.ingredientId,
+                notes: item.notes,
+                unit: item.unit,
+                createdBy: userId,
+            };
 
-        if (item.previousListId) {
-            movedItems.push({ listId: item.previousListId, itemId });
+            if (item.previousListId) {
+                movedItems.push({ listId: item.previousListId, itemId });
+            }
+
+            return validItem;
         }
-
-        return validItem;
-    });
+    );
 
     return {
-        validListItems: result[0],
-        invalidListItems: result[1],
+        validListItems,
+        invalidListItems,
         movedItems,
     };
 };
 
 type ListResponse = Awaited<ReturnType<ListService["Read"]>>[number];
-type ListItemsResponse = Awaited<ReturnType<ListItemActions["read"]>>;
+type ListItemsResponse = Awaited<ReturnType<ListItemService["Read"]>>;
 type MembersResponse = Awaited<ReturnType<ListMemberActions["read"]>>;
 
 interface PrepareGetListResponseBodyParams {
