@@ -1,15 +1,36 @@
-FROM node:20-bullseye
+# Build stage
+FROM node:20-bullseye AS build
 
 RUN mkdir -p /home/node/app && chown -R node:node /home/node/app
 
 WORKDIR /home/node/app
 
-USER node
+COPY package*.json .
+COPY entrypoint.sh .
+RUN [ "chmod", "+x", "./entrypoint.sh" ]
+
+RUN npm install
+
+COPY . .
+
+ENTRYPOINT ["./entrypoint.sh"]
+
+RUN npm run build
+
+# Production stage
+FROM node:20-bullseye AS production
+
+RUN mkdir -p /home/node/app && chown -R node:node /home/node/app
+
+WORKDIR /home/node/app
 
 COPY package*.json .
-RUN npm ci
 
-COPY dist ./src
+USER node
+
+RUN npm ci --only=production
+
+COPY --from=build /home/node/app/dist ./dist
 
 EXPOSE 3000
 

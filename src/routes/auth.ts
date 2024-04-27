@@ -79,7 +79,7 @@ router.post<LoginRequestParams, LoginResponse, LoginRequestBody>(AuthEndpoint.lo
 
     // Fetch and return data from database
     try {
-        const [user] = await InternalUserActions.read({ email });
+        const [user] = await InternalUserActions.read({ email: email.toLowerCase() });
         if (!user) {
             return next(
                 new AppError({
@@ -88,6 +88,7 @@ router.post<LoginRequestParams, LoginResponse, LoginRequestBody>(AuthEndpoint.lo
                 })
             );
         }
+
         const result = await comparePassword(password, user.password);
 
         if (result) {
@@ -105,7 +106,7 @@ router.post<LoginRequestParams, LoginResponse, LoginRequestBody>(AuthEndpoint.lo
                         : undefined,
                     user: {
                         userId: user.userId,
-                        email: user.email.toLowerCase(),
+                        email: user.email,
                         firstName: user.firstName,
                         lastName: user.lastName,
                         status: getStatus(user.status),
