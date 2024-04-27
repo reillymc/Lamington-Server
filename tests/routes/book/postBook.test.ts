@@ -8,21 +8,12 @@ import { ServiceParams } from "../../../src/database";
 import { PostBookRequestBody, UserStatus } from "../../../src/routes/spec";
 import {
     BookEndpoint,
-    CleanTables,
     CreateUsers,
     PrepareAuthenticatedUser,
     randomBoolean,
     randomCount,
     randomNumber,
 } from "../../helpers";
-
-beforeEach(async () => {
-    await CleanTables("book", "user", "book_member");
-});
-
-afterAll(async () => {
-    await CleanTables("book", "user", "book_member");
-});
 
 test("route should require authentication", async () => {
     const res = await request(app).post(BookEndpoint.postBook);

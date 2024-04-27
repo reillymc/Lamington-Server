@@ -7,28 +7,13 @@ import { ListService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
 import { ListCustomisations } from "../../../src/routes/helpers";
 import { GetListResponse, UserStatus } from "../../../src/routes/spec";
-import {
-    CleanTables,
-    CreateUsers,
-    ListEndpoint,
-    PrepareAuthenticatedUser,
-    randomBoolean,
-    randomNumber,
-} from "../../helpers";
+import { CreateUsers, ListEndpoint, PrepareAuthenticatedUser, randomBoolean, randomNumber } from "../../helpers";
 
 const getListCustomisations = (): ListCustomisations => {
     return {
         icon: uuid(),
     };
 };
-
-beforeEach(async () => {
-    await CleanTables("list", "user", "list_item", "list_member");
-});
-
-afterAll(async () => {
-    await CleanTables("list", "user", "list_item", "list_member");
-});
 
 test("route should require authentication", async () => {
     const res = await request(app).get(ListEndpoint.getList(uuid()));

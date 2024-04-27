@@ -16,7 +16,6 @@ import { ServiceParams } from "../../../src/database";
 import { GetAllRecipesResponse } from "../../../src/routes/spec";
 import { randomElement } from "../../../src/utils";
 import {
-    CleanAllTables,
     CreateUsers,
     PrepareAuthenticatedUser,
     RecipeEndpoint,
@@ -30,14 +29,6 @@ import {
     randomBoolean,
     randomNumber,
 } from "../../helpers";
-
-beforeEach(async () => {
-    await CleanAllTables();
-});
-
-afterAll(async () => {
-    await CleanAllTables();
-});
 
 test("route should require authentication", async () => {
     const res = await request(app).get(RecipeEndpoint.getAllRecipes());

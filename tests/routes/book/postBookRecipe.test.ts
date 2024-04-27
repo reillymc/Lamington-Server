@@ -6,15 +6,7 @@ import { BookActions, BookMemberActions, BookRecipeActions, RecipeActions } from
 import { RecipeService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
 import { PostBookRecipeRequestBody, UserStatus } from "../../../src/routes/spec";
-import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
-
-beforeEach(async () => {
-    await CleanTables("book", "user", "book_member", "book_recipe");
-});
-
-afterAll(async () => {
-    await CleanTables("book", "user", "book_member", "book_recipe");
-});
+import { BookEndpoint, CreateUsers, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).post(BookEndpoint.postBookRecipe(uuid()));

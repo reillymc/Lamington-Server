@@ -10,17 +10,9 @@ import {
 } from "../../../src/controllers";
 import { ServiceParams } from "../../../src/database";
 import { PostPlannerMealRequestBody, UserStatus } from "../../../src/routes/spec";
-import { CleanTables, CreateUsers, PlannerEndpoint, PrepareAuthenticatedUser, randomNumber } from "../../helpers";
+import { CreateUsers, PlannerEndpoint, PrepareAuthenticatedUser, randomNumber } from "../../helpers";
 
 // TODO: Test whether a user can move a meal from a planner they dont own to their own - therefore deleting the other user's planner's meal. Test general copying/movind of meals, and moving from cooklist
-
-beforeEach(async () => {
-    await CleanTables("planner", "user", "planner_member");
-});
-
-afterAll(async () => {
-    await CleanTables("planner", "user", "planner_member");
-});
 
 test("route should require authentication", async () => {
     const res = await request(app).post(PlannerEndpoint.postPlannerMeal(uuid()));

@@ -6,16 +6,8 @@ import { IngredientActions, ListActions, ListItemActions, ListMemberActions } fr
 import { ListService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
 import { PostListItemRequestBody, UserStatus } from "../../../src/routes/spec";
-import { CleanTables, CreateUsers, ListEndpoint, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
+import { CreateUsers, ListEndpoint, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 import { generateRandomAmount } from "../../helpers/list";
-
-beforeEach(async () => {
-    await CleanTables("list", "user", "list_member", "list_item");
-});
-
-afterAll(async () => {
-    await CleanTables("list", "user", "list_member", "list_item");
-});
 
 test("route should require authentication", async () => {
     const res = await request(app).post(ListEndpoint.postListItem(uuid()));

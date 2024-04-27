@@ -2,15 +2,7 @@ import request from "supertest";
 
 import app from "../../../src/app";
 import { GetUsersResponse, UserStatus } from "../../../src/routes/spec";
-import { CleanTables, CreateUsers, PrepareAuthenticatedUser, UserEndpoint, randomCount } from "../../helpers";
-
-beforeEach(async () => {
-    await CleanTables("user");
-});
-
-afterAll(async () => {
-    await CleanTables("user");
-});
+import { CreateUsers, PrepareAuthenticatedUser, UserEndpoint, randomCount } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).get(UserEndpoint.getUsers);

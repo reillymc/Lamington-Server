@@ -6,22 +6,7 @@ import { CookListMealActions, CookListMealActionsInternal, RecipeActions } from 
 import { RecipeService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
 import { PostCookListMealRequestBody } from "../../../src/routes/spec";
-import {
-    CleanTables,
-    CookListEndpoint,
-    CreateUsers,
-    PrepareAuthenticatedUser,
-    randomBoolean,
-    randomNumber,
-} from "../../helpers";
-
-beforeEach(async () => {
-    await CleanTables("user", "planner_meal", "recipe");
-});
-
-afterAll(async () => {
-    await CleanTables("user", "planner_meal", "recipe");
-});
+import { CookListEndpoint, CreateUsers, PrepareAuthenticatedUser, randomBoolean, randomNumber } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).get(CookListEndpoint.postMeal);

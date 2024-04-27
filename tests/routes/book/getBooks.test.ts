@@ -4,15 +4,7 @@ import app from "../../../src/app";
 import { BookMemberActions } from "../../../src/controllers";
 import { CreateBookMemberParams } from "../../../src/controllers/bookMember";
 import { GetBooksResponse, UserStatus } from "../../../src/routes/spec";
-import { BookEndpoint, CleanTables, CreateBooks, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
-
-beforeEach(async () => {
-    await CleanTables("book", "user");
-});
-
-afterAll(async () => {
-    await CleanTables("book", "user");
-});
+import { BookEndpoint, CreateBooks, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).get(BookEndpoint.getBooks);

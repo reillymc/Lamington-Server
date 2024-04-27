@@ -7,14 +7,7 @@ import { RecipeService } from "../../../src/controllers/spec";
 import { BookRecipe, ServiceParams } from "../../../src/database";
 import { BookCustomisations } from "../../../src/routes/helpers";
 import { GetBookResponse, UserStatus } from "../../../src/routes/spec";
-import {
-    BookEndpoint,
-    CleanTables,
-    CreateUsers,
-    PrepareAuthenticatedUser,
-    randomBoolean,
-    randomNumber,
-} from "../../helpers";
+import { BookEndpoint, CreateUsers, PrepareAuthenticatedUser, randomBoolean, randomNumber } from "../../helpers";
 
 const getBookCustomisations = (): BookCustomisations => {
     return {
@@ -22,14 +15,6 @@ const getBookCustomisations = (): BookCustomisations => {
         icon: uuid(),
     };
 };
-
-beforeEach(async () => {
-    await CleanTables("book", "user", "recipe", "book_recipe", "book_member");
-});
-
-afterAll(async () => {
-    await CleanTables("book", "user", "recipe", "book_recipe", "book_member");
-});
 
 test("route should require authentication", async () => {
     const res = await request(app).get(BookEndpoint.getBook(uuid()));

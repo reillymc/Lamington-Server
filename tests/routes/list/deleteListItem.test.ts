@@ -6,15 +6,7 @@ import { ListActions, ListItemActions, ListMemberActions } from "../../../src/co
 import { ListService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
 import { UserStatus } from "../../../src/routes/spec";
-import { CleanTables, CreateUsers, ListEndpoint, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
-
-beforeEach(async () => {
-    await CleanTables("list", "user", "list_member", "list_item");
-});
-
-afterAll(async () => {
-    await CleanTables("list", "user", "list_member", "list_item");
-});
+import { CreateUsers, ListEndpoint, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).delete(ListEndpoint.deleteListItem(uuid(), uuid()));

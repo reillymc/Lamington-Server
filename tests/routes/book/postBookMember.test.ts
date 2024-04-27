@@ -5,15 +5,7 @@ import app from "../../../src/app";
 import { BookActions, BookMemberActions } from "../../../src/controllers";
 import { ServiceParams } from "../../../src/database";
 import { UserStatus } from "../../../src/routes/spec";
-import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
-
-beforeEach(async () => {
-    await CleanTables("book", "user", "book_member");
-});
-
-afterAll(async () => {
-    await CleanTables("book", "user", "book_member");
-});
+import { BookEndpoint, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).post(BookEndpoint.postBookMember(uuid()));

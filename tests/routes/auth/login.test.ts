@@ -2,15 +2,7 @@ import request from "supertest";
 
 import app from "../../../src/app";
 import { LoginResponse, UserStatus } from "../../../src/routes/spec";
-import { AuthEndpoint, CleanTables, CreateUsers } from "../../helpers";
-
-beforeEach(async () => {
-    await CleanTables("user");
-});
-
-afterAll(async () => {
-    await CleanTables("user");
-});
+import { AuthEndpoint, CreateUsers } from "../../helpers";
 
 test("should fail login with invalid email", async () => {
     const [user] = await CreateUsers();

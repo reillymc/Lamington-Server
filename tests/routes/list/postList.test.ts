@@ -8,7 +8,6 @@ import { ListService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
 import { PostListRequestBody, UserStatus } from "../../../src/routes/spec";
 import {
-    CleanTables,
     CreateUsers,
     ListEndpoint,
     PrepareAuthenticatedUser,
@@ -16,14 +15,6 @@ import {
     randomCount,
     randomNumber,
 } from "../../helpers";
-
-beforeEach(async () => {
-    await CleanTables("list", "user", "list_member");
-});
-
-afterAll(async () => {
-    await CleanTables("list", "user", "list_member");
-});
 
 test("route should require authentication", async () => {
     const res = await request(app).post(ListEndpoint.postList);

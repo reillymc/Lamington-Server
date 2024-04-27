@@ -11,17 +11,9 @@ import {
     UserActions,
 } from "../../../../src/controllers";
 import { PostUserApprovalRequestBody, UserStatus } from "../../../../src/routes/spec";
-import { CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../../helpers";
+import { CreateUsers, PrepareAuthenticatedUser } from "../../../helpers";
 import { UserEndpoint } from "../../../helpers/api";
 import { readAllLists } from "../../../helpers/list";
-
-beforeEach(async () => {
-    await CleanTables("user", "list", "list_item", "book", "recipe", "book_recipe", "planner", "planner_meal");
-});
-
-afterAll(async () => {
-    await CleanTables("user", "list", "list_item", "book", "recipe", "book_recipe", "planner", "planner_meal");
-});
 
 test("should create sample data for pending => registered user", async () => {
     const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);

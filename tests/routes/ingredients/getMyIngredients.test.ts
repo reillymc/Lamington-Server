@@ -2,21 +2,7 @@ import request from "supertest";
 
 import app from "../../../src/app";
 import { GetIngredientsResponse } from "../../../src/routes/spec";
-import {
-    CleanTables,
-    CreateIngredients,
-    CreateUsers,
-    IngredientEndpoint,
-    PrepareAuthenticatedUser,
-} from "../../helpers";
-
-beforeEach(async () => {
-    await CleanTables("ingredient", "user");
-});
-
-afterAll(async () => {
-    await CleanTables("ingredient", "user");
-});
+import { CreateIngredients, CreateUsers, IngredientEndpoint, PrepareAuthenticatedUser } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).get(IngredientEndpoint.getMyIngredients);

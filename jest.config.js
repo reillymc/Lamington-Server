@@ -8,4 +8,5 @@ module.exports = {
     watchAll: false,
     collectCoverageFrom: ["./src/**"],
     coveragePathIgnorePatterns: ["/src/docs/", "/src/database/migrations/", "/src/database/seeds/"],
+    setupFilesAfterEnv: ["./tests/setupTests.ts"],
 };

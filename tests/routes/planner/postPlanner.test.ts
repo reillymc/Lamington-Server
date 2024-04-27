@@ -7,28 +7,13 @@ import { EntityMember } from "../../../src/controllers/entity";
 import { ServiceParams } from "../../../src/database";
 import { PlannerCustomisations } from "../../../src/routes/helpers/planner";
 import { PostPlannerRequestBody, UserStatus } from "../../../src/routes/spec";
-import {
-    CleanTables,
-    CreateUsers,
-    PlannerEndpoint,
-    PrepareAuthenticatedUser,
-    randomBoolean,
-    randomCount,
-} from "../../helpers";
+import { CreateUsers, PlannerEndpoint, PrepareAuthenticatedUser, randomBoolean, randomCount } from "../../helpers";
 
 const getPlannerCustomisations = (): PlannerCustomisations => {
     return {
         color: uuid(),
     };
 };
-
-beforeEach(async () => {
-    await CleanTables("planner", "user", "planner_member");
-});
-
-afterAll(async () => {
-    await CleanTables("planner", "user", "planner_member");
-});
 
 test("route should require authentication", async () => {
     const res = await request(app).post(PlannerEndpoint.postPlanner);

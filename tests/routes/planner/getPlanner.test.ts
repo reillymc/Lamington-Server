@@ -8,7 +8,6 @@ import { ServiceParams } from "../../../src/database";
 import { PlannerCustomisations } from "../../../src/routes/helpers";
 import { GetPlannerResponse, UserStatus } from "../../../src/routes/spec";
 import {
-    CleanTables,
     CreateUsers,
     PlannerEndpoint,
     PrepareAuthenticatedUser,
@@ -22,14 +21,6 @@ const getPlannerCustomisations = (): PlannerCustomisations => {
         color: uuid(),
     };
 };
-
-beforeEach(async () => {
-    await CleanTables("planner", "user", "planner_meal", "planner_member");
-});
-
-afterAll(async () => {
-    await CleanTables("planner", "user", "planner_meal", "planner_member");
-});
 
 test("route should require authentication", async () => {
     const res = await request(app).get(PlannerEndpoint.getPlanner(uuid()));

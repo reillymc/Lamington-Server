@@ -35,7 +35,7 @@ const config: { [key: string]: Knex.Config } = {
         },
         pool: {
             min: 0,
-            max: 2,
+            max: 1,
         },
         migrations: {
             tableName: "knex_migrations",

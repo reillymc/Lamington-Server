@@ -4,15 +4,7 @@ import app from "../../../src/app";
 import { ListMemberActions } from "../../../src/controllers";
 import { CreateListMemberParams } from "../../../src/controllers/listMember";
 import { GetListsResponse, UserStatus } from "../../../src/routes/spec";
-import { CleanTables, CreateLists, CreateUsers, ListEndpoint, PrepareAuthenticatedUser } from "../../helpers";
-
-beforeEach(async () => {
-    await CleanTables("list", "user");
-});
-
-afterAll(async () => {
-    await CleanTables("list", "user");
-});
+import { CreateLists, CreateUsers, ListEndpoint, PrepareAuthenticatedUser } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).get(ListEndpoint.getLists);

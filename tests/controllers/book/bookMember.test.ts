@@ -1,13 +1,5 @@
 import { BookMemberActions } from "../../../src/controllers";
-import { CleanTables, CreateBooks, CreateUsers, randomCount } from "../../helpers";
-
-beforeEach(async () => {
-    await CleanTables("book", "user", "book_member");
-});
-
-afterAll(async () => {
-    await CleanTables("book", "user", "book_member");
-});
+import { CreateBooks, CreateUsers, randomCount } from "../../helpers";
 
 test("should save one book member for one book", async () => {
     const [user] = await CreateUsers();
