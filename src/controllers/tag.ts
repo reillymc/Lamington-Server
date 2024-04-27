@@ -19,10 +19,7 @@ interface GetCategoryParams {
  * @returns an array of tags matching given ids
  */
 const readTags = async (params: ReadQuery<GetCategoryParams>): ReadResponse<Tag> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
-    const categoryIds = params.map(({ id }) => id);
+    const categoryIds = EnsureArray(params).map(({ id }) => id);
 
     return db<Tag>(lamington.tag).select("tagId", "parentId", "name", "description").whereIn(tag.tagId, categoryIds);
 };

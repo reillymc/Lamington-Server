@@ -4,13 +4,13 @@ import db, {
     CreateQuery,
     DeleteResponse,
     ListItem,
-    ListItemModel,
     ReadQuery,
     ReadResponse,
     SaveService,
     lamington,
     listItem,
 } from "../database";
+import { ListItemIngredientAmount } from "../routes/spec";
 import { EnsureArray, Undefined } from "../utils";
 
 interface GetListItemsParams {
@@ -22,10 +22,7 @@ interface GetListItemsParams {
  * @returns an array of lists matching given ids
  */
 const readListItems = async (params: ReadQuery<GetListItemsParams>): ReadResponse<ListItem> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
-    const listIds = params.map(({ listId }) => listId); // TODO verify auth
+    const listIds = EnsureArray(params).map(({ listId }) => listId); // TODO verify auth
 
     const query = db<ListItem>(lamington.listItem).select("*").whereIn(listItem.listId, listIds);
     return query;
@@ -45,10 +42,7 @@ interface CountListItemsResponse {
  * @returns count of items not marked as completed
  */
 const countOutstandingItems = async (params: ReadQuery<CountListItemsParams>): ReadResponse<CountListItemsResponse> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
-    const listIds = params.map(({ listId }) => listId);
+    const listIds = EnsureArray(params).map(({ listId }) => listId);
 
     const query = db(lamington.listItem)
         .select(listItem.listId)
@@ -75,10 +69,7 @@ interface GetMostRecentModifiedDateResponse {
 const getLatestUpdatedTimestamp = async (
     params: ReadQuery<GetMostRecentModifiedDateParams>
 ): ReadResponse<GetMostRecentModifiedDateResponse> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
-    const listIds = params.map(({ listId }) => listId);
+    const listIds = EnsureArray(params).map(({ listId }) => listId);
 
     const query = db(lamington.listItem)
         .select(listItem.listId)
@@ -95,7 +86,7 @@ interface CreateListItemParams {
     completed: boolean;
     ingredientId?: string;
     unit?: string;
-    amount?: string;
+    amount?: ListItemIngredientAmount;
     notes?: string;
     createdBy: string;
 }
@@ -107,7 +98,7 @@ interface CreateListItemParams {
 const saveListItems: SaveService<CreateListItemParams> = async params => {
     const listItems = EnsureArray(params);
 
-    const data: ListItemModel[] = listItems
+    const data: Omit<ListItem, "updatedAt">[] = listItems
         .map(({ itemId = Uuid(), ...params }) => ({ itemId, ...params }))
         .filter(Undefined);
 

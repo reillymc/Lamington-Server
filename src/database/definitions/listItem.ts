@@ -1,4 +1,5 @@
 import { Table } from ".";
+import { ListItemIngredientAmount } from "../../routes/spec";
 import { lamington } from "./lamington";
 
 /**
@@ -13,28 +14,13 @@ export type ListItem = {
     ingredientId?: string;
     unit?: string;
     /**
+     * TODO proper definition required (similar to customisation)
      * JSON stringified object containing the amount of the ingredient, as type number, fraction
      * or range with its representation explicitly denoted.
      */
-    amount?: string;
+    amount?: ListItemIngredientAmount;
     notes?: string;
     createdBy: string;
-};
-
-export type ListItemModel = {
-    itemId: string;
-    listId: string;
-    name: string;
-    updatedAt?: string;
-    completed: boolean;
-    ingredientId?: string;
-    unit?: string;
-    /**
-     * JSON stringified object containing the amount of the ingredient, as type number, fraction
-     * or range with its representation explicitly denoted.
-     */
-    amount?: string;
-    notes?: string;
 };
 
 export const listItem: Table<ListItem> = {

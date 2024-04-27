@@ -87,10 +87,7 @@ type GetEntityMembersResponse<
 const readEntityMembers =
     <T extends keyof typeof LamingtonMemberTables, K extends keyof (typeof Lamington)[T]>(entity: T, idField: K) =>
     async (params: ReadQuery<GetEntityMembersParams>): ReadResponse<GetEntityMembersResponse<T, K>> => {
-        if (!Array.isArray(params)) {
-            params = [params];
-        }
-        const entityIds = params.map(({ entityId }) => entityId);
+        const entityIds = EnsureArray(params).map(({ entityId }) => entityId);
 
         const entityIdField = idField as string;
         const memberIdField = LamingtonMemberTables[entity]["userId"];

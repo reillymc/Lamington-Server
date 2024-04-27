@@ -85,7 +85,6 @@ export type PostListItemRequestParams = BaseRequestParams<{ [listIdParam]: List[
 export type PostListItemRequestBody = BaseRequestBody<{
     name: ListItem["name"];
     itemId: ListItem["itemId"];
-    updatedAt?: ListItem["updatedAt"];
     completed?: ListItem["completed"];
     ingredientId?: ListItem["ingredientId"];
     unit?: ListItem["unit"];

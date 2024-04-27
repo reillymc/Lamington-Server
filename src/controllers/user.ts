@@ -100,10 +100,7 @@ interface ReadUserInternalParams {
  * @returns an array of users matching given ids
  */
 const readUsersInternal = async (params: ReadQuery<ReadUserInternalParams>): ReadResponse<User> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
-    const userEmails = params.map(({ email }) => email);
+    const userEmails = EnsureArray(params).map(({ email }) => email);
 
     return db<User>(lamington.user)
         .select(user.userId, user.firstName, user.lastName, user.email, user.status, user.createdAt, user.password)

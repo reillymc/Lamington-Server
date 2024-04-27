@@ -124,12 +124,8 @@ interface DeletePlannerParams {
 /**
  * Deletes planners by planner ids
  */
-const deletePlanners = async (planners: CreateQuery<DeletePlannerParams>): DeleteResponse => {
-    if (!Array.isArray(planners)) {
-        planners = [planners];
-    }
-
-    const plannerIds = planners.map(({ plannerId }) => plannerId);
+const deletePlanners = async (params: CreateQuery<DeletePlannerParams>): DeleteResponse => {
+    const plannerIds = EnsureArray(params).map(({ plannerId }) => plannerId);
 
     return db(lamington.planner).whereIn(planner.plannerId, plannerIds).delete();
 };
@@ -143,11 +139,7 @@ interface ReadPlannerInternalParams {
  * @returns an array of planner matching given ids
  */
 const readPlannersInternal = async (params: ReadQuery<ReadPlannerInternalParams>): ReadResponse<Planner> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
-
-    const plannerIds = params.map(({ plannerId }) => plannerId);
+    const plannerIds = EnsureArray(params).map(({ plannerId }) => plannerId);
 
     const query = db<Planner>(lamington.planner)
         .select(planner.plannerId, planner.name, planner.customisations, planner.description, planner.createdBy)

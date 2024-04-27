@@ -74,7 +74,7 @@ export const validatePostListItemBody = ({ data }: PostListItemRequestBody, user
             itemId,
             listId,
             name,
-            amount: stringifyAmount(item.amount),
+            amount: item.amount,
             completed: item.completed ?? false,
             ingredientId: item.ingredientId,
             notes: item.notes,
@@ -124,9 +124,7 @@ export const prepareGetListResponseBody = ({
     lastUpdated,
     ...list.customisations,
     createdBy: { userId: list.createdBy, firstName: list.createdByName },
-    items: listItems
-        ?.filter(item => item.listId === list.listId)
-        .map(({ amount, ...item }) => ({ ...item, amount: parseAmount(amount) })),
+    items: listItems?.filter(item => item.listId === list.listId),
     members: members
         ? Object.fromEntries(
               members.map(({ userId, status, firstName, lastName }) => [

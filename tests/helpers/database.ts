@@ -37,9 +37,8 @@ export const CleanTables = async (...tables: Table[]) => {
     if (tables.includes(lamington.recipeIngredient)) await db.table(lamington.recipeIngredient).del();
     if (tables.includes(lamington.recipeRating)) await db.table(lamington.recipeRating).del();
     if (tables.includes(lamington.recipeNote)) await db.table(lamington.recipeNote).del();
-    if (tables.includes(lamington.recipeSection)) await db.table(lamington.recipeIngredient).del();
+    if (tables.includes(lamington.recipeSection)) await db.table(lamington.recipeSection).del();
     if (tables.includes(lamington.recipeStep)) await db.table(lamington.recipeStep).del();
-    if (tables.includes(lamington.tag)) await db.table(lamington.tag).del();
 
     if (tables.includes(lamington.listItem)) await db.table(lamington.listItem).del();
     if (tables.includes(lamington.listMember)) await db.table(lamington.listMember).del();

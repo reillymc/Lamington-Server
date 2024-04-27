@@ -115,16 +115,6 @@ const query: RecipeService["Query"] = async ({
         time: recipe.cookTime,
     }[sort];
 
-    const test = await db<RecipeRating>(lamington.recipeRating)
-        .select(recipeRating.rating)
-        .where({
-            [recipeRating.recipeId]: db.ref(recipe.recipeId),
-            [recipeRating.raterId]: userId,
-        })
-        .join(lamington.recipe, recipe.recipeId, recipeRating.recipeId)
-        .groupBy(recipe.recipeId, recipeRating.rating)
-        .as(ratingPersonalName);
-
     const categories = Object.entries(categoryGroups ?? {});
 
     const recipeList = await RecipeBase(userId)
@@ -203,6 +193,7 @@ const queryByUser: RecipeService["QueryByUser"] = async ({
     const recipeList = await RecipeBase(userId)
         .groupBy(recipe.recipeId, user.firstName)
         .where(builder => (search ? builder.where(recipe.name, "like", `%${search}%`) : undefined))
+        .where({ [recipe.createdBy]: userId })
         .where(builder => {
             if (!categories.length) return undefined;
 
@@ -298,6 +289,7 @@ const save: RecipeService["Save"] = async params => {
         recipeId: recipeItem.recipeId,
         rows: recipeSectionRequestToRows(recipeItem),
     }));
+
     for (const { recipeId, rows } of recipesSections) {
         if (rows) await RecipeSectionActions.save({ recipeId, sections: rows });
     }

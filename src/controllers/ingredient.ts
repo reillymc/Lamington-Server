@@ -12,7 +12,7 @@ import db, {
     ingredient,
     lamington,
 } from "../database";
-import { Undefined } from "../utils";
+import { EnsureArray, Undefined } from "../utils";
 import { processPagination } from "./helpers";
 
 /**
@@ -61,26 +61,17 @@ interface GetIngredientParams {
  * @returns an array of ingredients matching given ids
  */
 export const readIngredients = async (params: ReadQuery<GetIngredientParams>): ReadResponse<Ingredient> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
-    const ingredientIds = params.map(({ id }) => id);
+    const ingredientIds = EnsureArray(params).map(({ id }) => id);
 
-    const query = db<Ingredient>(lamington.ingredient).select("*").whereIn(ingredient.ingredientId, ingredientIds);
-    return query;
+    return db<Ingredient>(lamington.ingredient).select("*").whereIn(ingredient.ingredientId, ingredientIds);
 };
 
 /**
  * Creates a new ingredient from params
  * @returns the newly created ingredients
  */
-const save = async (
-    ingredients: CreateQuery<Partial<Ingredient>>
-): CreateResponse<Pick<Ingredient, "ingredientId">> => {
-    if (!Array.isArray(ingredients)) {
-        ingredients = [ingredients];
-    }
-    const data: Ingredient[] = ingredients
+const save = async (params: CreateQuery<Partial<Ingredient>>): CreateResponse<Pick<Ingredient, "ingredientId">> => {
+    const data: Ingredient[] = EnsureArray(params)
         .map(({ ingredientId = Uuid(), name, description, photo, createdBy }) => {
             if (!name || !createdBy) return;
             return { ingredientId, name, description, photo, createdBy };

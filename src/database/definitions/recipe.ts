@@ -1,4 +1,5 @@
 import { Table } from ".";
+import { RecipeServings } from "../../routes/spec";
 import { lamington } from "./lamington";
 
 /**
@@ -12,8 +13,9 @@ export interface Recipe {
 
     /**
      * JSON blob with data on unit and number or number range.
+     * TODO: Define this type correctly like other new json types
      */
-    servings?: string;
+    servings?: RecipeServings;
     prepTime?: number;
     cookTime?: number;
     nutritionalInformation?: string;

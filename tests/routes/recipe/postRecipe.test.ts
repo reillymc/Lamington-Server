@@ -5,7 +5,7 @@ import app from "../../../src/app";
 import { RecipeActions } from "../../../src/controllers";
 import { PostRecipeRequestBody } from "../../../src/routes/spec";
 import {
-    CleanTables,
+    CleanAllTables,
     PrepareAuthenticatedUser,
     RecipeEndpoint,
     assertRecipeServingsAreEqual,
@@ -17,11 +17,11 @@ import {
 } from "../../helpers";
 
 beforeEach(async () => {
-    await CleanTables("book", "user", "book_member");
+    await CleanAllTables();
 });
 
 afterAll(async () => {
-    await CleanTables("book", "user", "book_member");
+    await CleanAllTables();
 });
 
 test("route should require authentication", async () => {

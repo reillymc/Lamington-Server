@@ -69,10 +69,7 @@ interface GetBookParams {
  * @returns an array of books matching given ids
  */
 const readBooks = async ({ bookId, userId }: GetBookParams): ReadResponse<ReadBookRow> => {
-    // if (!Array.isArray(params)) {
-    //     params = [params];
-    // }
-    // const bookIds = params.map(({ bookId }) => bookId);
+    // const bookIds = EnsureArray(params).map(({ bookId }) => bookId); // TODO support multiple book ids
 
     const query = db<Book>(lamington.book)
         .select(
@@ -141,16 +138,11 @@ interface ReadBookInternalParams {
  * @returns an array of book matching given ids
  */
 const readBooksInternal = async (params: ReadQuery<ReadBookInternalParams>): ReadResponse<Book> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
+    const bookIds = EnsureArray(params).map(({ bookId }) => bookId);
 
-    const bookIds = params.map(({ bookId }) => bookId);
-
-    const query = db<Book>(lamington.book)
+    return db<Book>(lamington.book)
         .select(book.bookId, book.name, book.description, book.createdBy)
         .whereIn(book.bookId, bookIds);
-    return query;
 };
 
 export const BookActions = {

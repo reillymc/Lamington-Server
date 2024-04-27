@@ -294,7 +294,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             name: "Gnocchi with Tomato Cream Sauce",
             photo: "lamington:dev/839c1893-e03b-4479-85f2-138e4d42a2e8/recipe/02eab0b9-d8f2-4d64-bc76-cbac36e4c59f_0.jpg",
-            servings: JSON.stringify({ unit: "people", count: { representation: "number", value: "4" } }),
+            servings: { unit: "people", count: { representation: "number", value: "4" } },
             prepTime: 20,
             cookTime: 30,
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
@@ -307,7 +307,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             recipeId: "99656745-3325-4a47-9361-caba8849a4e2",
             name: "Black Bean Enchiladas",
             photo: "lamington:dev/839c1893-e03b-4479-85f2-138e4d42a2e8/recipe/99656745-3325-4a47-9361-caba8849a4e2_0.jpg",
-            servings: JSON.stringify({ unit: "people", count: { representation: "number", value: "3" } }),
+            servings: { unit: "people", count: { representation: "number", value: "3" } },
             prepTime: 20,
             cookTime: 40,
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
@@ -400,7 +400,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             sectionId: "444b8e22-ed15-425f-accc-ba7a52082a30",
             index: 7,
             unit: "tbsp",
-            amount: JSON.stringify({ representation: "number", value: "2" }),
+            amount: { representation: "number", value: "2" },
         },
         {
             id: "18025e5b-cea2-493a-8794-6bf8645cf6e3",
@@ -409,7 +409,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             sectionId: "444b8e22-ed15-425f-accc-ba7a52082a30",
             index: 0,
             unit: "g",
-            amount: JSON.stringify({ representation: "number", value: "500" }),
+            amount: { representation: "number", value: "500" },
         },
         {
             id: "95de556a-57fd-4758-974e-73158288499c",
@@ -418,7 +418,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             sectionId: "444b8e22-ed15-425f-accc-ba7a52082a30",
             index: 1,
             unit: "tbsp",
-            amount: JSON.stringify({ representation: "number", value: "2" }),
+            amount: { representation: "number", value: "2" },
         },
         {
             id: "9b9e6ced-8917-46b1-a995-8d25601f7f10",
@@ -427,7 +427,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             sectionId: "444b8e22-ed15-425f-accc-ba7a52082a30",
             index: 5,
             unit: "cup",
-            amount: JSON.stringify({ representation: "fraction", value: ["", "1", "2"] }),
+            amount: { representation: "fraction", value: ["", "1", "2"] },
         },
         {
             id: "a82aaf64-522f-4a20-9eff-2d3306c29b56",
@@ -436,7 +436,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             sectionId: "444b8e22-ed15-425f-accc-ba7a52082a30",
             index: 6,
             unit: "cup",
-            amount: JSON.stringify({ representation: "fraction", value: ["", "1", "3"] }),
+            amount: { representation: "fraction", value: ["", "1", "3"] },
         },
         {
             id: "c7910620-fe7f-4d32-825f-73b7f3e42900",
@@ -445,7 +445,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             sectionId: "444b8e22-ed15-425f-accc-ba7a52082a30",
             index: 4,
             unit: "g",
-            amount: JSON.stringify({ representation: "number", value: "400" }),
+            amount: { representation: "number", value: "400" },
         },
         {
             id: "f1692298-cb69-431c-baf2-99cb79090150",
@@ -454,7 +454,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             sectionId: "444b8e22-ed15-425f-accc-ba7a52082a30",
             index: 3,
             unit: "tsp",
-            amount: JSON.stringify({ representation: "number", value: "3" }),
+            amount: { representation: "number", value: "3" },
         },
         {
             id: "fe32282e-fa85-428a-b819-4f0ac6ffbb92",
@@ -463,7 +463,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             sectionId: "444b8e22-ed15-425f-accc-ba7a52082a30",
             index: 2,
             unit: "tsp",
-            amount: JSON.stringify({ representation: "number", value: "3" }),
+            amount: { representation: "number", value: "3" },
         },
     ]);
 
@@ -581,7 +581,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             itemId: "76be7e77-afee-4e1d-866a-61e68ee09354",
             name: "Banana[|s]",
             unit: "bunch",
-            amount: JSON.stringify({ representation: "number", value: "2" }),
+            amount: { representation: "number", value: "2" },
             updatedAt: "2023-05-21 06:48:14",
             completed: false,
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
@@ -608,7 +608,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             itemId: "cbaaaa0a-fcd8-42fe-8ac4-1cf995f90098",
             name: "Flour",
             unit: "g",
-            amount: JSON.stringify({ representation: "number", value: "500" }),
+            amount: { representation: "number", value: "500" },
             updatedAt: "2023-05-21 06:46:21",
             completed: false,
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",

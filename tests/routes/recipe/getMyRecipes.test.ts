@@ -40,7 +40,7 @@ afterAll(async () => {
 });
 
 test("route should require authentication", async () => {
-    const res = await request(app).get(RecipeEndpoint.getAllRecipes());
+    const res = await request(app).get(RecipeEndpoint.getMyRecipes());
 
     expect(res.statusCode).toEqual(401);
 });
@@ -69,7 +69,7 @@ test("should return correct recipe details", async () => {
 
     await RecipeActions.Save(recipe);
 
-    const res = await request(app).get(RecipeEndpoint.getAllRecipes()).set(token);
+    const res = await request(app).get(RecipeEndpoint.getMyRecipes()).set(token);
 
     expect(res.statusCode).toEqual(200);
 
@@ -100,32 +100,7 @@ test("should return correct recipe details", async () => {
     assertRecipeTagsAreEqual(recipeResponse.tags, recipe.tags);
 });
 
-test("should return all public recipes from other users", async () => {
-    const [token, _] = await PrepareAuthenticatedUser();
-    const randomUsers = await CreateUsers({ count: randomNumber() });
-
-    const recipes = Array.from({ length: randomNumber() }).map(
-        (_, i) =>
-            ({
-                recipeId: uuid(),
-                name: uuid(),
-                createdBy: randomUsers[i % randomUsers.length]!.userId,
-                public: true,
-            } satisfies ServiceParams<RecipeService, "Save">)
-    );
-
-    await RecipeActions.Save(recipes);
-
-    const res = await request(app).get(RecipeEndpoint.getAllRecipes()).set(token);
-
-    expect(res.statusCode).toEqual(200);
-
-    const { data } = res.body as GetAllRecipesResponse;
-
-    expect(Object.keys(data ?? {}).length).toEqual(recipes.length);
-});
-
-test("should not return private recipes", async () => {
+test("should not return any recipes from other users", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
     const randomUsers = await CreateUsers({ count: randomNumber() });
 
@@ -153,34 +128,31 @@ test("should not return private recipes", async () => {
 
     RecipeActions.Save(allRecipes);
 
-    const res = await request(app).get(RecipeEndpoint.getAllRecipes()).set(token);
+    const res = await request(app).get(RecipeEndpoint.getMyRecipes()).set(token);
 
     expect(res.statusCode).toEqual(200);
 
     const { data } = res.body as GetAllRecipesResponse;
 
-    expect(Object.keys(data ?? {}).length).toEqual(
-        allRecipes.filter(recipe => recipe.public || recipe.createdBy === user.userId).length
-    );
+    expect(Object.keys(data ?? {}).length).toEqual(myRecipes.length);
 });
 
 test("should respect pagination", async () => {
-    const [token, _] = await PrepareAuthenticatedUser();
-    const randomUsers = await CreateUsers({ count: randomNumber() });
+    const [token, user] = await PrepareAuthenticatedUser();
 
     const recipes = Array.from({ length: 50 }).map(
         (_, i) =>
             ({
                 recipeId: uuid(),
                 name: uuid(),
-                createdBy: randomUsers[i % randomUsers.length]!.userId,
+                createdBy: user!.userId,
                 public: true,
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 
     await RecipeActions.Save(recipes);
 
-    const res = await request(app).get(RecipeEndpoint.getAllRecipes()).set(token);
+    const res = await request(app).get(RecipeEndpoint.getMyRecipes()).set(token);
 
     expect(res.statusCode).toEqual(200);
 
@@ -189,7 +161,7 @@ test("should respect pagination", async () => {
     expect(Object.keys(data ?? {}).length).toEqual(config.database.pageSize);
 
     const resPage2 = await request(app)
-        .get(RecipeEndpoint.getAllRecipes({ page: 2 }))
+        .get(RecipeEndpoint.getMyRecipes({ page: 2 }))
         .set(token);
 
     expect(resPage2.statusCode).toEqual(200);
@@ -204,15 +176,14 @@ test("should respect pagination", async () => {
 });
 
 test("should respect search", async () => {
-    const [token, _] = await PrepareAuthenticatedUser();
-    const randomUsers = await CreateUsers({ count: randomNumber() });
+    const [token, user] = await PrepareAuthenticatedUser();
 
     const recipes = Array.from({ length: randomNumber() }).map(
         () =>
             ({
                 recipeId: uuid(),
                 name: uuid(),
-                createdBy: randomElement(randomUsers)!.userId,
+                createdBy: user!.userId,
                 public: true,
             } satisfies ServiceParams<RecipeService, "Save">)
     );
@@ -222,7 +193,7 @@ test("should respect search", async () => {
     const recipeToSearchBy = randomElement(recipes)!;
 
     const res = await request(app)
-        .get(RecipeEndpoint.getAllRecipes({ search: recipeToSearchBy.name }))
+        .get(RecipeEndpoint.getMyRecipes({ search: recipeToSearchBy.name }))
         .set(token);
 
     expect(res.statusCode).toEqual(200);
@@ -246,7 +217,7 @@ test("should respect substring search", async () => {
     RecipeActions.Save(recipe);
 
     const resPrefix = await request(app)
-        .get(RecipeEndpoint.getAllRecipes({ search: recipe.name.substring(0, randomNumber()) }))
+        .get(RecipeEndpoint.getMyRecipes({ search: recipe.name.substring(0, randomNumber()) }))
         .set(token);
 
     expect(resPrefix.statusCode).toEqual(200);
@@ -256,7 +227,7 @@ test("should respect substring search", async () => {
     expect(dataPrefix![recipe.recipeId]?.recipeId).toEqual(recipe.recipeId);
 
     const resSuffix = await request(app)
-        .get(RecipeEndpoint.getAllRecipes({ search: recipe.name.substring(randomNumber()) }))
+        .get(RecipeEndpoint.getMyRecipes({ search: recipe.name.substring(randomNumber()) }))
         .set(token);
 
     expect(resSuffix.statusCode).toEqual(200);
@@ -266,7 +237,7 @@ test("should respect substring search", async () => {
     expect(dataSuffix![recipe.recipeId]?.recipeId).toEqual(recipe.recipeId);
 
     const resMiddle = await request(app)
-        .get(RecipeEndpoint.getAllRecipes({ search: recipe.name.substring(randomNumber(), randomNumber() * 2) }))
+        .get(RecipeEndpoint.getMyRecipes({ search: recipe.name.substring(randomNumber(), randomNumber() * 2) }))
         .set(token);
 
     expect(resMiddle.statusCode).toEqual(200);
@@ -294,7 +265,7 @@ test("should respect name sorting and ordering", async () => {
     await RecipeActions.Save(recipes);
 
     const res = await request(app)
-        .get(RecipeEndpoint.getAllRecipes({ sort: "name" }))
+        .get(RecipeEndpoint.getMyRecipes({ sort: "name" }))
         .set(token);
 
     expect(res.statusCode).toEqual(200);
@@ -326,7 +297,7 @@ test("should respect rating sorting and ordering", async () => {
     await RecipeActions.Save(recipes);
 
     const res = await request(app)
-        .get(RecipeEndpoint.getAllRecipes({ sort: "rating" }))
+        .get(RecipeEndpoint.getMyRecipes({ sort: "rating" }))
         .set(token);
 
     expect(res.statusCode).toEqual(200);
@@ -358,7 +329,7 @@ test("should respect time sorting and ordering", async () => {
     await RecipeActions.Save(recipes);
 
     const res = await request(app)
-        .get(RecipeEndpoint.getAllRecipes({ sort: "time", order }))
+        .get(RecipeEndpoint.getMyRecipes({ sort: "time", order }))
         .set(token);
 
     expect(res.statusCode).toEqual(200);
@@ -418,7 +389,7 @@ test("should respect category filtering", async () => {
     await RecipeTagActions.save(recipeTags);
 
     const res = await request(app)
-        .get(RecipeEndpoint.getAllRecipes({ ...tagsToFilterBy }))
+        .get(RecipeEndpoint.getMyRecipes({ ...tagsToFilterBy }))
         .set(token);
 
     expect(res.statusCode).toEqual(200);
@@ -502,7 +473,7 @@ test("should respect ingredient filtering", async () => {
     await RecipeIngredientActions.save(recipeIngredients);
 
     const res = await request(app)
-        .get(RecipeEndpoint.getAllRecipes({ ingredients: ingredientsToFilterBy }))
+        .get(RecipeEndpoint.getMyRecipes({ ingredients: ingredientsToFilterBy }))
         .set(token);
 
     expect(res.statusCode).toEqual(200);
@@ -617,7 +588,7 @@ test("should respect ingredient and category filtering together", async () => {
 
     const res = await request(app)
         .get(
-            RecipeEndpoint.getAllRecipes({
+            RecipeEndpoint.getMyRecipes({
                 ingredients: ingredientsToFilterBy,
                 ...tagsToFilterBy,
             })
