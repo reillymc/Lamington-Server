@@ -2,38 +2,12 @@ version: "3.5"
 
 name: "lamington-server"
 services:
-    mariadb:
-        image: mariadb:10.4
-        restart: unless-stopped
-        env_file: .env
-        environment:
-            - MYSQL_ROOT_PASSWORD=$DB_PASSWORD
-            - MYSQL_DATABASE=$DB_NAME
-            - MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1
-        ports:
-            - $DB_LOCAL_PORT:$DB_DOCKER_PORT
-        volumes:
-            - db:/var/lib/mysql
-            - ../database/schema:/docker-entrypoint-initdb.d/:ro
-
-    mariadb_testdb:
-        image: mariadb:10.4
-        restart: unless-stopped
-        env_file: .env
-        environment:
-            - MYSQL_ROOT_PASSWORD=$DB_PASSWORD
-            - MYSQL_DATABASE=$DB_NAME
-            - MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1
-        ports:
-            - $DB_TEST_LOCAL_PORT:$DB_TEST_DOCKER_PORT
-        volumes:
-            - db_test:/var/lib/mysql
-            - ../database/schema:/docker-entrypoint-initdb.d/:ro
-
     app:
         image: app:latest
         depends_on:
-            - mariadb
+            - db_production
+            - db_development
+            - db_testing
         build: .
         restart: unless-stopped
         env_file: .env
@@ -41,15 +15,49 @@ services:
             - $NODE_LOCAL_PORT:$NODE_DOCKER_PORT
         volumes:
             - ..:/workspace:cached
-        environment:
-            - DB_HOST=mariadb
-            - DB_USER=$DB_USER
-            - DB_PASSWORD=$DB_PASSWORD
-            - DB_NAME=$DB_NAME
-            - DB_PORT=$DB_DOCKER_PORT
         stdin_open: true
         tty: true
 
+    db_production:
+        image: postgres:latest
+        restart: unless-stopped
+        env_file: .env
+        environment:
+            - POSTGRES_USER=$DB_PROD_USER
+            - POSTGRES_DB=$DB_PROD_NAME
+            - POSTGRES_PASSWORD=$DB_PROD_PASSWORD
+        expose:
+            - $DB_PORT
+        volumes:
+            - db_production:/var/lib/postgresql/data
+
+    db_development:
+        image: postgres:latest
+        restart: unless-stopped
+        env_file: .env
+        environment:
+            - POSTGRES_USER=$DB_DEV_USER
+            - POSTGRES_DB=$DB_DEV_NAME
+            - POSTGRES_PASSWORD=$DB_DEV_PASSWORD
+        expose:
+            - $DB_PORT
+        volumes:
+            - db_development:/var/lib/postgresql/data
+
+    db_testing:
+        image: postgres:latest
+        restart: unless-stopped
+        env_file: .env
+        environment:
+            - POSTGRES_USER=$DB_TEST_USER
+            - POSTGRES_DB=$DB_TEST_NAME
+            - POSTGRES_PASSWORD=$DB_TEST_PASSWORD
+        expose:
+            - $DB_PORT
+        volumes:
+            - db_testing:/var/lib/postgresql/data
+
 volumes:
-    db:
-    db_test:
+    db_production:
+    db_development:
+    db_testing:

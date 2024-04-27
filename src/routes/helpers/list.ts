@@ -1,10 +1,11 @@
 import { v4 as Uuid } from "uuid";
 
-import { BisectOnValidItems, EnsureDefinedArray } from "../../utils";
-import { List, ListItemIngredientAmount, PostListItemRequestBody, PostListRequestBody } from "../spec";
-import { ListItemActions, ListMemberActions } from "../../controllers";
+import { ListActions, ListMemberActions } from "../../controllers";
+import { ListItemService, ListService } from "../../controllers/spec";
 import { ServiceParams } from "../../database";
-import { ListService } from "../../controllers/spec";
+import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils";
+import { List, ListItemIngredientAmount, PostListItemRequestBody, PostListRequestBody, UserStatus } from "../spec";
+import { getStatus } from "./user";
 
 const parseAmount = (amountJSON: string | undefined) => {
     if (!amountJSON) return;
@@ -53,7 +54,7 @@ export const validatePostListBody = ({ data }: PostListRequestBody, userId: stri
             listId,
             name,
             description: item.description,
-            customisations: stringifyListCustomisations({ icon: item.icon }),
+            customisations: { icon: item.icon },
             members: item.members,
             createdBy: userId,
         };
@@ -64,29 +65,42 @@ export const validatePostListBody = ({ data }: PostListRequestBody, userId: stri
 
 export const validatePostListItemBody = ({ data }: PostListItemRequestBody, userId: string, listId: string) => {
     const filteredData = EnsureDefinedArray(data);
+    let movedItems: Array<ServiceParams<ListItemService, "Delete">> = [];
 
-    return BisectOnValidItems(filteredData, ({ itemId = Uuid(), name, ...item }) => {
-        if (!name) return;
-        console.log(item.amount);
+    const [validListItems, invalidListItems] = BisectOnValidItems(
+        filteredData,
+        ({ itemId = Uuid(), name, ...item }) => {
+            if (!name) return;
 
-        const validItem: ServiceParams<ListItemActions, "save"> = {
-            itemId,
-            listId,
-            name,
-            amount: stringifyAmount(item.amount),
-            completed: item.completed ?? false,
-            ingredientId: item.ingredientId,
-            notes: item.notes,
-            unit: item.unit,
-            createdBy: userId,
-        };
+            const validItem: ServiceParams<ListItemService, "Save"> = {
+                itemId,
+                listId,
+                name,
+                amount: item.amount,
+                completed: item.completed ?? false,
+                ingredientId: item.ingredientId,
+                notes: item.notes,
+                unit: item.unit,
+                createdBy: userId,
+            };
 
-        return validItem;
-    });
+            if (item.previousListId) {
+                movedItems.push({ listId: item.previousListId, itemId });
+            }
+
+            return validItem;
+        }
+    );
+
+    return {
+        validListItems,
+        invalidListItems,
+        movedItems,
+    };
 };
 
 type ListResponse = Awaited<ReturnType<ListService["Read"]>>[number];
-type ListItemsResponse = Awaited<ReturnType<ListItemActions["read"]>>;
+type ListItemsResponse = Awaited<ReturnType<ListItemService["Read"]>>;
 type MembersResponse = Awaited<ReturnType<ListMemberActions["read"]>>;
 
 interface PrepareGetListResponseBodyParams {
@@ -111,21 +125,18 @@ export const prepareGetListResponseBody = ({
     description: list.description,
     outstandingItemCount,
     lastUpdated,
-    ...parseListCustomisations(list.customisations),
+    ...list.customisations,
     createdBy: { userId: list.createdBy, firstName: list.createdByName },
-    items: listItems
-        ?.filter(item => item.listId === list.listId)
-        .map(({ amount, ...item }) => ({ ...item, amount: parseAmount(amount) })),
+    items: listItems?.filter(item => item.listId === list.listId),
     members: members
         ? Object.fromEntries(
-              members.map(({ userId, canEdit, firstName, lastName }) => [
+              members.map(({ userId, status, firstName, lastName }) => [
                   userId,
-                  { userId, allowEditing: !!canEdit, firstName, lastName },
+                  { userId, status: getStatus(status), firstName, lastName },
               ])
           )
         : undefined,
-    accepted: list.createdBy === userId ? true : !!list.accepted,
-    canEdit: list.createdBy === userId ? true : !!list.canEdit,
+    status: getStatus(list.status, list.createdBy === userId),
 });
 
 type ListCustomisationsV1 = Pick<List, "icon">;
@@ -146,4 +157,55 @@ export const stringifyListCustomisations = (customisations: Partial<ListCustomis
     const { icon = DefaultListIcon } = customisations;
 
     return JSON.stringify({ icon });
+};
+
+interface ValidatedPermissions {
+    permissionsValid: boolean;
+    missingLists: string[];
+}
+
+export const validateListPermissions = async (
+    listIds: string | string[],
+    userId: string,
+    permissionLevel: UserStatus
+): Promise<ValidatedPermissions> => {
+    const listIdsArray = EnsureArray(listIds);
+
+    const existingLists = await ListActions.ReadPermissions([
+        ...EnsureArray(listIdsArray).map(listId => ({ listId, userId })),
+    ]);
+
+    const statuses = existingLists.map(list => getStatus(list.status, list.createdBy === userId));
+    const missingLists = listIdsArray.filter(listId => !existingLists.some(list => list.listId === listId));
+
+    if (statuses.some(status => status === undefined)) {
+        return { permissionsValid: false, missingLists };
+    }
+
+    if (permissionLevel === UserStatus.Owner) {
+        return { permissionsValid: statuses.every(status => status === UserStatus.Owner), missingLists };
+    }
+
+    if (permissionLevel === UserStatus.Administrator) {
+        return {
+            permissionsValid: statuses.every(status => [UserStatus.Owner, UserStatus.Administrator].includes(status!)),
+            missingLists,
+        };
+    }
+
+    if (permissionLevel === UserStatus.Member) {
+        return {
+            permissionsValid: statuses.every(status =>
+                [UserStatus.Owner, UserStatus.Administrator, UserStatus.Member].includes(status!)
+            ),
+            missingLists,
+        };
+    }
+
+    return {
+        permissionsValid: statuses.every(status =>
+            [UserStatus.Owner, UserStatus.Administrator, UserStatus.Member, UserStatus.Pending].includes(status!)
+        ),
+        missingLists,
+    };
 };

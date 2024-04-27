@@ -1,16 +1,8 @@
 import request from "supertest";
 
 import app from "../../../src/app";
-import { CleanTables, CreateUsers, PrepareAuthenticatedUser, UserEndpoint, randomCount } from "../../helpers";
 import { GetUsersResponse, UserStatus } from "../../../src/routes/spec";
-
-beforeEach(async () => {
-    await CleanTables("user");
-});
-
-afterAll(async () => {
-    await CleanTables("user");
-});
+import { CreateUsers, PrepareAuthenticatedUser, UserEndpoint, randomCount } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).get(UserEndpoint.getUsers);
@@ -20,9 +12,9 @@ test("route should require authentication", async () => {
 
 test("route should return emails only for request with administrator privileges", async () => {
     const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
-    const [registeredToken] = await PrepareAuthenticatedUser(UserStatus.Registered);
+    const [registeredToken] = await PrepareAuthenticatedUser(UserStatus.Member);
 
-    await CreateUsers({ count: 1, status: UserStatus.Registered });
+    await CreateUsers({ count: 1, status: UserStatus.Member });
 
     const registeredRes = await request(app).get(UserEndpoint.getUsers).set(registeredToken);
 
@@ -42,9 +34,9 @@ test("route should return emails only for request with administrator privileges"
 });
 
 test("should return correct number of active users and no pending/blacklisted users", async () => {
-    const [registeredToken] = await PrepareAuthenticatedUser(UserStatus.Registered);
+    const [registeredToken] = await PrepareAuthenticatedUser(UserStatus.Member);
 
-    const usersRegistered = await CreateUsers({ count: randomCount, status: UserStatus.Registered });
+    const usersRegistered = await CreateUsers({ count: randomCount, status: UserStatus.Member });
     const usersAdmin = await CreateUsers({ count: randomCount, status: UserStatus.Administrator });
     await CreateUsers({ count: randomCount, status: UserStatus.Pending });
     await CreateUsers({ count: randomCount, status: UserStatus.Blacklisted });
@@ -64,7 +56,7 @@ test("should return correct number of active users and no pending/blacklisted us
 });
 
 test("should not return current authenticated user", async () => {
-    const [registeredToken] = await PrepareAuthenticatedUser(UserStatus.Registered);
+    const [registeredToken] = await PrepareAuthenticatedUser(UserStatus.Member);
 
     const res = await request(app).get(UserEndpoint.getUsers).set(registeredToken);
 

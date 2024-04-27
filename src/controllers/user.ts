@@ -1,8 +1,8 @@
 import { v4 as Uuid } from "uuid";
 
-import db, { CreateResponse, ReadResponse, user, lamington, ReadQuery, CreateQuery, User } from "../database";
+import db, { CreateQuery, CreateResponse, ReadQuery, ReadResponse, User, lamington, user } from "../database";
 import { UserStatus } from "../routes/spec";
-import { Undefined } from "../utils";
+import { EnsureArray, Undefined } from "../utils";
 
 /**
  * Get all users
@@ -38,16 +38,14 @@ interface GetUserParams {
  */
 const readUsers = async (
     params: ReadQuery<GetUserParams>
-): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "status" | "dateCreated">> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
-    const userIds = params.map(({ userId }) => userId);
+): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "status" | "createdAt">> => {
+    const users = EnsureArray(params);
 
-    const query = db<User>(lamington.user)
-        .select(user.userId, user.firstName, user.lastName, user.status, user.dateCreated)
-        .whereIn(user.userId, userIds);
-    return query;
+    const userIds = users.map(({ userId }) => userId);
+
+    return db<User>(lamington.user)
+        .select("userId", "firstName", "lastName", "status", "createdAt")
+        .whereIn("userId", userIds);
 };
 
 type CreateUserParams = {
@@ -59,45 +57,30 @@ type CreateUserParams = {
     status: UserStatus;
 };
 
-type SaveUser = Omit<User, "dateCreated">;
+type SaveUser = Omit<User, "createdAt" | "updatedAt" | "preferences">;
 
 /**
  * Saves a user from params
  * @returns the newly created / updated users
  */
-const saveUsers = async (users: CreateQuery<CreateUserParams>): CreateResponse<User> => {
-    if (!Array.isArray(users)) {
-        users = [users];
-    }
-    const data: SaveUser[] = users
+const saveUsers = async (params: CreateQuery<CreateUserParams>): CreateResponse<User> => {
+    const users: SaveUser[] = EnsureArray(params)
         .map(({ userId, ...params }) => ({ userId: userId ?? Uuid(), ...params }))
         .filter(Undefined);
 
-    const result = await db(lamington.user).insert(data).onConflict(user.userId).merge();
-
-    const userIds = data.map(({ userId }) => userId);
-
-    const query = db<User>(lamington.user).select("*").whereIn(user.userId, userIds);
-    return query;
+    return db<User>(lamington.user).insert(users).onConflict("userId").merge().returning("userId");
 };
 
-const saveUserStatus = async (users: CreateQuery<{ userId: string; status: UserStatus }>): CreateResponse<User> => {
-    if (!Array.isArray(users)) {
-        users = [users];
-    }
+const saveUserStatus = async (params: CreateQuery<{ userId: string; status: UserStatus }>): CreateResponse<User> => {
+    const users = EnsureArray(params);
 
-    for (const userRequest of users) {
-        await db(lamington.user)
-            .where({ [user.userId]: userRequest.userId })
-            .update({
-                [user.status]: userRequest.status,
-            });
+    for (const { status, userId } of users) {
+        await db<User>(lamington.user).where({ userId }).update({ status });
     }
 
     const userIds = users.map(({ userId }) => userId);
 
-    const query = db<User>(lamington.user).select("*").whereIn(user.userId, userIds);
-    return query;
+    return db<User>(lamington.user).select("*").whereIn("userId", userIds);
 };
 
 export const UserActions = {
@@ -117,15 +100,11 @@ interface ReadUserInternalParams {
  * @returns an array of users matching given ids
  */
 const readUsersInternal = async (params: ReadQuery<ReadUserInternalParams>): ReadResponse<User> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
-    const userEmails = params.map(({ email }) => email);
+    const userEmails = EnsureArray(params).map(({ email }) => email);
 
-    const query = db<User>(lamington.user)
-        .select(user.userId, user.firstName, user.lastName, user.email, user.status, user.dateCreated, user.password)
+    return db<User>(lamington.user)
+        .select(user.userId, user.firstName, user.lastName, user.email, user.status, user.createdAt, user.password)
         .whereIn(user.email, userEmails);
-    return query;
 };
 
 export const InternalUserActions = {

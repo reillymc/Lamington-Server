@@ -3,7 +3,7 @@
     "info": {
         "title": "Lamington API",
         "description": "API for data used by the Lamington app.",
-        "version": "1.1.0",
+        "version": "1.2.2",
         "contact": {
             "email": "reilly@mackenzie-cree.net"
         }

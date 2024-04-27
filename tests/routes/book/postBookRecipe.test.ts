@@ -2,19 +2,11 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBit } from "../../helpers";
 import { BookActions, BookMemberActions, BookRecipeActions, RecipeActions } from "../../../src/controllers";
-import { PostBookRecipeRequestBody } from "../../../src/routes/spec";
-import { ServiceParams } from "../../../src/database";
 import { RecipeService } from "../../../src/controllers/spec";
-
-beforeEach(async () => {
-    await CleanTables("book", "user", "book_member", "book_recipe");
-});
-
-afterAll(async () => {
-    await CleanTables("book", "user", "book_member", "book_recipe");
-});
+import { ServiceParams } from "../../../src/database";
+import { PostBookRecipeRequestBody, UserStatus } from "../../../src/routes/spec";
+import { BookEndpoint, CreateUsers, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).post(BookEndpoint.postBookRecipe(uuid()));
@@ -33,7 +25,7 @@ test("should return 404 for non-existant book", async () => {
     expect(res.statusCode).toEqual(404);
 });
 
-test("should not allow editing if not book owner", async () => {
+test("should not allow adding recipe if not book owner", async () => {
     const [token] = await PrepareAuthenticatedUser();
     const [bookOwner] = await CreateUsers();
 
@@ -54,7 +46,7 @@ test("should not allow editing if not book owner", async () => {
     expect(res.statusCode).toEqual(403);
 });
 
-test("should not allow editing if book member without edit permission", async () => {
+test("should not allow adding recipe if book member without edit permission", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
     const [bookOwner] = await CreateUsers();
 
@@ -69,7 +61,7 @@ test("should not allow editing if book member without edit permission", async ()
         recipeId: uuid(),
         name: uuid(),
         createdBy: user!.userId,
-        public: randomBit(),
+        public: randomBoolean(),
     } satisfies ServiceParams<RecipeService, "Save">;
 
     await BookActions.save(book);
@@ -79,8 +71,7 @@ test("should not allow editing if book member without edit permission", async ()
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: false,
+                status: UserStatus.Member,
             },
         ],
     });
@@ -93,7 +84,7 @@ test("should not allow editing if book member without edit permission", async ()
     expect(res.statusCode).toEqual(403);
 });
 
-test("should allow editing if book member with edit permission", async () => {
+test("should allow adding recipe if book member with edit permission", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
     const [bookOwner] = await CreateUsers();
 
@@ -108,7 +99,7 @@ test("should allow editing if book member with edit permission", async () => {
         recipeId: uuid(),
         name: uuid(),
         createdBy: user!.userId,
-        public: randomBit(),
+        public: randomBoolean(),
     } satisfies ServiceParams<RecipeService, "Save">;
 
     await BookActions.save(book);
@@ -118,8 +109,7 @@ test("should allow editing if book member with edit permission", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });
@@ -155,7 +145,7 @@ test("should allow editing if book owner", async () => {
         recipeId: uuid(),
         name: uuid(),
         createdBy: user!.userId,
-        public: randomBit(),
+        public: randomBoolean(),
     } satisfies ServiceParams<RecipeService, "Save">;
 
     await BookActions.save(book);

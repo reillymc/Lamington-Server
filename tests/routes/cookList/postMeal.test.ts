@@ -2,26 +2,11 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import {
-    CleanTables,
-    CookListEndpoint,
-    CreateUsers,
-    PrepareAuthenticatedUser,
-    randomBit,
-    randomNumber,
-} from "../../helpers";
-import { PostCookListMealRequestBody } from "../../../src/routes/spec";
 import { CookListMealActions, CookListMealActionsInternal, RecipeActions } from "../../../src/controllers";
-import { ServiceParams } from "../../../src/database";
 import { RecipeService } from "../../../src/controllers/spec";
-
-beforeEach(async () => {
-    await CleanTables("user", "planner_meal", "recipe");
-});
-
-afterAll(async () => {
-    await CleanTables("user", "planner_meal", "recipe");
-});
+import { ServiceParams } from "../../../src/database";
+import { PostCookListMealRequestBody } from "../../../src/routes/spec";
+import { CookListEndpoint, CreateUsers, PrepareAuthenticatedUser, randomBoolean, randomNumber } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).get(CookListEndpoint.postMeal);
@@ -78,7 +63,7 @@ test("should update meal", async () => {
         recipeId: uuid(),
         name: uuid(),
         createdBy: user.userId,
-        public: randomBit(),
+        public: randomBoolean(),
     } satisfies ServiceParams<RecipeService, "Save">;
 
     await RecipeActions.Save(recipe);

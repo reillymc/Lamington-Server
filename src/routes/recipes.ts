@@ -1,36 +1,36 @@
 import express from "express";
 
-import { AppError, AttachmentService, MessageAction, userMessage } from "../services";
 import { RecipeActions, RecipeRatingActions } from "../controllers";
-import {
-    DeleteRecipeRequestBody,
-    DeleteRecipeRequestParams,
-    DeleteRecipeResponse,
-    GetRecipeRequestBody,
-    GetRecipeRequestParams,
-    GetRecipeResponse,
-    GetAllRecipesRequestBody,
-    GetAllRecipesRequestParams,
-    GetAllRecipesResponse,
-    GetMyRecipesRequestBody,
-    GetMyRecipesRequestParams,
-    GetMyRecipesResponse,
-    PostRecipeRequestBody,
-    PostRecipeRequestParams,
-    PostRecipeResponse,
-    PostRecipeRatingRequestBody,
-    PostRecipeRatingRequestParams,
-    PostRecipeRatingResponse,
-    RecipeEndpoint,
-    GetAllRecipesRequestQuery,
-    GetMyRecipesRequestQuery,
-} from "./spec";
+import { AppError, AttachmentService, MessageAction, userMessage } from "../services";
 import {
     RecipeQueryResponseToRecipe,
     RecipeReadResponseToRecipe,
     parseRecipeQuery,
     validatePostRecipeBody,
 } from "./helpers";
+import {
+    DeleteRecipeRequestBody,
+    DeleteRecipeRequestParams,
+    DeleteRecipeResponse,
+    GetAllRecipesRequestBody,
+    GetAllRecipesRequestParams,
+    GetAllRecipesRequestQuery,
+    GetAllRecipesResponse,
+    GetMyRecipesRequestBody,
+    GetMyRecipesRequestParams,
+    GetMyRecipesRequestQuery,
+    GetMyRecipesResponse,
+    GetRecipeRequestBody,
+    GetRecipeRequestParams,
+    GetRecipeResponse,
+    PostRecipeRatingRequestBody,
+    PostRecipeRatingRequestParams,
+    PostRecipeRatingResponse,
+    PostRecipeRequestBody,
+    PostRecipeRequestParams,
+    PostRecipeResponse,
+    RecipeEndpoint,
+} from "./spec";
 
 const router = express.Router();
 
@@ -133,7 +133,7 @@ router.get<GetRecipeRequestParams, GetRecipeResponse, GetRecipeRequestBody>(
 );
 
 /**
- * POST request to delete a recipe
+ * DELETE request to delete a recipe
  * Requires recipe delete body
  */
 router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeRequestBody>(
@@ -175,7 +175,7 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
                 );
             }
 
-            const data = await RecipeActions.Delete(recipeId);
+            const data = await RecipeActions.Delete({ recipeId });
 
             if (existingRecipe.photo) AttachmentService.deleteImage(existingRecipe.photo);
 

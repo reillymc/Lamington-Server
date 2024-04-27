@@ -15,13 +15,12 @@
                 "orta.vscode-jest",
                 "esbenp.prettier-vscode",
                 "mtxr.sqltools",
-                "mtxr.sqltools-driver-mysql"
+                "mtxr.sqltools-driver-pg"
             ],
             "settings": {
                 "eslint.alwaysShowStatus": true
             }
         }
     },
-    "remoteEnv": {},
-    "forwardPorts": ["3000:3000"]
+    "remoteUser": "node"
 }

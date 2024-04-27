@@ -2,18 +2,10 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 import { BookActions, BookMemberActions } from "../../../src/controllers";
-import { DeleteBookRequestParams } from "../../../src/routes/spec";
 import { ServiceParams } from "../../../src/database";
-
-beforeEach(async () => {
-    await CleanTables("book", "user", "book_member");
-});
-
-afterAll(async () => {
-    await CleanTables("book", "user", "book_member");
-});
+import { DeleteBookRequestParams, UserStatus } from "../../../src/routes/spec";
+import { BookEndpoint, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).delete(BookEndpoint.deleteBook(uuid()));
@@ -70,8 +62,7 @@ test("should not allow deletion if book member but not book owner", async () => 
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });

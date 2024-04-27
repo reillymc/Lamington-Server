@@ -1,4 +1,5 @@
 import { Table } from ".";
+import { RecipeServings } from "../../routes/spec";
 import { lamington } from "./lamington";
 
 /**
@@ -12,18 +13,19 @@ export interface Recipe {
 
     /**
      * JSON blob with data on unit and number or number range.
+     * TODO: Define this type correctly like other new json types
      */
-    servings?: string;
+    servings?: RecipeServings;
     prepTime?: number;
     cookTime?: number;
     nutritionalInformation?: string;
     summary?: string;
     tips?: string;
-    public: number;
+    public: boolean;
     timesCooked?: number;
     createdBy: string;
-    dateCreated: string;
-    dateUpdated: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export type RecipeTable = Table<Recipe>;
@@ -42,6 +44,6 @@ export const recipe: RecipeTable = {
     public: `${lamington.recipe}.public`,
     createdBy: `${lamington.recipe}.createdBy`,
     timesCooked: `${lamington.recipe}.timesCooked`,
-    dateCreated: `${lamington.recipe}.dateCreated`,
-    dateUpdated: `${lamington.recipe}.dateUpdated`,
+    createdAt: `${lamington.recipe}.createdAt`,
+    updatedAt: `${lamington.recipe}.updatedAt`,
 } as const;

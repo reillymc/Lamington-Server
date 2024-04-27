@@ -2,17 +2,10 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { BookEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 import { BookActions, BookMemberActions } from "../../../src/controllers";
 import { ServiceParams } from "../../../src/database";
-
-beforeEach(async () => {
-    await CleanTables("book", "user", "book_member");
-});
-
-afterAll(async () => {
-    await CleanTables("book", "user", "book_member");
-});
+import { UserStatus } from "../../../src/routes/spec";
+import { BookEndpoint, CreateUsers, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).delete(BookEndpoint.deleteBookMember(uuid(), uuid()));
@@ -66,8 +59,7 @@ test("should allow removing member if book owner", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: false,
-                allowEditing: false,
+                status: UserStatus.Pending,
             },
         ],
     });
@@ -97,13 +89,11 @@ test("should not allow removing other member if book member with edit permission
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
             {
                 userId: otherMember!.userId,
-                accepted: true,
-                allowEditing: randomBoolean(),
+                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Member,
             },
         ],
     } satisfies ServiceParams<BookMemberActions, "save">;
@@ -136,8 +126,7 @@ test("should allow removing self if book member", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });

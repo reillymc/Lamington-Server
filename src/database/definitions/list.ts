@@ -1,4 +1,5 @@
 import { Table } from ".";
+import { ListCustomisations } from "../../routes/helpers";
 import { lamington } from "./lamington";
 
 /**
@@ -8,7 +9,8 @@ export type List = {
     listId: string;
     name: string;
     createdBy: string;
-    customisations?: string;
+    // TODO proper customisation definition like others
+    customisations?: ListCustomisations;
     description?: string;
 };
 

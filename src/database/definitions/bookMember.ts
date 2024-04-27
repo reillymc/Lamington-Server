@@ -10,6 +10,5 @@ export type BookMember = EntityMember<{ bookId: string }>;
 export const bookMember: Table<BookMember> = {
     bookId: `${lamington.bookMember}.bookId`,
     userId: `${lamington.bookMember}.userId`,
-    canEdit: `${lamington.bookMember}.canEdit`,
-    accepted: `${lamington.bookMember}.accepted`,
+    status: `${lamington.bookMember}.status`,
 } as const;

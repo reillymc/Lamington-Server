@@ -1,6 +1,6 @@
 import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from ".";
 import { EntityMember, EntityMembers, FractionValue, NumberValue, RangeValue } from "./common";
-import { User } from "./user";
+import { User, UserStatus } from "./user";
 
 export const listEndpoint = "/lists" as const;
 
@@ -30,8 +30,7 @@ export type List = {
     description: string | undefined;
     icon?: string;
     outstandingItemCount?: number;
-    accepted?: boolean;
-    canEdit?: boolean;
+    status?: UserStatus;
     items?: Array<ListItem>;
     members?: EntityMembers;
     lastUpdated?: string;
@@ -43,7 +42,7 @@ export type List = {
 export type ListItem = {
     itemId: string;
     name: string;
-    dateUpdated: string;
+    updatedAt: string;
     completed: boolean;
     ingredientId?: string;
     unit?: string;
@@ -86,13 +85,13 @@ export type PostListItemRequestParams = BaseRequestParams<{ [listIdParam]: List[
 export type PostListItemRequestBody = BaseRequestBody<{
     name: ListItem["name"];
     itemId: ListItem["itemId"];
-    dateUpdated?: ListItem["dateUpdated"];
     completed?: ListItem["completed"];
     ingredientId?: ListItem["ingredientId"];
     unit?: ListItem["unit"];
     amount?: ListItem["amount"];
     notes?: ListItem["notes"];
     createdBy: User["userId"];
+    previousListId?: List["listId"];
 }>;
 
 export type PostListItemRequest = BaseRequest<PostListItemRequestParams & PostListItemRequestBody>;
@@ -122,7 +121,7 @@ export type DeleteListItemService = (request: DeleteListItemRequest) => DeleteLi
 export type PostListMemberRequestParams = BaseRequestParams<{
     [listIdParam]: List["listId"];
 }>;
-export type PostListMemberRequestBody = BaseSimpleRequestBody<Pick<List, "accepted">>;
+export type PostListMemberRequestBody = BaseSimpleRequestBody;
 
 export type PostListMemberRequest = BaseRequest<PostListMemberRequestParams & PostListMemberRequestBody>;
 export type PostListMemberResponse = BaseResponse;

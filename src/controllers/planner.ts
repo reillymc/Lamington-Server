@@ -1,53 +1,10 @@
-import { v4 as Uuid } from "uuid";
+import db, { Planner, lamington, planner, plannerMember, user } from "../database";
+import { EnsureArray } from "../utils";
+import { PlannerMemberActions } from "./plannerMember";
+import { PlannerService } from "./spec";
 
-import { Undefined } from "../utils";
-import db, {
-    planner,
-    Planner,
-    PlannerMember,
-    plannerMember,
-    CreateQuery,
-    CreateResponse,
-    DeleteResponse,
-    lamington,
-    ReadQuery,
-    ReadResponse,
-    user,
-    User,
-} from "../database";
-import { EntityMember } from "./entity";
-import { CreatePlannerMemberParams, PlannerMemberActions } from "./plannerMember";
-
-/**
- * Get all planners
- * @returns an array of all planners in the database
- */
-const readAllPlanners = async (): ReadResponse<Planner> => {
-    const query = db<Planner>(lamington.planner).select(
-        planner.plannerId,
-        planner.name,
-        planner.description,
-        planner.createdBy
-    );
-    return query;
-};
-
-interface GetMyPlannersParams {
-    userId: string;
-}
-
-interface ReadPlannerRow extends Pick<Planner, "plannerId" | "name" | "customisations" | "createdBy" | "description"> {
-    createdByName: User["firstName"];
-    accepted: PlannerMember["accepted"];
-    canEdit: PlannerMember["canEdit"];
-}
-
-/**
- * Get all planners from a user
- * @returns an array of all planners created by given user
- */
-const readMyPlanners = async ({ userId }: GetMyPlannersParams): ReadResponse<ReadPlannerRow> => {
-    const query = db<ReadPlannerRow>(lamington.planner)
+const readMyPlanners: PlannerService["ReadByUser"] = async ({ userId }) => {
+    const query = db<Planner>(lamington.planner)
         .select(
             planner.plannerId,
             planner.name,
@@ -55,8 +12,7 @@ const readMyPlanners = async ({ userId }: GetMyPlannersParams): ReadResponse<Rea
             planner.description,
             planner.createdBy,
             `${user.firstName} as createdByName`,
-            plannerMember.accepted,
-            plannerMember.canEdit
+            plannerMember.status
         )
         .where({ [planner.createdBy]: userId })
         .orWhere({ [plannerMember.userId]: userId })
@@ -66,123 +22,84 @@ const readMyPlanners = async ({ userId }: GetMyPlannersParams): ReadResponse<Rea
     return query;
 };
 
-interface GetPlannerParams {
-    plannerId: string;
-    userId: string;
-}
+const readPlanners: PlannerService["Read"] = async params => {
+    const requests = EnsureArray(params);
+    const response = [];
 
-/**
- * Get planners by id or ids
- * @returns an array of planners matching given ids
- */
-const readPlanners = async ({ plannerId, userId }: GetPlannerParams): ReadResponse<ReadPlannerRow> => {
-    const query = db<ReadPlannerRow>(lamington.planner)
-        .select(
-            planner.plannerId,
-            planner.name,
-            planner.customisations,
-            planner.description,
-            planner.createdBy,
-            `${user.firstName} as createdByName`,
-            plannerMember.accepted,
-            plannerMember.canEdit
-        )
-        .whereIn(
-            planner.plannerId,
-            db<string[]>(lamington.plannerMember)
-                .select(plannerMember.plannerId)
-                .where({ [plannerMember.userId]: userId, [plannerMember.plannerId]: plannerId })
-        )
-        .orWhere({ [planner.createdBy]: userId, [planner.plannerId]: plannerId })
-        .leftJoin(lamington.user, planner.createdBy, user.userId)
-        .leftJoin(lamington.plannerMember, planner.plannerId, plannerMember.plannerId);
+    // TODO move to single query
+    for (const { plannerId, userId } of requests) {
+        const result = await db<Planner>(lamington.planner)
+            .select(
+                planner.plannerId,
+                "name",
+                "customisations",
+                "description",
+                "createdBy",
+                `${user.firstName} as createdByName`,
+                plannerMember.status
+            )
+            .whereIn(
+                planner.plannerId,
+                db<string[]>(lamington.plannerMember)
+                    .select(plannerMember.plannerId)
+                    .where({ [plannerMember.userId]: userId, [plannerMember.plannerId]: plannerId })
+            )
+            .orWhere({ [planner.createdBy]: userId, [planner.plannerId]: plannerId })
+            .leftJoin(lamington.user, planner.createdBy, user.userId)
+            .leftJoin(lamington.plannerMember, planner.plannerId, plannerMember.plannerId)
+            .first();
 
-    return query;
-};
-
-/**
- * Creates a new planner from params
- * @returns the newly created planners
- */
-const savePlanners = async (
-    planners: CreateQuery<Planner & { members?: Array<EntityMember> }>
-): CreateResponse<Planner> => {
-    if (!Array.isArray(planners)) {
-        planners = [planners];
+        if (result) response.push(result);
     }
 
-    const data = planners
-        .map(({ plannerId, ...params }) => ({ plannerId: plannerId ?? Uuid(), ...params }))
-        .filter(Undefined);
-    const plannerIds = data.map(({ plannerId }) => plannerId);
-
-    const plannerData: Planner[] = data.map(({ members, ...plannerItem }) => plannerItem);
-    const memberData: CreatePlannerMemberParams[] = data.flatMap(({ plannerId, members }) => ({
-        plannerId,
-        members:
-            members?.map(({ userId, allowEditing }) => ({
-                userId,
-                allowEditing,
-                accepted: false,
-            })) ?? [],
-    }));
-
-    const result = await db(lamington.planner).insert(plannerData).onConflict(planner.plannerId).merge();
-
-    if (memberData.length > 0) await PlannerMemberActions.save(memberData, { preserveAccepted: true, trimNotIn: true });
-
-    return db<Planner>(lamington.planner)
-        .select(planner.plannerId, planner.name, planner.customisations, planner.description, planner.createdBy)
-        .whereIn(planner.plannerId, plannerIds);
+    return response;
 };
 
-interface DeletePlannerParams {
-    plannerId: string;
-}
+const savePlanners: PlannerService["Save"] = async params => {
+    const planners = EnsureArray(params);
 
-/**
- * Deletes planners by planner ids
- */
-const deletePlanners = async (planners: CreateQuery<DeletePlannerParams>): DeleteResponse => {
-    if (!Array.isArray(planners)) {
-        planners = [planners];
-    }
+    const plannerData: Planner[] = planners.map(({ members, ...plannerItem }) => plannerItem);
 
-    const plannerIds = planners.map(({ plannerId }) => plannerId);
+    const result = await db<Planner>(lamington.planner)
+        .insert(plannerData)
+        .onConflict("plannerId")
+        .merge()
+        .returning(["plannerId", "name", "customisations", "description", "createdBy"]);
+
+    if (planners.length > 0) await PlannerMemberActions.save(planners, { trimNotIn: true });
+
+    return result;
+};
+
+const deletePlanners: PlannerService["Delete"] = async params => {
+    const plannerIds = EnsureArray(params).map(({ plannerId }) => plannerId);
 
     return db(lamington.planner).whereIn(planner.plannerId, plannerIds).delete();
 };
 
-interface ReadPlannerInternalParams {
-    plannerId: string;
-}
+const readPermissions: PlannerService["ReadPermissions"] = async params => {
+    const planners = EnsureArray(params);
+    const plannersItems = planners.map(({ plannerId, userId }) => [plannerId, userId]);
 
-/**
- * Get planner by id or ids
- * @returns an array of planner matching given ids
- */
-const readPlannersInternal = async (params: ReadQuery<ReadPlannerInternalParams>): ReadResponse<Planner> => {
-    if (!Array.isArray(params)) {
-        params = [params];
-    }
+    if (!plannersItems.length) return [];
 
-    const plannerIds = params.map(({ plannerId }) => plannerId);
-
-    const query = db<Planner>(lamington.planner)
-        .select(planner.plannerId, planner.name, planner.customisations, planner.description, planner.createdBy)
-        .whereIn(planner.plannerId, plannerIds);
-    return query;
+    return db<Planner>(lamington.planner)
+        .select(planner.plannerId, planner.createdBy, plannerMember.status)
+        .whereIn(
+            planner.plannerId,
+            planners.map(({ plannerId }) => plannerId)
+        )
+        .leftJoin(lamington.plannerMember, builder => {
+            builder.on(planner.plannerId, "=", plannerMember.plannerId).andOnIn(
+                plannerMember.userId,
+                planners.map(({ userId }) => userId)
+            );
+        });
 };
-
-export const PlannerActions = {
-    save: savePlanners,
-    delete: deletePlanners,
-    read: readPlanners,
-    readMy: readMyPlanners,
-};
-
-export type PlannerActions = typeof PlannerActions;
-
-export const InternalPlannerActions = {
-    read: readPlannersInternal,
+export const PlannerActions: PlannerService = {
+    Save: savePlanners,
+    Delete: deletePlanners,
+    Read: readPlanners,
+    ReadByUser: readMyPlanners,
+    ReadPermissions: readPermissions,
 };

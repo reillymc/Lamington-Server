@@ -1,5 +1,6 @@
 import { v4 as Uuid } from "uuid";
 
+import { RecipeService } from "../../controllers/spec";
 import { DefaultSection, QueryMetadata, ServiceParams, ServiceResponse } from "../../database";
 import { BisectOnValidItems, EnsureDefinedArray, ObjectFromEntries, Undefined } from "../../utils";
 import {
@@ -12,7 +13,6 @@ import {
     RecipeServings,
     RecipeTags,
 } from "../spec";
-import { RecipeService } from "../../controllers/spec";
 
 import { parseBaseQuery } from "./queryParams";
 
@@ -147,25 +147,15 @@ export const validatePostRecipeBody = ({ data }: PostRecipeRequestBody, userId: 
         const validItem: ServiceParams<RecipeService, "Save"> = {
             cookTime: item.cookTime,
             prepTime: item.prepTime,
-            servings: stringifyServings(item.servings),
-            ingredients: item.ingredients?.map(({ items, ...section }) => ({
-                ...section,
-                items: items
-                    .map(({ amount, ...item }) => {
-                        return {
-                            ...item,
-                            amount: stringifyAmount(amount),
-                        };
-                    })
-                    .filter(Undefined),
-            })),
+            servings: item.servings,
+            ingredients: item.ingredients,
             method: item.method?.map(methodSection => ({
                 ...methodSection,
                 items: methodSection.items.filter(step => !!step.description),
             })),
             tips: item.tips,
             photo: item.photo,
-            public: item.public ? 1 : 0,
+            public: item.public ?? false,
             source: item.source,
             tags: item.tags,
             summary: item.summary,
@@ -192,11 +182,7 @@ const recipeIngredientRowsToResponse = ({
             description,
             items: ingredients
                 .filter(ingredient => ingredient.sectionId === sectionId)
-                .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-                .map(({ amount, ...ingredient }) => ({
-                    ...ingredient,
-                    amount: parseAmount(amount),
-                })),
+                .sort((a, b) => (a.index ?? 0) - (b.index ?? 0)),
         }))
         .filter(({ items, name }) => (name === DefaultSection ? true : items.length));
 
@@ -254,7 +240,6 @@ export const RecipeReadResponseToRecipe = (recipe: ServiceResponse<RecipeService
     ingredients: recipeIngredientRowsToResponse(recipe),
     method: recipeStepRowsToResponse(recipe),
     tags: recipeTagRowsToResponse(recipe),
-    servings: parseServings(recipe.servings),
     createdBy: { userId: recipe.createdBy, firstName: recipe.createdByName },
     public: !!recipe.public,
 });

@@ -2,17 +2,9 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { CookListEndpoint, CleanTables, PrepareAuthenticatedUser, randomCount } from "../../helpers";
+import { CookListMeal, CookListMealActions } from "../../../src/controllers/cookListMeal";
 import { GetCookListMealsResponse } from "../../../src/routes/spec";
-import { CookListMealActions, CookListMeal } from "../../../src/controllers/cookListMeal";
-
-beforeEach(async () => {
-    await CleanTables("user", "planner_meal");
-});
-
-afterAll(async () => {
-    await CleanTables("user", "planner_meal");
-});
+import { CookListEndpoint, PrepareAuthenticatedUser, randomCount } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).get(CookListEndpoint.getMeals);

@@ -43,7 +43,7 @@ export type RecipeTags = { [tagGroup: string]: Partial<Tag> & { tags?: Array<Tag
 
 type RecipeIngredients = Array<Section<RecipeIngredientItem>>;
 
-type SaveRecipe = Omit<Recipe, "dateCreated" | "dateUpdated">;
+type SaveRecipe = Omit<Recipe, "createdAt" | "updatedAt">;
 
 interface ReadRecipeResponse
     extends Pick<
@@ -54,8 +54,8 @@ interface ReadRecipeResponse
         | "timesCooked"
         | "cookTime"
         | "prepTime"
-        | "dateCreated"
-        | "dateUpdated"
+        | "createdAt"
+        | "updatedAt"
         | "public"
         | "createdBy"
         | "servings"
@@ -74,7 +74,7 @@ interface ReadRecipeResponse
 
 type QueryRecipesResult = Pick<
     Recipe,
-    "recipeId" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime" | "dateCreated" | "public" | "createdBy"
+    "recipeId" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime" | "createdAt" | "public" | "createdBy"
 > & {
     ratingAverage: RecipeRating["rating"];
     ratingPersonal: RecipeRating["rating"];

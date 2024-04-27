@@ -59,7 +59,7 @@ export type PostIngredientRequestBody = BaseRequestBody<{
 }>;
 
 export type PostIngredientRequest = BaseRequest<PostIngredientRequestBody & PostIngredientRequestParams>;
-export type PostIngredientResponse = BaseResponse<Ingredient>;
+export type PostIngredientResponse = BaseResponse<Pick<Ingredient, "ingredientId">>;
 export type PostIngredientService = (request: PostIngredientRequest) => PostIngredientResponse;
 
 export interface IngredientServices {

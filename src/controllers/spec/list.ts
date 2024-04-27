@@ -1,13 +1,15 @@
-import { ListMember, List, User, ReadMyService, ReadService, SaveService, DeleteService } from "../../database";
+import { DeleteService, List, ListMember, ReadMyService, ReadService, SaveService, User } from "../../database";
 import { EntityMember } from "../entity";
 
 interface ListReadResponse extends Pick<List, "listId" | "name" | "customisations" | "createdBy" | "description"> {
     createdByName: User["firstName"];
-    accepted: ListMember["accepted"];
-    canEdit: ListMember["canEdit"];
+    status: ListMember["status"];
 }
 
-interface ListReadSummaryResponse extends Pick<List, "listId" | "createdBy"> {}
+interface ListReadPermissionsResponse extends Pick<List, "listId" | "createdBy"> {
+    userId: User["userId"];
+    status: ListMember["status"];
+}
 
 export interface ListService {
     /**
@@ -42,5 +44,5 @@ export interface ListService {
      * @security Insecure
      * @returns an array of lists matching given ids, but only with minimal required fields to ensure performance
      */
-    ReadSummary: ReadService<ListReadSummaryResponse, "listId">;
+    ReadPermissions: ReadService<ListReadPermissionsResponse, "listId" | "userId">;
 }

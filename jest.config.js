@@ -4,8 +4,9 @@ module.exports = {
     testEnvironment: "node",
     globalSetup: "./tests/setup.ts",
     globalTeardown: "./tests/teardown.ts",
-    testTimeout: 200000,
+    testTimeout: 20000,
     watchAll: false,
     collectCoverageFrom: ["./src/**"],
-    coveragePathIgnorePatterns: ["/src/docs/"],
+    coveragePathIgnorePatterns: ["/src/docs/", "/src/database/migrations/", "/src/database/seeds/"],
+    setupFilesAfterEnv: ["./tests/setupTests.ts"],
 };

@@ -10,6 +10,5 @@ export type ListMember = EntityMember<{ listId: string }>;
 export const listMember: Table<ListMember> = {
     listId: `${lamington.listMember}.listId`,
     userId: `${lamington.listMember}.userId`,
-    canEdit: `${lamington.listMember}.canEdit`,
-    accepted: `${lamington.listMember}.accepted`,
+    status: `${lamington.listMember}.status`,
 } as const;

@@ -1,4 +1,4 @@
-import db from "../src/database/config";
+import db from "../src/database";
 
 const tearDown = async () => {
     await db.destroy();

@@ -3,35 +3,44 @@ import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
 import {
-    PlannerEndpoint,
-    CleanTables,
-    CreateUsers,
-    PrepareAuthenticatedUser,
-    randomBoolean,
-    randomCount,
-} from "../../helpers";
-import { PlannerActions, PlannerMemberActions } from "../../../src/controllers";
-import { PostPlannerRequestBody } from "../../../src/routes/spec";
-import { EntityMember } from "../../../src/controllers/entity";
+    CookListMealActions,
+    InternalPlannerMealActions,
+    PlannerActions,
+    PlannerMemberActions,
+} from "../../../src/controllers";
+import { PlannerService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
+import { PostPlannerMealRequestBody, UserStatus } from "../../../src/routes/spec";
+import { CreateUsers, PlannerEndpoint, PrepareAuthenticatedUser, randomNumber } from "../../helpers";
 
 // TODO: Test whether a user can move a meal from a planner they dont own to their own - therefore deleting the other user's planner's meal. Test general copying/movind of meals, and moving from cooklist
 
-beforeEach(async () => {
-    await CleanTables("planner", "user", "planner_member");
-});
-
-afterAll(async () => {
-    await CleanTables("planner", "user", "planner_member");
-});
-
 test("route should require authentication", async () => {
-    const res = await request(app).post(PlannerEndpoint.postPlanner);
+    const res = await request(app).post(PlannerEndpoint.postPlannerMeal(uuid()));
 
     expect(res.statusCode).toEqual(401);
 });
 
-test("should not allow editing if not planner owner", async () => {
+test("should return 404 for non-existant planner", async () => {
+    const [token] = await PrepareAuthenticatedUser();
+
+    const res = await request(app)
+        .post(PlannerEndpoint.postPlannerMeal(uuid()))
+        .set(token)
+        .send({
+            data: {
+                id: uuid(),
+                dayOfMonth: randomNumber(),
+                month: randomNumber(),
+                meal: uuid(),
+                year: randomNumber(),
+            },
+        } satisfies PostPlannerMealRequestBody);
+
+    expect(res.statusCode).toEqual(404);
+});
+
+test("should not allow adding meal if not planner owner", async () => {
     const [token] = await PrepareAuthenticatedUser();
     const [plannerOwner] = await CreateUsers();
 
@@ -40,21 +49,27 @@ test("should not allow editing if not planner owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: plannerOwner!.userId,
-    } satisfies ServiceParams<PlannerActions, "save">;
+    } satisfies ServiceParams<PlannerService, "Save">;
 
-    await PlannerActions.save(planner);
+    await PlannerActions.Save(planner);
 
     const res = await request(app)
-        .post(PlannerEndpoint.postPlanner)
+        .post(PlannerEndpoint.postPlannerMeal(planner.plannerId))
         .set(token)
         .send({
-            data: { plannerId: planner.plannerId, name: uuid() },
-        } satisfies PostPlannerRequestBody);
+            data: {
+                id: uuid(),
+                dayOfMonth: randomNumber(),
+                month: randomNumber(),
+                meal: uuid(),
+                year: randomNumber(),
+            },
+        } satisfies PostPlannerMealRequestBody);
 
     expect(res.statusCode).toEqual(403);
 });
 
-test("should not allow editing if planner member but not planner owner", async () => {
+test("should not allow adding meal if planner member without edit permission", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
     const [plannerOwner] = await CreateUsers();
 
@@ -63,199 +78,165 @@ test("should not allow editing if planner member but not planner owner", async (
         name: uuid(),
         description: uuid(),
         createdBy: plannerOwner!.userId,
-    } satisfies ServiceParams<PlannerActions, "save">;
+    } satisfies ServiceParams<PlannerService, "Save">;
 
-    await PlannerActions.save(planner);
+    await PlannerActions.Save(planner);
     await PlannerMemberActions.save({
         plannerId: planner.plannerId,
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Member,
             },
         ],
     });
 
     const res = await request(app)
-        .post(PlannerEndpoint.postPlanner)
+        .post(PlannerEndpoint.postPlannerMeal(planner.plannerId))
         .set(token)
         .send({
-            data: { plannerId: planner.plannerId, name: uuid() },
-        } satisfies PostPlannerRequestBody);
+            data: {
+                id: uuid(),
+                dayOfMonth: randomNumber(),
+                month: randomNumber(),
+                meal: uuid(),
+                year: randomNumber(),
+                createdBy: user.userId,
+            },
+        } satisfies PostPlannerMealRequestBody);
 
     expect(res.statusCode).toEqual(403);
 });
 
-test("should create planner", async () => {
+test("should allow adding meal if planner member with edit permission", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
-    const users = await CreateUsers();
-
-    const planner = {
-        data: {
-            name: uuid(),
-            description: uuid(),
-            members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean() })),
-        },
-    } satisfies Partial<PostPlannerRequestBody>;
-
-    const res = await request(app).post(PlannerEndpoint.postPlanner).set(token).send(planner);
-
-    expect(res.statusCode).toEqual(201);
-
-    const savedPlanners = await PlannerActions.readMy({ userId: user.userId });
-
-    expect(savedPlanners.length).toEqual(1);
-
-    const [savedPlanner] = savedPlanners;
-    const savedPlannerMembers = await PlannerMemberActions.read({ entityId: savedPlanner!.plannerId });
-
-    expect(savedPlanner?.name).toEqual(planner.data.name);
-    expect(savedPlanner?.description).toEqual(planner.data.description);
-    expect(savedPlanner?.createdBy).toEqual(user.userId);
-    expect(savedPlannerMembers.length).toEqual(planner.data.members!.length);
-
-    for (const { userId, allowEditing } of planner.data.members!) {
-        const savedPlannerMember = savedPlannerMembers.find(({ userId: savedUserId }) => savedUserId === userId);
-
-        expect(savedPlannerMember).toBeTruthy();
-
-        expect(savedPlannerMember?.canEdit).toEqual(allowEditing ? 1 : 0);
-    }
-});
-
-test("should save updated planner details as planner owner", async () => {
-    const [token, user] = await PrepareAuthenticatedUser();
+    const [plannerOwner] = await CreateUsers();
 
     const planner = {
         plannerId: uuid(),
         name: uuid(),
         description: uuid(),
-        createdBy: user.userId,
-    } satisfies ServiceParams<PlannerActions, "save">;
+        createdBy: plannerOwner!.userId,
+    } satisfies ServiceParams<PlannerService, "Save">;
 
-    await PlannerActions.save(planner);
+    const meal = {
+        id: uuid(),
+        dayOfMonth: randomNumber(),
+        month: randomNumber(),
+        meal: uuid(),
+        year: randomNumber(),
+    } satisfies PostPlannerMealRequestBody["data"];
 
-    const updatedPlanner = {
-        data: {
-            plannerId: planner.plannerId,
-            name: uuid(),
-            description: uuid(),
-        },
-    } satisfies PostPlannerRequestBody;
-
-    const res = await request(app).post(PlannerEndpoint.postPlanner).set(token).send(updatedPlanner);
-
-    expect(res.statusCode).toEqual(201);
-
-    const [savedPlanner] = await PlannerActions.read({ plannerId: planner.plannerId, userId: user.userId });
-
-    expect(savedPlanner?.name).toEqual(updatedPlanner.data!.name);
-    expect(savedPlanner?.description).toEqual(updatedPlanner.data!.description);
-    expect(savedPlanner?.plannerId).toEqual(planner.plannerId);
-    expect(savedPlanner?.createdBy).toEqual(planner.createdBy);
-});
-
-test("should save additional planner members", async () => {
-    const [token, user] = await PrepareAuthenticatedUser();
-    const initialUsers = await CreateUsers({ count: randomCount });
-    const additionalUsers = await CreateUsers({ count: randomCount });
-
-    const initialMembers: EntityMember[] = initialUsers.map(({ userId }) => ({ userId }));
-    const additionalMembers: EntityMember[] = additionalUsers.map(({ userId }) => ({ userId }));
-    const allMembers = [...initialMembers, ...additionalMembers];
-
-    const [planner] = await PlannerActions.save({
-        plannerId: uuid(),
-        createdBy: user.userId,
-        name: uuid(),
-        description: uuid(),
-        members: initialMembers,
+    await PlannerActions.Save(planner);
+    await PlannerMemberActions.save({
+        plannerId: planner.plannerId,
+        members: [
+            {
+                userId: user!.userId,
+                status: UserStatus.Administrator,
+            },
+        ],
     });
-
-    const initialPlannerMembers = await PlannerMemberActions.read({ entityId: planner!.plannerId });
-    expect(initialPlannerMembers.length).toEqual(initialMembers.length);
 
     const res = await request(app)
-        .post(PlannerEndpoint.postPlanner)
+        .post(PlannerEndpoint.postPlannerMeal(planner.plannerId))
         .set(token)
-        .send({ data: { ...planner, members: allMembers } } satisfies PostPlannerRequestBody);
+        .send({ data: meal } satisfies PostPlannerMealRequestBody);
 
     expect(res.statusCode).toEqual(201);
 
-    const savedPlannerMembers = await PlannerMemberActions.read({ entityId: planner!.plannerId });
+    const plannerMeals = await InternalPlannerMealActions.readAll({ plannerId: planner.plannerId });
 
-    expect(savedPlannerMembers.length).toEqual(allMembers.length);
+    expect(plannerMeals.length).toEqual(1);
 
-    savedPlannerMembers.forEach(({ userId }) => {
-        const savedPlannerMember = allMembers.find(({ userId: savedUserId }) => savedUserId === userId);
+    const [plannerMeal] = plannerMeals;
 
-        expect(savedPlannerMember).toBeTruthy();
-    });
+    expect(plannerMeal?.plannerId).toEqual(planner.plannerId);
+    expect(plannerMeal?.id).toEqual(meal.id);
 });
 
-test("should remove some planner members", async () => {
+test("should allow editing if planner owner", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
-    const initialMembers = await CreateUsers({ count: randomCount });
 
-    const members: EntityMember[] = initialMembers.map(({ userId }) => ({ userId }));
-    const reducedMembers: EntityMember[] = members.slice(0, Math.max((members.length - 1) / 2));
-    const excludedMembers: EntityMember[] = members.filter(
-        ({ userId }) => !reducedMembers.find(({ userId: savedUserId }) => savedUserId === userId)
-    );
-
-    const [planner] = await PlannerActions.save({
+    const planner = {
         plannerId: uuid(),
-        createdBy: user.userId,
         name: uuid(),
         description: uuid(),
-        members,
-    });
+        createdBy: user.userId,
+    } satisfies ServiceParams<PlannerService, "Save">;
 
-    const initialPlannerMembers = await PlannerMemberActions.read({ entityId: planner!.plannerId });
-    expect(initialPlannerMembers.length).toEqual(members.length);
+    const meal = {
+        id: uuid(),
+        dayOfMonth: randomNumber(),
+        month: randomNumber(),
+        meal: uuid(),
+        year: randomNumber(),
+    } satisfies PostPlannerMealRequestBody["data"];
+
+    await PlannerActions.Save(planner);
+
     const res = await request(app)
-        .post(PlannerEndpoint.postPlanner)
+        .post(PlannerEndpoint.postPlannerMeal(planner.plannerId))
         .set(token)
-        .send({ data: { ...planner, members: reducedMembers } } satisfies PostPlannerRequestBody);
+        .send({ data: meal } satisfies PostPlannerMealRequestBody);
 
     expect(res.statusCode).toEqual(201);
 
-    const updatedPlannerMembers = await PlannerMemberActions.read({ entityId: planner!.plannerId });
-    expect(updatedPlannerMembers.length).toEqual(reducedMembers.length);
+    const plannerMeals = await InternalPlannerMealActions.readAll({ plannerId: planner.plannerId });
 
-    updatedPlannerMembers.forEach(({ userId }) => {
-        const savedPlannerMember = reducedMembers.find(({ userId: savedUserId }) => savedUserId === userId);
-        const illegalMember = excludedMembers.some(({ userId: savedUserId }) => savedUserId === userId);
+    expect(plannerMeals.length).toEqual(1);
 
-        expect(savedPlannerMember).toBeTruthy();
-        expect(illegalMember).toBeFalsy();
-    });
+    const [plannerMeal] = plannerMeals;
+
+    expect(plannerMeal?.plannerId).toEqual(planner.plannerId);
+    expect(plannerMeal?.id).toEqual(meal.id);
 });
 
-test("should remove all planner members", async () => {
-    const [token, user] = await PrepareAuthenticatedUser();
-    const members = await CreateUsers({ count: randomCount });
+test("should move meal from cook list to planner", async () => {
+    const [token, { userId }] = await PrepareAuthenticatedUser();
 
-    const [planner] = await PlannerActions.save({
+    const cookListMeal = {
+        id: uuid(),
+        meal: uuid(),
+        description: uuid(),
+        createdBy: userId,
+        source: uuid(),
+        sequence: randomNumber(),
+    } satisfies ServiceParams<CookListMealActions, "save">;
+
+    await CookListMealActions.save(cookListMeal);
+
+    const planner = {
         plannerId: uuid(),
-        createdBy: user.userId,
         name: uuid(),
         description: uuid(),
-        members: members.map(({ userId }) => ({ userId })),
-    });
+        createdBy: userId,
+    } satisfies ServiceParams<PlannerService, "Save">;
 
-    const initialPlannerMembers = await PlannerMemberActions.read({ entityId: planner!.plannerId });
-    expect(initialPlannerMembers.length).toEqual(members.length);
+    await PlannerActions.Save(planner);
 
     const res = await request(app)
-        .post(PlannerEndpoint.postPlanner)
+        .post(PlannerEndpoint.postPlannerMeal(planner.plannerId))
         .set(token)
-        .send({ data: { ...planner, members: [] } } satisfies PostPlannerRequestBody);
+        .send({
+            data: {
+                ...cookListMeal,
+                dayOfMonth: randomNumber(),
+                month: randomNumber(),
+                year: randomNumber(),
+            },
+        } satisfies PostPlannerMealRequestBody);
 
     expect(res.statusCode).toEqual(201);
 
-    const savedPlannerMembers = await PlannerMemberActions.read({ entityId: planner!.plannerId });
+    const plannerMeals = await InternalPlannerMealActions.readAll({ plannerId: planner.plannerId });
+    expect(plannerMeals.length).toEqual(1);
 
-    expect(savedPlannerMembers.length).toEqual(0);
+    const [plannerMeal] = plannerMeals;
+
+    expect(plannerMeal?.plannerId).toEqual(planner.plannerId);
+    expect(plannerMeal?.id).toEqual(cookListMeal.id);
+
+    const cookListMeals = await CookListMealActions.readMy({ userId });
+    expect(cookListMeals.length).toEqual(0);
 });

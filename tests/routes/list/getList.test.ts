@@ -2,33 +2,18 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import {
-    ListEndpoint,
-    CleanTables,
-    CreateUsers,
-    PrepareAuthenticatedUser,
-    randomNumber,
-    randomBoolean,
-} from "../../helpers";
-import { GetListResponse } from "../../../src/routes/spec";
-import { ListActions, ListMemberActions, ListItemActions } from "../../../src/controllers";
+import { ListActions, ListItemActions, ListMemberActions } from "../../../src/controllers";
+import { ListItemService, ListService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
 import { ListCustomisations } from "../../../src/routes/helpers";
-import { ListService } from "../../../src/controllers/spec";
+import { GetListResponse, UserStatus } from "../../../src/routes/spec";
+import { CreateUsers, ListEndpoint, PrepareAuthenticatedUser, randomBoolean, randomNumber } from "../../helpers";
 
 const getListCustomisations = (): ListCustomisations => {
     return {
         icon: uuid(),
     };
 };
-
-beforeEach(async () => {
-    await CleanTables("list", "user", "list_item", "list_member");
-});
-
-afterAll(async () => {
-    await CleanTables("list", "user", "list_item", "list_member");
-});
 
 test("route should require authentication", async () => {
     const res = await request(app).get(ListEndpoint.getList(uuid()));
@@ -71,7 +56,7 @@ test("should return correct list details for list id", async () => {
         listId: uuid(),
         name: uuid(),
         description: uuid(),
-        customisations: JSON.stringify(customisations),
+        customisations,
         createdBy: user.userId,
     } satisfies ServiceParams<ListService, "Save">;
 
@@ -141,7 +126,7 @@ test("should return list items", async () => {
                 completed: randomBoolean(),
                 listId: list.listId,
                 createdBy: user.userId,
-            } satisfies ServiceParams<ListItemActions, "save">)
+            } satisfies ServiceParams<ListItemService, "Save">)
     );
 
     const itemsNotInList = Array.from({ length: randomNumber() }).map(
@@ -152,10 +137,10 @@ test("should return list items", async () => {
                 completed: randomBoolean(),
                 listId: otherList.listId,
                 createdBy: user.userId,
-            } satisfies ServiceParams<ListItemActions, "save">)
+            } satisfies ServiceParams<ListItemService, "Save">)
     );
 
-    await ListItemActions.save(itemsInList);
+    await ListItemActions.Save(itemsInList);
 
     const res = await request(app).get(ListEndpoint.getList(list.listId)).set(token);
 
@@ -188,8 +173,7 @@ test("should return list members", async () => {
         members: [
             {
                 userId: listMember!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });

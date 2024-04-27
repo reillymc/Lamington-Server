@@ -2,19 +2,11 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { ListEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 import { ListActions, ListMemberActions } from "../../../src/controllers";
-import { DeleteListRequestParams } from "../../../src/routes/spec";
-import { ServiceParams } from "../../../src/database";
 import { ListService } from "../../../src/controllers/spec";
-
-beforeEach(async () => {
-    await CleanTables("list", "user", "list_member");
-});
-
-afterAll(async () => {
-    await CleanTables("list", "user", "list_member");
-});
+import { ServiceParams } from "../../../src/database";
+import { DeleteListRequestParams, UserStatus } from "../../../src/routes/spec";
+import { CreateUsers, ListEndpoint, PrepareAuthenticatedUser } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).delete(ListEndpoint.deleteList(uuid()));
@@ -71,8 +63,7 @@ test("should not allow deletion if list member but not list owner", async () => 
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });

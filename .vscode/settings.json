@@ -1,42 +1,47 @@
 {
     "cSpell.words": [
+        "devcontainer",
         "fieldname",
         "knexfile",
         "openapi",
         "originalname",
         "prestart",
         "sslcert",
+        "tinyint",
         "wcaserver"
     ],
     "typescript.tsdk": "node_modules/typescript/lib",
     "sqltools.connections": [
         {
-            "mysqlOptions": {
-                "authProtocol": "default",
-                "enableSsl": "Disabled"
-            },
             "previewLimit": 50,
-            "server": "mariadb",
-            "port": 3306,
-            "driver": "MariaDB",
+            "server": "db_production",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "Production",
+            "database": "lamingtondb",
+            "username": "root",
+            "password": "password"
+        },
+        {
+            "previewLimit": 50,
+            "server": "db_development",
+            "port": 5432,
+            "driver": "PostgreSQL",
             "name": "Development",
             "database": "lamingtondb",
             "username": "root",
-            "password": ""
+            "password": "password"
         },
         {
-            "mysqlOptions": {
-                "authProtocol": "default",
-                "enableSsl": "Disabled"
-            },
             "previewLimit": 50,
-            "server": "mariadb_testdb",
-            "port": 3306,
-            "driver": "MariaDB",
+            "server": "db_testing",
+            "port": 5432,
+            "driver": "PostgreSQL",
             "name": "Testing",
             "database": "lamingtondb",
             "username": "root",
-            "password": ""
+            "password": "password"
         }
-    ]
+    ],
+    "jest.runMode": "on-demand"
 }

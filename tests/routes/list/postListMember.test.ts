@@ -2,19 +2,11 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { ListEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../helpers";
 import { ListActions, ListMemberActions } from "../../../src/controllers";
-import { PostListMemberRequestBody } from "../../../src/routes/spec";
-import { ServiceParams } from "../../../src/database";
 import { ListService } from "../../../src/controllers/spec";
-
-beforeEach(async () => {
-    await CleanTables("list", "user", "list_member");
-});
-
-afterAll(async () => {
-    await CleanTables("list", "user", "list_member");
-});
+import { ServiceParams } from "../../../src/database";
+import { UserStatus } from "../../../src/routes/spec";
+import { CreateUsers, ListEndpoint, PrepareAuthenticatedUser } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).post(ListEndpoint.postListMember(uuid()));
@@ -25,16 +17,13 @@ test("route should require authentication", async () => {
 test("should return 404 for non-existant list", async () => {
     const [token] = await PrepareAuthenticatedUser();
 
-    const res = await request(app)
-        .post(ListEndpoint.postListMember(uuid()))
-        .set(token)
-        .send({ accepted: true } satisfies PostListMemberRequestBody);
+    const res = await request(app).post(ListEndpoint.postListMember(uuid())).set(token).send();
 
     expect(res.statusCode).toEqual(404);
 });
 
 test("should not allow editing if not existing list member", async () => {
-    const [token, user] = await PrepareAuthenticatedUser();
+    const [token] = await PrepareAuthenticatedUser();
     const [listOwner] = await CreateUsers();
 
     const list = {
@@ -46,10 +35,7 @@ test("should not allow editing if not existing list member", async () => {
 
     await ListActions.Save(list);
 
-    const res = await request(app)
-        .post(ListEndpoint.postListMember(list.listId))
-        .set(token)
-        .send({ accepted: true } satisfies PostListMemberRequestBody);
+    const res = await request(app).post(ListEndpoint.postListMember(list.listId)).set(token).send();
 
     expect(res.statusCode).toEqual(403);
 });
@@ -71,16 +57,12 @@ test("should allow accepting if existing list member", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: false,
-                allowEditing: false,
+                status: UserStatus.Pending,
             },
         ],
     });
 
-    const res = await request(app)
-        .post(ListEndpoint.postListMember(list.listId))
-        .set(token)
-        .send({ accepted: true } satisfies PostListMemberRequestBody);
+    const res = await request(app).post(ListEndpoint.postListMember(list.listId)).set(token).send();
 
     expect(res.statusCode).toEqual(201);
 
@@ -90,7 +72,6 @@ test("should allow accepting if existing list member", async () => {
 
     const [listMember] = listMembers;
 
-    expect(listMember?.accepted).toEqual(1);
-    expect(listMember?.canEdit).toEqual(0);
+    expect(listMember?.status).toEqual(UserStatus.Member);
     expect(listMember?.userId).toEqual(user.userId);
 });

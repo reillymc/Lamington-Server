@@ -11,20 +11,20 @@ import {
     RecipeActions,
     UserActions,
 } from "../controllers";
-import { userStatusToUserStatus } from "../controllers/helpers";
 import { AppError, MessageAction, userMessage } from "../services";
+import { getStatus } from "./helpers";
 import {
-    GetUsersRequestParams,
-    GetUsersResponse,
-    GetUsersRequestBody,
-    UserEndpoint,
-    UserStatus,
-    PostUserApprovalRequestParams,
-    PostUserApprovalResponse,
-    PostUserApprovalRequestBody,
     GetPendingUsersRequestBody,
     GetPendingUsersRequestParams,
     GetPendingUsersResponse,
+    GetUsersRequestBody,
+    GetUsersRequestParams,
+    GetUsersResponse,
+    PostUserApprovalRequestBody,
+    PostUserApprovalRequestParams,
+    PostUserApprovalResponse,
+    UserEndpoint,
+    UserStatus,
 } from "./spec";
 
 const router = express.Router();
@@ -35,7 +35,7 @@ const router = express.Router();
 router.get<GetUsersRequestParams, GetUsersResponse, GetUsersRequestBody>(
     UserEndpoint.getUsers,
     async ({ session }, res, next) => {
-        const isAdmin = session.status === UserStatus.Administrator;
+        const isAdmin = session.status === UserStatus.Administrator || session.status === UserStatus.Owner;
 
         try {
             const users = await UserActions.readAll();
@@ -47,7 +47,7 @@ router.get<GetUsersRequestParams, GetUsersResponse, GetUsersRequestBody>(
                         user.userId,
                         {
                             ...user,
-                            status: isAdmin ? userStatusToUserStatus(user.status) : undefined,
+                            status: isAdmin ? getStatus(user.status) : undefined,
                             email: isAdmin ? user.email : undefined,
                         },
                     ])
@@ -68,7 +68,7 @@ router.get<GetUsersRequestParams, GetUsersResponse, GetUsersRequestBody>(
 router.get<GetPendingUsersRequestParams, GetPendingUsersResponse, GetPendingUsersRequestBody>(
     UserEndpoint.getPendingUsers,
     async ({ session }, res, next) => {
-        const isAdmin = session.status === UserStatus.Administrator;
+        const isAdmin = session.status === UserStatus.Administrator || session.status === UserStatus.Owner;
 
         if (!isAdmin) {
             return next(new AppError({ status: 401, message: "Unauthorised action" }));
@@ -82,7 +82,7 @@ router.get<GetPendingUsersRequestParams, GetPendingUsersResponse, GetPendingUser
                     user.userId,
                     {
                         ...user,
-                        status: userStatusToUserStatus(user.status),
+                        status: getStatus(user.status),
                     },
                 ])
             );
@@ -102,7 +102,7 @@ router.get<GetPendingUsersRequestParams, GetPendingUsersResponse, GetPendingUser
 router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApprovalRequestBody>(
     UserEndpoint.approveUser,
     async ({ body, params, session }, res, next) => {
-        const isAdmin = session.status === UserStatus.Administrator;
+        const isAdmin = session.status === UserStatus.Administrator || session.status === UserStatus.Owner;
         const { userId: userToUpdate } = params;
         const { accept } = body;
 
@@ -114,19 +114,19 @@ router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApp
             return next(new AppError({ status: 400, message: "No user provided" }));
         }
 
-        const [user] = await UserActions.read({ userId: userToUpdate });
-
-        if (!user) {
-            return next(new AppError({ status: 400, message: "User does not exist" }));
-        }
-
         try {
+            const [user] = await UserActions.read({ userId: userToUpdate });
+
+            if (!user) {
+                return next(new AppError({ status: 400, message: "User does not exist" }));
+            }
+
             const [updatedUser] = await UserActions.saveStatus({
                 userId: userToUpdate,
-                status: accept ? UserStatus.Registered : UserStatus.Blacklisted,
+                status: accept ? UserStatus.Member : UserStatus.Blacklisted,
             });
 
-            if (user.status === UserStatus.Pending && updatedUser?.status === UserStatus.Registered && accept) {
+            if (user.status === UserStatus.Pending && updatedUser?.status === UserStatus.Member && accept) {
                 await createDefaultUserData(userToUpdate);
             }
 
@@ -155,7 +155,7 @@ const createDefaultUserData = async (userId: string) => {
         description: "A list of all the items I need to buy",
     });
 
-    await ListItemActions.save({
+    await ListItemActions.Save({
         listId,
         itemId: listItemId,
         createdBy: userId,
@@ -175,7 +175,7 @@ const createDefaultUserData = async (userId: string) => {
         name: "Example Recipe",
         recipeId,
         createdBy: userId,
-        public: 0,
+        public: false,
         ingredients: [
             {
                 sectionId: Uuid(),
@@ -201,14 +201,14 @@ const createDefaultUserData = async (userId: string) => {
         recipeId,
     });
 
-    await PlannerActions.save({
+    await PlannerActions.Save({
         plannerId,
         createdBy: userId,
         name: "My Meal Planner",
         description: "A planner for all the meals I want to cook",
     });
 
-    await PlannerMealActions.save([
+    await PlannerMealActions.Save([
         {
             plannerId,
             createdBy: userId,

@@ -2,19 +2,12 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import {
-    BookEndpoint,
-    CleanTables,
-    CreateUsers,
-    PrepareAuthenticatedUser,
-    randomBit,
-    randomNumber,
-} from "../../helpers";
-import { GetBookResponse } from "../../../src/routes/spec";
 import { BookActions, BookMemberActions, BookRecipeActions, RecipeActions } from "../../../src/controllers";
+import { RecipeService } from "../../../src/controllers/spec";
 import { BookRecipe, ServiceParams } from "../../../src/database";
 import { BookCustomisations } from "../../../src/routes/helpers";
-import { RecipeService } from "../../../src/controllers/spec";
+import { GetBookResponse, UserStatus } from "../../../src/routes/spec";
+import { BookEndpoint, CreateUsers, PrepareAuthenticatedUser, randomBoolean, randomNumber } from "../../helpers";
 
 const getBookCustomisations = (): BookCustomisations => {
     return {
@@ -22,14 +15,6 @@ const getBookCustomisations = (): BookCustomisations => {
         icon: uuid(),
     };
 };
-
-beforeEach(async () => {
-    await CleanTables("book", "user", "recipe", "book_recipe", "book_member");
-});
-
-afterAll(async () => {
-    await CleanTables("book", "user", "recipe", "book_recipe", "book_member");
-});
 
 test("route should require authentication", async () => {
     const res = await request(app).get(BookEndpoint.getBook(uuid()));
@@ -72,7 +57,7 @@ test("should return correct book details for book id", async () => {
         bookId: uuid(),
         name: uuid(),
         description: uuid(),
-        customisations: JSON.stringify(customisations),
+        customisations: customisations,
         createdBy: user.userId,
     } satisfies ServiceParams<BookActions, "save">;
 
@@ -134,7 +119,7 @@ test("should return book recipes", async () => {
                 recipeId: uuid(),
                 name: uuid(),
                 createdBy: user.userId,
-                public: randomBit(),
+                public: randomBoolean(),
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 
@@ -144,7 +129,7 @@ test("should return book recipes", async () => {
                 recipeId: uuid(),
                 name: uuid(),
                 createdBy: user.userId,
-                public: randomBit(),
+                public: randomBoolean(),
             } satisfies ServiceParams<RecipeService, "Save">)
     );
 
@@ -195,8 +180,7 @@ test("should return book members", async () => {
         members: [
             {
                 userId: bookMember!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });

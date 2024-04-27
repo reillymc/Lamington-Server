@@ -1,20 +1,20 @@
 import express from "express";
 import { v4 as Uuid } from "uuid";
 
-import { AppError, MessageAction, userMessage } from "../services";
 import { CookListMealActions, CookListMealActionsInternal } from "../controllers";
+import { AppError, MessageAction, userMessage } from "../services";
 import { BisectOnValidPartialItems, EnsureDefinedArray } from "../utils";
 import {
     CookListEndpoint,
     DeleteCookListMealRequestBody,
     DeleteCookListMealRequestParams,
     DeleteCookListMealResponse,
-    PostCookListMealRequestBody,
-    PostCookListMealRequestParams,
-    PostCookListMealResponse,
     GetCookListMealsRequestBody,
     GetCookListMealsRequestParams,
     GetCookListMealsResponse,
+    PostCookListMealRequestBody,
+    PostCookListMealRequestParams,
+    PostCookListMealResponse,
     RequestValidator,
 } from "./spec";
 
@@ -102,11 +102,11 @@ router.delete<DeleteCookListMealRequestParams, DeleteCookListMealResponse, Delet
     CookListEndpoint.deleteMeal,
     async ({ params, session }, res, next) => {
         // Extract request fields
-        const { mealId } = params;
+        const { mealId: id } = params;
         const { userId } = session;
 
         // Check all required fields are present
-        if (!mealId) {
+        if (!id) {
             return next(
                 new AppError({
                     status: 400,
@@ -118,7 +118,7 @@ router.delete<DeleteCookListMealRequestParams, DeleteCookListMealResponse, Delet
 
         // Update database and return status
         try {
-            const [existingMeal] = await CookListMealActionsInternal.read({ id: mealId });
+            const [existingMeal] = await CookListMealActionsInternal.read({ id });
 
             if (!existingMeal) {
                 return next(
@@ -138,7 +138,7 @@ router.delete<DeleteCookListMealRequestParams, DeleteCookListMealResponse, Delet
                 );
             }
 
-            await CookListMealActions.delete(mealId);
+            await CookListMealActions.delete({ id });
             return res.status(201).json({ error: false, message: "CookList meal deleted." });
         } catch (e: unknown) {
             next(

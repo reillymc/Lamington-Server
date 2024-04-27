@@ -2,29 +2,19 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
+import { ListActions, ListMemberActions } from "../../../src/controllers";
+import { EntityMember } from "../../../src/controllers/entity";
+import { ListService } from "../../../src/controllers/spec";
+import { ServiceParams } from "../../../src/database";
+import { PostListRequestBody, UserStatus } from "../../../src/routes/spec";
 import {
-    ListEndpoint,
-    CleanTables,
     CreateUsers,
+    ListEndpoint,
     PrepareAuthenticatedUser,
     randomBoolean,
     randomCount,
     randomNumber,
 } from "../../helpers";
-import { ListActions, ListMemberActions } from "../../../src/controllers";
-import { PostListRequestBody } from "../../../src/routes/spec";
-import { EntityMember } from "../../../src/controllers/entity";
-import { ServiceParams } from "../../../src/database";
-import { parseListCustomisations } from "../../../src/routes/helpers/list";
-import { ListService } from "../../../src/controllers/spec";
-
-beforeEach(async () => {
-    await CleanTables("list", "user", "list_member");
-});
-
-afterAll(async () => {
-    await CleanTables("list", "user", "list_member");
-});
 
 test("route should require authentication", async () => {
     const res = await request(app).post(ListEndpoint.postList);
@@ -70,8 +60,7 @@ test("should not allow editing if list member but not list owner", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });
@@ -94,7 +83,10 @@ test("should create list", async () => {
             name: uuid(),
             icon: uuid(),
             description: uuid(),
-            members: users!.map(({ userId }) => ({ userId, allowEditing: randomBoolean() })),
+            members: users!.map(({ userId }) => ({
+                userId,
+                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Member,
+            })),
         })),
     } satisfies PostListRequestBody;
 
@@ -114,20 +106,18 @@ test("should create list", async () => {
         const expectedList = lists.data.find(({ listId }) => listId === list.listId);
         const actualListMembers = savedListMembers.filter(({ listId }) => listId === list.listId);
 
-        const { icon } = parseListCustomisations(list.customisations);
-
         expect(list?.name).toEqual(expectedList!.name);
         expect(list?.description).toEqual(expectedList!.description);
-        expect(icon).toEqual(expectedList!.icon);
+        expect(list.customisations?.icon).toEqual(expectedList!.icon);
         expect(list?.createdBy).toEqual(user.userId);
         expect(actualListMembers.length).toEqual(expectedList!.members.length);
 
-        for (const { userId, allowEditing } of expectedList!.members) {
+        for (const { userId, status } of expectedList!.members) {
             const savedListMember = actualListMembers.find(({ userId: savedUserId }) => savedUserId === userId);
 
             expect(savedListMember).toBeTruthy();
 
-            expect(savedListMember?.canEdit).toEqual(allowEditing ? 1 : 0);
+            expect(savedListMember?.status).toEqual(status);
         }
     }
 });

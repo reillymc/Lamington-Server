@@ -12,8 +12,8 @@ export interface RecipeNote {
     authorId: string;
     content?: number;
     public?: number;
-    dateUpdated: string;
-    dateCreated: string;
+    updatedAt: string;
+    createdAt: string;
 }
 
 export const recipeNote: Table<RecipeNote> = {
@@ -21,6 +21,6 @@ export const recipeNote: Table<RecipeNote> = {
     authorId: `${lamington.recipeRating}.authorId`,
     content: `${lamington.recipeRating}.content`,
     public: `${lamington.recipeRating}.public`,
-    dateUpdated: `${lamington.recipeRating}.dateUpdated`,
-    dateCreated: `${lamington.recipeRating}.dateCreated`,
+    updatedAt: `${lamington.recipeRating}.updatedAt`,
+    createdAt: `${lamington.recipeRating}.createdAt`,
 };

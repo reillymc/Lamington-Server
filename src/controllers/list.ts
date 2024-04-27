@@ -1,23 +1,18 @@
-import { v4 as Uuid } from "uuid";
-
-import { EnsureArray, Undefined } from "../utils";
-import db, { list, lamington, listMember, user, List, GetColumns } from "../database";
-import { CreateListMemberParams, ListMemberActions } from "./listMember";
+import db, { List, lamington, list, listMember, user } from "../database";
+import { EnsureArray } from "../utils";
+import { ListMemberActions } from "./listMember";
 import { ListService } from "./spec";
 
 const readMyLists: ListService["ReadByUser"] = async ({ userId }) => {
-    const query = db(lamington.list)
+    const query = db<List>(lamington.list)
         .select(
-            GetColumns<ListService, "ReadByUser">({
-                listId: list.listId,
-                name: list.name,
-                customisations: list.customisations,
-                createdBy: list.createdBy,
-                description: list.description,
-                createdByName: `${user.firstName} as createdByName`,
-                accepted: listMember.accepted,
-                canEdit: listMember.canEdit,
-            })
+            list.listId,
+            "name",
+            "customisations",
+            "createdBy",
+            "description",
+            `${user.firstName} as createdByName`,
+            listMember.status
         )
         .where({ [list.createdBy]: userId })
         .orWhere({ [listMember.userId]: userId })
@@ -29,22 +24,19 @@ const readMyLists: ListService["ReadByUser"] = async ({ userId }) => {
 
 const readLists: ListService["Read"] = async params => {
     const requests = EnsureArray(params);
-
     const response = [];
 
+    // TODO move to single query
     for (const { listId, userId } of requests) {
-        const result = await db(lamington.list)
+        const result = await db<List>(lamington.list)
             .select(
-                GetColumns<ListService, "Read">({
-                    listId: list.listId,
-                    name: list.name,
-                    customisations: list.customisations,
-                    createdBy: list.createdBy,
-                    description: list.description,
-                    createdByName: `${user.firstName} as createdByName`,
-                    accepted: listMember.accepted,
-                    canEdit: listMember.canEdit,
-                })
+                list.listId,
+                "name",
+                "customisations",
+                "createdBy",
+                "description",
+                `${user.firstName} as createdByName`,
+                listMember.status
             )
             .where({ [list.listId]: listId })
             .andWhere(qb => qb.where({ [list.createdBy]: userId }).orWhere({ [listMember.userId]: userId }))
@@ -62,44 +54,51 @@ const readLists: ListService["Read"] = async params => {
 const saveLists: ListService["Save"] = async params => {
     const lists = EnsureArray(params);
 
-    const data = lists.map(({ listId, ...params }) => ({ listId: listId ?? Uuid(), ...params })).filter(Undefined);
+    const listData: List[] = lists.map(({ members, ...listItem }) => listItem);
+    const result = await db<List>(lamington.list)
+        .insert(listData)
+        .onConflict("listId")
+        .merge()
+        .returning(["listId", "name", "createdBy"]);
 
-    const listData: List[] = data.map(({ members, ...listItem }) => listItem);
-    await db(lamington.list).insert(listData).onConflict(list.listId).merge();
-
-    const memberData: CreateListMemberParams[] = data.flatMap(({ listId, members }) => ({
-        listId,
-        members:
-            members?.map(({ userId, allowEditing }) => ({
-                userId,
-                allowEditing,
-                accepted: false,
-            })) ?? [],
-    }));
-
-    if (memberData.length > 0) {
-        await ListMemberActions.save(memberData, { preserveAccepted: true, trimNotIn: true });
+    if (lists.length > 0) {
+        await ListMemberActions.save(lists, { trimNotIn: true });
     }
 
-    return db<List>(lamington.list)
-        .select(list.listId, list.name)
-        .whereIn(
-            list.listId,
-            data.map(({ listId }) => listId)
-        );
+    return result;
 };
 
 const deleteLists: ListService["Delete"] = async params =>
-    db(lamington.list).whereIn(list.listId, EnsureArray(params)).delete();
+    db<List>(lamington.list)
+        .whereIn(
+            "listId",
+            EnsureArray(params).map(({ listId }) => listId)
+        )
+        .delete();
 
-const readListsInternal: ListService["ReadSummary"] = async params => {
-    const listIds = EnsureArray(params).map(({ listId }) => listId);
+/**
+ * Get lists by id or ids.
+ * @returns an array of lists matching given ids that the user has permissions to see, as well as the user's
+ * permission level on the list.
+ */
+const readPermissions: ListService["ReadPermissions"] = async params => {
+    const lists = EnsureArray(params);
+    const listsItems = lists.map(({ listId, userId }) => [listId, userId]);
 
-    const query = db(lamington.list)
-        .select(GetColumns<ListService, "ReadSummary">({ listId: list.listId, createdBy: list.createdBy }))
-        .whereIn(list.listId, listIds);
+    if (!listsItems.length) return [];
 
-    return query;
+    return db<List>(lamington.list)
+        .select(list.listId, list.createdBy, listMember.status)
+        .whereIn(
+            list.listId,
+            lists.map(({ listId }) => listId)
+        )
+        .leftJoin(lamington.listMember, builder => {
+            builder.on(list.listId, "=", listMember.listId).andOnIn(
+                listMember.userId,
+                lists.map(({ userId }) => userId)
+            );
+        });
 };
 
 export const ListActions: ListService = {
@@ -134,5 +133,5 @@ export const ListActions: ListService = {
      * Get lists by id or ids
      * @returns an array of lists matching given ids, but only with minimal required fields to ensure performance
      */
-    ReadSummary: readListsInternal,
+    ReadPermissions: readPermissions,
 };

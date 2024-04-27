@@ -1,5 +1,6 @@
-import db, { DeleteService, lamington, Meal, plannerMeal, ReadService, SaveService } from "../database";
+import db, { lamington, Meal, plannerMeal, ReadService } from "../database";
 import { EnsureArray } from "../utils";
+import { PlannerMealService } from "./spec";
 
 export type PlannerMeal = Pick<
     Meal,
@@ -10,7 +11,7 @@ export type PlannerMeal = Pick<
  * Get planner meals by id or ids
  * @returns an array of planner meals matching given ids, filtered by year and month
  */
-const readPlannerMeals: ReadService<PlannerMeal, "plannerId" | "year" | "month"> = async params => {
+const readPlannerMeals: PlannerMealService["Read"] = async params => {
     const planners = EnsureArray(params);
 
     const response: PlannerMeal[] = [];
@@ -39,26 +40,39 @@ const readPlannerMeals: ReadService<PlannerMeal, "plannerId" | "year" | "month">
  * Saves planner meals from params
  * @returns the newly created planners
  */
-const savePlannerMeals: SaveService<PlannerMeal> = async params => {
+const savePlannerMeals: PlannerMealService["Save"] = async params => {
     const meals = EnsureArray(params);
 
-    await db(lamington.plannerMeal).insert(meals).onConflict([plannerMeal.plannerId, plannerMeal.id]).merge();
-
-    return [];
+    return db<PlannerMeal>(lamington.plannerMeal).insert(meals).onConflict("id").merge().returning("id");
 };
 
 /**
  * Creates a new planner from params
  * @returns the newly created planners
  */
-const deletePlannerMeals: DeleteService<PlannerMeal, "id"> = async params => {
-    return db(lamington.plannerMeal).whereIn(plannerMeal.id, EnsureArray(params)).delete();
-};
+const deletePlannerMeals: PlannerMealService["Delete"] = async params =>
+    db(lamington.plannerMeal).whereIn(plannerMeal.id, EnsureArray(params)).delete();
 
-export const PlannerMealActions = {
-    save: savePlannerMeals,
-    delete: deletePlannerMeals,
-    read: readPlannerMeals,
+export const PlannerMealActions: PlannerMealService = {
+    /**
+     * Deletes meals by meal ids
+     * @security Insecure: route authentication check required (user delete permission on meals)
+     */
+    Delete: deletePlannerMeals,
+
+    /**
+     * Get planner meals by id or ids
+     * @security Insecure: no authentication checks required
+     * @returns an array of meals matching given ids
+     */
+    Read: readPlannerMeals,
+
+    /**
+     * Creates or Saves a new list from params
+     * @security Insecure: route authentication check required (user save permission on meals)
+     * @returns the newly created meals
+     */
+    Save: savePlannerMeals,
 };
 
 export type PlannerMealActions = typeof PlannerMealActions;

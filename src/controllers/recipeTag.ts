@@ -1,4 +1,4 @@
-import db, { lamington, recipeTag, tag, Tag, CreateQuery, RecipeTag, SaveService, Recipe } from "../database";
+import db, { CreateQuery, Recipe, RecipeTag, SaveService, Tag, lamington, recipeTag, tag } from "../database";
 import { EnsureArray } from "../utils";
 
 /**
@@ -8,10 +8,7 @@ import { EnsureArray } from "../utils";
  * @returns count of rows affected/tags deleted?
  */
 const deleteRecipeTags = async (recipeId: string, tagIds: string[]) => {
-    const result = await db(lamington.recipeTag)
-        .del()
-        .whereIn(recipeTag.tagId, tagIds)
-        .andWhere({ [recipeTag.recipeId]: recipeId });
+    const result = await db<RecipeTag>(lamington.recipeTag).del().whereIn("tagId", tagIds).andWhere({ recipeId });
 
     return result;
 };
@@ -23,10 +20,7 @@ const deleteRecipeTags = async (recipeId: string, tagIds: string[]) => {
  * @returns
  */
 const deleteExcessRows = async (recipeId: string, retainedCategoryIds: string[]) =>
-    db(lamington.recipeTag)
-        .where({ [recipeTag.recipeId]: recipeId })
-        .whereNotIn(recipeTag.tagId, retainedCategoryIds)
-        .del();
+    db<RecipeTag>(lamington.recipeTag).where({ recipeId }).whereNotIn("tagId", retainedCategoryIds).del();
 
 /**
  * Create RecipeTags provided
@@ -34,7 +28,7 @@ const deleteExcessRows = async (recipeId: string, retainedCategoryIds: string[])
  * @returns
  */
 const insertRows = async (recipeTags: CreateQuery<RecipeTag>) =>
-    db(lamington.recipeTag).insert(recipeTags).onConflict([recipeTag.recipeId, recipeTag.tagId]).merge();
+    db<RecipeTag>(lamington.recipeTag).insert(recipeTags).onConflict(["recipeId", "tagId"]).merge();
 
 /**
  * Update RecipeTags for recipeId, by deleting all tags not in tag list and then creating / updating provided tags in list

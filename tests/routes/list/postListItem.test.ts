@@ -2,19 +2,12 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { ListEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
-import { ListActions, ListMemberActions, ListItemActions } from "../../../src/controllers";
-import { PostListItemRequestBody } from "../../../src/routes/spec";
+import { IngredientActions, ListActions, ListItemActions, ListMemberActions } from "../../../src/controllers";
+import { ListItemService, ListService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
-import { ListService } from "../../../src/controllers/spec";
-
-beforeEach(async () => {
-    await CleanTables("list", "user", "list_member", "list_item");
-});
-
-afterAll(async () => {
-    await CleanTables("list", "user", "list_member", "list_item");
-});
+import { PostListItemRequestBody, UserStatus } from "../../../src/routes/spec";
+import { CreateUsers, ListEndpoint, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
+import { generateRandomAmount } from "../../helpers/list";
 
 test("route should require authentication", async () => {
     const res = await request(app).post(ListEndpoint.postListItem(uuid()));
@@ -33,7 +26,7 @@ test("should return 404 for non-existant list", async () => {
     expect(res.statusCode).toEqual(404);
 });
 
-test("should not allow editing if not list owner", async () => {
+test("should not allow adding list item if not list owner", async () => {
     const [token] = await PrepareAuthenticatedUser();
     const [listOwner] = await CreateUsers();
 
@@ -71,17 +64,16 @@ test("should not allow editing if list member without edit permission", async ()
         completed: randomBoolean(),
         listId: list.listId,
         createdBy: user.userId,
-    } satisfies ServiceParams<ListItemActions, "save">;
+    } satisfies ServiceParams<ListItemService, "Save">;
 
     await ListActions.Save(list);
-    await ListItemActions.save(item);
+    await ListItemActions.Save(item);
     await ListMemberActions.save({
         listId: list.listId,
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: false,
+                status: UserStatus.Member,
             },
         ],
     });
@@ -111,17 +103,16 @@ test("should allow editing if list member with edit permission", async () => {
         completed: randomBoolean(),
         listId: list.listId,
         createdBy: user.userId,
-    } satisfies ServiceParams<ListItemActions, "save">;
+    } satisfies ServiceParams<ListItemService, "Save">;
 
     await ListActions.Save(list);
-    await ListItemActions.save(item);
+    await ListItemActions.Save(item);
     await ListMemberActions.save({
         listId: list.listId,
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });
@@ -129,7 +120,7 @@ test("should allow editing if list member with edit permission", async () => {
     const updatedItem = {
         ...item,
         name: uuid(),
-    } satisfies ServiceParams<ListItemActions, "save">;
+    } satisfies ServiceParams<ListItemService, "Save">;
 
     const res = await request(app)
         .post(ListEndpoint.postListItem(list.listId))
@@ -138,7 +129,7 @@ test("should allow editing if list member with edit permission", async () => {
 
     expect(res.statusCode).toEqual(201);
 
-    const listItems = await ListItemActions.read({ listId: list.listId });
+    const listItems = await ListItemActions.Read({ listId: list.listId });
 
     expect(listItems.length).toEqual(1);
 
@@ -165,15 +156,15 @@ test("should allow editing if list owner", async () => {
         completed: randomBoolean(),
         listId: list.listId,
         createdBy: user.userId,
-    } satisfies ServiceParams<ListItemActions, "save">;
+    } satisfies ServiceParams<ListItemService, "Save">;
 
     await ListActions.Save(list);
-    await ListItemActions.save(item);
+    await ListItemActions.Save(item);
 
     const updatedItem = {
         ...item,
         name: uuid(),
-    } satisfies ServiceParams<ListItemActions, "save">;
+    } satisfies ServiceParams<ListItemService, "Save">;
 
     const res = await request(app)
         .post(ListEndpoint.postListItem(list.listId))
@@ -182,7 +173,7 @@ test("should allow editing if list owner", async () => {
 
     expect(res.statusCode).toEqual(201);
 
-    const listItems = await ListItemActions.read({ listId: list.listId });
+    const listItems = await ListItemActions.Read({ listId: list.listId });
 
     expect(listItems.length).toEqual(1);
 
@@ -191,4 +182,203 @@ test("should allow editing if list owner", async () => {
     expect(listItem?.listId).toEqual(list.listId);
     expect(listItem?.itemId).toEqual(item.itemId);
     expect(listItem?.name).toEqual(updatedItem.name);
+});
+
+test("should save and return all fields", async () => {
+    const [token, user] = await PrepareAuthenticatedUser();
+
+    const list = {
+        listId: uuid(),
+        name: uuid(),
+        description: uuid(),
+        createdBy: user!.userId,
+    } satisfies ServiceParams<ListService, "Save">;
+
+    await ListActions.Save(list);
+
+    const ingredient = {
+        ingredientId: uuid(),
+        name: uuid(),
+        createdBy: user!.userId,
+    } satisfies ServiceParams<IngredientActions, "save">;
+
+    await IngredientActions.save(ingredient);
+
+    const listItem = {
+        itemId: uuid(),
+        name: uuid(),
+        completed: randomBoolean(),
+        createdBy: user!.userId,
+        amount: generateRandomAmount(),
+        ingredientId: ingredient.ingredientId,
+        unit: uuid(),
+        notes: uuid(),
+    } satisfies PostListItemRequestBody["data"];
+
+    const res = await request(app)
+        .post(ListEndpoint.postListItem(list.listId))
+        .set(token)
+        .send({ data: listItem } satisfies PostListItemRequestBody);
+
+    expect(res.statusCode).toEqual(201);
+
+    const listItems = await ListItemActions.Read({ listId: list.listId });
+
+    expect(listItems.length).toEqual(1);
+
+    const [item] = listItems;
+
+    expect(item?.listId).toEqual(list.listId);
+    expect(item?.itemId).toEqual(listItem.itemId);
+    expect(item?.name).toEqual(listItem.name);
+    expect(item?.completed).toEqual(listItem.completed);
+    expect(item?.ingredientId).toEqual(listItem.ingredientId);
+    expect(item?.unit).toEqual(listItem.unit);
+    expect(item?.amount).toMatchObject(listItem.amount);
+    expect(item?.notes).toEqual(listItem.notes);
+    expect(item?.createdBy).toEqual(user?.userId);
+});
+
+test("should move list item from one list to another", async () => {
+    const [token, user] = await PrepareAuthenticatedUser();
+
+    const sourceList = {
+        listId: uuid(),
+        name: uuid(),
+        description: uuid(),
+        createdBy: user!.userId,
+    } satisfies ServiceParams<ListService, "Save">;
+
+    const destinationList = {
+        listId: uuid(),
+        name: uuid(),
+        description: uuid(),
+        createdBy: user!.userId,
+    } satisfies ServiceParams<ListService, "Save">;
+
+    await ListActions.Save([sourceList, destinationList]);
+
+    const listItem = {
+        itemId: uuid(),
+        name: uuid(),
+    } satisfies PostListItemRequestBody["data"];
+
+    await request(app)
+        .post(ListEndpoint.postListItem(sourceList.listId))
+        .set(token)
+        .send({ data: listItem } satisfies PostListItemRequestBody);
+
+    const res = await request(app)
+        .post(ListEndpoint.postListItem(destinationList.listId))
+        .set(token)
+        .send({ data: { ...listItem, previousListId: sourceList.listId } } satisfies PostListItemRequestBody);
+
+    expect(res.statusCode).toEqual(201);
+
+    const destinationListItems = await ListItemActions.Read({ listId: destinationList.listId });
+
+    expect(destinationListItems.length).toEqual(1);
+
+    const [item] = destinationListItems;
+
+    expect(item?.listId).toEqual(destinationList.listId);
+    expect(item?.itemId).toEqual(listItem.itemId);
+    expect(item?.name).toEqual(listItem.name);
+    expect(item?.createdBy).toEqual(user?.userId);
+
+    const sourceListsItems = await ListItemActions.Read({ listId: sourceList.listId });
+
+    expect(sourceListsItems.length).toEqual(0);
+});
+
+test("should not move list item from source list to destination list if user does have edit permission on source list", async () => {
+    const [token, user] = await PrepareAuthenticatedUser();
+    const [otherUser] = await CreateUsers();
+
+    const sourceList = {
+        listId: uuid(),
+        name: uuid(),
+        description: uuid(),
+        createdBy: otherUser!.userId,
+    } satisfies ServiceParams<ListService, "Save">;
+
+    const destinationList = {
+        listId: uuid(),
+        name: uuid(),
+        description: uuid(),
+        createdBy: user!.userId,
+    } satisfies ServiceParams<ListService, "Save">;
+
+    await ListActions.Save([sourceList, destinationList]);
+
+    const listItem = {
+        itemId: uuid(),
+        name: uuid(),
+        completed: randomBoolean(),
+        createdBy: randomBoolean() ? user.userId : otherUser!.userId,
+        listId: sourceList.listId,
+    } satisfies ServiceParams<ListItemService, "Save">;
+
+    await ListItemActions.Save(listItem);
+
+    const res = await request(app)
+        .post(ListEndpoint.postListItem(destinationList.listId))
+        .set(token)
+        .send({ data: { ...listItem, previousListId: sourceList.listId } } satisfies PostListItemRequestBody);
+
+    expect(res.statusCode).toEqual(403);
+
+    const destinationListItems = await ListItemActions.Read({ listId: destinationList.listId });
+
+    expect(destinationListItems.length).toEqual(0);
+
+    const sourceListsItems = await ListItemActions.Read({ listId: sourceList.listId });
+
+    expect(sourceListsItems.length).toEqual(1);
+});
+
+test("should not move list item from source list to destination list if user does not have edit permission on destination list", async () => {
+    const [token, user] = await PrepareAuthenticatedUser();
+    const [otherUser] = await CreateUsers();
+
+    const sourceList = {
+        listId: uuid(),
+        name: uuid(),
+        description: uuid(),
+        createdBy: user!.userId,
+    } satisfies ServiceParams<ListService, "Save">;
+
+    const destinationList = {
+        listId: uuid(),
+        name: uuid(),
+        description: uuid(),
+        createdBy: otherUser!.userId,
+    } satisfies ServiceParams<ListService, "Save">;
+
+    await ListActions.Save([sourceList, destinationList]);
+
+    const listItem = {
+        itemId: uuid(),
+        name: uuid(),
+        completed: randomBoolean(),
+        createdBy: randomBoolean() ? user.userId : otherUser!.userId,
+        listId: sourceList.listId,
+    } satisfies ServiceParams<ListItemService, "Save">;
+
+    await ListItemActions.Save(listItem);
+
+    const res = await request(app)
+        .post(ListEndpoint.postListItem(destinationList.listId))
+        .set(token)
+        .send({ data: { ...listItem, previousListId: sourceList.listId } } satisfies PostListItemRequestBody);
+
+    expect(res.statusCode).toEqual(403);
+
+    const destinationListItems = await ListItemActions.Read({ listId: destinationList.listId });
+
+    expect(destinationListItems.length).toEqual(0);
+
+    const sourceListsItems = await ListItemActions.Read({ listId: sourceList.listId });
+
+    expect(sourceListsItems.length).toEqual(1);
 });

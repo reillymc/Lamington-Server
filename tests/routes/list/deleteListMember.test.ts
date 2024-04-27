@@ -2,18 +2,11 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import app from "../../../src/app";
-import { ListEndpoint, CleanTables, CreateUsers, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 import { ListActions, ListMemberActions } from "../../../src/controllers";
-import { ServiceParams } from "../../../src/database";
 import { ListService } from "../../../src/controllers/spec";
-
-beforeEach(async () => {
-    await CleanTables("list", "user", "list_member");
-});
-
-afterAll(async () => {
-    await CleanTables("list", "user", "list_member");
-});
+import { ServiceParams } from "../../../src/database";
+import { UserStatus } from "../../../src/routes/spec";
+import { CreateUsers, ListEndpoint, PrepareAuthenticatedUser, randomBoolean } from "../../helpers";
 
 test("route should require authentication", async () => {
     const res = await request(app).delete(ListEndpoint.deleteListMember(uuid(), uuid()));
@@ -29,7 +22,7 @@ test("should return 404 for non-existant list", async () => {
     expect(res.statusCode).toEqual(404);
 });
 
-test("should not allow leaving a list the user owns", async () => {
+test("should not allow deleting member from list where sender has no rights", async () => {
     const [token] = await PrepareAuthenticatedUser();
     const [listOwner] = await CreateUsers();
 
@@ -47,7 +40,54 @@ test("should not allow leaving a list the user owns", async () => {
         .set(token)
         .send();
 
+    expect(res.statusCode).toEqual(403);
+});
+
+test("should not allow leaving a list the user owns", async () => {
+    const [token, user] = await PrepareAuthenticatedUser();
+
+    const list = {
+        listId: uuid(),
+        name: uuid(),
+        description: uuid(),
+        createdBy: user!.userId,
+    } satisfies ServiceParams<ListService, "Save">;
+
+    await ListActions.Save(list);
+
+    const res = await request(app).delete(ListEndpoint.deleteListMember(list.listId, user!.userId)).set(token).send();
+
     expect(res.statusCode).toEqual(400);
+});
+
+test("should not allow member removing list owner", async () => {
+    const [token, user] = await PrepareAuthenticatedUser();
+    const [listOwner] = await CreateUsers();
+
+    const list = {
+        listId: uuid(),
+        name: uuid(),
+        description: uuid(),
+        createdBy: listOwner!.userId,
+    } satisfies ServiceParams<ListService, "Save">;
+
+    await ListActions.Save(list);
+    await ListMemberActions.save({
+        listId: list.listId,
+        members: [
+            {
+                userId: user!.userId,
+                status: UserStatus.Administrator,
+            },
+        ],
+    });
+
+    const res = await request(app)
+        .delete(ListEndpoint.deleteListMember(list.listId, listOwner!.userId))
+        .set(token)
+        .send();
+
+    expect(res.statusCode).toEqual(403);
 });
 
 test("should allow removing member if list owner", async () => {
@@ -67,8 +107,7 @@ test("should allow removing member if list owner", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: false,
-                allowEditing: false,
+                status: UserStatus.Pending,
             },
         ],
     });
@@ -82,7 +121,7 @@ test("should allow removing member if list owner", async () => {
     expect(listMembers.length).toEqual(0);
 });
 
-test("should not allow removing other member if list member with edit permission", async () => {
+test("should not allow list member with edit permission to remove other member", async () => {
     const [token, user] = await PrepareAuthenticatedUser();
     const [listOwner, otherMember] = await CreateUsers({ count: 2 });
 
@@ -98,13 +137,11 @@ test("should not allow removing other member if list member with edit permission
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
             {
                 userId: otherMember!.userId,
-                accepted: true,
-                allowEditing: randomBoolean(),
+                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Member,
             },
         ],
     } satisfies ServiceParams<ListMemberActions, "save">;
@@ -137,8 +174,7 @@ test("should allow removing self if list member", async () => {
         members: [
             {
                 userId: user!.userId,
-                accepted: true,
-                allowEditing: true,
+                status: UserStatus.Administrator,
             },
         ],
     });

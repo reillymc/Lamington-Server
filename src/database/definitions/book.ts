@@ -1,4 +1,5 @@
 import { Table } from ".";
+import { BookCustomisations } from "../../routes/helpers";
 import { lamington } from "./lamington";
 
 /**
@@ -7,7 +8,8 @@ import { lamington } from "./lamington";
 export interface Book {
     bookId: string;
     name: string;
-    customisations?: string;
+    // TODO: define this properly and handle via partials with defaults filled in in controller?
+    customisations?: BookCustomisations;
     description?: string;
     createdBy: string;
 }

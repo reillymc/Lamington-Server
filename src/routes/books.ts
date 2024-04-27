@@ -1,7 +1,9 @@
 import express from "express";
 
-import { AppError, MessageAction, userMessage } from "../services";
 import { BookActions, BookMemberActions, BookRecipeActions, InternalBookActions, RecipeActions } from "../controllers";
+import { AppError, MessageAction, userMessage } from "../services";
+import { EnsureDefinedArray, Undefined } from "../utils";
+import { prepareGetBookResponseBody, validatePostBookBody } from "./helpers";
 import {
     BookEndpoint,
     Books,
@@ -29,9 +31,8 @@ import {
     PostBookRequestBody,
     PostBookRequestParams,
     PostBookResponse,
+    UserStatus,
 } from "./spec";
-import { EnsureDefinedArray, Undefined } from "../utils";
-import { prepareGetBookResponseBody, validatePostBookBody } from "./helpers";
 
 const router = express.Router();
 
@@ -253,7 +254,11 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
             if (existingBook.createdBy !== userId) {
                 const existingBookMembers = await BookMemberActions.read({ entityId: bookId });
 
-                if (!existingBookMembers?.some(member => member.userId === userId && member.canEdit)) {
+                if (
+                    !existingBookMembers?.some(
+                        member => member.userId === userId && member.status === UserStatus.Administrator
+                    )
+                ) {
                     return next(
                         new AppError({
                             status: 403,
@@ -281,14 +286,13 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
 );
 
 /**
- * POST request to update a book member.
+ * POST request to update a book member. Currently only used to accept self into a book.
  */
 router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberRequestBody>(
     BookEndpoint.postBookMember,
-    async ({ body, params, session }, res, next) => {
+    async ({ params, session }, res, next) => {
         // Extract request fields
         const { bookId } = params;
-        const { accepted } = body;
         const { userId } = session;
 
         // Check all required fields are present
@@ -327,7 +331,7 @@ router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberR
                 );
             }
 
-            await BookMemberActions.save({ bookId, members: [{ userId, accepted }] });
+            await BookMemberActions.save({ bookId, members: [{ userId, status: UserStatus.Member }] });
             return res.status(201).json({ error: false, message: "Book member removed." });
         } catch (e: unknown) {
             next(
@@ -380,7 +384,11 @@ router.delete<DeleteBookRecipeRequestParams, DeleteBookRecipeResponse, DeleteBoo
             if (existingBook.createdBy !== userId) {
                 const existingBookMembers = await BookMemberActions.read({ entityId: bookId });
 
-                if (!existingBookMembers?.some(member => member.userId === userId && member.canEdit)) {
+                if (
+                    !existingBookMembers?.some(
+                        member => member.userId === userId && member.status === UserStatus.Administrator
+                    )
+                ) {
                     return next(
                         new AppError({
                             status: 403,

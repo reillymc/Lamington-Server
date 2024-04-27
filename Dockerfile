@@ -1,9 +1,37 @@
-FROM node:latest
+# Build stage
+FROM node:20-bullseye AS build
 
-WORKDIR /
+RUN mkdir -p /home/node/app && chown -R node:node /home/node/app
 
-COPY package.json .
-RUN npm install -g nodemon typescript
+WORKDIR /home/node/app
+
+COPY package*.json .
+COPY entrypoint.sh .
+RUN [ "chmod", "+x", "./entrypoint.sh" ]
+
 RUN npm install
+
 COPY . .
-CMD npm start
+
+ENTRYPOINT ["./entrypoint.sh"]
+
+RUN npm run build
+
+# Production stage
+FROM node:20-bullseye AS production
+
+RUN mkdir -p /home/node/app && chown -R node:node /home/node/app
+
+WORKDIR /home/node/app
+
+COPY package*.json .
+
+USER node
+
+RUN npm ci --only=production
+
+COPY --from=build /home/node/app/dist ./dist
+
+EXPOSE 3000
+
+CMD npm run prod

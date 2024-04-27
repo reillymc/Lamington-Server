@@ -1,9 +1,6 @@
 import request from "supertest";
 
 import app from "../../../../src/app";
-import { CleanTables, CreateUsers, PrepareAuthenticatedUser } from "../../../helpers";
-import { PostUserApprovalRequestBody, UserStatus } from "../../../../src/routes/spec";
-import { UserEndpoint } from "../../../helpers/api";
 import {
     BookRecipeActions,
     InternalBookActions,
@@ -13,15 +10,10 @@ import {
     RecipeActions,
     UserActions,
 } from "../../../../src/controllers";
+import { PostUserApprovalRequestBody, UserStatus } from "../../../../src/routes/spec";
+import { CreateUsers, PrepareAuthenticatedUser } from "../../../helpers";
+import { UserEndpoint } from "../../../helpers/api";
 import { readAllLists } from "../../../helpers/list";
-
-beforeEach(async () => {
-    await CleanTables("user", "list", "list_item", "book", "recipe", "book_recipe", "planner", "planner_meal");
-});
-
-afterAll(async () => {
-    await CleanTables("user", "list", "list_item", "book", "recipe", "book_recipe", "planner", "planner_meal");
-});
 
 test("should create sample data for pending => registered user", async () => {
     const [adminToken] = await PrepareAuthenticatedUser(UserStatus.Administrator);
@@ -36,7 +28,7 @@ test("should create sample data for pending => registered user", async () => {
     expect(response.statusCode).toEqual(200);
 
     const [updatedUser] = await UserActions.read({ userId: user.userId });
-    expect(updatedUser?.status).toEqual(UserStatus.Registered);
+    expect(updatedUser?.status).toEqual(UserStatus.Member);
 
     const lists = await readAllLists();
     expect(lists.length).toEqual(1);
@@ -45,7 +37,7 @@ test("should create sample data for pending => registered user", async () => {
     if (!list) throw new Error("List not created");
     expect(list.createdBy).toEqual(user.userId);
 
-    const listItems = await ListItemActions.read({ listId: list.listId });
+    const listItems = await ListItemActions.Read({ listId: list.listId });
     expect(listItems.length).toEqual(1);
 
     const books = await InternalBookActions.readAll();
@@ -69,7 +61,7 @@ test("should create sample data for pending => registered user", async () => {
     if (!bookRecipe) throw new Error("BookRecipe not created");
     expect(bookRecipe.recipeId).toEqual(recipe.recipeId);
 
-    const planners = await PlannerActions.readMy({ userId: user.userId });
+    const planners = await PlannerActions.ReadByUser({ userId: user.userId });
     expect(planners.length).toEqual(1);
 
     const [planner] = planners;

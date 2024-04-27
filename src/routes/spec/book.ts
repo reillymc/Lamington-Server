@@ -1,7 +1,7 @@
 import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from ".";
-import { User } from "./user";
-import { Recipe, Recipes, recipeIdParam } from "./recipe";
 import { EntityMember, EntityMembers } from "./common";
+import { Recipe, Recipes, recipeIdParam } from "./recipe";
+import { User, UserStatus } from "./user";
 
 export const bookEndpoint = "/books" as const;
 
@@ -28,8 +28,7 @@ export type Book = {
     description?: string;
     color?: string;
     icon?: string;
-    accepted?: boolean;
-    canEdit?: boolean;
+    status?: UserStatus;
     recipes?: Recipes;
     members?: EntityMembers;
 };
@@ -99,7 +98,7 @@ export type DeleteBookRecipeService = (request: DeleteBookRecipeRequest) => Dele
 export type PostBookMemberRequestParams = BaseRequestParams<{
     [bookIdParam]: Book["bookId"];
 }>;
-export type PostBookMemberRequestBody = BaseSimpleRequestBody<Pick<Book, "accepted">>;
+export type PostBookMemberRequestBody = BaseSimpleRequestBody;
 
 export type PostBookMemberRequest = BaseRequest<PostBookMemberRequestParams & PostBookMemberRequestBody>;
 export type PostBookMemberResponse = BaseResponse;

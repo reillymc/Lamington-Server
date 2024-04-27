@@ -1,11 +1,11 @@
-import { Request, Response, NextFunction } from "express";
+import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 
 import config from "../config";
-import { userStatusToUserStatus } from "../controllers/helpers";
+import { UserActions } from "../controllers";
+import { getStatus } from "../routes/helpers";
 import { UserStatus } from "../routes/spec";
 import { AppError } from "../services";
-import { UserActions } from "../controllers";
 
 const { jwtSecret } = config.authentication;
 
@@ -41,7 +41,7 @@ export const authenticationMiddleware = (
             return next(new AppError({ status: 401, message: "User not found." }));
         }
 
-        const userStatus = userStatusToUserStatus(user.status);
+        const userStatus = getStatus(user.status);
 
         if (userStatus === UserStatus.Pending) {
             return next(new AppError({ status: 401, message: "User account is pending approval." }));

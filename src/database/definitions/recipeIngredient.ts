@@ -1,4 +1,5 @@
 import { Table } from ".";
+import { RecipeIngredientAmount } from "../../routes/spec";
 import { lamington } from "./lamington";
 
 /**
@@ -27,8 +28,9 @@ export interface RecipeIngredient {
     /**
      * JSON stringified object containing the amount of the ingredient, as type number, fraction
      * or range with its representation explicitly denoted.
+     * TODO: Define this type correctly like other new json types
      */
-    amount?: string;
+    amount?: RecipeIngredientAmount;
     multiplier?: number;
     description?: string;
 }

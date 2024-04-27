@@ -52,8 +52,8 @@ export interface Recipe {
     servings?: RecipeServings;
     public?: boolean;
     timesCooked?: number;
-    dateUpdated?: string;
-    dateCreated?: string;
+    updatedAt?: string;
+    createdAt?: string;
 }
 
 export interface RecipeIngredientItem {

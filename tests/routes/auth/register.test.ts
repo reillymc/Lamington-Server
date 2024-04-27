@@ -1,18 +1,10 @@
 import request from "supertest";
 
 import app from "../../../src/app";
-import { RegisterRequestBody, UserStatus } from "../../../src/routes/spec";
 import { InternalUserActions, UserActions } from "../../../src/controllers";
+import { RegisterRequestBody, UserStatus } from "../../../src/routes/spec";
 import { comparePassword } from "../../../src/services";
-import { AuthEndpoint, CleanTables } from "../../helpers";
-
-beforeEach(async () => {
-    await CleanTables("user");
-});
-
-afterAll(async () => {
-    await CleanTables("user");
-});
+import { AuthEndpoint } from "../../helpers";
 
 test("should fail register missing password", async () => {
     const requestBody: Partial<RegisterRequestBody> = {
