@@ -5,7 +5,7 @@ import {
     BaseRequestBody,
     BaseRequestParams,
     BaseResponse,
-} from ".";
+} from "./base";
 
 export const ingredientEndpoint = "/ingredients" as const;
 

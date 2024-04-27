@@ -1,4 +1,4 @@
-import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from ".";
+import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from "./base";
 import { EntityMember, EntityMembers } from "./common";
 import { Recipe, Recipes, recipeIdParam } from "./recipe";
 import { User, UserStatus } from "./user";

@@ -1,4 +1,4 @@
-import { BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from ".";
+import { BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from "./base";
 import { User } from "./user";
 
 export const authEndpoint = "/auth" as const;

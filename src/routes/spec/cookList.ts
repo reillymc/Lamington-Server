@@ -1,4 +1,4 @@
-import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from ".";
+import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from "./base";
 
 export const cookListEndpoint = "/queue" as const;
 export const cookListMealIdParam = "mealId" as const;

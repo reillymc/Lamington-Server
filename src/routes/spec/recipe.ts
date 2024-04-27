@@ -6,7 +6,7 @@ import {
     BaseRequestParams,
     BaseResponse,
     BaseSimpleRequestBody,
-} from "./";
+} from "./base";
 import { FractionValue, NumberValue, RangeValue } from "./common";
 import { Tag } from "./tag";
 import { User } from "./user";

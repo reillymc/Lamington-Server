@@ -1,50 +1,22 @@
 import { AttachmentServices, imageSubpath, uploadDirectory } from "./attachment";
 import { AuthServices, loginSubpath, registerSubpath } from "./auth";
-import { bookIdParam, bookMemberIdParam, bookMemberSubpath, BookServices, recipeSubpath } from "./book";
+import { BookServices, bookIdParam, bookMemberIdParam, bookMemberSubpath, recipeSubpath } from "./book";
 import { CookListServices } from "./cookList";
 import { IngredientServices } from "./ingredient";
-import { itemIdParam, itemSubpath, listIdParam, ListServices, listMemberIdParam, listMemberSubpath } from "./list";
+import { ListServices, itemIdParam, itemSubpath, listIdParam, listMemberIdParam, listMemberSubpath } from "./list";
 import {
-    plannerMealIdParam,
+    PlannerServices,
     mealSubpath,
     monthParam,
     plannerIdParam,
+    plannerMealIdParam,
     plannerMemberIdParam,
     plannerMemberSubpath,
-    PlannerServices,
     yearParam,
 } from "./planner";
-import { rateSubpath, recipeIdParam, RecipeServices } from "./recipe";
+import { RecipeServices, rateSubpath, recipeIdParam } from "./recipe";
 import { TagServices } from "./tag";
-import { approveSubpath, userIdParam, UserServices } from "./user";
-
-export type QueryParam = undefined | string | string[];
-
-export type BaseRequest<T = null> = T extends null ? {} : T;
-
-export type BaseRequestParams<T = null> = T extends null ? {} : { [P in keyof T]: string };
-
-type LamingtonQueryParams = { page?: QueryParam; sort?: QueryParam; search?: QueryParam; order?: QueryParam };
-
-export type BasePaginatedRequestQuery<T = null> = T extends null ? LamingtonQueryParams : T & LamingtonQueryParams;
-
-export type BaseSimpleRequestBody<T = null> = T extends null ? {} : Partial<T>;
-
-export type BaseRequestBody<T = null> = T extends null ? {} : { data: Partial<T> | null | Array<Partial<T> | null> };
-
-export type RequestValidator<T extends BaseRequestBody<unknown>> = (
-    body: T,
-    userId: string
-) => readonly [Array<Exclude<T["data"], any[] | null> extends Partial<infer R> ? R : never>, Array<unknown>];
-
-interface ResponseBodyBase {
-    error: boolean;
-    code?: string;
-    message?: string;
-}
-
-export type BaseResponse<T = null> = T extends null ? ResponseBodyBase : ResponseBodyBase & { data?: T };
-export type BasePaginatedResponse<T = null> = BaseResponse<T> & { page?: number; nextPage?: number };
+import { UserServices, approveSubpath, userIdParam } from "./user";
 
 export const AttachmentEndpoint = {
     postImage: `/${imageSubpath}`,
@@ -122,6 +94,7 @@ export const UserEndpoint = {
 
 export * from "./attachment";
 export * from "./auth";
+export { BasePaginatedRequestQuery, QueryParam, RequestValidator } from "./base";
 export * from "./book";
 export * from "./common";
 export * from "./cookList";
