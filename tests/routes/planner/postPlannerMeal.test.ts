@@ -8,6 +8,7 @@ import {
     PlannerActions,
     PlannerMemberActions,
 } from "../../../src/controllers";
+import { PlannerService } from "../../../src/controllers/spec";
 import { ServiceParams } from "../../../src/database";
 import { PostPlannerMealRequestBody, UserStatus } from "../../../src/routes/spec";
 import { CreateUsers, PlannerEndpoint, PrepareAuthenticatedUser, randomNumber } from "../../helpers";
@@ -48,9 +49,9 @@ test("should not allow adding meal if not planner owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: plannerOwner!.userId,
-    } satisfies ServiceParams<PlannerActions, "save">;
+    } satisfies ServiceParams<PlannerService, "Save">;
 
-    await PlannerActions.save(planner);
+    await PlannerActions.Save(planner);
 
     const res = await request(app)
         .post(PlannerEndpoint.postPlannerMeal(planner.plannerId))
@@ -65,7 +66,7 @@ test("should not allow adding meal if not planner owner", async () => {
             },
         } satisfies PostPlannerMealRequestBody);
 
-    expect(res.statusCode).toEqual(404); // DB will not return planner if user is not owner or member, therefore 404. This should be the behaviour for all routes.
+    expect(res.statusCode).toEqual(403);
 });
 
 test("should not allow adding meal if planner member without edit permission", async () => {
@@ -77,9 +78,9 @@ test("should not allow adding meal if planner member without edit permission", a
         name: uuid(),
         description: uuid(),
         createdBy: plannerOwner!.userId,
-    } satisfies ServiceParams<PlannerActions, "save">;
+    } satisfies ServiceParams<PlannerService, "Save">;
 
-    await PlannerActions.save(planner);
+    await PlannerActions.Save(planner);
     await PlannerMemberActions.save({
         plannerId: planner.plannerId,
         members: [
@@ -116,7 +117,7 @@ test("should allow adding meal if planner member with edit permission", async ()
         name: uuid(),
         description: uuid(),
         createdBy: plannerOwner!.userId,
-    } satisfies ServiceParams<PlannerActions, "save">;
+    } satisfies ServiceParams<PlannerService, "Save">;
 
     const meal = {
         id: uuid(),
@@ -126,7 +127,7 @@ test("should allow adding meal if planner member with edit permission", async ()
         year: randomNumber(),
     } satisfies PostPlannerMealRequestBody["data"];
 
-    await PlannerActions.save(planner);
+    await PlannerActions.Save(planner);
     await PlannerMemberActions.save({
         plannerId: planner.plannerId,
         members: [
@@ -162,7 +163,7 @@ test("should allow editing if planner owner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: user.userId,
-    } satisfies ServiceParams<PlannerActions, "save">;
+    } satisfies ServiceParams<PlannerService, "Save">;
 
     const meal = {
         id: uuid(),
@@ -172,7 +173,7 @@ test("should allow editing if planner owner", async () => {
         year: randomNumber(),
     } satisfies PostPlannerMealRequestBody["data"];
 
-    await PlannerActions.save(planner);
+    await PlannerActions.Save(planner);
 
     const res = await request(app)
         .post(PlannerEndpoint.postPlannerMeal(planner.plannerId))
@@ -210,9 +211,9 @@ test("should move meal from cook list to planner", async () => {
         name: uuid(),
         description: uuid(),
         createdBy: userId,
-    } satisfies ServiceParams<PlannerActions, "save">;
+    } satisfies ServiceParams<PlannerService, "Save">;
 
-    await PlannerActions.save(planner);
+    await PlannerActions.Save(planner);
 
     const res = await request(app)
         .post(PlannerEndpoint.postPlannerMeal(planner.plannerId))

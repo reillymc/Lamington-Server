@@ -104,15 +104,7 @@ router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(
         // Fetch and return result
         try {
             const [list] = await ListActions.Read({ listId, userId });
-            if (!list) {
-                return next(
-                    new AppError({
-                        status: 404,
-                        code: "NOT_FOUND",
-                        message: "Could not find list.",
-                    })
-                );
-            }
+            if (!list) return next(new NotFoundError("list", listId));
 
             const listItemsResponse = await ListItemActions.Read({ listId });
             const listMembersResponse = await ListMemberActions.read({ entityId: listId });

@@ -201,7 +201,7 @@ const createDefaultUserData = async (userId: string) => {
         recipeId,
     });
 
-    await PlannerActions.save({
+    await PlannerActions.Save({
         plannerId,
         createdBy: userId,
         name: "My Meal Planner",

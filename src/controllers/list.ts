@@ -24,9 +24,9 @@ const readMyLists: ListService["ReadByUser"] = async ({ userId }) => {
 
 const readLists: ListService["Read"] = async params => {
     const requests = EnsureArray(params);
-
     const response = [];
 
+    // TODO move to single query
     for (const { listId, userId } of requests) {
         const result = await db<List>(lamington.list)
             .select(

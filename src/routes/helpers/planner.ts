@@ -1,10 +1,10 @@
 import { v4 as Uuid } from "uuid";
 
 import { PlannerActions, PlannerMemberActions } from "../../controllers";
-import { PlannerMealService } from "../../controllers/spec";
+import { PlannerMealService, PlannerService } from "../../controllers/spec";
 import { ServiceParams } from "../../database";
-import { BisectOnValidItems, EnsureDefinedArray } from "../../utils";
-import { Planner, PostPlannerMealRequestBody, PostPlannerRequestBody } from "../spec";
+import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils";
+import { Planner, PostPlannerMealRequestBody, PostPlannerRequestBody, UserStatus } from "../spec";
 import { getStatus } from "./user";
 
 export const validatePostPlannerBody = ({ data }: PostPlannerRequestBody, userId: string) => {
@@ -13,7 +13,7 @@ export const validatePostPlannerBody = ({ data }: PostPlannerRequestBody, userId
     return BisectOnValidItems(filteredData, ({ plannerId = Uuid(), name, color, ...item }) => {
         if (!name) return;
 
-        const validItem: ServiceParams<PlannerActions, "save"> = {
+        const validItem: ServiceParams<PlannerService, "Save"> = {
             plannerId,
             name,
             customisations: { color },
@@ -52,7 +52,7 @@ export const validatePostPlannerMealBody = (
     });
 };
 
-type PlannerResponse = Awaited<ReturnType<PlannerActions["read"]>>[number];
+type PlannerResponse = Awaited<ReturnType<PlannerService["Read"]>>[number];
 type PlannerMealsResponse = Awaited<ReturnType<PlannerMealService["Read"]>>;
 type MembersResponse = Awaited<ReturnType<PlannerMemberActions["read"]>>;
 
@@ -97,4 +97,57 @@ export const stringifyPlannerCustomisations = (customisations: Partial<PlannerCu
     const { color = DefaultPlannerIcon } = customisations;
 
     return JSON.stringify({ color });
+};
+
+interface ValidatedPermissions {
+    permissionsValid: boolean;
+    missingPlanners: string[];
+}
+
+export const validatePlannerPermissions = async (
+    plannerIds: string | string[],
+    userId: string,
+    permissionLevel: UserStatus
+): Promise<ValidatedPermissions> => {
+    const plannerIdsArray = EnsureArray(plannerIds);
+
+    const existingPlanners = await PlannerActions.ReadPermissions([
+        ...EnsureArray(plannerIdsArray).map(plannerId => ({ plannerId, userId })),
+    ]);
+
+    const statuses = existingPlanners.map(planner => getStatus(planner.status, planner.createdBy === userId));
+    const missingPlanners = plannerIdsArray.filter(
+        plannerId => !existingPlanners.some(planner => planner.plannerId === plannerId)
+    );
+
+    if (statuses.some(status => status === undefined)) {
+        return { permissionsValid: false, missingPlanners };
+    }
+
+    if (permissionLevel === UserStatus.Owner) {
+        return { permissionsValid: statuses.every(status => status === UserStatus.Owner), missingPlanners };
+    }
+
+    if (permissionLevel === UserStatus.Administrator) {
+        return {
+            permissionsValid: statuses.every(status => [UserStatus.Owner, UserStatus.Administrator].includes(status!)),
+            missingPlanners,
+        };
+    }
+
+    if (permissionLevel === UserStatus.Member) {
+        return {
+            permissionsValid: statuses.every(status =>
+                [UserStatus.Owner, UserStatus.Administrator, UserStatus.Member].includes(status!)
+            ),
+            missingPlanners,
+        };
+    }
+
+    return {
+        permissionsValid: statuses.every(status =>
+            [UserStatus.Owner, UserStatus.Administrator, UserStatus.Member, UserStatus.Pending].includes(status!)
+        ),
+        missingPlanners,
+    };
 };

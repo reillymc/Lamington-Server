@@ -3,6 +3,7 @@ export { ListCustomisations, prepareGetListResponseBody, validatePostListBody, v
 export {
     PlannerCustomisations,
     prepareGetPlannerResponseBody,
+    validatePlannerPermissions,
     validatePostPlannerBody,
     validatePostPlannerMealBody,
 } from "./planner";

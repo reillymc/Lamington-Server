@@ -29,8 +29,17 @@ export class AppError {
     }
 }
 
+type KnownEntities =
+    | "list"
+    | "list item"
+    | "list member"
+    | "planner meal"
+    | "planner"
+    | "planner member"
+    | "planner item";
+
 export class PermissionError extends AppError {
-    constructor(entity: "list" | "list item" | "list member") {
+    constructor(entity: KnownEntities) {
         super({
             status: 403,
             code: "MISSING_PERMISSIONS",
@@ -40,7 +49,7 @@ export class PermissionError extends AppError {
 }
 
 export class NotFoundError extends AppError {
-    constructor(entity: "list", entityIds: string | string[]) {
+    constructor(entity: KnownEntities, entityIds: string | string[]) {
         super({
             status: 404,
             code: "NOT_FOUND",
@@ -52,7 +61,7 @@ export class NotFoundError extends AppError {
 }
 
 export class InsufficientDataError extends AppError {
-    constructor(entity: "list" | "list item" | "list member") {
+    constructor(entity: KnownEntities) {
         super({
             status: 400,
             code: "INSUFFICIENT_DATA",

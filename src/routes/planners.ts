@@ -1,8 +1,20 @@
 import express from "express";
 
-import { InternalPlannerActions, PlannerActions, PlannerMealActions, PlannerMemberActions } from "../controllers";
-import { AppError, MessageAction, userMessage } from "../services";
-import { prepareGetPlannerResponseBody, validatePostPlannerBody, validatePostPlannerMealBody } from "./helpers";
+import { PlannerActions, PlannerMealActions, PlannerMemberActions } from "../controllers";
+import {
+    AppError,
+    InsufficientDataError,
+    MessageAction,
+    NotFoundError,
+    PermissionError,
+    userMessage,
+} from "../services";
+import {
+    prepareGetPlannerResponseBody,
+    validatePlannerPermissions,
+    validatePostPlannerBody,
+    validatePostPlannerMealBody,
+} from "./helpers";
 import {
     DeletePlannerMealRequestBody,
     DeletePlannerMealRequestParams,
@@ -45,7 +57,7 @@ router.get<GetPlannersRequestParams, GetPlannersResponse, GetPlannersRequestBody
 
         // Fetch and return result
         try {
-            const results = await PlannerActions.readMy({ userId });
+            const results = await PlannerActions.ReadByUser({ userId });
             const data: Planners = Object.fromEntries(
                 results.map(planner => [planner.plannerId, prepareGetPlannerResponseBody(planner, userId)])
             );
@@ -75,28 +87,12 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
         let parsedYear = year ? parseInt(year, 10) : undefined;
         let parsedMonth = month ? parseInt(month, 10) : undefined;
 
-        if (!plannerId) {
-            return next(
-                new AppError({
-                    status: 404,
-                    code: "INSUFFICIENT_DATA",
-                    message: "Insufficient data to read planner.",
-                })
-            );
-        }
+        if (!plannerId) return next(new InsufficientDataError("planner"));
 
         // Fetch and return result
         try {
-            const [planner] = await PlannerActions.read({ plannerId, userId });
-            if (!planner) {
-                return next(
-                    new AppError({
-                        status: 404,
-                        code: "NOT_FOUND",
-                        message: "Could not find planner.",
-                    })
-                );
-            }
+            const [planner] = await PlannerActions.Read({ plannerId, userId });
+            if (!planner) return next(new NotFoundError("planner", plannerId));
 
             const plannerMembersResponse = await PlannerMemberActions.read({ entityId: plannerId });
 
@@ -128,30 +124,20 @@ router.post<PostPlannerRequestParams, PostPlannerResponse, PostPlannerRequestBod
 
         // Check all required fields are present
         if (!validPlanners.length || invalidPlanners.length) {
-            return next(
-                new AppError({
-                    status: 400,
-                    code: "INSUFFICIENT_DATA",
-                    message: "Insufficient data to create a planner.",
-                })
-            );
+            return next(new InsufficientDataError("planner"));
         }
 
         // Update database and return status
         try {
-            const existingPlanners = await InternalPlannerActions.read(validPlanners);
+            const { permissionsValid } = await validatePlannerPermissions(
+                validPlanners.map(({ plannerId }) => plannerId),
+                userId,
+                UserStatus.Owner
+            );
 
-            if (existingPlanners.some(recipe => recipe.createdBy !== userId)) {
-                return next(
-                    new AppError({
-                        status: 403,
-                        code: "RECIPE_NO_PERMISSIONS",
-                        message: "You do not have permissions to edit this planner.",
-                    })
-                );
-            }
+            if (!permissionsValid) return next(new PermissionError("planner"));
 
-            await PlannerActions.save(validPlanners);
+            await PlannerActions.Save(validPlanners);
             return res.status(201).json({ error: false, message: `Planner saved` });
         } catch (e: unknown) {
             next(
@@ -178,38 +164,21 @@ router.delete<DeletePlannerRequestParams, DeletePlannerResponse, DeletePlannerRe
         const { userId } = session;
 
         // Check all required fields are present
-        if (!plannerId) {
-            return next(
-                new AppError({
-                    status: 400,
-                    message: "Insufficient data to delete a planner.",
-                })
-            );
-        }
+        if (!plannerId) return next(new InsufficientDataError("planner"));
 
         // Update database and return status
         try {
-            const [existingPlanner] = await PlannerActions.read({ plannerId, userId });
+            const { permissionsValid, missingPlanners } = await validatePlannerPermissions(
+                plannerId,
+                userId,
+                UserStatus.Owner
+            );
 
-            if (!existingPlanner) {
-                return next(
-                    new AppError({
-                        status: 403,
-                        message: "Cannot find planner to delete.",
-                    })
-                );
-            }
+            if (missingPlanners.length) return next(new NotFoundError("planner", missingPlanners));
 
-            if (existingPlanner.createdBy !== userId) {
-                return next(
-                    new AppError({
-                        status: 403,
-                        message: "You do not have permissions to delete this planner",
-                    })
-                );
-            }
+            if (!permissionsValid) return next(new PermissionError("planner"));
 
-            await PlannerActions.delete({ plannerId });
+            await PlannerActions.Delete({ plannerId });
             return res.status(201).json({ error: false, message: "Planner deleted." });
         } catch (e: unknown) {
             next(
@@ -235,46 +204,20 @@ router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMe
 
         // Check all required fields are present
         if (!validPlannerMeals.length || invalidPlannerMeals.length) {
-            return next(
-                new AppError({
-                    status: 400,
-                    code: "INSUFFICIENT_DATA",
-                    message: "Insufficient data to create a planner recipe.",
-                })
-            );
+            return next(new InsufficientDataError("planner meal"));
         }
 
         // Update database and return status
         try {
-            const [existingPlanner] = await PlannerActions.read({ plannerId, userId });
+            const { permissionsValid, missingPlanners } = await validatePlannerPermissions(
+                plannerId,
+                userId,
+                UserStatus.Administrator
+            );
 
-            if (!existingPlanner) {
-                return next(
-                    new AppError({
-                        status: 404,
-                        code: "PLANNER_NOT_FOUND",
-                        message: "Cannot find planner to add recipe to.",
-                    })
-                );
-            }
+            if (missingPlanners.length) return next(new NotFoundError("planner", missingPlanners));
 
-            if (existingPlanner.createdBy !== userId) {
-                const existingPlannerMembers = await PlannerMemberActions.read({ entityId: plannerId });
-
-                if (
-                    !existingPlannerMembers?.some(
-                        member => member.userId === userId && member.status === UserStatus.Administrator
-                    )
-                ) {
-                    return next(
-                        new AppError({
-                            status: 403,
-                            code: "PLANNER_NO_PERMISSIONS",
-                            message: "You do not have permissions to edit this planner.",
-                        })
-                    );
-                }
-            }
+            if (!permissionsValid) return next(new PermissionError("planner meal"));
 
             await PlannerMealActions.Save(validPlannerMeals);
             return res.status(201).json({ error: false, message: "Planner recipe added." });
@@ -303,40 +246,19 @@ router.post<PostPlannerMemberRequestParams, PostPlannerMemberResponse, PostPlann
         const { userId } = session;
 
         // Check all required fields are present
-        if (!plannerId) {
-            return next(
-                new AppError({
-                    status: 400,
-                    code: "INSUFFICIENT_DATA",
-                    message: "Insufficient data to update planner member.",
-                })
-            );
-        }
+        if (!plannerId) return next(new InsufficientDataError("planner member"));
 
         // Update database and return status
         try {
-            const [existingPlanner] = await InternalPlannerActions.read({ plannerId });
-            if (!existingPlanner) {
-                return next(
-                    new AppError({
-                        status: 403,
-                        code: "NOT_FOUND",
-                        message: "Planner not found.",
-                    })
-                );
-            }
+            const { permissionsValid, missingPlanners } = await validatePlannerPermissions(
+                plannerId,
+                userId,
+                UserStatus.Pending
+            );
 
-            const plannerMembers = await PlannerMemberActions.read({ entityId: plannerId });
+            if (missingPlanners.length) return next(new NotFoundError("planner", missingPlanners));
 
-            if (!plannerMembers?.some(member => member.userId === userId)) {
-                return next(
-                    new AppError({
-                        status: 403,
-                        code: "NO_PERMISSIONS",
-                        message: "You are not a member of this planner.",
-                    })
-                );
-            }
+            if (!permissionsValid) return next(new PermissionError("planner member"));
 
             await PlannerMemberActions.save({ plannerId, members: [{ userId, status: UserStatus.Member }] });
             return res.status(201).json({ error: false, message: "Planner member removed." });
@@ -365,45 +287,19 @@ router.delete<DeletePlannerMealRequestParams, DeletePlannerMealResponse, DeleteP
         const { userId } = session;
 
         // Check all required fields are present
-        if (!plannerId || !mealId) {
-            return next(
-                new AppError({
-                    status: 400,
-                    code: "INSUFFICIENT_DATA",
-                    message: "Insufficient data to remove planner meal.",
-                })
-            );
-        }
+        if (!plannerId || !mealId) return next(new InsufficientDataError("planner meal"));
 
         // Update database and return status
         try {
-            const [existingPlanner] = await PlannerActions.read({ plannerId, userId });
+            const { permissionsValid, missingPlanners } = await validatePlannerPermissions(
+                plannerId,
+                userId,
+                UserStatus.Administrator
+            );
 
-            if (!existingPlanner) {
-                return next(
-                    new AppError({
-                        status: 403,
-                        message: "Cannot find planner to delete meal from.",
-                    })
-                );
-            }
+            if (missingPlanners.length) return next(new NotFoundError("planner", missingPlanners));
 
-            if (existingPlanner.createdBy !== userId) {
-                const existingPlannerMembers = await PlannerMemberActions.read({ entityId: plannerId });
-
-                if (
-                    !existingPlannerMembers?.some(
-                        member => member.userId === userId && member.status === UserStatus.Administrator
-                    )
-                ) {
-                    return next(
-                        new AppError({
-                            status: 403,
-                            message: "You do not have permissions to delete meals from this planner",
-                        })
-                    );
-                }
-            }
+            if (!permissionsValid) return next(new PermissionError("planner item"));
 
             await PlannerMealActions.Delete({ id: mealId });
             return res.status(201).json({ error: false, message: "Planner meal deleted." });
@@ -431,45 +327,23 @@ router.delete<DeletePlannerMemberRequestParams, DeletePlannerMemberResponse, Del
         const userToDelete = userIdReq || userId;
 
         // Check all required fields are present
-        if (!userToDelete || !plannerId) {
-            return next(
-                new AppError({
-                    status: 400,
-                    code: "INSUFFICIENT_DATA",
-                    message: "Insufficient data to remove planner member.",
-                })
-            );
-        }
+        if (!userToDelete || !plannerId) return next(new InsufficientDataError("planner member"));
 
         // Update database and return status
         try {
-            const [existingPlanner] = await InternalPlannerActions.read({ plannerId });
-            if (!existingPlanner) {
-                return next(
-                    new AppError({
-                        status: 403,
-                        code: "NOT_FOUND",
-                        message: "Cannot find planner to remove member from.",
-                    })
-                );
+            const [existingPlanner] = await PlannerActions.ReadPermissions({ plannerId, userId });
+            if (!existingPlanner) return next(new NotFoundError("planner", plannerId));
+
+            if (userIdReq && userId !== userIdReq && existingPlanner.createdBy !== userId) {
+                return next(new PermissionError("planner member"));
             }
 
             if (existingPlanner.createdBy === userToDelete) {
                 return next(
                     new AppError({
-                        status: 403,
+                        status: 400,
                         code: "OWNER",
-                        message: "You cannot leave a planner you own.",
-                    })
-                );
-            }
-
-            if (userIdReq && userId !== userIdReq && existingPlanner.createdBy !== userId) {
-                return next(
-                    new AppError({
-                        status: 403,
-                        code: "NO_PERMISSIONS",
-                        message: "You do not have permissions to remove planner member.",
+                        message: "Cannot remove planner owner from planner.",
                     })
                 );
             }

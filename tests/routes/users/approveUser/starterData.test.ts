@@ -61,7 +61,7 @@ test("should create sample data for pending => registered user", async () => {
     if (!bookRecipe) throw new Error("BookRecipe not created");
     expect(bookRecipe.recipeId).toEqual(recipe.recipeId);
 
-    const planners = await PlannerActions.readMy({ userId: user.userId });
+    const planners = await PlannerActions.ReadByUser({ userId: user.userId });
     expect(planners.length).toEqual(1);
 
     const [planner] = planners;
