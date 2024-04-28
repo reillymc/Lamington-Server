@@ -6,7 +6,7 @@
     "scripts": {
         "build": "rm -rf dist/ && tsc && cp -R src/docs/ dist/ && cp package*.json dist/",
         "start": "NODE_ENV=development nodemon src/index.ts",
-        "prod": "NODE_ENV=production node dist/index.js",
+        "prod": "NODE_ENV=production knex migrate:latest --knexfile dist/database/knexfile.ts && NODE_ENV=production node dist/index.js",
         "test": "NODE_ENV=test jest --forceExit",
         "test:coverage": "NODE_ENV=test jest --forceExit --coverage",
         "migrate:dev": "NODE_ENV=development knex migrate:latest --knexfile src/database/knexfile.ts",

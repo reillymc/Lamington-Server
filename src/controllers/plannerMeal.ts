@@ -51,7 +51,12 @@ const savePlannerMeals: PlannerMealService["Save"] = async params => {
  * @returns the newly created planners
  */
 const deletePlannerMeals: PlannerMealService["Delete"] = async params =>
-    db(lamington.plannerMeal).whereIn(plannerMeal.id, EnsureArray(params)).delete();
+    db(lamington.plannerMeal)
+        .whereIn(
+            plannerMeal.id,
+            EnsureArray(params).map(({ id }) => id)
+        )
+        .delete();
 
 export const PlannerMealActions: PlannerMealService = {
     /**
