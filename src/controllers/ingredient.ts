@@ -22,7 +22,7 @@ import { processPagination } from "./helpers";
 const query: QueryService<Ingredient> = async ({ page = 1, search }) => {
     const ingredientsList = await db<Ingredient>(lamington.ingredient)
         .select("ingredientId", "name", "photo", "description", "createdBy")
-        .where(builder => (search ? builder.where("name", "like", `%${search}%`) : undefined))
+        .where(builder => (search ? builder.where("name", "ILIKE", `%${search}%`) : undefined))
         .orderBy([{ column: ingredient.name, order: "asc" }, "ingredientId"])
         .limit(PAGE_SIZE + 1)
         .offset((page - 1) * PAGE_SIZE);
@@ -44,7 +44,7 @@ const queryByUser: QueryService<Ingredient, Pick<User, "userId">> = async ({ pag
             ingredient.createdBy
         )
         .where({ [ingredient.createdBy]: userId })
-        .where(builder => (search ? builder.where(ingredient.name, "like", `%${search}%`) : undefined))
+        .where(builder => (search ? builder.where(ingredient.name, "ILIKE", `%${search}%`) : undefined))
         .orderBy([{ column: ingredient.name, order: "asc" }, ingredient.ingredientId])
         .limit(PAGE_SIZE + 1)
         .offset((page - 1) * PAGE_SIZE);

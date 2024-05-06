@@ -119,7 +119,7 @@ const query: RecipeService["Query"] = async ({
 
     const recipeList = await RecipeBase(userId)
         .groupBy(recipe.recipeId, user.firstName)
-        .where(builder => (search ? builder.where(recipe.name, "like", `%${search}%`) : undefined))
+        .where(builder => (search ? builder.where(recipe.name, "ILIKE", `%${search}%`) : undefined))
         .where(builder => builder.where({ [recipe.public]: true }).orWhere({ [recipe.createdBy]: userId }))
         .where(builder => {
             if (!categories.length) return undefined;
@@ -193,7 +193,7 @@ const queryByUser: RecipeService["QueryByUser"] = async ({
 
     const recipeList = await RecipeBase(userId)
         .groupBy(recipe.recipeId, user.firstName)
-        .where(builder => (search ? builder.where(recipe.name, "like", `%${search}%`) : undefined))
+        .where(builder => (search ? builder.where(recipe.name, "ILIKE", `%${search}%`) : undefined))
         .where({ [recipe.createdBy]: userId })
         .where(builder => {
             if (!categories.length) return undefined;
