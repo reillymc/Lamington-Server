@@ -141,6 +141,7 @@ const query: RecipeService["Query"] = async ({
                           .select(recipeIngredient.recipeId)
                           .from(lamington.recipeIngredient)
                           .whereIn(recipeIngredient.ingredientId, ingredients)
+                          .orWhereIn(recipeIngredient.description, ingredients)
                           .groupBy(recipeIngredient.recipeId)
                   )
                 : undefined

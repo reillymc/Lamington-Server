@@ -1,3 +1,4 @@
+import { AssetServices, ingredientsSubpath } from "./asset";
 import { AttachmentServices, imageSubpath, uploadDirectory } from "./attachment";
 import { AuthServices, loginSubpath, registerSubpath } from "./auth";
 import { BookServices, bookIdParam, bookMemberIdParam, bookMemberSubpath, recipeSubpath } from "./book";
@@ -17,6 +18,10 @@ import {
 import { RecipeServices, rateSubpath, recipeIdParam } from "./recipe";
 import { TagServices } from "./tag";
 import { UserServices, approveSubpath, userIdParam } from "./user";
+
+export const AssetEndpoint = {
+    getPresetIngredients: `/${ingredientsSubpath}`,
+} as const satisfies Record<keyof AssetServices, string>;
 
 export const AttachmentEndpoint = {
     postImage: `/${imageSubpath}`,
@@ -92,6 +97,7 @@ export const UserEndpoint = {
     getUsers: `/`,
 } as const satisfies Record<keyof UserServices, string>;
 
+export * from "./asset";
 export * from "./attachment";
 export * from "./auth";
 export { BasePaginatedRequestQuery, QueryParam, RequestValidator } from "./base";

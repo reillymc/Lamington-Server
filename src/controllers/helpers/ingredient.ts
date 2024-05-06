@@ -11,12 +11,17 @@ export const ingredientsRequestToRows = ({
 
     return ingredients
         .flatMap(({ items }) => items)
-        .map(
-            (item): Partial<Ingredient> => ({
-                ingredientId: item.ingredientId,
-                name: item.name,
+        .map(({ ingredientId, name, ...item }): Ingredient | undefined => {
+            if (!ingredientId || !name) return;
+
+            return {
+                ingredientId,
+                name,
+                ...item,
+                photo: undefined,
+                description: undefined,
                 createdBy,
-            })
-        )
+            };
+        })
         .filter(Undefined);
 };

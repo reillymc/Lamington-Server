@@ -1,13 +1,13 @@
 require("dotenv").config();
 
-import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import express from "express";
 import helmet from "helmet";
 
 import config from "./config";
-import appRouter, { authRouter, docsRouter } from "./routes";
 import { authenticationMiddleware, errorMiddleware, loggerMiddleware, notFoundMiddleware } from "./middleware";
+import appRouter, { authRouter, docsRouter } from "./routes";
 import { attachmentEndpoint, authEndpoint, uploadDirectory } from "./routes/spec";
 
 const app = express();
