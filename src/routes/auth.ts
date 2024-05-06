@@ -73,7 +73,7 @@ router.post<LoginRequestParams, LoginResponse, LoginRequestBody>(AuthEndpoint.lo
     const { email, password } = req.body;
 
     // Check all required fields are present
-    if (!email || (process.env.NODE_ENV !== "development" && !password)) {
+    if (!email || !password) {
         return next(new AppError({ status: 401, message: "Invalid username or password" }));
     }
 

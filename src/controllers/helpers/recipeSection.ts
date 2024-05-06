@@ -1,4 +1,5 @@
 import { RecipeSection, ServiceParams } from "../../database";
+import { Undefined } from "../../utils";
 import { RecipeService } from "../spec";
 
 export const recipeSectionRequestToRows = ({
@@ -23,7 +24,14 @@ export const recipeSectionRequestToRows = ({
 
     const sectionRequests = [...ingSectionRequests, ...methodSectionRequests];
 
-    if (!sectionRequests.length) return;
+    // Recipes used to be saved with the default ingredient and method sections sharing the same id.
+    // Postgres does not sup[port multiple updates to the same row in one query so only one section data will be saved.
+    // This should be fine as these default sections don't currently have any customisation.
+    const uniqueSections = Array.from(new Set(sectionRequests.map(({ sectionId }) => sectionId)))
+        .map(sectionId => sectionRequests.find(({ sectionId: id }) => id === sectionId))
+        .filter(Undefined);
 
-    return sectionRequests;
+    if (!uniqueSections.length) return;
+
+    return uniqueSections;
 };

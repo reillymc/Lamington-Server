@@ -46,6 +46,9 @@ const config: LamingtonConfig = {
         awsBucketName: process.env.AWS_BUCKET_NAME,
         path: process.env.ATTACHMENT_PATH ?? "prod",
     },
+    misc: {
+        adminAccountName: process.env.ADMIN_ACCOUNT_NAME
+    }
 } as const;
 
 export interface LamingtonConfig {
@@ -70,6 +73,9 @@ export interface LamingtonConfig {
         awsRegion: string | undefined;
         awsBucketName: string | undefined;
     };
+    misc: {
+        adminAccountName: string | undefined
+    }
 }
 
 export default config;
