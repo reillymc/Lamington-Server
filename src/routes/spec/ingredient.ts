@@ -6,6 +6,7 @@ import {
     BaseRequestParams,
     BaseResponse,
 } from "./base";
+import { User } from "./user";
 
 export const ingredientEndpoint = "/ingredients" as const;
 
@@ -24,7 +25,7 @@ export interface Ingredient {
     name: string;
     description?: string;
     photo?: string;
-    createdBy?: string;
+    createdBy?: User["userId"];
 }
 
 // Get ingredients

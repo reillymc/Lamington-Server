@@ -1,4 +1,5 @@
 import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from "./base";
+import { User } from "./user";
 
 export const cookListEndpoint = "/queue" as const;
 export const cookListMealIdParam = "mealId" as const;
@@ -8,7 +9,7 @@ export const cookListMealIdParam = "mealId" as const;
  */
 export type CookListMeal = {
     id: string;
-    createdBy: string;
+    createdBy: User["userId"];
     sequence?: number;
     meal: string;
     description?: string;
