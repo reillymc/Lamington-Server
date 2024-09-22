@@ -26,12 +26,9 @@ const parseAttachmentStorage = (imageStorage: string | undefined): "local" | "im
 
 const config: LamingtonConfig = {
     app: {
-        port: parseInt(process.env.NODE_LOCAL_PORT ?? "3000", 10),
+        port: parseInt(process.env.PORT ?? "3000", 10),
         logDetail: parseLogLevel(process.env.LOG_LEVEL),
-    },
-    database: {
-        client: "pg",
-        pageSize: parseInt(process.env.DB_PAGE_SIZE ?? "10", 10),
+        pageSize: parseInt(process.env.PAGE_SIZE ?? "50", 10),
     },
     authentication: {
         jwtSecret: process.env.JWT_SECRET,
@@ -46,19 +43,13 @@ const config: LamingtonConfig = {
         awsBucketName: process.env.AWS_BUCKET_NAME,
         path: process.env.ATTACHMENT_PATH ?? "prod",
     },
-    misc: {
-        adminAccountName: process.env.ADMIN_ACCOUNT_NAME
-    }
 } as const;
 
 export interface LamingtonConfig {
     app: {
         port: number;
         logDetail: "tiny" | "short" | "dev";
-    };
-    database: {
-        client: "pg";
-        pageSize: number | undefined;
+        pageSize: number;
     };
     authentication: {
         jwtSecret: string | undefined;
@@ -73,9 +64,6 @@ export interface LamingtonConfig {
         awsRegion: string | undefined;
         awsBucketName: string | undefined;
     };
-    misc: {
-        adminAccountName: string | undefined
-    }
 }
 
 export default config;

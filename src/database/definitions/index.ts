@@ -107,7 +107,7 @@ export type ServiceResponse<T extends Record<string, any>, K extends keyof T> = 
     ? Awaited<ReturnType<T[K]>>["result"][number]
     : Awaited<ReturnType<T[K]>>[number];
 
-export const PAGE_SIZE = config.database.pageSize ?? 50;
+export const PAGE_SIZE = config.app.pageSize;
 
 export * from "./book";
 export * from "./bookMember";

@@ -1,9 +1,8 @@
 import type { Knex } from "knex";
-import { default as appConfig } from "../config";
 
 const config: { [key: string]: Knex.Config } = {
     development: {
-        client: appConfig.database.client,
+        client: "pg",
         connection: {
             database: process.env.DB_DEV_NAME,
             host: process.env.DB_DEV_HOST,
@@ -25,7 +24,7 @@ const config: { [key: string]: Knex.Config } = {
     },
 
     test: {
-        client: appConfig.database.client,
+        client: "pg",
         connection: {
             database: process.env.DB_TEST_NAME,
             host: process.env.DB_TEST_HOST,
@@ -47,13 +46,13 @@ const config: { [key: string]: Knex.Config } = {
     },
 
     production: {
-        client: appConfig.database.client,
+        client: "pg",
         connection: {
-            database: process.env.DB_PROD_NAME,
-            host: process.env.DB_PROD_HOST,
-            port: parseInt(process.env.DB_PORT ?? "0", 10),
-            user: process.env.DB_PROD_USER,
-            password: process.env.DB_PROD_PASSWORD,
+            database: process.env.POSTGRES_DB,
+            host: process.env.DB_HOST,
+            port: parseInt(process.env.PGPORT ?? "5432", 10),
+            user: process.env.POSTGRES_USER,
+            password: process.env.POSTGRES_PASSWORD,
         },
         pool: {
             min: 2,

@@ -18,6 +18,7 @@ const createS3Client = () => {
             accessKeyId: config.attachments.awsAccessKeyId,
             secretAccessKey: config.attachments.awsSecretAccessKey,
         },
+        useDualstackEndpoint: true,
     });
 };
 

@@ -1,0 +1,31 @@
+services:
+    lamington_server:
+        image: ghcr.io/reillymc/lamington-server:latest
+        container_name: lamington_server
+        depends_on:
+            - lamington_db
+        restart: unless-stopped
+        env_file: .env
+        ports:
+            - $PORT:$PORT
+        volumes:
+            - ./lamington-data/uploads:/home/node/app/uploads
+            - ./lamington-data/logs:/home/node/app/logs
+        networks:
+            - lamington-network
+
+    lamington_db:
+        container_name: lamington_db
+        image: postgres:16.4
+        restart: unless-stopped
+        env_file: .env
+        expose:
+            - $PGPORT
+        volumes:
+            - ./lamington-data/db:/var/lib/postgresql/data
+        networks:
+            - lamington-network
+
+networks:
+    lamington-network:
+        driver: bridge

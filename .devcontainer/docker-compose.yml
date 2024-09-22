@@ -12,52 +12,40 @@ services:
         restart: unless-stopped
         env_file: .env
         ports:
-            - $NODE_LOCAL_PORT:$NODE_DOCKER_PORT
+            - $PORT:$PORT
         volumes:
             - ..:/workspace:cached
         stdin_open: true
         tty: true
 
-    db_production:
-        image: postgres:latest
-        restart: unless-stopped
-        env_file: .env
-        environment:
-            - POSTGRES_USER=$DB_PROD_USER
-            - POSTGRES_DB=$DB_PROD_NAME
-            - POSTGRES_PASSWORD=$DB_PROD_PASSWORD
-        expose:
-            - $DB_PORT
-        volumes:
-            - db_production:/var/lib/postgresql/data
-
     db_development:
-        image: postgres:latest
+        image: postgres:16.4
         restart: unless-stopped
         env_file: .env
         environment:
             - POSTGRES_USER=$DB_DEV_USER
             - POSTGRES_DB=$DB_DEV_NAME
             - POSTGRES_PASSWORD=$DB_DEV_PASSWORD
+            - PGPORT=$DB_PORT
         expose:
             - $DB_PORT
         volumes:
             - db_development:/var/lib/postgresql/data
 
     db_testing:
-        image: postgres:latest
+        image: postgres:16.4
         restart: unless-stopped
         env_file: .env
         environment:
             - POSTGRES_USER=$DB_TEST_USER
             - POSTGRES_DB=$DB_TEST_NAME
             - POSTGRES_PASSWORD=$DB_TEST_PASSWORD
+            - PGPORT=$DB_PORT
         expose:
             - $DB_PORT
         volumes:
             - db_testing:/var/lib/postgresql/data
 
 volumes:
-    db_production:
     db_development:
     db_testing:
