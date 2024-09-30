@@ -50,4 +50,19 @@ export const BisectOnValidItems = <R, T = any>(arr: T[], predicate: (item: T) =>
     return [trueArr, falseArr] as const;
 };
 
+export const BisectOnPredicate = <T>(arr: T[], predicate: (item: T) => boolean) => {
+    const trueArr: T[] = [];
+    const falseArr: T[] = [];
+
+    arr.forEach(item => {
+        if (predicate(item)) {
+            trueArr.push(item);
+        } else {
+            falseArr.push(item);
+        }
+    });
+
+    return [trueArr, falseArr] as const;
+};
+
 export const randomElement = <T>(array: T[]): T | undefined => array[Math.floor(Math.random() * array.length)];

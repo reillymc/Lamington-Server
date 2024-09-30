@@ -6,6 +6,7 @@ import db, {
     ServiceResponse,
     User,
     bookRecipe,
+    ingredient,
     lamington,
     recipe,
     recipeIngredient,
@@ -21,7 +22,8 @@ import { RecipeSectionActions } from "./recipeSection";
 import { RecipeStepActions } from "./recipeStep";
 import { RecipeTagActions } from "./recipeTag";
 
-import { EnsureArray, Undefined } from "../utils";
+import { validate } from "uuid";
+import { BisectOnPredicate, EnsureArray, Undefined } from "../utils";
 import {
     ingredientsRequestToRows,
     processPagination,
@@ -104,7 +106,7 @@ const query: RecipeService["Query"] = async ({
     sort = "name",
     order = "asc",
     categoryGroups,
-    ingredients,
+    ingredients = [],
     userId,
 }) => {
     // Fetch from database
@@ -116,6 +118,8 @@ const query: RecipeService["Query"] = async ({
     }[sort];
 
     const categories = Object.entries(categoryGroups ?? {});
+
+    const [ingredientIds, ingredientNames] = BisectOnPredicate(ingredients, validate);
 
     const recipeList = await RecipeBase(userId)
         .groupBy(recipe.recipeId, user.firstName)
@@ -134,14 +138,15 @@ const query: RecipeService["Query"] = async ({
             return builder;
         })
         .where(builder =>
-            ingredients?.length
+            ingredients.length
                 ? builder.whereIn(
                       recipe.recipeId,
                       db
                           .select(recipeIngredient.recipeId)
                           .from(lamington.recipeIngredient)
-                          .whereIn(recipeIngredient.ingredientId, ingredients)
-                          .orWhereIn(recipeIngredient.description, ingredients)
+                          .whereIn(recipeIngredient.ingredientId, ingredientIds)
+                          .orWhereIn(ingredient.name, ingredientNames)
+                          .leftJoin(lamington.ingredient, ingredient.ingredientId, recipeIngredient.ingredientId)
                           .groupBy(recipeIngredient.recipeId)
                   )
                 : undefined
@@ -177,7 +182,7 @@ const queryByUser: RecipeService["QueryByUser"] = async ({
     sort = "name",
     order = "asc",
     categoryGroups,
-    ingredients,
+    ingredients = [],
     userId,
 }) => {
     // Fetch from database
@@ -190,6 +195,8 @@ const queryByUser: RecipeService["QueryByUser"] = async ({
     }[sort];
 
     const categories = Object.entries(categoryGroups ?? {});
+
+    const [ingredientIds, ingredientNames] = BisectOnPredicate(ingredients, validate);
 
     const recipeList = await RecipeBase(userId)
         .groupBy(recipe.recipeId, user.firstName)
@@ -208,13 +215,15 @@ const queryByUser: RecipeService["QueryByUser"] = async ({
             return builder;
         })
         .where(builder =>
-            ingredients?.length
+            ingredients.length
                 ? builder.whereIn(
                       recipe.recipeId,
                       db
                           .select(recipeIngredient.recipeId)
                           .from(lamington.recipeIngredient)
-                          .whereIn(recipeIngredient.ingredientId, ingredients)
+                          .whereIn(recipeIngredient.ingredientId, ingredientIds)
+                          .orWhereIn(ingredient.name, ingredientNames)
+                          .leftJoin(lamington.ingredient, ingredient.ingredientId, recipeIngredient.ingredientId)
                           .groupBy(recipeIngredient.recipeId)
                   )
                 : undefined
