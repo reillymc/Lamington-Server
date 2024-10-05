@@ -1,4 +1,5 @@
 import express from "express";
+import path from "path";
 
 import { notFoundMiddleware } from "../middleware";
 import { default as attachmentsRouter } from "./attachments";
@@ -28,7 +29,7 @@ import { default as usersRouter } from "./users";
 
 const appRouter = express.Router();
 
-appRouter.use(assetEndpoint, express.static(assetsDirectory));
+appRouter.use(assetEndpoint, express.static(path.join(__dirname, "..", assetsDirectory)));
 appRouter.use(attachmentEndpoint, attachmentsRouter);
 appRouter.use(bookEndpoint, booksRouter);
 appRouter.use(cookListEndpoint, cookListsRouter);

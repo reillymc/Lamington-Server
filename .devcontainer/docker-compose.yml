@@ -25,9 +25,9 @@ services:
             - POSTGRES_USER=$DB_DEV_USER
             - POSTGRES_DB=$DB_DEV_NAME
             - POSTGRES_PASSWORD=$DB_DEV_PASSWORD
-            - PGPORT=$DB_PORT
+            - PGPORT=$PGPORT
         expose:
-            - $DB_PORT
+            - $PGPORT
         volumes:
             - db_development:/var/lib/postgresql/data
 
@@ -39,9 +39,9 @@ services:
             - POSTGRES_USER=$DB_TEST_USER
             - POSTGRES_DB=$DB_TEST_NAME
             - POSTGRES_PASSWORD=$DB_TEST_PASSWORD
-            - PGPORT=$DB_PORT
+            - PGPORT=$PGPORT
         expose:
-            - $DB_PORT
+            - $PGPORT
         volumes:
             - db_testing:/var/lib/postgresql/data
 

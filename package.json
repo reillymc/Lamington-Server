@@ -1,10 +1,10 @@
 {
     "name": "lamington-server",
-    "version": "1.3.5",
+    "version": "1.3.8",
     "private": true,
     "main": "dist/index.js",
     "scripts": {
-        "build": "rm -rf dist/ && tsc && cp -R src/docs/ dist/ && cp package*.json dist/",
+        "build": "rm -rf dist/ && tsc && cp -R src/docs/ dist/ && cp -R src/assets/ dist/ && cp package*.json dist/",
         "start": "NODE_ENV=development nodemon src/index.ts",
         "prod": "NODE_ENV=production knex migrate:latest --knexfile dist/database/knexfile.js && NODE_ENV=production knex seed:run --knexfile dist/database/knexfile.js && NODE_ENV=production node dist/index.js",
         "test": "NODE_ENV=test jest --forceExit",
