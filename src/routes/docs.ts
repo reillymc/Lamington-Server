@@ -1,6 +1,9 @@
 import express from "express";
 import swaggerUI from "swagger-ui-express";
-const swaggerDocument = require("../docs/documentation.json");
+import { version } from "../../package.json";
+import swaggerDocument from "../docs/documentation.json";
+
+swaggerDocument.info.version = version;
 
 const router = express.Router();
 
