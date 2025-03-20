@@ -95,6 +95,7 @@ export const UserEndpoint = {
     approveUser: `/:${userIdParam}/${approveSubpath}`,
     getPendingUsers: `/pending`,
     getUsers: `/`,
+    deleteUsers: `/:${userIdParam}`,
 } as const satisfies Record<keyof UserServices, string>;
 
 export * from "./asset";

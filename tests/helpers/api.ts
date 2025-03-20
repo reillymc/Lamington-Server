@@ -2,6 +2,9 @@ import {
     AttachmentServices,
     AuthServices,
     BookServices,
+    CookListServices,
+    GetAllRecipesRequestQuery,
+    GetMyRecipesRequestQuery,
     IngredientServices,
     ListServices,
     PlannerServices,
@@ -13,11 +16,11 @@ import {
     authEndpoint,
     bookEndpoint,
     bookMemberSubpath,
+    cookListEndpoint,
     imageSubpath,
     ingredientEndpoint,
     itemSubpath,
     listEndpoint,
-    cookListEndpoint,
     listMemberSubpath,
     loginSubpath,
     mealSubpath,
@@ -30,9 +33,6 @@ import {
     tagEndpoint,
     uploadDirectory,
     usersEndpoint,
-    CookListServices,
-    GetAllRecipesRequestQuery,
-    GetMyRecipesRequestQuery,
 } from "../../src/routes/spec";
 
 const ServerURL = "";
@@ -132,6 +132,7 @@ export const UserEndpoint = {
     approveUser: (userId: string) => `${ApiUrl}${usersEndpoint}/${userId}/${approveSubpath}` as const,
     getPendingUsers: `${ApiUrl}${usersEndpoint}/pending`,
     getUsers: `${ApiUrl}${usersEndpoint}`,
+    deleteUsers: (userId: string) => `${ApiUrl}${usersEndpoint}/${userId}`,
 } as const satisfies Record<keyof UserServices, Endpoint>;
 
 const appendQuery = <T extends Record<string, unknown> | undefined>(query: T) => {

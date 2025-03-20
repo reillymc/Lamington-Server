@@ -1,6 +1,15 @@
 import { v4 as Uuid } from "uuid";
 
-import db, { CreateQuery, CreateResponse, ReadQuery, ReadResponse, User, lamington, user } from "../database";
+import db, {
+    CreateQuery,
+    CreateResponse,
+    ReadQuery,
+    ReadResponse,
+    User,
+    lamington,
+    user,
+    type DeleteService,
+} from "../database";
 import { UserStatus } from "../routes/spec";
 import { EnsureArray, Undefined } from "../utils";
 
@@ -71,6 +80,18 @@ const saveUsers = async (params: CreateQuery<CreateUserParams>): CreateResponse<
     return db<User>(lamington.user).insert(users).onConflict("userId").merge().returning("userId");
 };
 
+/**
+ * Deletes users by id
+ * @returns the newly created / updated users
+ */
+const deleteUsers: DeleteService<User, "userId"> = async params => {
+    const userIds = EnsureArray(params)
+        .map(({ userId }) => userId)
+        .filter(Undefined);
+
+    return db<User>(lamington.user).whereIn(user.userId, userIds).delete();
+};
+
 const saveUserStatus = async (params: CreateQuery<{ userId: string; status: UserStatus }>): CreateResponse<User> => {
     const users = EnsureArray(params);
 
@@ -89,6 +110,7 @@ export const UserActions = {
     readPending: readPendingUsers,
     save: saveUsers,
     saveStatus: saveUserStatus,
+    delete: deleteUsers,
 };
 
 interface ReadUserInternalParams {

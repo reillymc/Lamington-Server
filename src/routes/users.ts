@@ -25,6 +25,8 @@ import {
     PostUserApprovalResponse,
     UserEndpoint,
     UserStatus,
+    type DeleteUserRequestParams,
+    type DeleteUserResponse,
 } from "./spec";
 
 const router = express.Router();
@@ -134,6 +136,31 @@ router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApp
         } catch (e: unknown) {
             next(
                 new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "users" }) })
+            );
+        }
+    }
+);
+
+/**
+ * DELETE request to delete current user account.
+ */
+router.delete<DeleteUserRequestParams, DeleteUserResponse>(
+    UserEndpoint.deleteUsers,
+    async ({ params, session }, res, next) => {
+        const { userId: userToUpdate } = params;
+        const { userId } = session;
+
+        if (userToUpdate !== userId) {
+            return next(new AppError({ status: 401, message: "Unauthorised action" }));
+        }
+
+        try {
+            await UserActions.delete({ userId });
+
+            return res.status(200).json({ error: false });
+        } catch (e: unknown) {
+            next(
+                new AppError({ innerError: e, message: userMessage({ action: MessageAction.Delete, entity: "users" }) })
             );
         }
     }

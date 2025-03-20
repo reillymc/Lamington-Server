@@ -79,8 +79,15 @@ export type PostUserApprovalRequest = BaseRequest<PostUserApprovalRequestBody & 
 export type PostUserApprovalResponse = BaseResponse;
 export type PostUserApprovalService = (request: PostUserApprovalRequest) => PostUserApprovalResponse;
 
+// Delete user
+export type DeleteUserRequestParams = BaseRequestParams<{ userId: string }>;
+export type DeleteUserRequest = BaseRequest<DeleteUserRequestParams>;
+export type DeleteUserResponse = BaseResponse;
+export type DeleteUserService = (request: DeleteUserRequest) => DeleteUserResponse;
+
 export interface UserServices {
     approveUser: PostUserApprovalService;
     getPendingUsers: GetPendingUsersService;
     getUsers: GetUsersService;
+    deleteUsers: DeleteUserService;
 }

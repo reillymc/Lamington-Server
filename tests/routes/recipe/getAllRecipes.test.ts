@@ -177,7 +177,7 @@ test("should respect pagination", async () => {
 
     const { data } = res.body as GetAllRecipesResponse;
 
-    expect(Object.keys(data ?? {}).length).toEqual(config.database.pageSize);
+    expect(Object.keys(data ?? {}).length).toEqual(config.app.pageSize);
 
     const resPage2 = await request(app)
         .get(RecipeEndpoint.getAllRecipes({ page: 2 }))
@@ -187,7 +187,7 @@ test("should respect pagination", async () => {
 
     const { data: dataPage2 } = resPage2.body as GetAllRecipesResponse;
 
-    expect(Object.keys(dataPage2 ?? {}).length).toEqual(recipes.length - config.database.pageSize!);
+    expect(Object.keys(dataPage2 ?? {}).length).toEqual(recipes.length - config.app.pageSize!);
 
     const duplicateRecipeKeys = Object.keys(data!).filter(key => Object.keys(dataPage2!).includes(key));
 
