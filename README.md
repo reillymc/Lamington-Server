@@ -1,12 +1,6 @@
 # Lamington-Server
 
-A node server for the Lamington app
-
-## Technologies
-
--   Nodejs
--   Express
--   TypeScript
+Lamington is a recipe book, meal planner and shopping list in one. This repository contains the code for the Node backend powering Lamington.
 
 ## Development
 
@@ -27,4 +21,3 @@ Deploying Lamington Server is simple with just a few steps to get set up. A `.en
 ```
 
 See the [example env file](./.env.example) for details on required and optional variables.
-
