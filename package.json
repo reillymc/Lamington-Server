@@ -4,19 +4,18 @@
     "private": true,
     "main": "dist/index.js",
     "scripts": {
-        "build": "rm -rf dist/ && tsc && cp -R src/docs/ dist/ && cp -R src/assets/ dist/ && cp package*.json dist/",
+        "build": "rm -rf dist/ && tsc && cp package*.json dist/",
         "start": "NODE_ENV=development nodemon src/index.ts",
-        "prod": "NODE_ENV=production knex migrate:latest --knexfile dist/database/knexfile.js && NODE_ENV=production knex seed:run --knexfile dist/database/knexfile.js && NODE_ENV=production node dist/index.js",
+        "prod": "npm run migrate:prod && npm run seed:prod && NODE_ENV=production node dist/src/index.js",
         "test": "NODE_ENV=test jest --forceExit",
         "test:coverage": "NODE_ENV=test jest --forceExit --coverage",
         "migrate:dev": "NODE_ENV=development knex migrate:latest --knexfile src/database/knexfile.ts",
-        "migrate:prod": "NODE_ENV=production knex migrate:latest --knexfile dist/database/knexfile.ts",
+        "migrate:prod": "NODE_ENV=production knex migrate:latest --knexfile dist/src/database/knexfile.ts",
         "rollback:dev": "NODE_ENV=development knex migrate:rollback --knexfile src/database/knexfile.ts",
         "seed:dev": "NODE_ENV=development knex seed:run --knexfile src/database/knexfile.ts",
-        "seed:prod": "NODE_ENV=production knex seed:run --knexfile dist/database/knexfile.ts",
+        "seed:prod": "NODE_ENV=production knex seed:run --knexfile dist/src/database/knexfile.ts",
         "setup:dev": "NODE_ENV=development knex migrate:rollback --knexfile src/database/knexfile.ts && NODE_ENV=development knex migrate:latest --knexfile src/database/knexfile.ts && NODE_ENV=development knex seed:run --knexfile src/database/knexfile.ts",
-        "setup:test": "NODE_ENV=test knex migrate:rollback --knexfile src/database/knexfile.ts && NODE_ENV=test knex migrate:latest --knexfile src/database/knexfile.ts && NODE_ENV=test knex seed:run --knexfile src/database/knexfile.ts",
-        "setup:prod": "NODE_ENV=production knex migrate:rollback --knexfile src/database/knexfile.ts && NODE_ENV=production knex migrate:latest --knexfile src/database/knexfile.ts && NODE_ENV=production knex seed:run --knexfile src/database/knexfile.ts"
+        "setup:test": "NODE_ENV=test knex migrate:rollback --knexfile src/database/knexfile.ts && NODE_ENV=test knex migrate:latest --knexfile src/database/knexfile.ts && NODE_ENV=test knex seed:run --knexfile src/database/knexfile.ts"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.294.0",
