@@ -1,6 +1,6 @@
-import { Request } from "express";
-import multer, { FileFilterCallback } from "multer";
-import path from "path";
+import { type Request } from "express";
+import multer, { type FileFilterCallback } from "multer";
+import path from "node:path";
 
 const acceptedExtensions = [".jpg", ".jpeg", ".png"];
 const acceptedMimeTypes = ["image/jpg", "image/jpeg", "image/png"];

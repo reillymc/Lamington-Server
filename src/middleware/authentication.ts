@@ -1,11 +1,11 @@
-import { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 
-import config from "../config";
-import { UserActions } from "../controllers";
-import { getStatus } from "../routes/helpers";
-import { UserStatus } from "../routes/spec";
-import { AppError } from "../services";
+import config from "../config.ts";
+import { UserActions } from "../controllers/index.ts";
+import { getStatus } from "../routes/helpers/index.ts";
+import { UserStatus } from "../routes/spec/index.ts";
+import { AppError } from "../services/index.ts";
 
 const { jwtSecret } = config.authentication;
 

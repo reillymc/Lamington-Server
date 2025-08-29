@@ -1,4 +1,4 @@
-import {
+import type {
     Book,
     DeleteService,
     QueryService,
@@ -10,11 +10,11 @@ import {
     ServiceResponse,
     Tag,
     User,
-} from "../../database";
-import { RecipeIngredientActions } from "../recipeIngredient";
-import { RecipeSectionActions } from "../recipeSection";
-import { RecipeStepActions } from "../recipeStep";
-import { RecipeTagActions } from "../recipeTag";
+} from "../../database/index.ts";
+import { RecipeIngredientActions } from "../recipeIngredient.ts";
+import { RecipeSectionActions } from "../recipeSection.ts";
+import { RecipeStepActions } from "../recipeStep.ts";
+import { RecipeTagActions } from "../recipeTag.ts";
 
 interface Section<T> {
     sectionId: string;

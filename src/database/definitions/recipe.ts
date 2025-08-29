@@ -1,6 +1,6 @@
-import { Table } from ".";
-import { RecipeServings } from "../../routes/spec";
-import { lamington } from "./lamington";
+import type { RecipeServings } from "../../routes/spec/index.ts";
+import type { Table } from "./index.ts";
+import { lamington } from "./lamington.ts";
 
 /**
  * Recipe

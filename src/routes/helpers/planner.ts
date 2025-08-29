@@ -1,11 +1,11 @@
 import { v4 as Uuid } from "uuid";
 
-import { PlannerActions, PlannerMemberActions } from "../../controllers";
-import { PlannerMealService, PlannerService } from "../../controllers/spec";
-import { ServiceParams } from "../../database";
-import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils";
-import { Planner, PostPlannerMealRequestBody, PostPlannerRequestBody, UserStatus } from "../spec";
-import { getStatus } from "./user";
+import { PlannerActions, PlannerMemberActions } from "../../controllers/index.ts";
+import type { PlannerMealService, PlannerService } from "../../controllers/spec/index.ts";
+import type { ServiceParams } from "../../database/index.ts";
+import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils/index.ts";
+import { type Planner, type PostPlannerMealRequestBody, type PostPlannerRequestBody, UserStatus } from "../spec/index.ts";
+import { getStatus } from "./user.ts";
 
 export const validatePostPlannerBody = ({ data }: PostPlannerRequestBody, userId: string) => {
     const filteredData = EnsureDefinedArray(data);

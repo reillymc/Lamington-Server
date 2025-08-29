@@ -1,14 +1,16 @@
 import knex from "knex";
-const config = require("./knexfile");
+import development from "./knexfile.development.ts";
+import production from "./knexfile.production.ts";
+import test from "./knexfile.testing.ts";
 
 const selectDatabaseConfig = () => {
     switch (process.env.NODE_ENV) {
         case "test":
-            return config.test;
+            return test;
         case "production":
-            return config.production;
+            return production;
         default:
-            return config.development;
+            return development;
     }
 };
 
@@ -16,4 +18,4 @@ const db = knex(selectDatabaseConfig());
 
 export default db;
 
-export * from "./definitions";
+export * from "./definitions/index.ts";

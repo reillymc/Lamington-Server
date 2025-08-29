@@ -1,4 +1,4 @@
-import { DeleteService, ListItem, ReadService, SaveService } from "../../database";
+import type { DeleteService, ListItem, ReadService, SaveService } from "../../database/index.ts";
 
 interface CountListItemsResponse {
     listId: string;

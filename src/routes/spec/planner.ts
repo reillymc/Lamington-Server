@@ -1,6 +1,6 @@
-import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from "./base";
-import { EntityMember, EntityMembers } from "./common";
-import { User, UserStatus } from "./user";
+import type { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from "./base.ts";
+import type { EntityMember, EntityMembers } from "./common.ts";
+import { type User, UserStatus } from "./user.ts";
 
 export const plannerEndpoint = "/planners" as const;
 

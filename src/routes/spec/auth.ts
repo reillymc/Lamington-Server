@@ -1,5 +1,5 @@
-import { BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from "./base";
-import { User } from "./user";
+import type { BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from "./base.ts";
+import type { User } from "./user.ts";
 
 export const authEndpoint = "/auth" as const;
 export const registerSubpath = "register" as const;

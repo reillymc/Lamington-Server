@@ -1,4 +1,4 @@
-import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from "./base";
+import type { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from "./base.ts";
 
 export const tagEndpoint = "/tags" as const;
 

@@ -1,5 +1,5 @@
-import { lamington } from "../database";
-import { CreateEntityMemberActions, SaveEntityMemberRequest } from "./entity";
+import { lamington } from "../database/index.ts";
+import { CreateEntityMemberActions, type SaveEntityMemberRequest } from "./entity/index.ts";
 
 export const BookMemberActions = CreateEntityMemberActions(lamington.bookMember, "bookId");
 

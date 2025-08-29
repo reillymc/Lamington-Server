@@ -1,8 +1,8 @@
 import express from "express";
 
-import { TagActions } from "../controllers";
-import { AppError, userMessage, MessageAction } from "../services";
-import { GetTagsRequestBody, GetTagsRequestParams, GetTagsResponse, TagGroups } from "./spec";
+import { TagActions } from "../controllers/index.ts";
+import { AppError, MessageAction, userMessage } from "../services/index.ts";
+import type { GetTagsRequestBody, GetTagsRequestParams, GetTagsResponse, TagGroups } from "./spec/index.ts";
 
 const router = express.Router();
 

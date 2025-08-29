@@ -1,9 +1,9 @@
 import { v4 as Uuid } from "uuid";
 
-import { RecipeService } from "../../controllers/spec";
-import { DefaultSection, QueryMetadata, ServiceParams, ServiceResponse } from "../../database";
-import { BisectOnValidItems, EnsureDefinedArray, ObjectFromEntries, Undefined } from "../../utils";
-import {
+import type { RecipeService } from "../../controllers/spec/index.ts";
+import { DefaultSection, type QueryMetadata, type ServiceParams, type ServiceResponse } from "../../database/index.ts";
+import { BisectOnValidItems, EnsureDefinedArray, ObjectFromEntries, Undefined } from "../../utils/index.ts";
+import type {
     PostRecipeRequestBody,
     QueryParam,
     Recipe,
@@ -12,9 +12,9 @@ import {
     RecipeMethod,
     RecipeServings,
     RecipeTags,
-} from "../spec";
+} from "../spec/index.ts";
 
-import { parseBaseQuery } from "./queryParams";
+import { parseBaseQuery } from "./queryParams.ts";
 
 type ToQueryParams<T extends Record<string, any>> = {
     [K in keyof T]: QueryParam;

@@ -1,7 +1,7 @@
 import { v4 as Uuid } from "uuid";
 
-import db, { CreateQuery, CreateResponse, ReadQuery, ReadResponse, Tag, lamington, tag } from "../database";
-import { EnsureArray, Undefined } from "../utils";
+import db, { type CreateQuery, type CreateResponse, type ReadQuery, type ReadResponse, type Tag, lamington, tag } from "../database/index.ts";
+import { EnsureArray, Undefined } from "../utils/index.ts";
 
 /**
  * Get all tags

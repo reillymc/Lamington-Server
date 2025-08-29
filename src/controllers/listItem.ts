@@ -1,8 +1,8 @@
 import { v4 as Uuid } from "uuid";
 
-import db, { ListItem, lamington, listItem } from "../database";
-import { EnsureArray, Undefined } from "../utils";
-import { ListItemService } from "./spec";
+import db, { type ListItem, lamington, listItem } from "../database/index.ts";
+import { EnsureArray, Undefined } from "../utils/index.ts";
+import { type ListItemService } from "./spec/index.ts";
 
 const readListItems: ListItemService["Read"] = async params => {
     const listIds = EnsureArray(params).map(({ listId }) => listId); // TODO verify auth

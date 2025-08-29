@@ -1,14 +1,13 @@
-require("dotenv").config();
 
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 
-import config from "./config";
-import { authenticationMiddleware, errorMiddleware, loggerMiddleware, notFoundMiddleware } from "./middleware";
-import appRouter, { authRouter, docsRouter } from "./routes";
-import { attachmentEndpoint, authEndpoint, uploadDirectory } from "./routes/spec";
+import config from "./config.ts";
+import { authenticationMiddleware, errorMiddleware, loggerMiddleware, notFoundMiddleware } from "./middleware/index.ts";
+import appRouter, { authRouter, docsRouter } from "./routes/index.ts";
+import { attachmentEndpoint, authEndpoint, uploadDirectory } from "./routes/spec/index.ts";
 
 const app = express();
 

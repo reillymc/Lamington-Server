@@ -1,6 +1,6 @@
 import express from "express";
 
-import { PlannerActions, PlannerMealActions, PlannerMemberActions } from "../controllers";
+import { PlannerActions, PlannerMealActions, PlannerMemberActions } from "../controllers/index.ts";
 import {
     AppError,
     InsufficientDataError,
@@ -8,42 +8,42 @@ import {
     NotFoundError,
     PermissionError,
     userMessage,
-} from "../services";
+} from "../services/index.ts";
 import {
     prepareGetPlannerResponseBody,
     validatePlannerPermissions,
     validatePostPlannerBody,
     validatePostPlannerMealBody,
-} from "./helpers";
+} from "./helpers/index.ts";
 import {
-    DeletePlannerMealRequestBody,
-    DeletePlannerMealRequestParams,
-    DeletePlannerMealResponse,
-    DeletePlannerMemberRequestBody,
-    DeletePlannerMemberRequestParams,
-    DeletePlannerMemberResponse,
-    DeletePlannerRequestBody,
-    DeletePlannerRequestParams,
-    DeletePlannerResponse,
-    GetPlannerRequestBody,
-    GetPlannerRequestParams,
-    GetPlannerResponse,
-    GetPlannersRequestBody,
-    GetPlannersRequestParams,
-    GetPlannersResponse,
+    type DeletePlannerMealRequestBody,
+    type DeletePlannerMealRequestParams,
+    type DeletePlannerMealResponse,
+    type DeletePlannerMemberRequestBody,
+    type DeletePlannerMemberRequestParams,
+    type DeletePlannerMemberResponse,
+    type DeletePlannerRequestBody,
+    type DeletePlannerRequestParams,
+    type DeletePlannerResponse,
+    type GetPlannerRequestBody,
+    type GetPlannerRequestParams,
+    type GetPlannerResponse,
+    type GetPlannersRequestBody,
+    type GetPlannersRequestParams,
+    type GetPlannersResponse,
     PlannerEndpoint,
-    Planners,
-    PostPlannerMealRequestBody,
-    PostPlannerMealRequestParams,
-    PostPlannerMealResponse,
-    PostPlannerMemberRequestBody,
-    PostPlannerMemberRequestParams,
-    PostPlannerMemberResponse,
-    PostPlannerRequestBody,
-    PostPlannerRequestParams,
-    PostPlannerResponse,
+    type Planners,
+    type PostPlannerMealRequestBody,
+    type PostPlannerMealRequestParams,
+    type PostPlannerMealResponse,
+    type PostPlannerMemberRequestBody,
+    type PostPlannerMemberRequestParams,
+    type PostPlannerMemberResponse,
+    type PostPlannerRequestBody,
+    type PostPlannerRequestParams,
+    type PostPlannerResponse,
     UserStatus,
-} from "./spec";
+} from "./spec/index.ts";
 
 const router = express.Router();
 

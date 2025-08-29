@@ -1,11 +1,10 @@
-import path from "path";
-import sharp from "sharp";
+import path from "node:path";
 
-import config from "../../config";
-import { S3Attachment } from "./s3";
-import { LocalAttachment } from "./local";
-import { ImgurAttachment } from "./imgur";
-import { compressImage, deconstructUrl, unsavedImagePath, imagePath } from "./helper";
+import config from "../../config.ts";
+import { compressImage, deconstructUrl, imagePath, unsavedImagePath } from "./helper.ts";
+import { ImgurAttachment } from "./imgur.ts";
+import { LocalAttachment } from "./local.ts";
+import { S3Attachment } from "./s3.ts";
 
 const isUnsavedImage = (userId: string, entity: string, url: string | undefined) => {
     if (!url) return false;

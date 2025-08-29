@@ -1,4 +1,4 @@
-import db, { CreateQuery, ReadResponse, RecipeRating, lamington } from "../database";
+import db, { type CreateQuery, type ReadResponse, type RecipeRating, lamington } from "../database/index.ts";
 
 /**
  * Create RecipeRatings provided

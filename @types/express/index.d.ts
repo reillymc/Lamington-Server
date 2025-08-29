@@ -1,4 +1,4 @@
-import { AuthData } from "../../src/middleware";
+import { AuthData } from "../../src/middleware/index.ts";
 
 declare module "express" {
     interface Request {

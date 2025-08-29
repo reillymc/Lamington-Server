@@ -1,10 +1,10 @@
-import { PAGE_SIZE } from "../../database";
+import { PAGE_SIZE } from "../../database/index.ts";
 
-export * from "./ingredient";
-export * from "./recipeIngredient";
-export * from "./recipeSection";
-export * from "./recipeStep";
-export * from "./recipeTag";
+export * from "./ingredient.ts";
+export * from "./recipeIngredient.ts";
+export * from "./recipeSection.ts";
+export * from "./recipeStep.ts";
+export * from "./recipeTag.ts";
 
 export const processPagination = <T>(result: T[], page: number) => {
     let nextPage: number | undefined;

@@ -1,10 +1,10 @@
-import fs from "fs";
+import fs from "node:fs";
+import path from "node:path";
 import sharp from "sharp";
-import path from "path";
 
-import { uploadDirectory } from "../../routes/spec";
+import { uploadDirectory } from "../../routes/spec/index.ts";
 
-import { imagePath, unsavedImagePath } from "./helper";
+import { imagePath, unsavedImagePath } from "./helper.ts";
 
 const getLocalPath = (filePath: string) => `${uploadDirectory}/${filePath}`;
 

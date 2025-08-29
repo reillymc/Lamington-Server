@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 
-import config from "../config";
-import { AuthData } from "../middleware";
+import config from "../config.ts";
+import { type AuthData } from "../middleware/index.ts";
 
 const { jwtSecret, jwtExpiration } = config.authentication;
 

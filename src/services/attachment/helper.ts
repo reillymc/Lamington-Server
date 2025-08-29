@@ -1,6 +1,5 @@
 import sharp from "sharp";
-
-import config from "../../config";
+import config from "../../config.ts";
 
 export const compressImage = (file: Buffer) =>
     sharp(file)

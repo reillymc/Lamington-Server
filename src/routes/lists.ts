@@ -1,6 +1,6 @@
 import express from "express";
 
-import { ListActions, ListItemActions, ListMemberActions } from "../controllers";
+import { ListActions, ListItemActions, ListMemberActions } from "../controllers/index.ts";
 import {
     AppError,
     InsufficientDataError,
@@ -8,38 +8,38 @@ import {
     NotFoundError,
     PermissionError,
     userMessage,
-} from "../services";
-import { prepareGetListResponseBody, validatePostListBody, validatePostListItemBody } from "./helpers";
-import { validateListPermissions } from "./helpers/list";
+} from "../services/index.ts";
+import { prepareGetListResponseBody, validatePostListBody, validatePostListItemBody } from "./helpers/index.ts";
+import { validateListPermissions } from "./helpers/list.ts";
 import {
-    DeleteListItemRequestBody,
-    DeleteListItemRequestParams,
-    DeleteListItemResponse,
-    DeleteListMemberRequestBody,
-    DeleteListMemberRequestParams,
-    DeleteListMemberResponse,
-    DeleteListRequestBody,
-    DeleteListRequestParams,
-    DeleteListResponse,
-    GetListRequestBody,
-    GetListRequestParams,
-    GetListResponse,
-    GetListsRequestBody,
-    GetListsRequestParams,
-    GetListsResponse,
+    type DeleteListItemRequestBody,
+    type DeleteListItemRequestParams,
+    type DeleteListItemResponse,
+    type DeleteListMemberRequestBody,
+    type DeleteListMemberRequestParams,
+    type DeleteListMemberResponse,
+    type DeleteListRequestBody,
+    type DeleteListRequestParams,
+    type DeleteListResponse,
+    type GetListRequestBody,
+    type GetListRequestParams,
+    type GetListResponse,
+    type GetListsRequestBody,
+    type GetListsRequestParams,
+    type GetListsResponse,
     ListEndpoint,
-    Lists,
-    PostListItemRequestBody,
-    PostListItemRequestParams,
-    PostListItemResponse,
-    PostListMemberRequestBody,
-    PostListMemberRequestParams,
-    PostListMemberResponse,
-    PostListRequestBody,
-    PostListRequestParams,
-    PostListResponse,
+    type Lists,
+    type PostListItemRequestBody,
+    type PostListItemRequestParams,
+    type PostListItemResponse,
+    type PostListMemberRequestBody,
+    type PostListMemberRequestParams,
+    type PostListMemberResponse,
+    type PostListRequestBody,
+    type PostListRequestParams,
+    type PostListResponse,
     UserStatus,
-} from "./spec";
+} from "./spec/index.ts";
 
 const router = express.Router();
 

@@ -1,4 +1,4 @@
-import { DeleteService, Meal, ReadService, SaveService } from "../../database";
+import type { DeleteService, Meal, ReadService, SaveService } from "../../database/index.ts";
 
 export type PlannerMeal = Pick<
     Meal,

@@ -1,13 +1,13 @@
 import express from "express";
 
-import { AppError, AttachmentService } from "../services";
-import { uploadImageMiddleware } from "../middleware";
+import { uploadImageMiddleware } from "../middleware/index.ts";
+import { AppError, AttachmentService } from "../services/index.ts";
 import {
     AttachmentEndpoint,
-    PostImageAttachmentRequestBody,
-    PostImageAttachmentRequestParams,
-    PostImageAttachmentResponse,
-} from "./spec";
+    type PostImageAttachmentRequestBody,
+    type PostImageAttachmentRequestParams,
+    type PostImageAttachmentResponse,
+} from "./spec/index.ts";
 
 const router = express.Router();
 

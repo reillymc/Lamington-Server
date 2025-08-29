@@ -1,12 +1,12 @@
-export { BookCustomisations, parseBookCustomisations, prepareGetBookResponseBody, validatePostBookBody } from "./book";
-export { ListCustomisations, prepareGetListResponseBody, validatePostListBody, validatePostListItemBody } from "./list";
+export { parseBookCustomisations, prepareGetBookResponseBody, validatePostBookBody, type BookCustomisations } from "./book.ts";
+export { prepareGetListResponseBody, validatePostListBody, validatePostListItemBody, type ListCustomisations } from "./list.ts";
 export {
-    PlannerCustomisations,
     prepareGetPlannerResponseBody,
     validatePlannerPermissions,
     validatePostPlannerBody,
-    validatePostPlannerMealBody,
-} from "./planner";
-export { parseBaseQuery } from "./queryParams";
-export * from "./recipe";
-export { getStatus } from "./user";
+    validatePostPlannerMealBody, type PlannerCustomisations
+} from "./planner.ts";
+export { parseBaseQuery } from "./queryParams.ts";
+export * from "./recipe.ts";
+export { getStatus } from "./user.ts";
+

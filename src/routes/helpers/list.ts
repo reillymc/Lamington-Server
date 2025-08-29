@@ -1,11 +1,11 @@
 import { v4 as Uuid } from "uuid";
 
-import { ListActions, ListMemberActions } from "../../controllers";
-import { ListItemService, ListService } from "../../controllers/spec";
-import { ServiceParams } from "../../database";
-import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils";
-import { List, ListItemIngredientAmount, PostListItemRequestBody, PostListRequestBody, UserStatus } from "../spec";
-import { getStatus } from "./user";
+import { ListActions, ListMemberActions } from "../../controllers/index.ts";
+import type { ListItemService, ListService } from "../../controllers/spec/index.ts";
+import type { ServiceParams } from "../../database/index.ts";
+import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils/index.ts";
+import { type List, type ListItemIngredientAmount, type PostListItemRequestBody, type PostListRequestBody, UserStatus } from "../spec/index.ts";
+import { getStatus } from "./user.ts";
 
 const parseAmount = (amountJSON: string | undefined) => {
     if (!amountJSON) return;

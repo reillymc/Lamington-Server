@@ -1,11 +1,11 @@
 import { v4 as Uuid } from "uuid";
 
-import { BookActions, BookMemberActions } from "../../controllers";
-import { RecipeService } from "../../controllers/spec";
-import { BisectOnValidPartialItems, EnsureDefinedArray } from "../../utils";
-import { Book, PostBookRequestBody, RequestValidator } from "../spec";
-import { RecipeQueryResponseToRecipe } from "./recipe";
-import { getStatus } from "./user";
+import { BookActions, BookMemberActions } from "../../controllers/index.ts";
+import type { RecipeService } from "../../controllers/spec/index.ts";
+import { BisectOnValidPartialItems, EnsureDefinedArray } from "../../utils/index.ts";
+import type { Book, PostBookRequestBody, RequestValidator } from "../spec/index.ts";
+import { RecipeQueryResponseToRecipe } from "./recipe.ts";
+import { getStatus } from "./user.ts";
 
 export const validatePostBookBody: RequestValidator<PostBookRequestBody> = ({ data }, userId) => {
     const filteredData = EnsureDefinedArray(data);

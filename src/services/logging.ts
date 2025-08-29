@@ -1,7 +1,7 @@
 import { createLogger, format, transports } from "winston";
 import "winston-daily-rotate-file";
 
-import { EnsureArray, Undefined } from "../utils";
+import { EnsureArray, Undefined } from "../utils/index.ts";
 
 const logPath = "logs";
 
@@ -116,14 +116,16 @@ export const logger = createLogger({
     transports: [ErrorLogFileTransport, AccessLogFileTransport, ConsoleLogTransport].filter(Undefined),
 });
 
-export enum MessageAction {
-    Create = "creating",
-    Query = "querying",
-    Read = "reading",
-    Update = "updating",
-    Delete = "deleting",
-    Save = "saving",
-}
+export const MessageAction = {
+    Create: "creating",
+    Query: "querying",
+    Read: "reading",
+    Update: "updating",
+    Delete: "deleting",
+    Save: "saving",
+} as const;
+
+export type MessageAction = typeof MessageAction;
 
 interface UserMessage {
     entity: string;

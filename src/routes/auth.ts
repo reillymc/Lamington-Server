@@ -1,18 +1,18 @@
 import express from "express";
 
-import { InternalUserActions } from "../controllers";
-import { AppError, comparePassword, createToken, hashPassword, userMessage } from "../services";
-import { getStatus } from "./helpers";
+import { InternalUserActions } from "../controllers/index.ts";
+import { AppError, comparePassword, createToken, hashPassword, userMessage } from "../services/index.ts";
+import { getStatus } from "./helpers/index.ts";
 import {
     AuthEndpoint,
-    LoginRequestBody,
-    LoginRequestParams,
-    LoginResponse,
-    RegisterRequestBody,
-    RegisterRequestParams,
-    RegisterResponse,
+    type LoginRequestBody,
+    type LoginRequestParams,
+    type LoginResponse,
+    type RegisterRequestBody,
+    type RegisterRequestParams,
+    type RegisterResponse,
     UserStatus,
-} from "./spec";
+} from "./spec/index.ts";
 
 const router = express.Router();
 

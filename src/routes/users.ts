@@ -10,24 +10,24 @@ import {
     PlannerMealActions,
     RecipeActions,
     UserActions,
-} from "../controllers";
-import { AppError, MessageAction, userMessage } from "../services";
-import { getStatus } from "./helpers";
+} from "../controllers/index.ts";
+import { AppError, MessageAction, userMessage } from "../services/index.ts";
+import { getStatus } from "./helpers/index.ts";
 import {
-    GetPendingUsersRequestBody,
-    GetPendingUsersRequestParams,
-    GetPendingUsersResponse,
-    GetUsersRequestBody,
-    GetUsersRequestParams,
-    GetUsersResponse,
-    PostUserApprovalRequestBody,
-    PostUserApprovalRequestParams,
-    PostUserApprovalResponse,
     UserEndpoint,
     UserStatus,
     type DeleteUserRequestParams,
     type DeleteUserResponse,
-} from "./spec";
+    type GetPendingUsersRequestBody,
+    type GetPendingUsersRequestParams,
+    type GetPendingUsersResponse,
+    type GetUsersRequestBody,
+    type GetUsersRequestParams,
+    type GetUsersResponse,
+    type PostUserApprovalRequestBody,
+    type PostUserApprovalRequestParams,
+    type PostUserApprovalResponse,
+} from "./spec/index.ts";
 
 const router = express.Router();
 

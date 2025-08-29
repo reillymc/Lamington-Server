@@ -1,6 +1,6 @@
-import app from "./app";
-import config from "./config";
-import { logger, printConfig } from "./services";
+import app from "./app.ts";
+import config from "./config.ts";
+import { logger, printConfig } from "./services/index.ts";
 
 app.listen(config.app.port, () => {
     printConfig(config);

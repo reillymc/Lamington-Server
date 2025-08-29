@@ -1,7 +1,7 @@
 import { CopyObjectCommand, DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
-import config from "../../config";
-import { imagePath, unsavedImagePath } from "./helper";
+import config from "../../config.ts";
+import { imagePath, unsavedImagePath } from "./helper.ts";
 
 const createS3Client = () => {
     if (

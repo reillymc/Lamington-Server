@@ -1,4 +1,4 @@
-import { UserStatus } from "../spec";
+import { UserStatus } from "../spec/index.ts";
 
 export const getStatus = (status: string | undefined, isOwner?: boolean) => {
     if (isOwner) return UserStatus.Owner;

@@ -1,4 +1,4 @@
-import { LamingtonConfig } from "../config";
+import type { LamingtonConfig } from "../config.ts";
 
 const applyColor = ({ message, error }: { message: string; error?: boolean }): string =>
     error ? `\u001b[31m${message}\u001b[0m` : `\u001b[36m${message}\u001b[0m`;

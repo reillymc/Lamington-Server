@@ -1,7 +1,7 @@
-import db, { List, lamington, list, listMember, user } from "../database";
-import { EnsureArray } from "../utils";
-import { ListMemberActions } from "./listMember";
-import { ListService } from "./spec";
+import db, { type List, lamington, list, listMember, user } from "../database/index.ts";
+import { EnsureArray } from "../utils/index.ts";
+import { ListMemberActions } from "./listMember.ts";
+import type { ListService } from "./spec/index.ts";
 
 const readMyLists: ListService["ReadByUser"] = async ({ userId }) => {
     const query = db<List>(lamington.list)

@@ -1,16 +1,16 @@
 import db, {
-    CreateQuery,
-    DeleteResponse,
+    type CreateQuery,
+    type DeleteResponse,
     Lamington,
     LamingtonMemberTables,
-    ReadQuery,
-    ReadResponse,
-    User,
+    type ReadQuery,
+    type ReadResponse,
+    type User,
     lamington,
     user,
-} from "../../database";
-import { UserStatus } from "../../routes/spec";
-import { EnsureArray } from "../../utils";
+} from "../../database/index.ts";
+import { UserStatus } from "../../routes/spec/index.ts";
+import { EnsureArray } from "../../utils/index.ts";
 
 export type EntityMember = {
     userId: User["userId"];

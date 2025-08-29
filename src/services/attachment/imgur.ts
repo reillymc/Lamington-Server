@@ -1,7 +1,7 @@
-import FormData from "form-data";
 import axios from "axios";
+import FormData from "form-data";
 
-import config from "../../config";
+import config from "../../config.ts";
 
 const upload = async (file: Buffer) => {
     if (!config.attachments.imgurClientId) {

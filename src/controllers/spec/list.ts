@@ -1,5 +1,13 @@
-import { DeleteService, List, ListMember, ReadMyService, ReadService, SaveService, User } from "../../database";
-import { EntityMember } from "../entity";
+import type {
+    DeleteService,
+    List,
+    ListMember,
+    ReadMyService,
+    ReadService,
+    SaveService,
+    User,
+} from "../../database/index.ts";
+import type { EntityMember } from "../entity/index.ts";
 
 interface ListReadResponse extends Pick<List, "listId" | "name" | "customisations" | "createdBy" | "description"> {
     createdByName: User["firstName"];

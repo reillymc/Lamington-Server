@@ -1,14 +1,14 @@
 import db, {
     bookRecipe,
-    BookRecipe,
-    CreateQuery,
-    CreateResponse,
-    DeleteResponse,
+    type BookRecipe,
+    type CreateQuery,
+    type CreateResponse,
+    type DeleteResponse,
     lamington,
-    ReadQuery,
-    ReadResponse,
-} from "../database";
-import { EnsureArray } from "../utils";
+    type ReadQuery,
+    type ReadResponse,
+} from "../database/index.ts";
+import { EnsureArray } from "../utils/index.ts";
 
 interface GetBookRecipesParams {
     bookId: string;
