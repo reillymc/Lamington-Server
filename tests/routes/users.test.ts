@@ -1,4 +1,5 @@
 import { expect } from "expect";
+import type { Express } from "express";
 import { before, describe, it } from "node:test";
 import request from "supertest";
 
@@ -28,7 +29,7 @@ import {
 } from "../helpers/index.ts";
 
 describe("get users", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -99,7 +100,7 @@ describe("get users", () => {
 });
 
 describe("get pending users", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -140,7 +141,7 @@ describe("get pending users", () => {
 });
 
 describe("delete users", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -185,7 +186,7 @@ describe("delete users", () => {
 });
 
 describe("approve user", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();

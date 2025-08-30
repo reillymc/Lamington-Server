@@ -1,4 +1,5 @@
 import { expect } from "expect";
+import type { Express } from "express";
 import { before, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
@@ -34,7 +35,7 @@ import {
 } from "../helpers/index.ts";
 
 describe("get all recipes", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -658,7 +659,7 @@ describe("get all recipes", () => {
 });
 
 describe("get my recipes", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -1253,7 +1254,7 @@ describe("get my recipes", () => {
 });
 
 describe("post recipe", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();

@@ -1,4 +1,5 @@
 import { expect } from "expect";
+import type { Express } from "express";
 import { before, describe, it } from "node:test";
 import request from "supertest";
 
@@ -13,7 +14,7 @@ import {
 } from "../helpers/index.ts";
 
 describe("get ingredients", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -47,7 +48,7 @@ describe("get ingredients", () => {
 });
 
 describe("get my ingredients", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();

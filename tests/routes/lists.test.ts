@@ -1,4 +1,5 @@
 import { expect } from "expect";
+import type { Express } from "express";
 import { before, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
@@ -36,7 +37,7 @@ const getListCustomisations = (): ListCustomisations => {
 };
 
 describe("get lists", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -132,7 +133,7 @@ describe("get lists", () => {
 });
 
 describe("get list", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -315,7 +316,7 @@ describe("get list", () => {
 });
 
 describe("post list", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -565,7 +566,7 @@ describe("post list", () => {
 });
 
 describe("delete list", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -662,7 +663,7 @@ describe("delete list", () => {
 });
 
 describe("post list item", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -1044,7 +1045,7 @@ describe("post list item", () => {
 });
 
 describe("delete list item", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -1211,7 +1212,7 @@ describe("delete list item", () => {
 });
 
 describe("post list member", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -1287,7 +1288,7 @@ describe("post list member", () => {
 });
 
 describe("delete list member", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();

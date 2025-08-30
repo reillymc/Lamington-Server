@@ -1,4 +1,5 @@
 import { expect } from "expect";
+import type { Express } from "express";
 import { before, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
@@ -39,7 +40,7 @@ const getPlannerCustomisations = (): PlannerCustomisations => {
 };
 
 describe("get planner", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -262,7 +263,7 @@ describe("get planner", () => {
 });
 
 describe("delete planner meal", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -437,7 +438,7 @@ describe("delete planner meal", () => {
 });
 
 describe("post planner", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -687,7 +688,7 @@ describe("post planner", () => {
 });
 
 describe("post planner meal", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();

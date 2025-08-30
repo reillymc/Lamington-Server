@@ -1,4 +1,5 @@
 import { expect } from "expect";
+import type { Express } from "express";
 import assert from "node:assert";
 import { before, describe, it } from "node:test";
 import request from "supertest";
@@ -10,7 +11,7 @@ import { comparePassword } from "../../src/services/password.ts";
 import { AuthEndpoint, CreateUsers } from "../helpers/index.ts";
 
 describe("login", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -91,7 +92,7 @@ describe("login", () => {
 });
 
 describe("register", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();

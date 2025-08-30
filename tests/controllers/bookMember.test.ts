@@ -1,17 +1,10 @@
 import { expect } from "expect";
-import { before, describe, it } from "node:test";
+import { describe, it } from "node:test";
 
-import { setupApp } from "../../src/app.ts";
 import { BookMemberActions } from "../../src/controllers/index.ts";
 import { CreateBooks, CreateUsers, randomCount } from "../helpers/index.ts";
 
 describe("save", () => {
-    let app: Express.Application;
-
-    before(async () => {
-        app = setupApp();
-    });
-
     it("should save one book member for one book", async () => {
         const [user] = await CreateUsers();
         const [[book]] = await CreateBooks({ count: 1, createdBy: user!.userId });

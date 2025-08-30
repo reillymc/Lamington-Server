@@ -1,4 +1,5 @@
 import { expect } from "expect";
+import type { Express } from "express";
 import { before, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
@@ -29,7 +30,7 @@ import {
 } from "../helpers/index.ts";
 
 describe("get all books", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -125,7 +126,7 @@ describe("get all books", () => {
 });
 
 describe("delete book", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -222,7 +223,7 @@ describe("delete book", () => {
 });
 
 describe("delete book member", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -365,7 +366,7 @@ describe("delete book member", () => {
 });
 
 describe("delete book recipe", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -607,7 +608,7 @@ describe("delete book recipe", () => {
 });
 
 describe("get book", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -803,7 +804,7 @@ describe("get book", () => {
 });
 
 describe("post book", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -1057,7 +1058,7 @@ describe("post book", () => {
 });
 
 describe("post book member", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
@@ -1133,7 +1134,7 @@ describe("post book member", () => {
 });
 
 describe("post book recipe", () => {
-    let app: Express.Application;
+    let app: Express;
 
     before(async () => {
         app = setupApp();
