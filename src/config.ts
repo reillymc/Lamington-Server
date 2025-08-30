@@ -11,12 +11,10 @@ const parseLogLevel = (logLevel: string | undefined): "tiny" | "short" | "dev" =
     }
 };
 
-const parseAttachmentStorage = (imageStorage: string | undefined): "local" | "imgur" | "s3" => {
+const parseAttachmentStorage = (imageStorage: string | undefined): "local" | "s3" => {
     switch (imageStorage) {
         case "local":
             return "local";
-        case "imgur":
-            return "imgur";
         case "s3":
             return "s3";
         default:
@@ -36,7 +34,6 @@ const config: LamingtonConfig = {
     },
     attachments: {
         storageService: parseAttachmentStorage(process.env.ATTACHMENT_STORAGE_SERVICE),
-        imgurClientId: process.env.IMGUR_CLIENT_ID,
         awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
         awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
         awsRegion: process.env.AWS_REGION,
@@ -56,9 +53,8 @@ export interface LamingtonConfig {
         jwtExpiration: string | undefined;
     };
     attachments: {
-        storageService: "local" | "imgur" | "s3";
+        storageService: "local" | "s3";
         path: string;
-        imgurClientId: string | undefined;
         awsAccessKeyId: string | undefined;
         awsSecretAccessKey: string | undefined;
         awsRegion: string | undefined;

@@ -19,10 +19,6 @@ const formatAttachmentConfig = (config: LamingtonConfig["attachments"]): { messa
     let error = false;
 
     switch (config.storageService) {
-        case "imgur":
-            message = `${message} Imgur (Client ID: ${!!config.imgurClientId})`;
-            error = !config.imgurClientId;
-            break;
         case "s3":
             message = `${message} S3 (Bucket=${config.awsBucketName} - Region=${config.awsRegion}, (Path=${
                 config.path
