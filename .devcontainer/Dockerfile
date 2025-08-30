@@ -1,3 +1,1 @@
-FROM node:22-bullseye
-
-# WORKDIR /
+FROM node:24-bullseye

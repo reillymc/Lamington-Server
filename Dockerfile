@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-bullseye AS build
+FROM node:24-bullseye AS build
 
 RUN mkdir -p /home/node/app && chown -R node:node /home/node/app
 
@@ -14,7 +14,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine AS production
+FROM node:24-alpine AS production
 
 RUN mkdir -p /home/node/app && chown -R node:node /home/node/app
 
