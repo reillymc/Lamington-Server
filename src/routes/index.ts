@@ -41,4 +41,4 @@ appRouter.use(usersEndpoint, usersRouter);
 
 appRouter.use("/", notFoundMiddleware);
 
-export { authRouter, appRouter as default, docsRouter };
+export { appRouter, authRouter, docsRouter };

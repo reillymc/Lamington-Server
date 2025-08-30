@@ -21,9 +21,9 @@ const router = express.Router();
  */
 router.post<RegisterRequestParams, RegisterResponse, RegisterRequestBody>(
     AuthEndpoint.register,
-    async (req, res, next) => {
+    async ({ body = {} }, res, next) => {
         // Extract request fields
-        const { email, firstName, lastName, password } = req.body;
+        const { email, firstName, lastName, password } = body;
 
         // Check all required fields are present
         if (!email || !firstName || !lastName || !password) {
@@ -68,57 +68,60 @@ router.post<RegisterRequestParams, RegisterResponse, RegisterRequestBody>(
 /**
  * POST request to login an existing user
  */
-router.post<LoginRequestParams, LoginResponse, LoginRequestBody>(AuthEndpoint.login, async (req, res, next) => {
-    // Extract request fields
-    const { email, password } = req.body;
+router.post<LoginRequestParams, LoginResponse, LoginRequestBody>(
+    AuthEndpoint.login,
+    async ({ body = {} }, res, next) => {
+        // Extract request fields
+        const { email, password } = body;
 
-    // Check all required fields are present
-    if (!email || !password) {
-        return next(new AppError({ status: 401, message: "Invalid username or password" }));
-    }
-
-    // Fetch and return data from database
-    try {
-        const [user] = await InternalUserActions.read({ email: email.toLowerCase() });
-        if (!user) {
-            return next(
-                new AppError({
-                    status: 401,
-                    message: `Invalid username or password`,
-                })
-            );
+        // Check all required fields are present
+        if (!email || !password) {
+            return next(new AppError({ status: 401, message: "Invalid username or password" }));
         }
 
-        const result = await comparePassword(password, user.password);
+        // Fetch and return data from database
+        try {
+            const [user] = await InternalUserActions.read({ email: email.toLowerCase() });
+            if (!user) {
+                return next(
+                    new AppError({
+                        status: 401,
+                        message: `Invalid username or password`,
+                    })
+                );
+            }
 
-        if (result) {
-            const userPending = user.status === UserStatus.Pending;
-            const token = !userPending ? createToken(user.userId) : undefined;
+            const result = await comparePassword(password, user.password);
 
-            return res.status(200).json({
-                error: false,
-                data: {
-                    authorization: token
-                        ? {
-                              token,
-                              tokenType: "Bearer",
-                          }
-                        : undefined,
-                    user: {
-                        userId: user.userId,
-                        email: user.email,
-                        firstName: user.firstName,
-                        lastName: user.lastName,
-                        status: getStatus(user.status),
+            if (result) {
+                const userPending = user.status === UserStatus.Pending;
+                const token = !userPending ? createToken(user.userId) : undefined;
+
+                return res.status(200).json({
+                    error: false,
+                    data: {
+                        authorization: token
+                            ? {
+                                  token,
+                                  tokenType: "Bearer",
+                              }
+                            : undefined,
+                        user: {
+                            userId: user.userId,
+                            email: user.email,
+                            firstName: user.firstName,
+                            lastName: user.lastName,
+                            status: getStatus(user.status),
+                        },
                     },
-                },
-                message: userPending ? "Account is pending approval" : undefined,
-            });
+                    message: userPending ? "Account is pending approval" : undefined,
+                });
+            }
+            next(new AppError({ status: 401, message: "Invalid username or password" }));
+        } catch (e: unknown) {
+            next(new AppError({ innerError: e, message: userMessage({ action: "logging in to", entity: "account" }) }));
         }
-        next(new AppError({ status: 401, message: "Invalid username or password" }));
-    } catch (e: unknown) {
-        next(new AppError({ innerError: e, message: userMessage({ action: "logging in to", entity: "account" }) }));
     }
-});
+);
 
 export default router;

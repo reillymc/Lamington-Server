@@ -103,7 +103,7 @@ router.get<GetPendingUsersRequestParams, GetPendingUsersResponse, GetPendingUser
  */
 router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApprovalRequestBody>(
     UserEndpoint.approveUser,
-    async ({ body, params, session }, res, next) => {
+    async ({ body = {}, params, session }, res, next) => {
         const isAdmin = session.status === UserStatus.Administrator || session.status === UserStatus.Owner;
         const { userId: userToUpdate } = params;
         const { accept } = body;

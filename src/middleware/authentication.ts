@@ -1,4 +1,4 @@
-import type { NextFunction, Request, Response } from "express";
+import type { RequestHandler } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 
 import config from "../config.ts";
@@ -14,11 +14,7 @@ export interface AuthData {
     status?: UserStatus;
 }
 
-export const authenticationMiddleware = (
-    req: Request<null, null, AuthData, null>,
-    res: Response,
-    next: NextFunction
-) => {
+export const authenticationMiddleware: RequestHandler = (req, res, next) => {
     if (!jwtSecret) return;
 
     var token = req.headers["authorization"];

@@ -4,7 +4,14 @@ import { type AuthServices, loginSubpath, registerSubpath } from "./auth.ts";
 import { type BookServices, bookIdParam, bookMemberIdParam, bookMemberSubpath, recipeSubpath } from "./book.ts";
 import type { CookListServices } from "./cookList.ts";
 import type { IngredientServices } from "./ingredient.ts";
-import { type ListServices, itemIdParam, itemSubpath, listIdParam, listMemberIdParam, listMemberSubpath } from "./list.ts";
+import {
+    type ListServices,
+    itemIdParam,
+    itemSubpath,
+    listIdParam,
+    listMemberIdParam,
+    listMemberSubpath,
+} from "./list.ts";
 import {
     type PlannerServices,
     mealSubpath,
@@ -65,7 +72,7 @@ export const PlannerEndpoint = {
     deletePlanner: `/:${plannerIdParam}`,
     deletePlannerMember: `/:${plannerIdParam}/${plannerMemberSubpath}/:${plannerMemberIdParam}`,
     deletePlannerMeal: `/:${plannerIdParam}/${mealSubpath}/:${plannerMealIdParam}`,
-    getPlanner: `/:${plannerIdParam}/:${yearParam}?/:${monthParam}?`,
+    getPlanner: `/:${plannerIdParam}{/:${yearParam}}{/:${monthParam}}`,
     getPlanners: `/`,
     postPlanner: `/`,
     postPlannerMember: `/:${plannerIdParam}/${plannerMemberSubpath}`,
@@ -111,4 +118,3 @@ export * from "./planner.ts";
 export * from "./recipe.ts";
 export * from "./tag.ts";
 export * from "./user.ts";
-

@@ -5,7 +5,7 @@ import helmet from "helmet";
 
 import config from "./config.ts";
 import { authenticationMiddleware, errorMiddleware, loggerMiddleware, notFoundMiddleware } from "./middleware/index.ts";
-import appRouter, { authRouter, docsRouter } from "./routes/index.ts";
+import { appRouter, authRouter, docsRouter } from "./routes/index.ts";
 import { attachmentEndpoint, authEndpoint, uploadDirectory } from "./routes/spec/index.ts";
 
 export const setupApp = () => {

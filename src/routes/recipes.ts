@@ -261,11 +261,11 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
  */
 router.post<PostRecipeRatingRequestParams, PostRecipeRatingResponse, PostRecipeRatingRequestBody>(
     RecipeEndpoint.postRecipeRating,
-    async (req, res, next) => {
+    async ({ body = {}, session, params }, res, next) => {
         // Extract request fields
-        const { rating } = req.body;
-        const { userId } = req.session;
-        const { recipeId } = req.params;
+        const { rating } = body;
+        const { userId } = session;
+        const { recipeId } = params;
 
         // Check all required fields are present
         if (!userId || !recipeId || !rating) {

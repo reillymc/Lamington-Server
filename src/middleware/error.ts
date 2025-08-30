@@ -1,9 +1,9 @@
-import type { NextFunction, Request, Response } from "express";
+import type { ErrorRequestHandler } from "express";
 
 import { authEndpoint } from "../routes/spec/index.ts";
 import { AppError, logger } from "../services/index.ts";
 
-export const errorMiddleware = (error: AppError, request: Request, response: Response, next: NextFunction) => {
+export const errorMiddleware: ErrorRequestHandler = (error: AppError, request, response, next) => {
     logger.log({
         level: "error",
         message: error.message,
