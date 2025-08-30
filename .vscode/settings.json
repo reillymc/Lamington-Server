@@ -44,5 +44,11 @@
             "password": "password"
         }
     ],
-    "jest.runMode": "on-demand"
+    "nodejs-testing.extensions": [
+        {
+            "extensions": ["ts"],
+            "parameters": ["--import", "./tests/globalHooks.ts", "--test-global-setup", "./tests/setupModule.ts"]
+        }
+    ],
+    "nodejs-testing.env": { "NODE_ENV": "test" }
 }

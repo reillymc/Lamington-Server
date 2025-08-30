@@ -1,18 +1,19 @@
+import { expect } from "expect";
 import { v4 as uuid } from "uuid";
-import { TagActions } from "../../src/controllers";
-import { RecipeService } from "../../src/controllers/spec/recipe";
-import { ServiceResponse } from "../../src/database";
-import {
+import { TagActions } from "../../src/controllers/index.ts";
+import { type RecipeService } from "../../src/controllers/spec/recipe.ts";
+import type { ServiceResponse } from "../../src/database/index.ts";
+import type {
     RecipeIngredientItem,
     RecipeIngredients,
     RecipeMethod,
     RecipeMethodStep,
     RecipeServings,
     RecipeTags,
-} from "../../src/routes/spec";
-import { Undefined } from "../../src/utils";
-import { randomBoolean, randomNumber } from "./data";
-import { generateRandomAmount } from "./list";
+} from "../../src/routes/spec/index.ts";
+import { Undefined } from "../../src/utils/index.ts";
+import { randomBoolean, randomNumber } from "./data.ts";
+import { generateRandomAmount } from "./list.ts";
 
 export const generateRandomRecipeIngredientSections = (): ServiceResponse<RecipeService, "Save">["ingredients"] =>
     Array.from({ length: randomNumber() }).map(() => ({

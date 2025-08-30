@@ -1,16 +1,16 @@
 import {
-    AttachmentServices,
-    AuthServices,
-    BookServices,
-    CookListServices,
-    GetAllRecipesRequestQuery,
-    GetMyRecipesRequestQuery,
-    IngredientServices,
-    ListServices,
-    PlannerServices,
-    RecipeServices,
-    TagServices,
-    UserServices,
+    type AttachmentServices,
+    type AuthServices,
+    type BookServices,
+    type CookListServices,
+    type GetAllRecipesRequestQuery,
+    type GetMyRecipesRequestQuery,
+    type IngredientServices,
+    type ListServices,
+    type PlannerServices,
+    type RecipeServices,
+    type TagServices,
+    type UserServices,
     approveSubpath,
     attachmentEndpoint,
     authEndpoint,
@@ -33,7 +33,7 @@ import {
     tagEndpoint,
     uploadDirectory,
     usersEndpoint,
-} from "../../src/routes/spec";
+} from "../../src/routes/spec/index.ts";
 
 const ServerURL = "";
 const ApiVersion = "v1";
