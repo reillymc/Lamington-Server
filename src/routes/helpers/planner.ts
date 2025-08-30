@@ -4,7 +4,13 @@ import { PlannerActions, PlannerMemberActions } from "../../controllers/index.ts
 import type { PlannerMealService, PlannerService } from "../../controllers/spec/index.ts";
 import type { ServiceParams } from "../../database/index.ts";
 import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils/index.ts";
-import { type Planner, type PostPlannerMealRequestBody, type PostPlannerRequestBody, UserStatus } from "../spec/index.ts";
+import {
+    type Planner,
+    type PostPlannerMealRequestBody,
+    type PostPlannerRequestBody,
+    UserStatus,
+} from "../spec/index.ts";
+import { validatePermissions } from "./permissions.ts";
 import { getStatus } from "./user.ts";
 
 export const validatePostPlannerBody = ({ data }: PostPlannerRequestBody, userId: string) => {
@@ -107,7 +113,7 @@ interface ValidatedPermissions {
 export const validatePlannerPermissions = async (
     plannerIds: string | string[],
     userId: string,
-    permissionLevel: UserStatus
+    permissionLevel: Exclude<UserStatus, typeof UserStatus.Blacklisted>
 ): Promise<ValidatedPermissions> => {
     const plannerIdsArray = EnsureArray(plannerIds);
 
@@ -120,34 +126,5 @@ export const validatePlannerPermissions = async (
         plannerId => !existingPlanners.some(planner => planner.plannerId === plannerId)
     );
 
-    if (statuses.some(status => status === undefined)) {
-        return { permissionsValid: false, missingPlanners };
-    }
-
-    if (permissionLevel === UserStatus.Owner) {
-        return { permissionsValid: statuses.every(status => status === UserStatus.Owner), missingPlanners };
-    }
-
-    if (permissionLevel === UserStatus.Administrator) {
-        return {
-            permissionsValid: statuses.every(status => [UserStatus.Owner, UserStatus.Administrator].includes(status!)),
-            missingPlanners,
-        };
-    }
-
-    if (permissionLevel === UserStatus.Member) {
-        return {
-            permissionsValid: statuses.every(status =>
-                [UserStatus.Owner, UserStatus.Administrator, UserStatus.Member].includes(status!)
-            ),
-            missingPlanners,
-        };
-    }
-
-    return {
-        permissionsValid: statuses.every(status =>
-            [UserStatus.Owner, UserStatus.Administrator, UserStatus.Member, UserStatus.Pending].includes(status!)
-        ),
-        missingPlanners,
-    };
+    return { missingPlanners, permissionsValid: validatePermissions(statuses, permissionLevel) };
 };

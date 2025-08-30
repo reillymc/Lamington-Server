@@ -20,4 +20,4 @@ export const lamington = {
     user: "user",
 } as const;
 
-export type lamington = (typeof lamington)[keyof typeof lamington];
+export type lamington = typeof lamington;

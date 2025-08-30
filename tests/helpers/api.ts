@@ -39,7 +39,7 @@ const ServerURL = "";
 const ApiVersion = "v1";
 const ApiUrl = `${ServerURL}/${ApiVersion}` as const;
 
-type Endpoint = string | ((...param: Array<string | number | undefined | unknown>) => string);
+type Endpoint = string | ((...param: Array<any>) => string);
 
 type LamingtonQueryParams<T> = Omit<T, "page"> & {
     page?: number;

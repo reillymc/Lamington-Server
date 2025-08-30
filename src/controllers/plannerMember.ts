@@ -5,4 +5,4 @@ export const PlannerMemberActions = CreateEntityMemberActions(lamington.plannerM
 
 export type PlannerMemberActions = typeof PlannerMemberActions;
 
-export type CreatePlannerMemberParams = SaveEntityMemberRequest<lamington.plannerMember, "plannerId">;
+export type CreatePlannerMemberParams = SaveEntityMemberRequest<lamington["plannerMember"], "plannerId">;

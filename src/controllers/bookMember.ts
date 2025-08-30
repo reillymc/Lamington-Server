@@ -5,4 +5,4 @@ export const BookMemberActions = CreateEntityMemberActions(lamington.bookMember,
 
 export type BookMemberActions = typeof BookMemberActions;
 
-export type CreateBookMemberParams = SaveEntityMemberRequest<lamington.bookMember, "bookId">;
+export type CreateBookMemberParams = SaveEntityMemberRequest<lamington["bookMember"], "bookId">;

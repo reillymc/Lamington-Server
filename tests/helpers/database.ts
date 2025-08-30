@@ -32,7 +32,7 @@ export const CreateUsers = async ({
     return users;
 };
 
-type Table = `${lamington}`;
+type Table = `${(typeof lamington)[keyof lamington]}`;
 
 export const CleanAllTables = async () => await CleanTables(...Object.values(lamington));
 

@@ -5,4 +5,4 @@ export const ListMemberActions = CreateEntityMemberActions(lamington.listMember,
 
 export type ListMemberActions = typeof ListMemberActions;
 
-export type CreateListMemberParams = SaveEntityMemberRequest<lamington.listMember, "listId">;
+export type CreateListMemberParams = SaveEntityMemberRequest<lamington["listMember"], "listId">;

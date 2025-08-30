@@ -4,7 +4,14 @@ import { ListActions, ListMemberActions } from "../../controllers/index.ts";
 import type { ListItemService, ListService } from "../../controllers/spec/index.ts";
 import type { ServiceParams } from "../../database/index.ts";
 import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils/index.ts";
-import { type List, type ListItemIngredientAmount, type PostListItemRequestBody, type PostListRequestBody, UserStatus } from "../spec/index.ts";
+import {
+    type List,
+    type ListItemIngredientAmount,
+    type PostListItemRequestBody,
+    type PostListRequestBody,
+    UserStatus,
+} from "../spec/index.ts";
+import { validatePermissions } from "./permissions.ts";
 import { getStatus } from "./user.ts";
 
 const parseAmount = (amountJSON: string | undefined) => {
@@ -167,7 +174,7 @@ interface ValidatedPermissions {
 export const validateListPermissions = async (
     listIds: string | string[],
     userId: string,
-    permissionLevel: UserStatus
+    permissionLevel: Exclude<UserStatus, typeof UserStatus.Blacklisted>
 ): Promise<ValidatedPermissions> => {
     const listIdsArray = EnsureArray(listIds);
 
@@ -178,34 +185,5 @@ export const validateListPermissions = async (
     const statuses = existingLists.map(list => getStatus(list.status, list.createdBy === userId));
     const missingLists = listIdsArray.filter(listId => !existingLists.some(list => list.listId === listId));
 
-    if (statuses.some(status => status === undefined)) {
-        return { permissionsValid: false, missingLists };
-    }
-
-    if (permissionLevel === UserStatus.Owner) {
-        return { permissionsValid: statuses.every(status => status === UserStatus.Owner), missingLists };
-    }
-
-    if (permissionLevel === UserStatus.Administrator) {
-        return {
-            permissionsValid: statuses.every(status => [UserStatus.Owner, UserStatus.Administrator].includes(status!)),
-            missingLists,
-        };
-    }
-
-    if (permissionLevel === UserStatus.Member) {
-        return {
-            permissionsValid: statuses.every(status =>
-                [UserStatus.Owner, UserStatus.Administrator, UserStatus.Member].includes(status!)
-            ),
-            missingLists,
-        };
-    }
-
-    return {
-        permissionsValid: statuses.every(status =>
-            [UserStatus.Owner, UserStatus.Administrator, UserStatus.Member, UserStatus.Pending].includes(status!)
-        ),
-        missingLists,
-    };
+    return { missingLists, permissionsValid: validatePermissions(statuses, permissionLevel) };
 };

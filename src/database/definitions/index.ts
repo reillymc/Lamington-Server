@@ -45,7 +45,7 @@ export const Lamington = {
     [lamington.tag]: tag,
     [lamington.user]: user,
     ...LamingtonMemberTables,
-} satisfies Record<lamington, Record<string, unknown>>;
+} satisfies Record<(typeof lamington)[keyof lamington], Record<string, unknown>>;
 
 export type Table<T> = Required<{ [key in keyof T]: string }>;
 
