@@ -1,6 +1,5 @@
 {
     "version": "2.0.0",
-    "problemMatcher": "$tsc-watch",
     "tasks": [
         {
             "type": "typescript",
@@ -9,7 +8,22 @@
             "isBackground": true,
             "problemMatcher": ["$tsc-watch"],
             "group": "build",
-            "label": "tsc: watch - tsconfig.json",
+            "label": "tsc: watch",
+            "presentation": {
+                "reveal": "never",
+                "echo": false,
+                "focus": false,
+                "panel": "dedicated"
+            },
+            "runOptions": {
+                "runOn": "folderOpen"
+            }
+        },
+        {
+            "type": "shell",
+            "command": "npm run test -- --watch",
+            "group": "test",
+            "label": "test: watch",
             "presentation": {
                 "reveal": "never",
                 "echo": false,
