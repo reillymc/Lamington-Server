@@ -11,8 +11,6 @@ RUN npm install
 
 COPY . .
 
-RUN npm run build
-
 # Production stage
 FROM node:24-alpine AS production
 
@@ -26,7 +24,7 @@ USER node
 
 RUN npm ci --only=production
 
-COPY --from=build /home/node/app/dist ./dist
+COPY --from=build /home/node/app/src ./src
 
 EXPOSE 3000
 
