@@ -1,6 +1,6 @@
-import { RecipeSection, ServiceParams } from "../../database";
-import { Undefined } from "../../utils";
-import { RecipeService } from "../spec";
+import type { RecipeSection, ServiceParams } from "../../database/index.ts";
+import { Undefined } from "../../utils/index.ts";
+import type { RecipeService } from "../spec/index.ts";
 
 export const recipeSectionRequestToRows = ({
     recipeId,

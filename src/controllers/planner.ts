@@ -1,7 +1,7 @@
-import db, { Planner, lamington, planner, plannerMember, user } from "../database";
-import { EnsureArray } from "../utils";
-import { PlannerMemberActions } from "./plannerMember";
-import { PlannerService } from "./spec";
+import db, { type Planner, lamington, planner, plannerMember, user } from "../database/index.ts";
+import { EnsureArray } from "../utils/index.ts";
+import { PlannerMemberActions } from "./plannerMember.ts";
+import { type PlannerService } from "./spec/index.ts";
 
 const readMyPlanners: PlannerService["ReadByUser"] = async ({ userId }) => {
     const query = db<Planner>(lamington.planner)

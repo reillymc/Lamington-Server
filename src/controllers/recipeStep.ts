@@ -1,4 +1,4 @@
-import db, { lamington, ReadResponse, recipeStep, RecipeStep } from "../database";
+import db, { lamington, type ReadResponse, recipeStep, type RecipeStep } from "../database/index.ts";
 
 /**
  * Delete all RecipeStep rows for specified recipeId EXCEPT for the list of step ids provided

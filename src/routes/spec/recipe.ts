@@ -1,4 +1,4 @@
-import {
+import type {
     BasePaginatedRequestQuery,
     BasePaginatedResponse,
     BaseRequest,
@@ -6,10 +6,10 @@ import {
     BaseRequestParams,
     BaseResponse,
     BaseSimpleRequestBody,
-} from "./base";
-import { FractionValue, NumberValue, RangeValue } from "./common";
-import { Tag } from "./tag";
-import { User } from "./user";
+} from "./base.ts";
+import type { FractionValue, NumberValue, RangeValue } from "./common.ts";
+import type { Tag } from "./tag.ts";
+import type { User } from "./user.ts";
 
 export const recipeEndpoint = "/recipes" as const;
 

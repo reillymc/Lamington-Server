@@ -5,6 +5,7 @@
         "knexfile",
         "openapi",
         "originalname",
+        "PGPORT",
         "prestart",
         "sslcert",
         "tinyint",
@@ -29,7 +30,7 @@
             "driver": "PostgreSQL",
             "name": "Development",
             "database": "lamingtondb",
-            "username": "root",
+            "username": "postgres",
             "password": "password"
         },
         {
@@ -39,9 +40,15 @@
             "driver": "PostgreSQL",
             "name": "Testing",
             "database": "lamingtondb",
-            "username": "root",
+            "username": "postgres",
             "password": "password"
         }
     ],
-    "jest.runMode": "on-demand"
+    "nodejs-testing.extensions": [
+        {
+            "extensions": ["ts"],
+            "parameters": ["--import", "./tests/globalHooks.ts", "--test-global-setup", "./tests/setupModule.ts"]
+        }
+    ],
+    "nodejs-testing.env": { "NODE_ENV": "test" }
 }

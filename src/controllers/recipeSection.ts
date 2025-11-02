@@ -1,5 +1,5 @@
-import db, { lamington, QueryService, Recipe, RecipeSection, SaveService } from "../database";
-import { EnsureArray } from "../utils";
+import db, { lamington, type QueryService, type Recipe, type RecipeSection, type SaveService } from "../database/index.ts";
+import { EnsureArray } from "../utils/index.ts";
 
 /**
  * Delete all RecipeSection rows for specified recipeId EXCEPT for the list of section ids provided

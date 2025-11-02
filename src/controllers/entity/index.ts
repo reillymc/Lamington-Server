@@ -1,1 +1,2 @@
-export { CreateEntityMemberActions, EntityMember, SaveEntityMemberRequest } from "./entityMember";
+export { CreateEntityMemberActions, type EntityMember, type SaveEntityMemberRequest } from "./entityMember.ts";
+

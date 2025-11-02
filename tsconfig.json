@@ -1,19 +1,20 @@
 {
     "compilerOptions": {
-        "module": "commonjs",
+        "module": "nodenext",
         "esModuleInterop": true,
-        "target": "es2019",
+        "target": "esnext",
         "noImplicitAny": true,
+        "strict": true,
         "strictNullChecks": true,
         "noUncheckedIndexedAccess": true,
-        "moduleResolution": "node",
         "sourceMap": true,
         "outDir": "dist",
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "rewriteRelativeImportExtensions": true,
+        "erasableSyntaxOnly": true,
+        "verbatimModuleSyntax": true,
+        "noEmit": true
     },
-    "ts-node": {
-        "files": true
-    },
-    "include": ["./src/**/*", "@types"],
+    "include": ["./**/*"],
     "exclude": ["node_modules"]
 }

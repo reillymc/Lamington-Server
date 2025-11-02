@@ -1,4 +1,4 @@
-import { User, UserStatus } from "./user";
+import { type User, UserStatus } from "./user.ts";
 
 export type EntityMember = {
     userId: User["userId"];

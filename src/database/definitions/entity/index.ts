@@ -1,1 +1,2 @@
-export { EntityMember } from "./entityMember";
+export { type EntityMember } from "./entityMember.ts";
+

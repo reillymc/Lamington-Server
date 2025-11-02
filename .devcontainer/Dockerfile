@@ -1,6 +1,1 @@
-FROM node:20-bullseye
-
-# WORKDIR /
-
-RUN npm install -g nodemon knex
-
+FROM node:24-bullseye

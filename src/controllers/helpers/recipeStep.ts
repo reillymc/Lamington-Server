@@ -1,5 +1,5 @@
-import { RecipeStep } from "../../database";
-import { RecipeMethod } from "../spec/recipe";
+import type { RecipeStep } from "../../database/index.ts";
+import type { RecipeMethod } from "../spec/recipe.ts";
 
 export const recipeMethodRequestToRows = ({
     recipeId,

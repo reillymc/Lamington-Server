@@ -1,25 +1,25 @@
 import express from "express";
 import { v4 as Uuid } from "uuid";
 
-import { AppError, userMessage, MessageAction } from "../services";
-import { IngredientActions } from "../controllers";
+import { IngredientActions } from "../controllers/index.ts";
+import type { ServiceParams } from "../database/index.ts";
+import { AppError, MessageAction, userMessage } from "../services/index.ts";
+import { BisectOnValidItems, EnsureDefinedArray } from "../utils/index.ts";
+import { parseBaseQuery } from "./helpers/index.ts";
 import {
-    GetIngredientsRequestBody,
-    GetIngredientsRequestParams,
-    GetIngredientsRequestQuery,
-    GetIngredientsResponse,
-    GetMyIngredientsRequestBody,
-    GetMyIngredientsRequestParams,
-    GetMyIngredientsRequestQuery,
-    GetMyIngredientsResponse,
+    type GetIngredientsRequestBody,
+    type GetIngredientsRequestParams,
+    type GetIngredientsRequestQuery,
+    type GetIngredientsResponse,
+    type GetMyIngredientsRequestBody,
+    type GetMyIngredientsRequestParams,
+    type GetMyIngredientsRequestQuery,
+    type GetMyIngredientsResponse,
     IngredientEndpoint,
-    PostIngredientRequestBody,
-    PostIngredientRequestParams,
-    PostIngredientResponse,
-} from "./spec";
-import { parseBaseQuery } from "./helpers";
-import { ServiceParams } from "../database";
-import { BisectOnValidItems, EnsureDefinedArray } from "../utils";
+    type PostIngredientRequestBody,
+    type PostIngredientRequestParams,
+    type PostIngredientResponse,
+} from "./spec/index.ts";
 
 const router = express.Router();
 

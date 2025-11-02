@@ -1,5 +1,5 @@
-import { QueryMetadata } from "../../database";
-import { QueryParam, BasePaginatedRequestQuery } from "../spec";
+import type { QueryMetadata } from "../../database/index.ts";
+import type { BasePaginatedRequestQuery, QueryParam } from "../spec/index.ts";
 
 const parsePage = (page: QueryParam) => {
     if (Array.isArray(page)) return;

@@ -1,7 +1,7 @@
-import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from "./base";
-import { EntityMember, EntityMembers } from "./common";
-import { Recipe, Recipes, recipeIdParam } from "./recipe";
-import { User, UserStatus } from "./user";
+import type { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from "./base.ts";
+import type { EntityMember, EntityMembers } from "./common.ts";
+import { type Recipe, type Recipes, recipeIdParam } from "./recipe.ts";
+import type { User, UserStatus } from "./user.ts";
 
 export const bookEndpoint = "/books" as const;
 

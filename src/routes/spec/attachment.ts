@@ -1,4 +1,4 @@
-import { BaseRequest, BaseRequestParams, BaseResponse } from "./base";
+import type { BaseRequest, BaseRequestParams, BaseResponse } from "./base.ts";
 
 export const attachmentEndpoint = "/attachments" as const;
 export const imageSubpath = "image" as const;

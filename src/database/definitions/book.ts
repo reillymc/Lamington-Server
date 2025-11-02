@@ -1,6 +1,6 @@
-import { Table } from ".";
-import { BookCustomisations } from "../../routes/helpers";
-import { lamington } from "./lamington";
+import type { BookCustomisations } from "../../routes/helpers/index.ts";
+import type { Table } from "./index.ts";
+import { lamington } from "./lamington.ts";
 
 /**
  * Book

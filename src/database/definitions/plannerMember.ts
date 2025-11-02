@@ -1,6 +1,6 @@
-import { Table } from ".";
-import { EntityMember } from "./entity";
-import { lamington } from "./lamington";
+import type { EntityMember } from "./entity/index.ts";
+import type { Table } from "./index.ts";
+import { lamington } from "./lamington.ts";
 
 /**
  * Planner

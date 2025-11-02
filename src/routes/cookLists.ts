@@ -1,22 +1,22 @@
 import express from "express";
 import { v4 as Uuid } from "uuid";
 
-import { CookListMealActions, CookListMealActionsInternal } from "../controllers";
-import { AppError, MessageAction, userMessage } from "../services";
-import { BisectOnValidPartialItems, EnsureDefinedArray } from "../utils";
+import { CookListMealActions, CookListMealActionsInternal } from "../controllers/index.ts";
+import { AppError, MessageAction, userMessage } from "../services/index.ts";
+import { BisectOnValidPartialItems, EnsureDefinedArray } from "../utils/index.ts";
 import {
     CookListEndpoint,
-    DeleteCookListMealRequestBody,
-    DeleteCookListMealRequestParams,
-    DeleteCookListMealResponse,
-    GetCookListMealsRequestBody,
-    GetCookListMealsRequestParams,
-    GetCookListMealsResponse,
-    PostCookListMealRequestBody,
-    PostCookListMealRequestParams,
-    PostCookListMealResponse,
-    RequestValidator,
-} from "./spec";
+    type DeleteCookListMealRequestBody,
+    type DeleteCookListMealRequestParams,
+    type DeleteCookListMealResponse,
+    type GetCookListMealsRequestBody,
+    type GetCookListMealsRequestParams,
+    type GetCookListMealsResponse,
+    type PostCookListMealRequestBody,
+    type PostCookListMealRequestParams,
+    type PostCookListMealResponse,
+    type RequestValidator,
+} from "./spec/index.ts";
 
 const router = express.Router();
 

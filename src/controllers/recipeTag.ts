@@ -1,5 +1,5 @@
-import db, { CreateQuery, Recipe, RecipeTag, SaveService, Tag, lamington, recipeTag, tag } from "../database";
-import { EnsureArray } from "../utils";
+import db, { type CreateQuery, type Recipe, type RecipeTag, type SaveService, type Tag, lamington, recipeTag, tag } from "../database/index.ts";
+import { EnsureArray } from "../utils/index.ts";
 
 /**
  * Delete RecipeTags from list of recipe tags

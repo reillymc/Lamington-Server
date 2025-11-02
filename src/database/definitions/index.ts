@@ -1,25 +1,25 @@
-import config from "../../config";
+import config from "../../config.ts";
 
-import { book } from "./book";
-import { bookMember } from "./bookMember";
-import { bookRecipe } from "./bookRecipe";
-import { ingredient } from "./ingredient";
-import { lamington } from "./lamington";
-import { list } from "./list";
-import { listItem } from "./listItem";
-import { listMember } from "./listMember";
-import { plannerMeal } from "./meal";
-import { planner } from "./planner";
-import { plannerMember } from "./plannerMember";
-import { recipe } from "./recipe";
-import { recipeIngredient } from "./recipeIngredient";
-import { recipeNote } from "./recipeNote";
-import { recipeRating } from "./recipeRating";
-import { recipeSection } from "./recipeSection";
-import { recipeStep } from "./recipeStep";
-import { recipeTag } from "./recipeTag";
-import { tag } from "./tag";
-import { User, user } from "./user";
+import { book } from "./book.ts";
+import { bookMember } from "./bookMember.ts";
+import { bookRecipe } from "./bookRecipe.ts";
+import { ingredient } from "./ingredient.ts";
+import { lamington } from "./lamington.ts";
+import { list } from "./list.ts";
+import { listItem } from "./listItem.ts";
+import { listMember } from "./listMember.ts";
+import { plannerMeal } from "./meal.ts";
+import { planner } from "./planner.ts";
+import { plannerMember } from "./plannerMember.ts";
+import { recipe } from "./recipe.ts";
+import { recipeIngredient } from "./recipeIngredient.ts";
+import { recipeNote } from "./recipeNote.ts";
+import { recipeRating } from "./recipeRating.ts";
+import { recipeSection } from "./recipeSection.ts";
+import { recipeStep } from "./recipeStep.ts";
+import { recipeTag } from "./recipeTag.ts";
+import { tag } from "./tag.ts";
+import { type User, user } from "./user.ts";
 
 export const LamingtonMemberTables = {
     [lamington.bookMember]: bookMember,
@@ -45,7 +45,7 @@ export const Lamington = {
     [lamington.tag]: tag,
     [lamington.user]: user,
     ...LamingtonMemberTables,
-} satisfies Record<lamington, Record<string, unknown>>;
+} satisfies Record<(typeof lamington)[keyof lamington], Record<string, unknown>>;
 
 export type Table<T> = Required<{ [key in keyof T]: string }>;
 
@@ -109,22 +109,22 @@ export type ServiceResponse<T extends Record<string, any>, K extends keyof T> = 
 
 export const PAGE_SIZE = config.app.pageSize;
 
-export * from "./book";
-export * from "./bookMember";
-export * from "./bookRecipe";
-export * from "./ingredient";
-export * from "./lamington";
-export * from "./list";
-export * from "./listItem";
-export * from "./listMember";
-export * from "./meal";
-export * from "./planner";
-export * from "./plannerMember";
-export * from "./recipe";
-export * from "./recipeIngredient";
-export * from "./recipeRating";
-export * from "./recipeSection";
-export * from "./recipeStep";
-export * from "./recipeTag";
-export * from "./tag";
-export * from "./user";
+export * from "./book.ts";
+export * from "./bookMember.ts";
+export * from "./bookRecipe.ts";
+export * from "./ingredient.ts";
+export { lamington } from "./lamington.ts";
+export * from "./list.ts";
+export * from "./listItem.ts";
+export * from "./listMember.ts";
+export * from "./meal.ts";
+export * from "./planner.ts";
+export * from "./plannerMember.ts";
+export * from "./recipe.ts";
+export * from "./recipeIngredient.ts";
+export * from "./recipeRating.ts";
+export * from "./recipeSection.ts";
+export * from "./recipeStep.ts";
+export * from "./recipeTag.ts";
+export * from "./tag.ts";
+export * from "./user.ts";

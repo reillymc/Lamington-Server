@@ -1,6 +1,6 @@
-import db, { lamington, Meal, plannerMeal, ReadService } from "../database";
-import { EnsureArray } from "../utils";
-import { PlannerMealService } from "./spec";
+import db, { lamington, type Meal, plannerMeal, type ReadService } from "../database/index.ts";
+import { EnsureArray } from "../utils/index.ts";
+import { type PlannerMealService } from "./spec/index.ts";
 
 export type PlannerMeal = Pick<
     Meal,

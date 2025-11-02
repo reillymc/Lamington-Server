@@ -1,11 +1,11 @@
-import { NextFunction, Request, Response } from "express";
-import jwt from "jsonwebtoken";
+import type { RequestHandler } from "express";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 
-import config from "../config";
-import { UserActions } from "../controllers";
-import { getStatus } from "../routes/helpers";
-import { UserStatus } from "../routes/spec";
-import { AppError } from "../services";
+import config from "../config.ts";
+import { UserActions } from "../controllers/index.ts";
+import { getStatus } from "../routes/helpers/index.ts";
+import { UserStatus } from "../routes/spec/index.ts";
+import { AppError } from "../services/index.ts";
 
 const { jwtSecret } = config.authentication;
 
@@ -14,11 +14,7 @@ export interface AuthData {
     status?: UserStatus;
 }
 
-export const authenticationMiddleware = (
-    req: Request<null, null, AuthData, null>,
-    res: Response,
-    next: NextFunction
-) => {
+export const authenticationMiddleware: RequestHandler = (req, res, next) => {
     if (!jwtSecret) return;
 
     var token = req.headers["authorization"];
@@ -30,9 +26,13 @@ export const authenticationMiddleware = (
         token = token.slice(7, token.length);
     }
 
-    jwt.verify(token, jwtSecret, async (err, decoded: Pick<AuthData, "userId">) => {
+    jwt.verify(token, jwtSecret, async (err, decoded) => {
         if (err) {
             return next(new AppError({ status: 401, message: "Failed to authenticate user.", innerError: err }));
+        }
+
+        if (!isUserToken(decoded)) {
+            return next(new AppError({ status: 401, message: "Invalid token." }));
         }
 
         const [user] = await UserActions.read({ userId: decoded.userId });
@@ -55,4 +55,12 @@ export const authenticationMiddleware = (
 
         return next();
     });
+};
+
+const isUserToken = (decoded: string | undefined | JwtPayload): decoded is Pick<AuthData, "userId"> => {
+    if (decoded === undefined || typeof decoded === "string") return false;
+
+    if ("userId" in decoded) return true;
+
+    return false;
 };

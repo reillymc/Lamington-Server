@@ -1,19 +1,19 @@
 import { v4 as Uuid } from "uuid";
 
 import db, {
-    CreateQuery,
-    CreateResponse,
-    Ingredient,
+    type CreateQuery,
+    type CreateResponse,
+    type Ingredient,
     PAGE_SIZE,
-    QueryService,
-    ReadQuery,
-    ReadResponse,
-    User,
+    type QueryService,
+    type ReadQuery,
+    type ReadResponse,
+    type User,
     ingredient,
     lamington,
-} from "../database";
-import { EnsureArray, Undefined } from "../utils";
-import { processPagination } from "./helpers";
+} from "../database/index.ts";
+import { EnsureArray, Undefined } from "../utils/index.ts";
+import { processPagination } from "./helpers/index.ts";
 
 /**
  * Get all ingredients

@@ -10,24 +10,24 @@ import {
     PlannerMealActions,
     RecipeActions,
     UserActions,
-} from "../controllers";
-import { AppError, MessageAction, userMessage } from "../services";
-import { getStatus } from "./helpers";
+} from "../controllers/index.ts";
+import { AppError, MessageAction, userMessage } from "../services/index.ts";
+import { getStatus } from "./helpers/index.ts";
 import {
-    GetPendingUsersRequestBody,
-    GetPendingUsersRequestParams,
-    GetPendingUsersResponse,
-    GetUsersRequestBody,
-    GetUsersRequestParams,
-    GetUsersResponse,
-    PostUserApprovalRequestBody,
-    PostUserApprovalRequestParams,
-    PostUserApprovalResponse,
     UserEndpoint,
     UserStatus,
     type DeleteUserRequestParams,
     type DeleteUserResponse,
-} from "./spec";
+    type GetPendingUsersRequestBody,
+    type GetPendingUsersRequestParams,
+    type GetPendingUsersResponse,
+    type GetUsersRequestBody,
+    type GetUsersRequestParams,
+    type GetUsersResponse,
+    type PostUserApprovalRequestBody,
+    type PostUserApprovalRequestParams,
+    type PostUserApprovalResponse,
+} from "./spec/index.ts";
 
 const router = express.Router();
 
@@ -103,7 +103,7 @@ router.get<GetPendingUsersRequestParams, GetPendingUsersResponse, GetPendingUser
  */
 router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApprovalRequestBody>(
     UserEndpoint.approveUser,
-    async ({ body, params, session }, res, next) => {
+    async ({ body = {}, params, session }, res, next) => {
         const isAdmin = session.status === UserStatus.Administrator || session.status === UserStatus.Owner;
         const { userId: userToUpdate } = params;
         const { accept } = body;

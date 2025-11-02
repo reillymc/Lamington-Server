@@ -1,17 +1,17 @@
 import { v4 as Uuid } from "uuid";
 
 import db, {
-    CreateQuery,
-    CreateResponse,
-    ReadQuery,
-    ReadResponse,
-    User,
     lamington,
     user,
+    type CreateQuery,
+    type CreateResponse,
     type DeleteService,
-} from "../database";
-import { UserStatus } from "../routes/spec";
-import { EnsureArray, Undefined } from "../utils";
+    type ReadQuery,
+    type ReadResponse,
+    type User,
+} from "../database/index.ts";
+import { UserStatus } from "../routes/spec/index.ts";
+import { EnsureArray, Undefined } from "../utils/index.ts";
 
 /**
  * Get all users

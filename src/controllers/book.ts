@@ -1,21 +1,21 @@
 import db, {
-    Book,
-    BookMember,
-    CreateQuery,
-    DeleteResponse,
-    ReadMyService,
-    ReadQuery,
-    ReadResponse,
-    SaveService,
-    User,
+    type Book,
+    type BookMember,
+    type CreateQuery,
+    type DeleteResponse,
+    type ReadMyService,
+    type ReadQuery,
+    type ReadResponse,
+    type SaveService,
+    type User,
     book,
     bookMember,
     lamington,
     user,
-} from "../database";
-import { EnsureArray } from "../utils";
-import { BookMemberActions } from "./bookMember";
-import { EntityMember } from "./entity";
+} from "../database/index.ts";
+import { EnsureArray } from "../utils/index.ts";
+import { BookMemberActions } from "./bookMember.ts";
+import type { EntityMember } from "./entity/index.ts";
 
 /**
  * Get all books

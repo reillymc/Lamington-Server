@@ -1,4 +1,4 @@
-import { Table } from ".";
+import { type Table } from "./index.ts";
 
 /**
  * Tag

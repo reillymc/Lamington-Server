@@ -1,6 +1,6 @@
-import { Table } from ".";
-import { ListCustomisations } from "../../routes/helpers";
-import { lamington } from "./lamington";
+import type { ListCustomisations } from "../../routes/helpers/index.ts";
+import type { Table } from "./index.ts";
+import { lamington } from "./lamington.ts";
 
 /**
  * List

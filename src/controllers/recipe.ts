@@ -1,10 +1,10 @@
 import db, {
     PAGE_SIZE,
-    ReadService,
-    Recipe,
-    RecipeRating,
-    ServiceResponse,
-    User,
+    type ReadService,
+    type Recipe,
+    type RecipeRating,
+    type ServiceResponse,
+    type User,
     bookRecipe,
     ingredient,
     lamington,
@@ -13,17 +13,17 @@ import db, {
     recipeRating,
     recipeTag,
     user,
-} from "../database";
+} from "../database/index.ts";
 
-import { IngredientActions } from "./ingredient";
-import { RecipeIngredientActions } from "./recipeIngredient";
-import { RecipeRatingActions } from "./recipeRating";
-import { RecipeSectionActions } from "./recipeSection";
-import { RecipeStepActions } from "./recipeStep";
-import { RecipeTagActions } from "./recipeTag";
+import { IngredientActions } from "./ingredient.ts";
+import { RecipeIngredientActions } from "./recipeIngredient.ts";
+import { RecipeRatingActions } from "./recipeRating.ts";
+import { RecipeSectionActions } from "./recipeSection.ts";
+import { RecipeStepActions } from "./recipeStep.ts";
+import { RecipeTagActions } from "./recipeTag.ts";
 
 import { validate } from "uuid";
-import { BisectOnPredicate, EnsureArray, Undefined } from "../utils";
+import { BisectOnPredicate, EnsureArray, Undefined } from "../utils/index.ts";
 import {
     ingredientsRequestToRows,
     processPagination,
@@ -31,8 +31,8 @@ import {
     recipeMethodRequestToRows,
     recipeSectionRequestToRows,
     recipeTagsRequestToRows,
-} from "./helpers";
-import { RecipeService } from "./spec";
+} from "./helpers/index.ts";
+import type { RecipeService } from "./spec/index.ts";
 
 const ratingPersonalName = "rating_personal";
 const ratingAverageName = "rating_average";

@@ -1,5 +1,5 @@
-import { Table } from ".";
-import { lamington } from "./lamington";
+import type { Table } from "./index.ts";
+import { lamington } from "./lamington.ts";
 
 /**
  * BookRecipe

@@ -1,38 +1,38 @@
 import express from "express";
 
-import { BookActions, BookMemberActions, BookRecipeActions, InternalBookActions, RecipeActions } from "../controllers";
-import { AppError, MessageAction, userMessage } from "../services";
-import { EnsureDefinedArray, Undefined } from "../utils";
-import { prepareGetBookResponseBody, validatePostBookBody } from "./helpers";
+import { BookActions, BookMemberActions, BookRecipeActions, InternalBookActions, RecipeActions } from "../controllers/index.ts";
+import { AppError, MessageAction, userMessage } from "../services/index.ts";
+import { EnsureDefinedArray, Undefined } from "../utils/index.ts";
+import { prepareGetBookResponseBody, validatePostBookBody } from "./helpers/index.ts";
 import {
     BookEndpoint,
-    Books,
-    DeleteBookMemberRequestBody,
-    DeleteBookMemberRequestParams,
-    DeleteBookMemberResponse,
-    DeleteBookRecipeRequestBody,
-    DeleteBookRecipeRequestParams,
-    DeleteBookRecipeResponse,
-    DeleteBookRequestBody,
-    DeleteBookRequestParams,
-    DeleteBookResponse,
-    GetBookRequestBody,
-    GetBookRequestParams,
-    GetBookResponse,
-    GetBooksRequestBody,
-    GetBooksRequestParams,
-    GetBooksResponse,
-    PostBookMemberRequestBody,
-    PostBookMemberRequestParams,
-    PostBookMemberResponse,
-    PostBookRecipeRequestBody,
-    PostBookRecipeRequestParams,
-    PostBookRecipeResponse,
-    PostBookRequestBody,
-    PostBookRequestParams,
-    PostBookResponse,
+    type Books,
+    type DeleteBookMemberRequestBody,
+    type DeleteBookMemberRequestParams,
+    type DeleteBookMemberResponse,
+    type DeleteBookRecipeRequestBody,
+    type DeleteBookRecipeRequestParams,
+    type DeleteBookRecipeResponse,
+    type DeleteBookRequestBody,
+    type DeleteBookRequestParams,
+    type DeleteBookResponse,
+    type GetBookRequestBody,
+    type GetBookRequestParams,
+    type GetBookResponse,
+    type GetBooksRequestBody,
+    type GetBooksRequestParams,
+    type GetBooksResponse,
+    type PostBookMemberRequestBody,
+    type PostBookMemberRequestParams,
+    type PostBookMemberResponse,
+    type PostBookRecipeRequestBody,
+    type PostBookRecipeRequestParams,
+    type PostBookRecipeResponse,
+    type PostBookRequestBody,
+    type PostBookRequestParams,
+    type PostBookResponse,
     UserStatus,
-} from "./spec";
+} from "./spec/index.ts";
 
 const router = express.Router();
 

@@ -1,27 +1,29 @@
-import { Knex } from "knex";
-import { UserStatus } from "../../routes/spec";
+import { type Knex } from "knex";
+import { UserStatus } from "../../routes/spec/index.ts";
 
-export enum tables {
-    book = "book",
-    bookMember = "book_member",
-    bookRecipe = "book_recipe",
-    ingredient = "ingredient",
-    list = "list",
-    listItem = "list_item",
-    listMember = "list_member",
-    planner = "planner",
-    plannerMember = "planner_member",
-    plannerMeal = "planner_meal",
-    recipe = "recipe",
-    recipeIngredient = "recipe_ingredient",
-    recipeRating = "recipe_rating",
-    recipeNote = "recipe_note",
-    recipeSection = "recipe_section",
-    recipeStep = "recipe_step",
-    recipeTag = "recipe_tag",
-    tag = "tag",
-    user = "user",
-}
+export const tables = {
+    book: "book",
+    bookMember: "book_member",
+    bookRecipe: "book_recipe",
+    ingredient: "ingredient",
+    list: "list",
+    listItem: "list_item",
+    listMember: "list_member",
+    planner: "planner",
+    plannerMember: "planner_member",
+    plannerMeal: "planner_meal",
+    recipe: "recipe",
+    recipeIngredient: "recipe_ingredient",
+    recipeRating: "recipe_rating",
+    recipeNote: "recipe_note",
+    recipeSection: "recipe_section",
+    recipeStep: "recipe_step",
+    recipeTag: "recipe_tag",
+    tag: "tag",
+    user: "user",
+} as const;
+
+export type tables = (typeof tables)[keyof typeof tables];
 
 const onUpdateTrigger = (table: tables) => `
     CREATE TRIGGER "${table}_updatedAt"

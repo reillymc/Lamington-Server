@@ -1,6 +1,6 @@
-import { RecipeTag } from "../../database";
-import { Undefined } from "../../utils";
-import { RecipeTags } from "../spec/recipe";
+import type { RecipeTag } from "../../database/index.ts";
+import { Undefined } from "../../utils/index.ts";
+import type { RecipeTags } from "../spec/recipe.ts";
 
 export const recipeTagsRequestToRows = (recipeId: string, tags: RecipeTags = {}): RecipeTag[] =>
     Object.values(tags)

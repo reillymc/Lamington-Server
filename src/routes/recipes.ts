@@ -1,36 +1,36 @@
 import express from "express";
 
-import { RecipeActions, RecipeRatingActions } from "../controllers";
-import { AppError, AttachmentService, MessageAction, userMessage } from "../services";
+import { RecipeActions, RecipeRatingActions } from "../controllers/index.ts";
+import { AppError, AttachmentService, MessageAction, userMessage } from "../services/index.ts";
 import {
     RecipeQueryResponseToRecipe,
     RecipeReadResponseToRecipe,
     parseRecipeQuery,
     validatePostRecipeBody,
-} from "./helpers";
+} from "./helpers/index.ts";
 import {
-    DeleteRecipeRequestBody,
-    DeleteRecipeRequestParams,
-    DeleteRecipeResponse,
-    GetAllRecipesRequestBody,
-    GetAllRecipesRequestParams,
-    GetAllRecipesRequestQuery,
-    GetAllRecipesResponse,
-    GetMyRecipesRequestBody,
-    GetMyRecipesRequestParams,
-    GetMyRecipesRequestQuery,
-    GetMyRecipesResponse,
-    GetRecipeRequestBody,
-    GetRecipeRequestParams,
-    GetRecipeResponse,
-    PostRecipeRatingRequestBody,
-    PostRecipeRatingRequestParams,
-    PostRecipeRatingResponse,
-    PostRecipeRequestBody,
-    PostRecipeRequestParams,
-    PostRecipeResponse,
+    type DeleteRecipeRequestBody,
+    type DeleteRecipeRequestParams,
+    type DeleteRecipeResponse,
+    type GetAllRecipesRequestBody,
+    type GetAllRecipesRequestParams,
+    type GetAllRecipesRequestQuery,
+    type GetAllRecipesResponse,
+    type GetMyRecipesRequestBody,
+    type GetMyRecipesRequestParams,
+    type GetMyRecipesRequestQuery,
+    type GetMyRecipesResponse,
+    type GetRecipeRequestBody,
+    type GetRecipeRequestParams,
+    type GetRecipeResponse,
+    type PostRecipeRatingRequestBody,
+    type PostRecipeRatingRequestParams,
+    type PostRecipeRatingResponse,
+    type PostRecipeRequestBody,
+    type PostRecipeRequestParams,
+    type PostRecipeResponse,
     RecipeEndpoint,
-} from "./spec";
+} from "./spec/index.ts";
 
 const router = express.Router();
 
@@ -261,11 +261,11 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
  */
 router.post<PostRecipeRatingRequestParams, PostRecipeRatingResponse, PostRecipeRatingRequestBody>(
     RecipeEndpoint.postRecipeRating,
-    async (req, res, next) => {
+    async ({ body = {}, session, params }, res, next) => {
         // Extract request fields
-        const { rating } = req.body;
-        const { userId } = req.session;
-        const { recipeId } = req.params;
+        const { rating } = body;
+        const { userId } = session;
+        const { recipeId } = params;
 
         // Check all required fields are present
         if (!userId || !recipeId || !rating) {

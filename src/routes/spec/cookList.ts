@@ -1,5 +1,5 @@
-import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from "./base";
-import { User } from "./user";
+import type { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from "./base.ts";
+import type { User } from "./user.ts";
 
 export const cookListEndpoint = "/queue" as const;
 export const cookListMealIdParam = "mealId" as const;

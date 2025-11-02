@@ -1,12 +1,12 @@
-import {
+import type {
     BasePaginatedRequestQuery,
     BasePaginatedResponse,
     BaseRequest,
     BaseRequestBody,
     BaseRequestParams,
     BaseResponse,
-} from "./base";
-import { User } from "./user";
+} from "./base.ts";
+import type { User } from "./user.ts";
 
 export const ingredientEndpoint = "/ingredients" as const;
 

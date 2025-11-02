@@ -1,5 +1,5 @@
-import db, { DeleteService, Meal, ReadMyService, ReadService, SaveService, lamington, plannerMeal } from "../database";
-import { EnsureArray } from "../utils";
+import db, { type DeleteService, type Meal, type ReadMyService, type ReadService, type SaveService, lamington, plannerMeal } from "../database/index.ts";
+import { EnsureArray } from "../utils/index.ts";
 
 export type CookListMeal = Pick<Meal, "id" | "meal" | "description" | "createdBy" | "recipeId" | "source" | "sequence">;
 

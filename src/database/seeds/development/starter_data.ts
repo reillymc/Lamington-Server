@@ -1,24 +1,24 @@
-import { Knex } from "knex";
-import { hashPassword } from "../../../services/password";
+import { type Knex } from "knex";
+import { hashPassword } from "../../../services/password.ts";
 import {
-    Book,
-    BookRecipe,
-    Ingredient,
-    List,
-    ListItem,
-    Meal,
-    Planner,
-    Recipe,
-    RecipeIngredient,
-    RecipeRating,
-    RecipeSection,
-    RecipeStep,
-    RecipeTag,
-    Tag,
-    User,
+    type Book,
+    type BookRecipe,
+    type Ingredient,
+    type List,
+    type ListItem,
+    type Meal,
+    type Planner,
+    type Recipe,
+    type RecipeIngredient,
+    type RecipeRating,
+    type RecipeSection,
+    type RecipeStep,
+    type RecipeTag,
+    type Tag,
+    type User,
     lamington,
-} from "../../definitions";
-import { clearDatabase } from "../helpers";
+} from "../../definitions/index.ts";
+import { clearDatabase } from "../helpers.ts";
 
 export const seed = async (knex: Knex): Promise<void> => {
     // Delete ALL existing entries

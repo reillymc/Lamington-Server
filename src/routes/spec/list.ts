@@ -1,6 +1,6 @@
-import { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from "./base";
-import { EntityMember, EntityMembers, FractionValue, NumberValue, RangeValue } from "./common";
-import { User, UserStatus } from "./user";
+import type { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse, BaseSimpleRequestBody } from "./base.ts";
+import type { EntityMember, EntityMembers, FractionValue, NumberValue, RangeValue } from "./common.ts";
+import { type User, UserStatus } from "./user.ts";
 
 export const listEndpoint = "/lists" as const;
 

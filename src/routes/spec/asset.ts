@@ -1,4 +1,4 @@
-import { BaseRequest, BaseResponse } from "./base";
+import type { BaseRequest, BaseResponse } from "./base.ts";
 
 export const assetEndpoint = "/assets" as const;
 export const assetsDirectory = "assets" as const;

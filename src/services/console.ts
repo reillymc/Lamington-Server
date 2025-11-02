@@ -1,4 +1,4 @@
-import { LamingtonConfig } from "../config";
+import type { LamingtonConfig } from "../config.ts";
 
 const applyColor = ({ message, error }: { message: string; error?: boolean }): string =>
     error ? `\u001b[31m${message}\u001b[0m` : `\u001b[36m${message}\u001b[0m`;
@@ -19,10 +19,6 @@ const formatAttachmentConfig = (config: LamingtonConfig["attachments"]): { messa
     let error = false;
 
     switch (config.storageService) {
-        case "imgur":
-            message = `${message} Imgur (Client ID: ${!!config.imgurClientId})`;
-            error = !config.imgurClientId;
-            break;
         case "s3":
             message = `${message} S3 (Bucket=${config.awsBucketName} - Region=${config.awsRegion}, (Path=${
                 config.path

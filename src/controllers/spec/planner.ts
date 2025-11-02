@@ -1,5 +1,13 @@
-import { DeleteService, Planner, PlannerMember, ReadMyService, ReadService, SaveService, User } from "../../database";
-import { EntityMember } from "../entity";
+import type {
+    DeleteService,
+    Planner,
+    PlannerMember,
+    ReadMyService,
+    ReadService,
+    SaveService,
+    User,
+} from "../../database/index.ts";
+import type { EntityMember } from "../entity/index.ts";
 
 interface PlannerReadResponse
     extends Pick<Planner, "plannerId" | "name" | "customisations" | "createdBy" | "description"> {

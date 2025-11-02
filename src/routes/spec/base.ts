@@ -8,7 +8,7 @@ type LamingtonQueryParams = { page?: QueryParam; sort?: QueryParam; search?: Que
 
 export type BasePaginatedRequestQuery<T = null> = T extends null ? LamingtonQueryParams : T & LamingtonQueryParams;
 
-export type BaseSimpleRequestBody<T = null> = T extends null ? {} : Partial<T>;
+export type BaseSimpleRequestBody<T = null> = T extends null ? {} : Partial<T> | undefined;
 
 export type BaseRequestBody<T = null> = T extends null ? {} : { data: Partial<T> | null | Array<Partial<T> | null> };
 
