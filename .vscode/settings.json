@@ -50,5 +50,11 @@
             "parameters": ["--import", "./tests/globalHooks.ts", "--test-global-setup", "./tests/setupModule.ts"]
         }
     ],
-    "nodejs-testing.env": { "NODE_ENV": "test" }
+    "nodejs-testing.env": { "NODE_ENV": "test" },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
 }
