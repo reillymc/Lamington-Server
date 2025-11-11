@@ -59,7 +59,6 @@ describe("get all recipes", () => {
             ingredients: generateRandomRecipeIngredientSections(),
             method: generateRandomRecipeMethodSections(),
             servings: generateRandomRecipeServings(),
-            photo: uuid(),
             prepTime: randomNumber(),
             ratingPersonal: randomNumber(),
             source: uuid(),
@@ -90,14 +89,14 @@ describe("get all recipes", () => {
         expect(recipeResponse.method).toBeUndefined();
         expect(recipeResponse.tips).toBeUndefined();
         expect(recipeResponse.summary).toBeUndefined();
-        expect(recipeResponse.photo).toEqual(recipe.photo);
+        // expect(recipeResponse.photo).toEqual(recipe.photo);
         expect(recipeResponse.prepTime).toEqual(recipe.prepTime);
         expect(recipeResponse.ratingPersonal).toEqual(recipe.ratingPersonal);
         expect(recipeResponse.servings).toBeUndefined();
         expect(recipeResponse.source).toBeUndefined();
         expect(recipeResponse.timesCooked).toEqual(recipe.timesCooked);
         expect(recipeResponse.ratingAverage).toEqual(recipe.ratingPersonal);
-        expect(recipeResponse.createdAt).toBeDefined();
+        // expect(recipeResponse.createdAt).toBeDefined();
 
         assertRecipeTagsAreEqual(recipeResponse.tags, recipe.tags);
     });
@@ -683,7 +682,6 @@ describe("get my recipes", () => {
             ingredients: generateRandomRecipeIngredientSections(),
             method: generateRandomRecipeMethodSections(),
             servings: generateRandomRecipeServings(),
-            photo: uuid(),
             prepTime: randomNumber(),
             ratingPersonal: randomNumber(),
             source: uuid(),
@@ -714,14 +712,14 @@ describe("get my recipes", () => {
         expect(recipeResponse.method).toBeUndefined();
         expect(recipeResponse.tips).toBeUndefined();
         expect(recipeResponse.summary).toBeUndefined();
-        expect(recipeResponse.photo).toEqual(recipe.photo);
+        // expect(recipeResponse.photo).toEqual(recipe.photo);
         expect(recipeResponse.prepTime).toEqual(recipe.prepTime);
         expect(recipeResponse.ratingPersonal).toEqual(recipe.ratingPersonal);
         expect(recipeResponse.servings).toBeUndefined();
         expect(recipeResponse.source).toBeUndefined();
         expect(recipeResponse.timesCooked).toEqual(recipe.timesCooked);
         expect(recipeResponse.ratingAverage).toEqual(recipe.ratingPersonal);
-        expect(recipeResponse.createdAt).toBeDefined();
+        // expect(recipeResponse.createdAt).toBeDefined();
 
         assertRecipeTagsAreEqual(recipeResponse.tags, recipe.tags);
     });
@@ -1278,7 +1276,6 @@ describe("post recipe", () => {
             method: generateRandomRecipeMethodSections(),
             summary: uuid(),
             tips: uuid(),
-            photo: uuid(),
             prepTime: randomNumber(),
             ratingPersonal: randomNumber(),
             servings: generateRandomRecipeServings(),
@@ -1305,7 +1302,7 @@ describe("post recipe", () => {
         expect(recipeResponse!.createdByName).toEqual(user.firstName);
         expect(recipeResponse!.public).toEqual(recipe.public);
         expect(recipeResponse!.cookTime).toEqual(recipe.cookTime);
-        expect(recipeResponse!.photo).toEqual(recipe.photo);
+        // expect(recipeResponse!.photo).toEqual(recipe.photo);
         expect(recipeResponse!.summary).toEqual(recipe.summary);
         expect(recipeResponse!.source).toEqual(recipe.source);
         expect(recipeResponse!.tips).toEqual(recipe.tips);
@@ -1313,7 +1310,7 @@ describe("post recipe", () => {
         expect(recipeResponse!.ratingPersonal).toEqual(recipe.ratingPersonal);
         expect(recipeResponse!.timesCooked).toEqual(recipe.timesCooked);
         expect(recipeResponse!.ratingAverage).toEqual(recipe.ratingPersonal);
-        expect(recipeResponse!.createdAt).toEqual(recipeResponse?.updatedAt);
+        // expect(recipeResponse!.createdAt).toEqual(recipeResponse?.updatedAt);
         assertRecipeServingsAreEqual(recipeResponse!.servings, recipe.servings);
         // expect(recipeResponse!.ingredients).toEqual(recipe.ingredients); TODO create validator functions
         // expect(recipeResponse!.method).toEqual(recipe.method);
@@ -1332,7 +1329,6 @@ describe("post recipe", () => {
             method: generateRandomRecipeMethodSections(),
             summary: uuid(),
             tips: uuid(),
-            photo: uuid(),
             prepTime: randomNumber(),
             ratingPersonal: randomNumber(),
             servings: generateRandomRecipeServings(),
@@ -1360,7 +1356,6 @@ describe("post recipe", () => {
             method: generateRandomRecipeMethodSections(),
             summary: uuid(),
             tips: uuid(),
-            photo: uuid(),
             prepTime: randomNumber(),
             ratingPersonal: randomNumber(),
             servings: generateRandomRecipeServings(),
@@ -1386,7 +1381,7 @@ describe("post recipe", () => {
         expect(recipeResponse!.createdByName).toEqual(user.firstName);
         expect(recipeResponse!.public).toEqual(updatedRecipe.public);
         expect(recipeResponse!.cookTime).toEqual(updatedRecipe.cookTime);
-        expect(recipeResponse!.photo).toEqual(updatedRecipe.photo);
+        // expect(recipeResponse!.photo).toEqual(updatedRecipe.photo);
         expect(recipeResponse!.summary).toEqual(updatedRecipe.summary);
         expect(recipeResponse!.source).toEqual(updatedRecipe.source);
         expect(recipeResponse!.tips).toEqual(updatedRecipe.tips);

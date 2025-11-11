@@ -1,11 +1,16 @@
 import express from "express";
 
-import { BookActions, BookMemberActions, BookRecipeActions, InternalBookActions, RecipeActions } from "../controllers/index.ts";
+import {
+    BookActions,
+    BookMemberActions,
+    BookRecipeActions,
+    InternalBookActions,
+    RecipeActions,
+} from "../controllers/index.ts";
 import { AppError, MessageAction, userMessage } from "../services/index.ts";
 import { EnsureDefinedArray, Undefined } from "../utils/index.ts";
 import { prepareGetBookResponseBody, validatePostBookBody } from "./helpers/index.ts";
 import {
-    BookEndpoint,
     type Books,
     type DeleteBookMemberRequestBody,
     type DeleteBookMemberRequestParams,
@@ -31,8 +36,8 @@ import {
     type PostBookRequestBody,
     type PostBookRequestParams,
     type PostBookResponse,
-    UserStatus,
-} from "./spec/index.ts";
+} from "./spec/book.ts";
+import { BookEndpoint, UserStatus } from "./spec/index.ts";
 
 const router = express.Router();
 
@@ -97,7 +102,7 @@ router.get<GetBookRequestParams, GetBookResponse, GetBookRequestBody>(
             }
 
             const { result: bookRecipesResponse } = await RecipeActions.QueryByBook({ userId, bookId });
-            const bookMembersResponse = await BookMemberActions.read({ entityId: bookId });
+            const bookMembersResponse = await BookMemberActions.read({ bookId });
 
             const data = prepareGetBookResponseBody(book, userId, bookRecipesResponse, bookMembersResponse);
 
@@ -252,7 +257,7 @@ router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeR
             }
 
             if (existingBook.createdBy !== userId) {
-                const existingBookMembers = await BookMemberActions.read({ entityId: bookId });
+                const existingBookMembers = await BookMemberActions.read({ bookId });
 
                 if (
                     !existingBookMembers?.some(
@@ -319,7 +324,7 @@ router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberR
                 );
             }
 
-            const bookMembers = await BookMemberActions.read({ entityId: bookId });
+            const bookMembers = await BookMemberActions.read({ bookId });
 
             if (!bookMembers?.some(member => member.userId === userId)) {
                 return next(
@@ -382,7 +387,7 @@ router.delete<DeleteBookRecipeRequestParams, DeleteBookRecipeResponse, DeleteBoo
             }
 
             if (existingBook.createdBy !== userId) {
-                const existingBookMembers = await BookMemberActions.read({ entityId: bookId });
+                const existingBookMembers = await BookMemberActions.read({ bookId });
 
                 if (
                     !existingBookMembers?.some(
@@ -468,7 +473,7 @@ router.delete<DeleteBookMemberRequestParams, DeleteBookMemberResponse, DeleteBoo
                 );
             }
 
-            await BookMemberActions.delete({ entityId: bookId, userId: userToDelete });
+            await BookMemberActions.delete({ bookId, userId: userToDelete });
             return res.status(201).json({ error: false, message: "Book member removed." });
         } catch (e: unknown) {
             next(

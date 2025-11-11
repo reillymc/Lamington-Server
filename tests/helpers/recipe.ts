@@ -1,7 +1,7 @@
 import { expect } from "expect";
 import { v4 as uuid } from "uuid";
 import { TagActions } from "../../src/controllers/index.ts";
-import { type RecipeService } from "../../src/controllers/spec/recipe.ts";
+import { type ContentTags, type RecipeService } from "../../src/controllers/spec/recipe.ts";
 import type { ServiceResponse } from "../../src/database/index.ts";
 import type {
     RecipeIngredientItem,
@@ -9,7 +9,6 @@ import type {
     RecipeMethod,
     RecipeMethodStep,
     RecipeServings,
-    RecipeTags,
 } from "../../src/routes/spec/index.ts";
 import { Undefined } from "../../src/utils/index.ts";
 import { randomBoolean, randomNumber } from "./data.ts";
@@ -58,7 +57,6 @@ export const generateRandomRecipeMethodSections = (): RecipeMethod =>
             (): RecipeMethodStep => ({
                 id: uuid(),
                 description: uuid(),
-                photo: uuid(),
             })
         ),
     }));
@@ -83,8 +81,8 @@ export const generateRandomRecipeServings = (): RecipeServings => {
     };
 };
 
-export const createRandomRecipeTags = async (): Promise<RecipeTags> => {
-    const tags: RecipeTags = Object.fromEntries(
+export const createRandomRecipeTags = async (): Promise<ContentTags> => {
+    const tags: ContentTags = Object.fromEntries(
         Array.from({ length: randomNumber() }).map(() => {
             const parentTagId = uuid();
             return [
@@ -128,7 +126,7 @@ export const assertRecipeServingsAreEqual = (
     expect(servings1Parsed.count.value).toEqual(servings2Parsed.count.value);
 };
 
-export const assertRecipeTagsAreEqual = (tags1: RecipeTags = {}, tags2: RecipeTags = {}) => {
+export const assertRecipeTagsAreEqual = (tags1: ContentTags = {}, tags2: ContentTags = {}) => {
     const tagGroups1 = Object.keys(tags1);
     const tagGroups2 = Object.keys(tags2);
 

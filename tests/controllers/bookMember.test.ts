@@ -17,7 +17,7 @@ describe("save", () => {
             ],
         });
 
-        const result = await BookMemberActions.read({ entityId: book!.bookId });
+        const result = await BookMemberActions.read(book!);
 
         expect(result.length).toEqual(1);
 
@@ -32,7 +32,7 @@ describe("save", () => {
 
         await BookMemberActions.save({ bookId: book!.bookId, members: users.map(user => ({ userId: user!.userId })) });
 
-        const result = await BookMemberActions.read({ entityId: book!.bookId });
+        const result = await BookMemberActions.read(book!);
 
         expect(result.length).toEqual(users.length);
 
@@ -51,7 +51,7 @@ describe("save", () => {
             books.map(({ bookId }) => ({ bookId: bookId, members: [{ userId: user!.userId }] }))
         );
 
-        const result = await BookMemberActions.read(books.map(({ bookId }) => ({ entityId: bookId })));
+        const result = await BookMemberActions.read(books);
 
         expect(result.length).toEqual(books.length);
 
@@ -68,7 +68,7 @@ describe("save", () => {
             books.map(({ bookId }) => ({ bookId, members: users.map(user => ({ userId: user!.userId })) }))
         );
 
-        const result = await BookMemberActions.read(books.map(({ bookId }) => ({ entityId: bookId })));
+        const result = await BookMemberActions.read(books);
 
         expect(result.length).toEqual(books.length * users.length);
 

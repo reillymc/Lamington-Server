@@ -37,20 +37,21 @@ type Table = `${(typeof lamington)[keyof lamington]}`;
 export const CleanAllTables = async () => await CleanTables(...Object.values(lamington));
 
 export const CleanTables = async (...tables: Table[]) => {
+    if (tables.includes(lamington.contentNote)) await db.table(lamington.contentNote).del();
+    if (tables.includes(lamington.contentTag)) await db.table(lamington.contentTag).del();
+    if (tables.includes(lamington.contentMember)) await db.table(lamington.contentMember).del();
+    if (tables.includes(lamington.contentAttachment)) await db.table(lamington.contentAttachment).del();
+
     if (tables.includes(lamington.recipeIngredient)) await db.table(lamington.recipeIngredient).del();
     if (tables.includes(lamington.recipeRating)) await db.table(lamington.recipeRating).del();
-    if (tables.includes(lamington.recipeNote)) await db.table(lamington.recipeNote).del();
     if (tables.includes(lamington.recipeSection)) await db.table(lamington.recipeSection).del();
     if (tables.includes(lamington.recipeStep)) await db.table(lamington.recipeStep).del();
 
     if (tables.includes(lamington.listItem)) await db.table(lamington.listItem).del();
-    if (tables.includes(lamington.listMember)) await db.table(lamington.listMember).del();
 
     if (tables.includes(lamington.plannerMeal)) await db.table(lamington.plannerMeal).del();
-    if (tables.includes(lamington.plannerMember)) await db.table(lamington.plannerMember).del();
 
     if (tables.includes(lamington.bookRecipe)) await db.table(lamington.bookRecipe).del();
-    if (tables.includes(lamington.bookMember)) await db.table(lamington.bookMember).del();
 
     if (tables.includes(lamington.ingredient)) await db.table(lamington.ingredient).del();
     if (tables.includes(lamington.recipe)) await db.table(lamington.recipe).del();
@@ -59,6 +60,7 @@ export const CleanTables = async (...tables: Table[]) => {
     if (tables.includes(lamington.book)) await db.table(lamington.book).del();
     if (tables.includes(lamington.tag)) await db.table(lamington.tag).del();
     if (tables.includes(lamington.user)) await db.table(lamington.user).del();
+    if (tables.includes(lamington.content)) await db.table(lamington.content).del();
 };
 
 export const CreateBooks = async ({
@@ -88,7 +90,7 @@ export const CreateLists = async ({
     count?: number;
     createdBy: string;
 }): Promise<[ServiceParams<ListService, "Save">[], number]> => {
-    const books = Array.from({ length: count }, () => ({
+    const lists = Array.from({ length: count }, () => ({
         listId: uuid(),
         createdBy,
         description: uuid(),
@@ -96,9 +98,9 @@ export const CreateLists = async ({
         members: [],
     })) satisfies ServiceParams<ListService, "Save">[];
 
-    await ListActions.Save(books);
+    await ListActions.Save(lists);
 
-    return [books, count];
+    return [lists, count];
 };
 
 export const CreateIngredients = async ({

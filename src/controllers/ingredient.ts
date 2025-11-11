@@ -14,6 +14,7 @@ import db, {
 } from "../database/index.ts";
 import { EnsureArray, Undefined } from "../utils/index.ts";
 import { processPagination } from "./helpers/index.ts";
+import { content, type Content } from "../database/definitions/content.ts";
 
 /**
  * Get all ingredients
@@ -21,8 +22,9 @@ import { processPagination } from "./helpers/index.ts";
  */
 const query: QueryService<Ingredient> = async ({ page = 1, search }) => {
     const ingredientsList = await db<Ingredient>(lamington.ingredient)
-        .select("ingredientId", "name", "photo", "description", "createdBy")
+        .select("ingredientId", "name", "description", content.createdBy)
         .where(builder => (search ? builder.where("name", "ILIKE", `%${search}%`) : undefined))
+        .join(lamington.content, content.contentId, ingredient.ingredientId)
         .orderBy([{ column: ingredient.name, order: "asc" }, "ingredientId"])
         .limit(PAGE_SIZE + 1)
         .offset((page - 1) * PAGE_SIZE);
@@ -36,15 +38,10 @@ const query: QueryService<Ingredient> = async ({ page = 1, search }) => {
  */
 const queryByUser: QueryService<Ingredient, Pick<User, "userId">> = async ({ page = 1, search, userId }) => {
     const ingredientsList = await db<Ingredient>(lamington.ingredient)
-        .select(
-            ingredient.ingredientId,
-            ingredient.name,
-            ingredient.photo,
-            ingredient.description,
-            ingredient.createdBy
-        )
-        .where({ [ingredient.createdBy]: userId })
+        .select(ingredient.ingredientId, ingredient.name, ingredient.description, content.createdBy)
+        .where({ [content.createdBy]: userId })
         .where(builder => (search ? builder.where(ingredient.name, "ILIKE", `%${search}%`) : undefined))
+        .leftJoin(lamington.content, ingredient.ingredientId, content.contentId)
         .orderBy([{ column: ingredient.name, order: "asc" }, ingredient.ingredientId])
         .limit(PAGE_SIZE + 1)
         .offset((page - 1) * PAGE_SIZE);
@@ -70,15 +67,27 @@ export const readIngredients = async (params: ReadQuery<GetIngredientParams>): R
  * Creates a new ingredient from params
  * @returns the newly created ingredients
  */
-const save = async (params: CreateQuery<Partial<Ingredient>>): CreateResponse<Pick<Ingredient, "ingredientId">> => {
+const save = async (
+    params: CreateQuery<Partial<Ingredient & { createdBy: Content["createdBy"] }>>
+): CreateResponse<Pick<Ingredient, "ingredientId">> => {
     const data: Ingredient[] = EnsureArray(params)
-        .map(({ ingredientId = Uuid(), name, description, photo, createdBy }) => {
-            if (!name || !createdBy) return;
-            return { ingredientId, name, description, photo, createdBy };
+        .map(({ ingredientId = Uuid(), name, description }) => {
+            if (!name) return;
+            return { ingredientId, name, description };
         })
         .filter(Undefined);
 
     if (data.length === 0) return [];
+
+    await db<Content>(lamington.content)
+        .insert(
+            EnsureArray(params).map(({ ingredientId, createdBy }) => ({
+                contentId: ingredientId,
+                createdBy,
+            }))
+        )
+        .onConflict("contentId")
+        .merge();
 
     return db<Ingredient>(lamington.ingredient)
         .insert(data)

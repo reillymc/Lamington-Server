@@ -1,9 +1,12 @@
+import { content, type Content } from "../../src/database/definitions/content.ts";
 import db, { type List, type ReadResponse, lamington, list } from "../../src/database/index.ts";
 import { type ListItemIngredientAmount } from "../../src/routes/spec/index.ts";
 import { randomNumber } from "./data.ts";
 
-export const readAllLists = async (): ReadResponse<List> => {
-    const query = db<List>(lamington.list).select(list.listId, list.name, list.createdBy);
+export const readAllLists = async (): ReadResponse<List & { createdBy: Content["createdBy"] }> => {
+    const query = db<List & { createdBy: Content["createdBy"] }>(lamington.list)
+        .select(list.listId, list.name, content.createdBy)
+        .leftJoin(lamington.content, content.contentId, list.listId);
     return query;
 };
 

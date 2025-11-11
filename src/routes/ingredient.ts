@@ -140,7 +140,6 @@ const validatePostIngredientBody = ({ data }: PostIngredientRequestBody, userId:
             ingredientId: Uuid(), // Currently updating is not supported
             name,
             description: item.description,
-            photo: item.photo,
             createdBy: userId,
         };
 

@@ -1,6 +1,6 @@
 import { v4 as Uuid } from "uuid";
 
-import { PlannerActions, PlannerMemberActions } from "../../controllers/index.ts";
+import { PlannerActions, type PlannerMemberActions } from "../../controllers/index.ts";
 import type { PlannerMealService, PlannerService } from "../../controllers/spec/index.ts";
 import type { ServiceParams } from "../../database/index.ts";
 import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils/index.ts";
@@ -38,11 +38,11 @@ export const validatePostPlannerMealBody = (
 ) => {
     const filteredData = EnsureDefinedArray(data);
 
-    return BisectOnValidItems(filteredData, ({ id = Uuid(), dayOfMonth, month, meal, year, ...item }) => {
+    return BisectOnValidItems(filteredData, ({ mealId = Uuid(), dayOfMonth, month, meal, year, ...item }) => {
         if (dayOfMonth == undefined || month == undefined || !meal || year == undefined) return;
 
         const validItem: ServiceParams<PlannerMealService, "Save"> = {
-            id,
+            mealId,
             meal,
             year,
             month,

@@ -6,7 +6,6 @@ import { v4 as uuid } from "uuid";
 
 import { setupApp } from "../../src/app.ts";
 import { IngredientActions, ListActions, ListItemActions, ListMemberActions } from "../../src/controllers/index.ts";
-import type { CreateListMemberParams } from "../../src/controllers/listMember.ts";
 import type { ListItemService, ListService } from "../../src/controllers/spec/index.ts";
 import { type ServiceParams } from "../../src/database/index.ts";
 import type { ListCustomisations } from "../../src/routes/helpers/index.ts";
@@ -74,34 +73,28 @@ describe("get lists", () => {
         const [nonAcceptedLists] = await CreateLists({ createdBy: otherUser!.userId });
 
         await ListMemberActions.save([
-            ...editableLists.map(
-                ({ listId }): CreateListMemberParams => ({
-                    listId,
-                    members: [
-                        {
-                            userId: user.userId,
-                            status: UserStatus.Administrator,
-                        },
-                    ],
-                })
-            ),
-            ...acceptedLists.map(
-                ({ listId }): CreateListMemberParams => ({
-                    listId,
-                    members: [
-                        {
-                            userId: user.userId,
-                            status: UserStatus.Member,
-                        },
-                    ],
-                })
-            ),
-            ...nonAcceptedLists.map(
-                ({ listId }): CreateListMemberParams => ({
-                    listId,
-                    members: [{ userId: user.userId, status: UserStatus.Pending }],
-                })
-            ),
+            ...editableLists.map(({ listId }) => ({
+                listId,
+                members: [
+                    {
+                        userId: user.userId,
+                        status: UserStatus.Administrator,
+                    },
+                ],
+            })),
+            ...acceptedLists.map(({ listId }) => ({
+                listId,
+                members: [
+                    {
+                        userId: user.userId,
+                        status: UserStatus.Member,
+                    },
+                ],
+            })),
+            ...nonAcceptedLists.map(({ listId }) => ({
+                listId,
+                members: [{ userId: user.userId, status: UserStatus.Pending }],
+            })),
         ]);
 
         const res = await request(app).get(ListEndpoint.getLists).set(token);
@@ -145,7 +138,7 @@ describe("get list", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existant list", async () => {
+    it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser();
 
         const res = await request(app).get(ListEndpoint.getList(uuid())).set(token);
@@ -406,7 +399,7 @@ describe("post list", () => {
 
         expect(savedLists.length).toEqual(lists.data.length);
 
-        const savedListMembers = await ListMemberActions.read(savedLists.map(({ listId }) => ({ entityId: listId })));
+        const savedListMembers = await ListMemberActions.read(savedLists);
 
         for (const list of savedLists) {
             const expectedList = lists.data.find(({ listId }) => listId === list.listId);
@@ -477,7 +470,7 @@ describe("post list", () => {
             members: initialMembers,
         });
 
-        const initialListMembers = await ListMemberActions.read({ entityId: list!.listId });
+        const initialListMembers = await ListMemberActions.read(list!);
         expect(initialListMembers.length).toEqual(initialMembers.length);
 
         const res = await request(app)
@@ -487,7 +480,7 @@ describe("post list", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const savedListMembers = await ListMemberActions.read({ entityId: list!.listId });
+        const savedListMembers = await ListMemberActions.read(list!);
 
         expect(savedListMembers.length).toEqual(allMembers.length);
 
@@ -516,7 +509,7 @@ describe("post list", () => {
             members,
         });
 
-        const initialListMembers = await ListMemberActions.read({ entityId: list!.listId });
+        const initialListMembers = await ListMemberActions.read(list!);
         expect(initialListMembers.length).toEqual(members.length);
         const res = await request(app)
             .post(ListEndpoint.postList)
@@ -525,7 +518,7 @@ describe("post list", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const updatedListMembers = await ListMemberActions.read({ entityId: list!.listId });
+        const updatedListMembers = await ListMemberActions.read(list!);
         expect(updatedListMembers.length).toEqual(reducedMembers.length);
 
         updatedListMembers.forEach(({ userId }) => {
@@ -549,7 +542,7 @@ describe("post list", () => {
             members: members.map(({ userId }) => ({ userId })),
         });
 
-        const initialListMembers = await ListMemberActions.read({ entityId: list!.listId });
+        const initialListMembers = await ListMemberActions.read(list!);
         expect(initialListMembers.length).toEqual(members.length);
 
         const res = await request(app)
@@ -559,7 +552,7 @@ describe("post list", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const savedListMembers = await ListMemberActions.read({ entityId: list!.listId });
+        const savedListMembers = await ListMemberActions.read(list!);
 
         expect(savedListMembers.length).toEqual(0);
     });
@@ -578,7 +571,7 @@ describe("delete list", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existant list", async () => {
+    it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser();
 
         const res = await request(app)
@@ -675,7 +668,7 @@ describe("post list item", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existant list", async () => {
+    it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser();
 
         const res = await request(app)
@@ -1057,7 +1050,7 @@ describe("delete list item", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existant list", async () => {
+    it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser();
 
         const res = await request(app).delete(ListEndpoint.deleteListItem(uuid(), uuid())).set(token).send();
@@ -1224,7 +1217,7 @@ describe("post list member", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existant list", async () => {
+    it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser();
 
         const res = await request(app).post(ListEndpoint.postListMember(uuid())).set(token).send();
@@ -1276,7 +1269,7 @@ describe("post list member", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const listMembers = await ListMemberActions.read({ entityId: list.listId });
+        const listMembers = await ListMemberActions.read(list);
 
         expect(listMembers.length).toEqual(1);
 
@@ -1300,7 +1293,7 @@ describe("delete list member", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existant list", async () => {
+    it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser();
 
         const res = await request(app).delete(ListEndpoint.deleteListMember(uuid(), uuid())).set(token).send();
@@ -1408,7 +1401,7 @@ describe("delete list member", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const listMembers = await ListMemberActions.read({ entityId: list.listId });
+        const listMembers = await ListMemberActions.read(list);
 
         expect(listMembers.length).toEqual(0);
     });

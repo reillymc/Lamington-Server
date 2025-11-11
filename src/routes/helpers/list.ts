@@ -1,6 +1,6 @@
 import { v4 as Uuid } from "uuid";
 
-import { ListActions, ListMemberActions } from "../../controllers/index.ts";
+import { ListActions, type ListMemberActions } from "../../controllers/index.ts";
 import type { ListItemService, ListService } from "../../controllers/spec/index.ts";
 import type { ServiceParams } from "../../database/index.ts";
 import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils/index.ts";

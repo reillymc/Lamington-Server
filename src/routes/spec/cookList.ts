@@ -8,7 +8,7 @@ export const cookListMealIdParam = "mealId" as const;
  * Cook list meal
  */
 export type CookListMeal = {
-    id: string;
+    mealId: string;
     createdBy: User["userId"];
     sequence?: number;
     meal: string;
@@ -35,7 +35,7 @@ export type PostCookListMealService = (request: PostCookListMealRequest) => Post
 
 // Delete cook list meal
 export type DeleteCookListMealRequestParams = BaseRequestParams<{
-    [cookListMealIdParam]: CookListMeal["id"];
+    [cookListMealIdParam]: CookListMeal["mealId"];
 }>;
 export type DeleteCookListMealRequestBody = BaseRequestBody;
 

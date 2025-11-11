@@ -102,11 +102,11 @@ router.delete<DeleteCookListMealRequestParams, DeleteCookListMealResponse, Delet
     CookListEndpoint.deleteMeal,
     async ({ params, session }, res, next) => {
         // Extract request fields
-        const { mealId: id } = params;
+        const { mealId } = params;
         const { userId } = session;
 
         // Check all required fields are present
-        if (!id) {
+        if (!mealId) {
             return next(
                 new AppError({
                     status: 400,
@@ -118,7 +118,7 @@ router.delete<DeleteCookListMealRequestParams, DeleteCookListMealResponse, Delet
 
         // Update database and return status
         try {
-            const [existingMeal] = await CookListMealActionsInternal.read({ id });
+            const [existingMeal] = await CookListMealActionsInternal.read({ mealId });
 
             if (!existingMeal) {
                 return next(
@@ -138,7 +138,7 @@ router.delete<DeleteCookListMealRequestParams, DeleteCookListMealResponse, Delet
                 );
             }
 
-            await CookListMealActions.delete({ id });
+            await CookListMealActions.delete({ mealId });
             return res.status(201).json({ error: false, message: "CookList meal deleted." });
         } catch (e: unknown) {
             next(
@@ -160,7 +160,7 @@ const validatePostMealBody: RequestValidator<PostCookListMealRequestBody> = ({ d
         if (!item.meal) return;
 
         return {
-            id: item.id ?? Uuid(),
+            mealId: item.mealId ?? Uuid(),
             meal: item.meal,
             sequence: item.sequence,
             source: item.source,

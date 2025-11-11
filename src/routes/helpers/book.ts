@@ -1,6 +1,6 @@
 import { v4 as Uuid } from "uuid";
 
-import { BookActions, BookMemberActions } from "../../controllers/index.ts";
+import { BookActions, type BookMemberActions } from "../../controllers/index.ts";
 import type { RecipeService } from "../../controllers/spec/index.ts";
 import { BisectOnValidPartialItems, EnsureDefinedArray } from "../../utils/index.ts";
 import type { Book, PostBookRequestBody, RequestValidator } from "../spec/index.ts";

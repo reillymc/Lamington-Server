@@ -37,7 +37,7 @@ describe("post meal", () => {
 
         const meals = {
             data: Array.from({ length: randomNumber() }).map((_, i) => ({
-                id: uuid(),
+                mealId: uuid(),
                 description: uuid(),
                 meal: uuid(),
                 sequence: i + 1,
@@ -48,14 +48,14 @@ describe("post meal", () => {
         const res = await request(app).post(CookListEndpoint.postMeal).set(token).send(meals);
         expect(res.statusCode).toEqual(201);
 
-        const mealsRead = await CookListMealActionsInternal.read(meals.data.map(({ id }) => ({ id })));
+        const mealsRead = await CookListMealActionsInternal.read(meals.data);
 
         expect(mealsRead.length).toEqual(meals.data.length);
 
         mealsRead.forEach(meal => {
-            const expectedMeal = meals.data.find(({ id }) => id === meal.id);
+            const expectedMeal = meals.data.find(({ mealId }) => mealId === meal.mealId);
 
-            expect(meal.id).toEqual(expectedMeal!.id);
+            expect(meal.mealId).toEqual(expectedMeal!.mealId);
             expect(meal.description).toEqual(expectedMeal!.description);
             expect(meal.meal).toEqual(expectedMeal!.meal);
             expect(meal.sequence).toEqual(expectedMeal!.sequence);
@@ -69,7 +69,7 @@ describe("post meal", () => {
         const [token, user] = await PrepareAuthenticatedUser();
 
         const meal = {
-            id: uuid(),
+            mealId: uuid(),
             description: uuid(),
             meal: uuid(),
             sequence: randomNumber(),
@@ -108,7 +108,7 @@ describe("post meal", () => {
 
         const [updatedMeal] = mealsRead;
 
-        expect(updatedMeal!.id).toEqual(meal.id);
+        expect(updatedMeal!.mealId).toEqual(meal.mealId);
         expect(updatedMeal!.description).toEqual(mealUpdate.data.description);
         expect(updatedMeal!.meal).toEqual(mealUpdate.data.meal);
         expect(updatedMeal!.sequence).toEqual(mealUpdate.data.sequence);
@@ -122,7 +122,7 @@ describe("post meal", () => {
         const [otherUser] = await CreateUsers();
 
         const meal = {
-            id: uuid(),
+            mealId: uuid(),
             description: uuid(),
             meal: uuid(),
             sequence: randomNumber(),
@@ -151,7 +151,7 @@ describe("post meal", () => {
 
         const [updatedMeal] = mealsRead;
 
-        expect(updatedMeal!.id).toEqual(meal.id);
+        expect(updatedMeal!.mealId).toEqual(meal.mealId);
         expect(updatedMeal!.description).toEqual(meal.description);
         expect(updatedMeal!.meal).toEqual(meal.meal);
         expect(updatedMeal!.sequence).toEqual(meal.sequence);
@@ -178,7 +178,7 @@ describe("delete meal", () => {
         const [token, user] = await PrepareAuthenticatedUser();
 
         const meal = {
-            id: uuid(),
+            mealId: uuid(),
             description: uuid(),
             meal: uuid(),
             sequence: 0,
@@ -192,7 +192,7 @@ describe("delete meal", () => {
 
         expect(mealsBeforeDeletion.length).toEqual(1);
 
-        const res = await request(app).delete(CookListEndpoint.deleteMeal(meal.id)).set(token).send();
+        const res = await request(app).delete(CookListEndpoint.deleteMeal(meal.mealId)).set(token).send();
         expect(res.statusCode).toEqual(201);
 
         const mealsAfterDeletion = await CookListMealActionsInternal.read(meal);
@@ -205,7 +205,7 @@ describe("delete meal", () => {
         const [otherUser] = await CreateUsers();
 
         const meal = {
-            id: uuid(),
+            mealId: uuid(),
             description: uuid(),
             meal: uuid(),
             sequence: 0,
@@ -219,7 +219,7 @@ describe("delete meal", () => {
 
         expect(mealsBeforeDeletion.length).toEqual(1);
 
-        const res = await request(app).delete(CookListEndpoint.deleteMeal(meal.id)).set(token).send();
+        const res = await request(app).delete(CookListEndpoint.deleteMeal(meal.mealId)).set(token).send();
         expect(res.statusCode).toEqual(403);
 
         const mealsAfterDeletion = await CookListMealActionsInternal.read(meal);
@@ -245,7 +245,7 @@ describe("get meals", () => {
         const [token, user] = await PrepareAuthenticatedUser();
 
         const meal = {
-            id: uuid(),
+            mealId: uuid(),
             recipeId: undefined,
             description: uuid(),
             meal: uuid(),
@@ -270,7 +270,7 @@ describe("get meals", () => {
 
         if (!plannerMeal) throw new Error("No cook list meal found");
 
-        expect(plannerMeal.id).toEqual(meal.id);
+        expect(plannerMeal.mealId).toEqual(meal.mealId);
         expect(plannerMeal.meal).toEqual(meal.meal);
         expect(plannerMeal.description).toEqual(meal.description);
         expect(plannerMeal.source).toEqual(meal.source);
@@ -284,7 +284,7 @@ describe("get meals", () => {
         const [otherUserToken] = await PrepareAuthenticatedUser();
 
         const meal = {
-            id: uuid(),
+            mealId: uuid(),
             recipeId: undefined,
             description: uuid(),
             meal: uuid(),

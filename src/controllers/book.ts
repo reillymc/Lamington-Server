@@ -1,6 +1,7 @@
+import { content, type Content } from "../database/definitions/content.ts";
+import { contentMember, type ContentMember } from "../database/definitions/contentMember.ts";
 import db, {
     type Book,
-    type BookMember,
     type CreateQuery,
     type DeleteResponse,
     type ReadMyService,
@@ -9,20 +10,23 @@ import db, {
     type SaveService,
     type User,
     book,
-    bookMember,
     lamington,
     user,
 } from "../database/index.ts";
+import type { UserStatus } from "../routes/spec/user.ts";
 import { EnsureArray } from "../utils/index.ts";
-import { BookMemberActions } from "./bookMember.ts";
-import type { EntityMember } from "./entity/index.ts";
+import { ContentMemberActions } from "./content/contentMember.ts";
+
+type BookEntity = Book & Pick<Content, "createdBy">;
 
 /**
  * Get all books
  * @returns an array of all books in the database
  */
-const readAllBooks = async (): ReadResponse<Book> => {
-    const query = db<Book>(lamington.book).select(book.bookId, book.name, book.createdBy);
+const readAllBooks = async (): ReadResponse<BookEntity> => {
+    const query = db<Book>(lamington.book)
+        .select(book.bookId, book.name, content.createdBy)
+        .join(lamington.content, book.bookId, content.contentId);
     return query;
 };
 
@@ -33,7 +37,7 @@ interface GetMyBooksParams {
 interface ReadBookRow extends Pick<Book, "bookId" | "name" | "description" | "customisations"> {
     createdBy: User["userId"];
     createdByName: User["firstName"];
-    status: BookMember["status"];
+    status: ContentMember["status"];
 }
 
 /**
@@ -41,20 +45,21 @@ interface ReadBookRow extends Pick<Book, "bookId" | "name" | "description" | "cu
  * @returns an array of all books created by given user
  */
 const readMyBooks: ReadMyService<ReadBookRow> = async ({ userId }) => {
-    const query = db<ReadBookRow>(lamington.book)
+    const query = db(lamington.book)
         .select(
             book.bookId,
             book.name,
             book.description,
             book.customisations,
-            book.createdBy,
+            content.createdBy,
             `${user.firstName} as createdByName`,
-            bookMember.status
+            contentMember.status
         )
-        .where({ [book.createdBy]: userId })
-        .orWhere({ [bookMember.userId]: userId })
-        .leftJoin(lamington.user, book.createdBy, user.userId)
-        .leftJoin(lamington.bookMember, book.bookId, bookMember.bookId);
+        .where({ [content.createdBy]: userId })
+        .orWhere({ [contentMember.userId]: userId })
+        .leftJoin(lamington.content, book.bookId, content.contentId)
+        .leftJoin(lamington.user, content.createdBy, user.userId)
+        .leftJoin(lamington.contentMember, book.bookId, contentMember.contentId);
 
     return query;
 };
@@ -71,27 +76,29 @@ interface GetBookParams {
 const readBooks = async ({ bookId, userId }: GetBookParams): ReadResponse<ReadBookRow> => {
     // const bookIds = EnsureArray(params).map(({ bookId }) => bookId); // TODO support multiple book ids
 
-    const query = db<Book>(lamington.book)
+    const query = db(lamington.book)
         .select(
             book.bookId,
             book.name,
             book.description,
             book.customisations,
-            book.createdBy,
+            content.createdBy,
             `${user.firstName} as createdByName`,
-            bookMember.status
+            contentMember.status
         )
         .where({ [book.bookId]: bookId })
-        .andWhere(qb => qb.where({ [book.createdBy]: userId }).orWhere({ [bookMember.userId]: userId }))
-        .leftJoin(lamington.user, book.createdBy, user.userId)
-        .leftJoin(lamington.bookMember, book.bookId, bookMember.bookId);
+        .andWhere(qb => qb.where({ [content.createdBy]: userId }).orWhere({ [contentMember.userId]: userId }))
+        .leftJoin(lamington.content, book.bookId, content.contentId)
+        .leftJoin(lamington.user, content.createdBy, user.userId)
+        .leftJoin(lamington.contentMember, book.bookId, contentMember.contentId);
 
     return query;
 };
 
 export interface CreateBookParams
-    extends Pick<Book, "bookId" | "name" | "description" | "customisations" | "createdBy"> {
-    members?: Array<EntityMember>;
+    extends Pick<Book, "bookId" | "name" | "description" | "customisations">,
+        Pick<Content, "createdBy"> {
+    members?: Array<Pick<ContentMember, "userId"> & { status?: UserStatus }>;
 }
 
 /**
@@ -101,16 +108,41 @@ export interface CreateBookParams
 const saveBooks: SaveService<CreateBookParams> = async params => {
     const books = EnsureArray(params);
 
-    const bookData: Book[] = books.map(({ members, ...bookItem }) => bookItem);
+    const bookData: Book[] = books.map(({ members, createdBy, ...bookItem }) => bookItem);
 
-    const result = await db<Book>(lamington.book)
+    // const result: BookEntity[] = await db.transaction(async trx => {
+    await db<Content>(lamington.content)
+        .insert(
+            books.map(({ bookId, createdBy }) => ({
+                contentId: bookId,
+                createdBy,
+            }))
+        )
+        .onConflict("contentId")
+        .merge();
+
+    // Insert books and return combined data
+    const savedBooks = await db<Book>(lamington.book)
         .insert(bookData)
         .onConflict("bookId")
         .merge()
-        .returning(["bookId", "name", "createdBy"]);
+        .returning(["bookId", "name", "description", "customisations"]);
+
+    // Get full book data with content info
+    const result = await db(lamington.book)
+        .select("book.*", "content.createdBy", "content.createdAt")
+        .whereIn(
+            "bookId",
+            savedBooks.map(b => b.bookId)
+        )
+        .join(lamington.content, "book.bookId", "content.contentId");
+    // });
 
     if (books.length > 0) {
-        await BookMemberActions.save(books, { trimNotIn: true });
+        await ContentMemberActions.save(
+            books.map(({ bookId, members }) => ({ contentId: bookId, members })),
+            { trimNotIn: true }
+        );
     }
 
     return result;
@@ -126,7 +158,8 @@ interface DeleteBookParams {
 const deleteBooks = async (params: CreateQuery<DeleteBookParams>): DeleteResponse => {
     const bookIds = EnsureArray(params).map(({ bookId }) => bookId);
 
-    return db<Book>(lamington.book).whereIn("bookId", bookIds).delete();
+    await db<Book>(lamington.book).whereIn("bookId", bookIds).delete();
+    return db(lamington.content).whereIn(content.contentId, bookIds).delete();
 };
 
 interface ReadBookInternalParams {
@@ -137,12 +170,13 @@ interface ReadBookInternalParams {
  * Get book by id or ids
  * @returns an array of book matching given ids
  */
-const readBooksInternal = async (params: ReadQuery<ReadBookInternalParams>): ReadResponse<Book> => {
+const readBooksInternal = async (params: ReadQuery<ReadBookInternalParams>): ReadResponse<BookEntity> => {
     const bookIds = EnsureArray(params).map(({ bookId }) => bookId);
 
-    return db<Book>(lamington.book)
-        .select(book.bookId, book.name, book.description, book.createdBy)
-        .whereIn(book.bookId, bookIds);
+    return db<BookEntity>(lamington.book)
+        .select(book.bookId, book.name, book.description, content.createdBy)
+        .whereIn(book.bookId, bookIds)
+        .join(lamington.content, book.bookId, content.contentId);
 };
 
 export const BookActions = {

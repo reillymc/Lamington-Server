@@ -11,7 +11,7 @@ import type {
     RecipeIngredients,
     RecipeMethod,
     RecipeServings,
-    RecipeTags,
+    ContentTags,
 } from "../spec/index.ts";
 
 import { parseBaseQuery } from "./queryParams.ts";
@@ -154,7 +154,6 @@ export const validatePostRecipeBody = ({ data }: PostRecipeRequestBody, userId: 
                 items: methodSection.items.filter(step => !!step.description),
             })),
             tips: item.tips,
-            photo: item.photo,
             public: item.public ?? false,
             source: item.source,
             tags: item.tags,
@@ -205,10 +204,10 @@ const recipeStepRowsToResponse = ({ sections, method }: ServiceResponse<RecipeSe
     return recipeMethod;
 };
 
-const recipeTagRowsToResponse = ({
+const ContentTagRowsToResponse = ({
     tags,
-}: ServiceResponse<RecipeService, "Read"> | ServiceResponse<RecipeService, "Query">): RecipeTags => {
-    const groupedTags: RecipeTags = tags.reduce((acc, { tagId, parentId, name }) => {
+}: ServiceResponse<RecipeService, "Read"> | ServiceResponse<RecipeService, "Query">): ContentTags => {
+    const groupedTags: ContentTags = tags.reduce((acc, { tagId, parentId, name }) => {
         if (parentId) {
             acc[parentId] = {
                 ...acc[parentId],
@@ -223,14 +222,14 @@ const recipeTagRowsToResponse = ({
             };
         }
         return acc;
-    }, {} as RecipeTags);
+    }, {} as ContentTags);
 
     return ObjectFromEntries(
         groupedTags,
         data =>
             data.map(([id, value]) => (value.tags?.length ? [id, value] : undefined)).filter(Undefined) as unknown as [
                 string,
-                RecipeTags
+                ContentTags
             ][]
     );
 };
@@ -239,7 +238,7 @@ export const RecipeReadResponseToRecipe = (recipe: ServiceResponse<RecipeService
     ...recipe,
     ingredients: recipeIngredientRowsToResponse(recipe),
     method: recipeStepRowsToResponse(recipe),
-    tags: recipeTagRowsToResponse(recipe),
+    tags: ContentTagRowsToResponse(recipe),
     createdBy: { userId: recipe.createdBy, firstName: recipe.createdByName },
     public: !!recipe.public,
 });
@@ -252,6 +251,6 @@ export const RecipeQueryResponseToRecipe = (
 ): Recipe => ({
     ...recipe,
     createdBy: { userId: recipe.createdBy, firstName: recipe.createdByName },
-    tags: recipeTagRowsToResponse(recipe),
+    tags: ContentTagRowsToResponse(recipe),
     public: !!recipe.public,
 });

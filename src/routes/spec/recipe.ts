@@ -42,10 +42,9 @@ export interface Recipe {
     method?: RecipeMethod;
     summary?: string;
     tips?: string;
-    photo?: string;
     ratingAverage?: number;
     ratingPersonal?: number;
-    tags?: RecipeTags;
+    tags?: ContentTags;
     createdBy: Pick<User, "userId" | "firstName">;
     cookTime?: number;
     prepTime?: number;
@@ -79,12 +78,11 @@ export type RecipeIngredients = Array<Section<RecipeIngredientItem>>;
 export interface RecipeMethodStep {
     id: string;
     description?: string;
-    photo?: string;
 }
 
 export type RecipeMethod = Array<Section<RecipeMethodStep>>;
 
-export type RecipeTags = { [tagGroup: string]: Partial<Tag> & { tags?: Array<Tag> } };
+export type ContentTags = { [tagGroup: string]: Partial<Tag> & { tags?: Array<Tag> } };
 
 /**
  * Get all recipes
@@ -134,7 +132,6 @@ export type PostRecipeRequestBody = BaseRequestBody<
         | "method"
         | "summary"
         | "tips"
-        | "photo"
         | "ratingPersonal"
         | "tags"
         | "cookTime"

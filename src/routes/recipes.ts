@@ -177,7 +177,7 @@ router.delete<DeleteRecipeRequestParams, DeleteRecipeResponse, DeleteRecipeReque
 
             const data = await RecipeActions.Delete({ recipeId });
 
-            if (existingRecipe.photo) AttachmentService.deleteImage(existingRecipe.photo);
+            // if (existingRecipe.photo) AttachmentService.deleteImage(existingRecipe.photo);
 
             return res.status(200).json({ error: false });
         } catch (e: unknown) {
@@ -227,16 +227,16 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
                 );
             }
 
-            for (const recipe of validRecipes) {
-                const existingRecipe = existingRecipes.find(({ recipeId }) => recipeId === recipe.recipeId);
-                const currentPhoto = existingRecipe?.photo;
+            // for (const recipe of validRecipes) {
+            //     const existingRecipe = existingRecipes.find(({ recipeId }) => recipeId === recipe.recipeId);
+            //     const currentPhoto = existingRecipe?.photo;
 
-                const isUnsavedImage = AttachmentService.isUnsavedImage(userId, "recipe", recipe.photo);
+            //     const isUnsavedImage = AttachmentService.isUnsavedImage(userId, "recipe", recipe.photo);
 
-                if (isUnsavedImage) {
-                    recipe.photo = await AttachmentService.saveImage(userId, "recipe", recipe.recipeId, currentPhoto);
-                }
-            }
+            //     if (isUnsavedImage) {
+            //         recipe.photo = await AttachmentService.saveImage(userId, "recipe", recipe.recipeId, currentPhoto);
+            //     }
+            // }
 
             await RecipeActions.Save(validRecipes);
 
