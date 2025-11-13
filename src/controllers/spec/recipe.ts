@@ -17,6 +17,7 @@ import { RecipeSectionActions } from "../recipeSection.ts";
 import { RecipeStepActions } from "../recipeStep.ts";
 import { ContentTagActions } from "../content/contentTag.ts";
 import type { RecipeTagActions } from "../recipeTag.ts";
+import type { RecipeAttachmentActions } from "../recipeAttachment.ts";
 
 interface Section<T> {
     sectionId: string;
@@ -68,6 +69,7 @@ interface ReadRecipeResponse
     tags: ServiceResponse<RecipeTagActions, "readByRecipeId">[];
     createdByName: User["firstName"];
     createdBy: Content["createdBy"];
+    attachments: ServiceResponse<RecipeAttachmentActions, "read">[];
 }
 
 type QueryRecipesResult = Pick<Recipe, "recipeId" | "name" | "timesCooked" | "cookTime" | "prepTime" | "public"> & {

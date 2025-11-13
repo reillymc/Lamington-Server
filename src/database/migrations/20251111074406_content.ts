@@ -4,6 +4,7 @@ import { UserStatus } from "../../routes/spec/user.ts";
 
 export const newTables = {
     content: "content",
+    attachment: "attachment",
     contentAttachment: "content_attachment",
     contentNote: "content_note",
     contentTag: "content_tag",
@@ -80,24 +81,34 @@ export const up = async (knex: Knex): Promise<void> => {
 
     await knex.raw(onUpdateTrigger(newTables.content));
 
-    await knex.schema.createTable(newTables.contentAttachment, table => {
+    await knex.schema.createTable(newTables.attachment, table => {
         table.uuid("attachmentId").primary().defaultTo(knex.raw("gen_random_uuid()"));
         table.text("uri").notNullable();
-        table.text("displayType");
-        table.uuid("displayId").nullable();
-        table.integer("displayOrder").nullable();
+        table.uuid("createdBy").references("userId").inTable(tables.user).onDelete("SET NULL").onUpdate("CASCADE");
+        table.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
+        table.timestamp("updatedAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
+    });
+
+    await knex.raw(onUpdateTrigger(newTables.attachment));
+
+    await knex.schema.createTable(newTables.contentAttachment, table => {
         table
             .uuid("contentId")
             .references("contentId")
             .inTable(newTables.content)
             .onDelete("CASCADE")
             .onUpdate("CASCADE");
-        table.uuid("createdBy").references("userId").inTable(tables.user).onDelete("SET NULL").onUpdate("CASCADE");
-        table.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
-        table.timestamp("updatedAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
+        table
+            .uuid("attachmentId")
+            .references("attachmentId")
+            .inTable(newTables.attachment)
+            .onDelete("CASCADE")
+            .onUpdate("CASCADE");
+        table.text("displayType");
+        table.uuid("displayId").nullable();
+        table.integer("displayOrder").nullable();
+        table.primary(["attachmentId", "contentId"]);
     });
-
-    await knex.raw(onUpdateTrigger(newTables.contentAttachment));
 
     // content_tag: replaces recipe_tag
     await knex.schema.createTable(newTables.contentTag, table => {
@@ -166,7 +177,7 @@ export const up = async (knex: Knex): Promise<void> => {
         table.uuid("mealId").primary().alter();
     });
 
-    // Populate content from all attachable tables
+    // Populate content from all content-deriving tables
     for (const { name, id } of migratingTables) {
         const columns = await knex(name).columnInfo();
 
@@ -184,7 +195,7 @@ export const up = async (knex: Knex): Promise<void> => {
         `);
     }
 
-    // Add foreign keys to each attachable table
+    // Add foreign keys to each content-deriving table
     for (const { name, id } of migratingTables) {
         await knex.raw(`
             ALTER TABLE "${name}"
@@ -217,11 +228,22 @@ export const up = async (knex: Knex): Promise<void> => {
         const columns = await knex(name).columnInfo();
         if (!columns[photoColumn]) continue;
 
+        const createdAtCol = !!columns["createdAt"] ? `"createdAt"` : "NOW()";
+        const updatedAtCol = !!columns["updatedAt"] ? `"updatedAt"` : "NOW()";
+
         await knex.raw(`
-            INSERT INTO ${newTables.contentAttachment} ("uri", "contentId", "displayType", "createdBy", "createdAt", "updatedAt")
-            SELECT "${photoColumn}", "${id}", 'hero', "createdBy", NOW(), NOW()
+            INSERT INTO ${newTables.attachment} ("uri", "createdBy", "createdAt", "updatedAt")
+            SELECT DISTINCT "${photoColumn}", "createdBy", ${createdAtCol}, ${updatedAtCol}
             FROM "${name}"
-            WHERE "${photoColumn}" IS NOT NULL;
+            WHERE "${photoColumn}" IS NOT NULL
+        `);
+
+        await knex.raw(`
+            INSERT INTO ${newTables.contentAttachment} ("contentId", "attachmentId", "displayType")
+            SELECT n."${id}" AS "contentId", a."attachmentId", 'hero' AS "displayType"
+            FROM "${name}" n
+            JOIN ${newTables.attachment} a ON n."${photoColumn}" = a."uri"
+            WHERE n."${photoColumn}" IS NOT NULL;
         `);
 
         await knex.schema.alterTable(name, table => {
@@ -260,7 +282,7 @@ export const up = async (knex: Knex): Promise<void> => {
         `);
     await knex.schema.dropTable(tables.recipeTag);
 
-    // Drop redundant columns and triggers from attachable tables
+    // Drop redundant columns and triggers from content-deriving tables
     for (const { name } of migratingTables) {
         const columns = await knex(name).columnInfo();
         const dropCols = ["createdBy", "createdAt", "updatedAt"].filter(c => c in columns);
@@ -414,9 +436,9 @@ export const down = async (knex: Knex): Promise<void> => {
             await knex.raw(`
                 UPDATE "${name}" AS n
                 SET "${photoColumn}" = a."uri"
-                FROM ${newTables.contentAttachment} AS a
-                WHERE a."contentId" = n."${id}"
-                AND a."displayOrder" IS NULL
+                FROM ${newTables.contentAttachment} ca
+                JOIN ${newTables.attachment} a ON a."attachmentId" = ca."attachmentId"
+                WHERE ca."contentId" = n."${id}" AND ca."displayType" = 'hero';
             `);
         }
     }
@@ -441,11 +463,10 @@ export const down = async (knex: Knex): Promise<void> => {
 
     // Drop triggers
     await knex.raw(`DROP TRIGGER IF EXISTS "${newTables.content}_updatedAt" ON ${newTables.content};`);
-    await knex.raw(
-        `DROP TRIGGER IF EXISTS "${newTables.contentAttachment}_updatedAt" ON ${newTables.contentAttachment};`
-    );
+    await knex.raw(`DROP TRIGGER IF EXISTS "${newTables.attachment}_updatedAt" ON ${newTables.attachment};`);
 
     // Drop attachment-related tables
     await knex.schema.dropTableIfExists(newTables.contentAttachment);
+    await knex.schema.dropTableIfExists(newTables.attachment);
     await knex.schema.dropTableIfExists(newTables.content);
 };

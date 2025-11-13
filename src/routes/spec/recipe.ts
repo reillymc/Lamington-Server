@@ -1,3 +1,4 @@
+import type { ImageAttachment } from "./attachment.ts";
 import type {
     BasePaginatedRequestQuery,
     BasePaginatedResponse,
@@ -53,6 +54,7 @@ export interface Recipe {
     timesCooked?: number;
     updatedAt?: string;
     createdAt?: string;
+    attachments?: RecipeAttachments;
 }
 
 export interface RecipeIngredientItem {
@@ -83,6 +85,10 @@ export interface RecipeMethodStep {
 export type RecipeMethod = Array<Section<RecipeMethodStep>>;
 
 export type ContentTags = { [tagGroup: string]: Partial<Tag> & { tags?: Array<Tag> } };
+
+export type RecipeAttachments = {
+    hero?: ImageAttachment;
+};
 
 /**
  * Get all recipes

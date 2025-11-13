@@ -1,5 +1,6 @@
 import config from "../../config.ts";
 
+import { attachment } from "./attachment.ts";
 import { book } from "./book.ts";
 import { bookRecipe } from "./bookRecipe.ts";
 import { content } from "./content.ts";
@@ -22,6 +23,7 @@ import { tag } from "./tag.ts";
 import { type User, user } from "./user.ts";
 
 export const Lamington = {
+    [lamington.attachment]: attachment,
     [lamington.book]: book,
     [lamington.bookRecipe]: bookRecipe,
     [lamington.content]: content,

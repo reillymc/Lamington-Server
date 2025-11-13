@@ -1,7 +1,6 @@
-import { CopyObjectCommand, DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 import config from "../../config.ts";
-import { imagePath, unsavedImagePath } from "./helper.ts";
 
 const createS3Client = () => {
     if (
@@ -31,7 +30,12 @@ const uploadObject = async (file: Buffer, name: string) => {
         Body: file,
     });
 
-    return s3.send(command);
+    const result = await s3.send(command);
+    if (result.$metadata.httpStatusCode !== 200) {
+        throw new Error("Failed to upload object to S3");
+    }
+
+    return true;
 };
 
 const deleteObject = (url: string) => {
@@ -45,30 +49,7 @@ const deleteObject = (url: string) => {
     s3.send(command);
 };
 
-const moveObject = (userId: string, entity: string, entityId: string, version: number) => {
-    const s3 = createS3Client();
-
-    const sourcePath = unsavedImagePath(userId, entity);
-    const destinationPath = imagePath(userId, entity, entityId, version);
-
-    const command = new CopyObjectCommand({
-        Bucket: config.attachments.awsBucketName,
-        CopySource: `${config.attachments.awsBucketName}/${sourcePath}`,
-        Key: destinationPath,
-    });
-
-    s3.send(command).then(({ CopyObjectResult }) => {
-        if (CopyObjectResult) {
-            deleteObject(imagePath(userId, entity, entityId, version - 1));
-            deleteObject(sourcePath);
-        }
-    });
-
-    return destinationPath;
-};
-
 export const S3Attachment = {
     delete: deleteObject,
-    move: moveObject,
     upload: uploadObject,
 };

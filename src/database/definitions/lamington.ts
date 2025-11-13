@@ -1,4 +1,5 @@
 export const lamington = {
+    attachment: "attachment",
     book: "book",
     bookRecipe: "book_recipe",
     content: "content",

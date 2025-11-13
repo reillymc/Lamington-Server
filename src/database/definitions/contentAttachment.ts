@@ -4,28 +4,20 @@ import { lamington } from "./lamington.ts";
 /**
  * ContentAttachment
  *
- * Contains the mapping of each of the content's attachments.
+ * Contains the mapping of content's attachments, including display metadata
  */
 export interface ContentAttachment {
+    contentId: string;
     attachmentId: string;
-    uri: string;
     displayType: string;
     displayId: string;
     displayOrder: number;
-    contentId: string;
-    createdBy: string;
-    createdAt: string;
-    updatedAt: string;
 }
 
 export const contentAttachment: Table<ContentAttachment> = {
+    contentId: `${lamington.contentAttachment}.contentId`,
     attachmentId: `${lamington.contentAttachment}.attachmentId`,
-    uri: `${lamington.contentAttachment}.uri`,
     displayType: `${lamington.contentAttachment}.displayType`,
     displayId: `${lamington.contentAttachment}.displayId`,
     displayOrder: `${lamington.contentAttachment}.displayOrder`,
-    contentId: `${lamington.contentAttachment}.contentId`,
-    createdBy: `${lamington.contentAttachment}.createdBy`,
-    createdAt: `${lamington.contentAttachment}.createdAt`,
-    updatedAt: `${lamington.contentAttachment}.updatedAt`,
 };

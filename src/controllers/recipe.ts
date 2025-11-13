@@ -34,6 +34,9 @@ import {
 import type { RecipeService } from "./spec/index.ts";
 import { content, type Content } from "../database/definitions/content.ts";
 import { RecipeTagActions } from "./recipeTag.ts";
+import { RecipeAttachmentActions } from "./recipeAttachment.ts";
+import { contentAttachment } from "../database/definitions/contentAttachment.ts";
+import { attachment } from "../database/definitions/attachment.ts";
 
 const ratingPersonalName = "rating_personal";
 const ratingAverageName = "rating_average";
@@ -61,12 +64,22 @@ const RecipeBase = (userId: string) => {
                 .whereRaw('"recipe_rating"."recipeId" = "recipe"."recipeId"')
                 .andWhere(recipeRating.raterId, userId)
                 .first()
-                .as("rating_personal")
+                .as("rating_personal"),
+            db.ref(contentAttachment.attachmentId).as("heroAttachmentId"),
+            db.ref(attachment.uri).as("heroAttachmentUri")
         )
         .leftJoin(lamington.content, recipe.recipeId, content.contentId)
         .leftJoin(lamington.recipeRating, recipe.recipeId, recipeRating.recipeId)
         .leftJoin(lamington.user, content.createdBy, user.userId)
-        .leftJoin(ratingsSubquery, recipe.recipeId, "avg_ratings.recipeId");
+        .leftJoin(ratingsSubquery, recipe.recipeId, "avg_ratings.recipeId")
+        .leftJoin(lamington.contentAttachment, join => {
+            join.on(contentAttachment.contentId, "=", recipe.recipeId).andOn(
+                contentAttachment.displayType,
+                "=",
+                db.raw("?", ["hero"])
+            );
+        })
+        .leftJoin(lamington.attachment, contentAttachment.attachmentId, attachment.attachmentId);
 };
 
 const read: RecipeService["Read"] = async params => {
@@ -76,12 +89,13 @@ const read: RecipeService["Read"] = async params => {
 
     for (const { recipeId, userId } of recipeRequests) {
         // Fetch from database
-        const [recipe, tags, { result: ingredients }, method, { result: sections }] = await Promise.all([
+        const [recipe, tags, { result: ingredients }, method, { result: sections }, attachments] = await Promise.all([
             getFullRecipe(recipeId, userId),
             RecipeTagActions.readByRecipeId({ recipeId }),
             RecipeIngredientActions.queryByRecipeId({ recipeId }),
             RecipeStepActions.readByRecipeId(recipeId),
             RecipeSectionActions.queryByRecipeId({ recipeId }),
+            RecipeAttachmentActions.read({ recipeId }),
         ]);
 
         if (!recipe) continue;
@@ -96,6 +110,7 @@ const read: RecipeService["Read"] = async params => {
             method,
             sections,
             tags,
+            attachments,
         };
 
         response.push(result);
@@ -167,12 +182,17 @@ const query: RecipeService["Query"] = async ({
         ({
             [ratingAverageName]: ratingAverage,
             [ratingPersonalName]: ratingPersonal,
+            heroAttachmentUri,
+            heroAttachmentId,
             ...recipe
         }): ServiceResponse<RecipeService, "Query"> => ({
             ...recipe,
             ratingAverage: parseFloat(ratingAverage),
             ratingPersonal,
             tags: recipeCategoriesList.filter(cat => !cat.parentId || cat.recipeId === recipe.recipeId),
+            attachments: heroAttachmentId
+                ? { hero: { attachmentId: heroAttachmentId, uri: heroAttachmentUri } }
+                : undefined,
         })
     );
 
@@ -247,12 +267,17 @@ const queryByUser: RecipeService["QueryByUser"] = async ({
         ({
             [ratingAverageName]: ratingAverage,
             [ratingPersonalName]: ratingPersonal,
+            heroAttachmentId,
+            heroAttachmentUri,
             ...recipe
         }): ServiceResponse<RecipeService, "QueryByUser"> => ({
             ...recipe,
             ratingAverage: parseFloat(ratingAverage),
             ratingPersonal,
             tags: recipeCategoriesList.filter(cat => !cat.parentId || cat.recipeId === recipe.recipeId),
+            attachments: heroAttachmentId
+                ? { hero: { attachmentId: heroAttachmentId, uri: heroAttachmentUri } }
+                : undefined,
         })
     );
 
@@ -271,12 +296,17 @@ const queryByBook: RecipeService["QueryByBook"] = async ({ bookId, page, search,
         ({
             [ratingAverageName]: ratingAverage,
             [ratingPersonalName]: ratingPersonal,
+            heroAttachmentUri,
+            heroAttachmentId,
             ...recipe
         }): ServiceResponse<RecipeService, "QueryByBook"> => ({
             ...recipe,
             ratingAverage: parseFloat(ratingAverage),
             ratingPersonal,
             tags: recipeCategoriesList.filter(cat => !cat.parentId || cat.recipeId === recipe.recipeId),
+            attachments: heroAttachmentId
+                ? { hero: { attachmentId: heroAttachmentId, uri: heroAttachmentUri } }
+                : undefined,
         })
     );
 

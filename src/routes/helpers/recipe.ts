@@ -234,14 +234,21 @@ const ContentTagRowsToResponse = ({
     );
 };
 
-export const RecipeReadResponseToRecipe = (recipe: ServiceResponse<RecipeService, "Read">): Recipe => ({
-    ...recipe,
-    ingredients: recipeIngredientRowsToResponse(recipe),
-    method: recipeStepRowsToResponse(recipe),
-    tags: ContentTagRowsToResponse(recipe),
-    createdBy: { userId: recipe.createdBy, firstName: recipe.createdByName },
-    public: !!recipe.public,
-});
+export const RecipeReadResponseToRecipe = (recipe: ServiceResponse<RecipeService, "Read">): Recipe => {
+    const heroAttachment = recipe.attachments.find(att => att.displayType === "hero");
+
+    return {
+        ...recipe,
+        ingredients: recipeIngredientRowsToResponse(recipe),
+        method: recipeStepRowsToResponse(recipe),
+        tags: ContentTagRowsToResponse(recipe),
+        createdBy: { userId: recipe.createdBy, firstName: recipe.createdByName },
+        public: !!recipe.public,
+        attachments: {
+            hero: heroAttachment,
+        },
+    };
+};
 
 export const RecipeQueryResponseToRecipe = (
     recipe:

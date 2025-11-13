@@ -1,13 +1,16 @@
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
+import type { Knex } from "knex";
 
 import config from "./config.ts";
 import { authenticationMiddleware, errorMiddleware, loggerMiddleware, notFoundMiddleware } from "./middleware/index.ts";
 import { appRouter, authRouter, docsRouter } from "./routes/index.ts";
 import { attachmentEndpoint, authEndpoint, uploadDirectory } from "./routes/spec/index.ts";
+import db from "./database/index.ts";
 
-export const setupApp = () => {
+// TODO: Knex.Transaction
+export const setupApp = (trx?: Knex) => {
     const app = express();
 
     // app setup
@@ -24,7 +27,7 @@ export const setupApp = () => {
         app.use(`/v1${attachmentEndpoint}/${uploadDirectory}`, express.static(uploadDirectory));
     }
     app.use(`/v1${authEndpoint}`, authRouter);
-    app.use("/v1/", authenticationMiddleware, appRouter);
+    app.use("/v1/", authenticationMiddleware, appRouter(trx ?? db));
     app.use("/", docsRouter);
 
     // Catch 404 and forward to error handler
