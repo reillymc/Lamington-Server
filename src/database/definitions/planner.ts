@@ -1,6 +1,11 @@
-import type { PlannerCustomisations } from "../../routes/helpers/index.ts";
 import type { Table } from "./index.ts";
 import { lamington } from "./lamington.ts";
+
+type PlannerCustomisationsV1 = {
+    color: string;
+};
+
+export type PlannerCustomisations = PlannerCustomisationsV1;
 
 /**
  * Planner

@@ -1,6 +1,12 @@
-import type { BookCustomisations } from "../../routes/helpers/index.ts";
 import type { Table } from "./index.ts";
 import { lamington } from "./lamington.ts";
+
+type BookCustomisationsV1 = {
+    color: string;
+    icon: string;
+};
+
+export type BookCustomisations = BookCustomisationsV1;
 
 /**
  * Book

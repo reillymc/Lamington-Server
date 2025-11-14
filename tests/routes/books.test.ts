@@ -7,8 +7,7 @@ import { v4 as uuid } from "uuid";
 import { setupApp } from "../../src/app.ts";
 import { BookActions, BookRecipeActions, RecipeActions, BookMemberActions } from "../../src/controllers/index.ts";
 import type { RecipeService } from "../../src/controllers/spec/recipe.ts";
-import type { BookRecipe, ServiceParams } from "../../src/database/index.ts";
-import type { BookCustomisations } from "../../src/routes/helpers/book.ts";
+import type { BookCustomisations, BookRecipe, ServiceParams } from "../../src/database/index.ts";
 import {
     type DeleteBookRequestParams,
     type EntityMember,

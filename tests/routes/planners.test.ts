@@ -15,8 +15,7 @@ import {
 } from "../../src/controllers/index.ts";
 import type { PlannerMeal } from "../../src/controllers/spec/plannerMeal.ts";
 import type { PlannerMealService, PlannerService } from "../../src/controllers/spec/index.ts";
-import type { ServiceParams } from "../../src/database/index.ts";
-import type { PlannerCustomisations } from "../../src/routes/helpers/index.ts";
+import type { PlannerCustomisations, ServiceParams } from "../../src/database/index.ts";
 import {
     type DeletePlannerRequestParams,
     type EntityMember,

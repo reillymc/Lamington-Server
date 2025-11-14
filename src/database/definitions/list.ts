@@ -1,6 +1,11 @@
-import type { ListCustomisations } from "../../routes/helpers/index.ts";
 import type { Table } from "./index.ts";
 import { lamington } from "./lamington.ts";
+
+type ListCustomisationsV1 = {
+    icon: string;
+};
+
+export type ListCustomisations = ListCustomisationsV1;
 
 /**
  * List

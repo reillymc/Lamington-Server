@@ -2,7 +2,7 @@ import { v4 as Uuid } from "uuid";
 
 import { ListActions, type ListMemberActions } from "../../controllers/index.ts";
 import type { ListItemService, ListService } from "../../controllers/spec/index.ts";
-import type { ServiceParams } from "../../database/index.ts";
+import type { ListCustomisations, ServiceParams } from "../../database/index.ts";
 import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils/index.ts";
 import {
     type List,
@@ -13,6 +13,8 @@ import {
 } from "../spec/index.ts";
 import { validatePermissions } from "./permissions.ts";
 import { getStatus } from "./user.ts";
+
+const DefaultListIcon = "variant1";
 
 const parseAmount = (amountJSON: string | undefined) => {
     if (!amountJSON) return;
@@ -61,7 +63,7 @@ export const validatePostListBody = ({ data }: PostListRequestBody, userId: stri
             listId,
             name,
             description: item.description,
-            customisations: { icon: item.icon },
+            customisations: { icon: item.icon ?? DefaultListIcon },
             members: item.members,
             createdBy: userId,
         };
@@ -145,26 +147,6 @@ export const prepareGetListResponseBody = ({
         : undefined,
     status: getStatus(list.status, list.createdBy === userId),
 });
-
-type ListCustomisationsV1 = Pick<List, "icon">;
-export type ListCustomisations = ListCustomisationsV1;
-const DefaultListIcon = "variant1";
-
-export const parseListCustomisations = (customisations?: string): ListCustomisations => {
-    try {
-        const parsed = JSON.parse(customisations ?? "{}") as Partial<ListCustomisationsV1>;
-
-        return { icon: parsed.icon ?? DefaultListIcon };
-    } catch {
-        return { icon: DefaultListIcon };
-    }
-};
-
-export const stringifyListCustomisations = (customisations: Partial<ListCustomisations>): string => {
-    const { icon = DefaultListIcon } = customisations;
-
-    return JSON.stringify({ icon });
-};
 
 interface ValidatedPermissions {
     permissionsValid: boolean;

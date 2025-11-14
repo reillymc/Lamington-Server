@@ -7,6 +7,9 @@ import type { Book, PostBookRequestBody, RequestValidator } from "../spec/index.
 import { RecipeQueryResponseToRecipe } from "./recipe.ts";
 import { getStatus } from "./user.ts";
 
+const DefaultBookColor = "variant1";
+const DefaultBookIcon = "variant1";
+
 export const validatePostBookBody: RequestValidator<PostBookRequestBody> = ({ data }, userId) => {
     const filteredData = EnsureDefinedArray(data);
 
@@ -17,7 +20,7 @@ export const validatePostBookBody: RequestValidator<PostBookRequestBody> = ({ da
             bookId: item.bookId ?? Uuid(),
             name: item.name,
             description: item.description,
-            customisations: stringifyBookCustomisations({ color: item.color, icon: item.icon }),
+            customisations: { color: item.color ?? DefaultBookColor, icon: item.icon ?? DefaultBookIcon },
             members: item.members,
             createdBy: userId,
         };
@@ -52,24 +55,3 @@ export const prepareGetBookResponseBody = (
         : undefined,
     status: getStatus(book.status, book.createdBy === userId),
 });
-
-type BookCustomisationsV1 = Pick<Book, "color" | "icon">;
-export type BookCustomisations = BookCustomisationsV1;
-const DefaultBookColor = "variant1";
-const DefaultBookIcon = "variant1";
-
-export const parseBookCustomisations = (customisations?: string): BookCustomisations => {
-    try {
-        const parsed = JSON.parse(customisations ?? "{}") as Partial<BookCustomisationsV1>;
-
-        return { color: parsed.color ?? DefaultBookColor, icon: parsed.icon ?? DefaultBookIcon };
-    } catch {
-        return { color: DefaultBookColor, icon: DefaultBookIcon };
-    }
-};
-
-export const stringifyBookCustomisations = (customisations: Partial<BookCustomisations>): string => {
-    const { color = DefaultBookColor, icon = DefaultBookIcon } = customisations;
-
-    return JSON.stringify({ color, icon });
-};

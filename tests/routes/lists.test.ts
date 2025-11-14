@@ -7,8 +7,7 @@ import { v4 as uuid } from "uuid";
 import { setupApp } from "../../src/app.ts";
 import { IngredientActions, ListActions, ListItemActions, ListMemberActions } from "../../src/controllers/index.ts";
 import type { ListItemService, ListService } from "../../src/controllers/spec/index.ts";
-import { type ServiceParams } from "../../src/database/index.ts";
-import type { ListCustomisations } from "../../src/routes/helpers/index.ts";
+import { type ListCustomisations, type ServiceParams } from "../../src/database/index.ts";
 import {
     type DeleteListRequestParams,
     type EntityMember,
