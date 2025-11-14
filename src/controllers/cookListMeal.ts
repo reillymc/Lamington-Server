@@ -1,4 +1,6 @@
+import { attachment, type Attachment } from "../database/definitions/attachment.ts";
 import { content, type Content } from "../database/definitions/content.ts";
+import { contentAttachment } from "../database/definitions/contentAttachment.ts";
 import db, {
     type DeleteService,
     type Meal,
@@ -8,10 +10,13 @@ import db, {
     lamington,
     plannerMeal,
 } from "../database/index.ts";
-import { EnsureArray } from "../utils/index.ts";
+import { EnsureArray, Undefined } from "../utils/index.ts";
+import { MealAttachmentActions } from "./mealAttachment.ts";
 
 export type CookListMeal = Pick<Meal, "mealId" | "meal" | "description" | "recipeId" | "source" | "sequence"> &
-    Pick<Content, "createdBy">;
+    Pick<Content, "createdBy"> & {
+        heroImage?: { attachmentId: Attachment["attachmentId"]; uri: Attachment["uri"] };
+    };
 
 /**
  * Get cook list meals by user id
@@ -20,7 +25,7 @@ export type CookListMeal = Pick<Meal, "mealId" | "meal" | "description" | "recip
  * @returns an array of queued cook list meals (no dates assigned) matching given ids,
  */
 const readMyMeals: ReadMyService<CookListMeal> = async params => {
-    const query = db<CookListMeal>(lamington.plannerMeal)
+    const query = await db<CookListMeal>(lamington.plannerMeal)
         .select(
             plannerMeal.mealId,
             plannerMeal.meal,
@@ -28,14 +33,22 @@ const readMyMeals: ReadMyService<CookListMeal> = async params => {
             content.createdBy,
             plannerMeal.recipeId,
             plannerMeal.source,
-            plannerMeal.sequence
+            plannerMeal.sequence,
+            db.ref(contentAttachment.attachmentId).as("heroAttachmentId"),
+            db.ref(attachment.uri).as("heroAttachmentUri")
         )
         .where(content.createdBy, params.userId)
         .leftJoin(lamington.content, content.contentId, plannerMeal.mealId)
+        .leftJoin(lamington.contentAttachment, contentAttachment.contentId, plannerMeal.mealId)
+        .leftJoin(lamington.attachment, attachment.attachmentId, contentAttachment.attachmentId)
         .whereNull(plannerMeal.plannerId)
         .whereNull(plannerMeal.year)
         .whereNull(plannerMeal.month);
-    return query;
+
+    return query.map(({ heroAttachmentId, heroAttachmentUri, ...meal }) => ({
+        ...meal,
+        heroImage: heroAttachmentId ? { attachmentId: heroAttachmentId, uri: heroAttachmentUri } : undefined,
+    }));
 };
 
 /**
@@ -56,6 +69,19 @@ const saveMeals: SaveService<CookListMeal> = async params => {
         )
         .onConflict("contentId")
         .merge();
+
+    await MealAttachmentActions.save(
+        meals
+            .map(({ heroImage, mealId }) => {
+                if (!heroImage) return;
+                return {
+                    mealId,
+                    attachments: [{ attachmentId: heroImage.attachmentId, displayType: "hero" }],
+                };
+            })
+            .filter(Undefined),
+        { trimNotIn: true }
+    );
 
     return db<Meal>(lamington.plannerMeal)
         .insert(

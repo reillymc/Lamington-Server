@@ -163,6 +163,9 @@ export const validatePostRecipeBody = ({ data }: PostRecipeRequestBody, userId: 
             recipeId,
             name,
             createdBy: userId,
+            attachments: item.attachments?.hero
+                ? [{ displayType: "hero", attachmentId: item.attachments.hero.attachmentId }]
+                : undefined,
         };
 
         return validItem;
@@ -255,9 +258,16 @@ export const RecipeQueryResponseToRecipe = (
         | ServiceResponse<RecipeService, "Query">
         | ServiceResponse<RecipeService, "QueryByUser">
         | ServiceResponse<RecipeService, "QueryByBook">
-): Recipe => ({
-    ...recipe,
-    createdBy: { userId: recipe.createdBy, firstName: recipe.createdByName },
-    tags: ContentTagRowsToResponse(recipe),
-    public: !!recipe.public,
-});
+): Recipe => {
+    const heroAttachment = recipe.attachments.find(att => att.displayType === "hero");
+
+    return {
+        ...recipe,
+        createdBy: { userId: recipe.createdBy, firstName: recipe.createdByName },
+        tags: ContentTagRowsToResponse(recipe),
+        public: !!recipe.public,
+        attachments: {
+            hero: heroAttachment,
+        },
+    };
+};

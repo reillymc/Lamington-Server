@@ -13,7 +13,7 @@ import { EnsureArray, Undefined } from "../../utils/index.ts";
 
 export type SaveContentAttachmentRequest = Pick<ContentAttachment, "contentId"> & {
     attachments?: Array<{
-        attachmentId?: ContentAttachment["attachmentId"];
+        attachmentId: ContentAttachment["attachmentId"];
         displayType: ContentAttachment["displayType"];
         displayId?: ContentAttachment["displayId"];
         displayOrder?: ContentAttachment["displayOrder"];

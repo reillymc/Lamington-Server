@@ -166,6 +166,7 @@ const validatePostMealBody: RequestValidator<PostCookListMealRequestBody> = ({ d
             source: item.source,
             recipeId: item.recipeId,
             description: item.description,
+            heroImage: item.heroImage,
             createdBy: userId,
         };
     });

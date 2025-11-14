@@ -227,17 +227,6 @@ router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
                 );
             }
 
-            // for (const recipe of validRecipes) {
-            //     const existingRecipe = existingRecipes.find(({ recipeId }) => recipeId === recipe.recipeId);
-            //     const currentPhoto = existingRecipe?.photo;
-
-            //     const isUnsavedImage = AttachmentService.isUnsavedImage(userId, "recipe", recipe.photo);
-
-            //     if (isUnsavedImage) {
-            //         recipe.photo = await AttachmentService.saveImage(userId, "recipe", recipe.recipeId, currentPhoto);
-            //     }
-            // }
-
             await RecipeActions.Save(validRecipes);
 
             return res.status(201).json({ error: false, message: `Recipe${validRecipes.length > 1 ? "s" : ""} saved` });

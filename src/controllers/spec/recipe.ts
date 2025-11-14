@@ -8,6 +8,7 @@ import type {
     RecipeIngredient,
     RecipeRating,
     SaveService,
+    ServiceParams,
     ServiceResponse,
     Tag,
     User,
@@ -78,6 +79,7 @@ type QueryRecipesResult = Pick<Recipe, "recipeId" | "name" | "timesCooked" | "co
     tags: ServiceResponse<ContentTagActions, "readByContentId">[];
     createdByName: User["firstName"];
     createdBy: Content["createdBy"];
+    attachments: ServiceResponse<RecipeAttachmentActions, "read">[];
 };
 
 type RecipeQuerySortOptions = "name" | "ratingPersonal" | "ratingAverage" | "time";
@@ -96,6 +98,7 @@ export interface RecipeService {
             ratingPersonal?: number;
             tags?: ContentTags;
             createdBy: Content["createdBy"];
+            attachments?: ServiceParams<RecipeAttachmentActions, "save">["attachments"];
         }
     >;
 

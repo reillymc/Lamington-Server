@@ -1,3 +1,4 @@
+import type { ImageAttachment } from "./attachment.ts";
 import type { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from "./base.ts";
 import type { User } from "./user.ts";
 
@@ -15,6 +16,7 @@ export type CookListMeal = {
     description?: string;
     source?: string;
     recipeId?: string;
+    heroImage?: ImageAttachment;
 };
 
 // Get Cook List

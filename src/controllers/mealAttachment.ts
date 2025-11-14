@@ -1,11 +1,11 @@
 import type { Attachment } from "../database/definitions/attachment.ts";
 import type { ContentAttachment } from "../database/definitions/contentAttachment.ts";
-import type { Recipe, CreateQuery, CreateResponse } from "../database/index.ts";
+import type { Meal, CreateQuery, CreateResponse } from "../database/index.ts";
 import { EnsureArray } from "../utils/index.ts";
 import { ContentAttachmentActions, type CreateContentAttachmentOptions } from "./content/contentAttachment.ts";
 
-type SaveRecipeAttachmentRequest = CreateQuery<{
-    recipeId: Recipe["recipeId"];
+type SaveMealAttachmentRequest = CreateQuery<{
+    mealId: Meal["mealId"];
     attachments: Array<{
         attachmentId: Attachment["attachmentId"];
         displayType: ContentAttachment["displayType"];
@@ -14,33 +14,33 @@ type SaveRecipeAttachmentRequest = CreateQuery<{
     }>;
 }>;
 
-type ReadRecipeAttachmentsRequest = CreateQuery<{
-    recipeId: Recipe["recipeId"];
+type ReadMealAttachmentsRequest = CreateQuery<{
+    mealId: Meal["mealId"];
 }>;
 
-type ReadRecipeAttachmentsResponse = {
+type ReadMealAttachmentsResponse = {
     attachmentId: Attachment["attachmentId"];
     uri: Attachment["uri"];
     displayType: ContentAttachment["displayType"];
     displayId?: ContentAttachment["displayId"];
     displayOrder: ContentAttachment["displayOrder"];
     createdBy: Attachment["createdBy"];
-    recipeId: Recipe["recipeId"];
+    mealId: Meal["mealId"];
 };
 
-export const RecipeAttachmentActions = {
-    read: (request: ReadRecipeAttachmentsRequest): CreateResponse<ReadRecipeAttachmentsResponse> =>
-        ContentAttachmentActions.read(EnsureArray(request).map(({ recipeId }) => ({ contentId: recipeId }))).then(
-            response => response.map(({ contentId, ...rest }) => ({ recipeId: contentId, ...rest }))
+export const MealAttachmentActions = {
+    read: (request: ReadMealAttachmentsRequest): CreateResponse<ReadMealAttachmentsResponse> =>
+        ContentAttachmentActions.read(EnsureArray(request).map(({ mealId }) => ({ contentId: mealId }))).then(
+            response => response.map(({ contentId, ...rest }) => ({ mealId: contentId, ...rest }))
         ),
-    save: (request: SaveRecipeAttachmentRequest, options?: CreateContentAttachmentOptions) =>
+    save: (request: SaveMealAttachmentRequest, options?: CreateContentAttachmentOptions) =>
         ContentAttachmentActions.save(
-            EnsureArray(request).map(({ recipeId, attachments }) => ({
-                contentId: recipeId,
+            EnsureArray(request).map(({ mealId, attachments }) => ({
+                contentId: mealId,
                 attachments,
             })),
             options
         ),
 };
 
-export type RecipeAttachmentActions = typeof RecipeAttachmentActions;
+export type MealAttachmentActions = typeof MealAttachmentActions;

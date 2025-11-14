@@ -145,7 +145,9 @@ export type PostRecipeRequestBody = BaseRequestBody<
         | "servings"
         | "public"
         | "timesCooked"
-    >
+    > & {
+        attachments?: RecipeAttachments;
+    }
 >;
 
 export type PostRecipeRequest = BaseRequest<PostRecipeRequestBody & PostRecipeRequestParams>;
