@@ -33,6 +33,7 @@ import {
     randomCount,
     randomNumber,
 } from "../helpers/index.ts";
+import db from "../../src/database/index.ts";
 
 const getPlannerCustomisations = (): PlannerCustomisations => {
     return {
@@ -54,7 +55,7 @@ describe("get planner", () => {
     });
 
     it("should return 404 for non-existent planner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app).get(PlannerEndpoint.getPlanner(uuid())).set(token);
 
@@ -62,8 +63,8 @@ describe("get planner", () => {
     });
 
     it("should not return planner user doesn't have access to", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [plannerOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [plannerOwner] = await CreateUsers(db);
 
         const createPlannerParams = {
             plannerId: uuid(),
@@ -80,7 +81,7 @@ describe("get planner", () => {
     });
 
     it("should return correct planner details for planner id", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const customisations = getPlannerCustomisations();
 
@@ -109,8 +110,8 @@ describe("get planner", () => {
     });
 
     it("should return a planner that a user is a member of", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [plannerOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [plannerOwner] = await CreateUsers(db);
 
         const createPlannerParams = {
             plannerId: uuid(),
@@ -133,8 +134,8 @@ describe("get planner", () => {
     });
 
     it("should return a planner that a user is a member of with correct permissions", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [plannerOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [plannerOwner] = await CreateUsers(db);
 
         const mainPlanner = {
             plannerId: uuid(),
@@ -175,7 +176,7 @@ describe("get planner", () => {
     });
 
     it("should return planner meals", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const planner = {
             plannerId: uuid(),
@@ -228,8 +229,8 @@ describe("get planner", () => {
     });
 
     it("should return planner members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [plannerMember] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [plannerMember] = await CreateUsers(db);
 
         const planner = {
             plannerId: uuid(),
@@ -277,7 +278,7 @@ describe("delete planner", () => {
     });
 
     it("should return 404 for non-existent planner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app)
             .delete(PlannerEndpoint.deletePlanner(uuid()))
@@ -288,8 +289,8 @@ describe("delete planner", () => {
     });
 
     it("should not allow deletion if not planner owner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [plannerOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [plannerOwner] = await CreateUsers(db);
 
         const planner = {
             plannerId: uuid(),
@@ -309,8 +310,8 @@ describe("delete planner", () => {
     });
 
     it("should not allow deletion if planner member but not planner owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [plannerOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [plannerOwner] = await CreateUsers(db);
 
         const planner = {
             plannerId: uuid(),
@@ -339,7 +340,7 @@ describe("delete planner", () => {
     });
 
     it("should delete planner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const planner = {
             plannerId: uuid(),
@@ -377,8 +378,8 @@ describe("post planner", () => {
     });
 
     it("should not allow editing if not planner owner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [plannerOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [plannerOwner] = await CreateUsers(db);
 
         const planner = {
             plannerId: uuid(),
@@ -400,8 +401,8 @@ describe("post planner", () => {
     });
 
     it("should not allow editing if planner member but not planner owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [plannerOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [plannerOwner] = await CreateUsers(db);
 
         const planner = {
             plannerId: uuid(),
@@ -432,8 +433,8 @@ describe("post planner", () => {
     });
 
     it("should create planner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const users = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const users = await CreateUsers(db);
 
         const planner = {
             data: {
@@ -474,7 +475,7 @@ describe("post planner", () => {
     });
 
     it("should save updated planner details as planner owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const planner = {
             plannerId: uuid(),
@@ -509,9 +510,9 @@ describe("post planner", () => {
     });
 
     it("should save additional planner members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const initialUsers = await CreateUsers({ count: randomCount });
-        const additionalUsers = await CreateUsers({ count: randomCount });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const initialUsers = await CreateUsers(db, { count: randomCount });
+        const additionalUsers = await CreateUsers(db, { count: randomCount });
 
         const initialMembers: EntityMember[] = initialUsers.map(({ userId }) => ({ userId }));
         const additionalMembers: EntityMember[] = additionalUsers.map(({ userId }) => ({ userId }));
@@ -547,8 +548,8 @@ describe("post planner", () => {
     });
 
     it("should remove some planner members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const initialMembers = await CreateUsers({ count: randomCount });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const initialMembers = await CreateUsers(db, { count: randomCount });
 
         const members: EntityMember[] = initialMembers.map(({ userId }) => ({ userId }));
         const reducedMembers: EntityMember[] = members.slice(0, Math.max((members.length - 1) / 2));
@@ -586,8 +587,8 @@ describe("post planner", () => {
     });
 
     it("should remove all planner members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const members = await CreateUsers({ count: randomCount });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const members = await CreateUsers(db, { count: randomCount });
 
         const [planner] = await PlannerActions.Save({
             plannerId: uuid(),
@@ -629,7 +630,7 @@ describe("post planner meal", () => {
     });
 
     it("should return 404 for non-existent planner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app)
             .post(PlannerEndpoint.postPlannerMeal(uuid()))
@@ -648,8 +649,8 @@ describe("post planner meal", () => {
     });
 
     it("should not allow adding meal if not planner owner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [plannerOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [plannerOwner] = await CreateUsers(db);
 
         const planner = {
             plannerId: uuid(),
@@ -677,8 +678,8 @@ describe("post planner meal", () => {
     });
 
     it("should not allow adding meal if planner member without edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [plannerOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [plannerOwner] = await CreateUsers(db);
 
         const planner = {
             plannerId: uuid(),
@@ -716,8 +717,8 @@ describe("post planner meal", () => {
     });
 
     it("should allow adding meal if planner member with edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [plannerOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [plannerOwner] = await CreateUsers(db);
 
         const planner = {
             plannerId: uuid(),
@@ -763,7 +764,7 @@ describe("post planner meal", () => {
     });
 
     it("should allow editing if planner owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const planner = {
             plannerId: uuid(),
@@ -800,7 +801,7 @@ describe("post planner meal", () => {
     });
 
     it("should move meal from cook list to planner", async () => {
-        const [token, { userId }] = await PrepareAuthenticatedUser();
+        const [token, { userId }] = await PrepareAuthenticatedUser(db);
 
         const cookListMeal = {
             mealId: uuid(),
@@ -863,7 +864,7 @@ describe("delete planner meal", () => {
     });
 
     it("should return 404 for non-existent planner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app).delete(PlannerEndpoint.deletePlannerMeal(uuid(), uuid())).set(token).send();
 
@@ -871,8 +872,8 @@ describe("delete planner meal", () => {
     });
 
     it("should not allow deletion if not planner owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [plannerOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [plannerOwner] = await CreateUsers(db);
 
         const planner = {
             plannerId: uuid(),
@@ -903,8 +904,8 @@ describe("delete planner meal", () => {
     });
 
     it("should not allow item deletion if planner member without edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [plannerOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [plannerOwner] = await CreateUsers(db);
 
         const planner = {
             plannerId: uuid(),
@@ -944,8 +945,8 @@ describe("delete planner meal", () => {
     });
 
     it("should allow item deletion if planner member with edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [plannerOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [plannerOwner] = await CreateUsers(db);
 
         const planner = {
             plannerId: uuid(),
@@ -989,7 +990,7 @@ describe("delete planner meal", () => {
     });
 
     it("should allow deletion if planner owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const planner = {
             plannerId: uuid(),

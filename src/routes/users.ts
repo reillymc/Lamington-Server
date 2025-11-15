@@ -28,6 +28,7 @@ import {
     type PostUserApprovalRequestParams,
     type PostUserApprovalResponse,
 } from "./spec/index.ts";
+import db from "../database/index.ts";
 
 const router = express.Router();
 
@@ -40,7 +41,7 @@ router.get<GetUsersRequestParams, GetUsersResponse, GetUsersRequestBody>(
         const isAdmin = session.status === UserStatus.Administrator || session.status === UserStatus.Owner;
 
         try {
-            const users = await UserActions.readAll();
+            const users = await UserActions.readAll(db);
 
             const data = Object.fromEntries(
                 users
@@ -77,7 +78,7 @@ router.get<GetPendingUsersRequestParams, GetPendingUsersResponse, GetPendingUser
         }
 
         try {
-            const users = await UserActions.readPending();
+            const users = await UserActions.readPending(db);
 
             const data = Object.fromEntries(
                 users.map(user => [
@@ -117,13 +118,13 @@ router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApp
         }
 
         try {
-            const [user] = await UserActions.read({ userId: userToUpdate });
+            const [user] = await UserActions.read(db, { userId: userToUpdate });
 
             if (!user) {
                 return next(new AppError({ status: 400, message: "User does not exist" }));
             }
 
-            const [updatedUser] = await UserActions.saveStatus({
+            const [updatedUser] = await UserActions.saveStatus(db, {
                 userId: userToUpdate,
                 status: accept ? UserStatus.Member : UserStatus.Blacklisted,
             });

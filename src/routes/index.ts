@@ -2,7 +2,7 @@ import express from "express";
 
 import { notFoundMiddleware } from "../middleware/index.ts";
 import { createAttachmentsRouter } from "./attachments.ts";
-import { default as authRouter } from "./auth.ts";
+import { createAuthRouter } from "./auth.ts";
 import { default as booksRouter } from "./books.ts";
 import { default as cookListsRouter } from "./cookLists.ts";
 import { default as docsRouter } from "./docs.ts";
@@ -25,13 +25,13 @@ import {
 } from "./spec/index.ts";
 import { default as tagsRouter } from "./tags.ts";
 import { default as usersRouter } from "./users.ts";
-import type { Knex } from "knex";
+import type { AppDependencies } from "../appDependencies.ts";
 
-const appRouter = (trx: Knex) =>
+const appRouter = (appDependencies: AppDependencies) =>
     express
         .Router()
         .use(assetEndpoint, express.static(assetsDirectory))
-        .use(attachmentEndpoint, createAttachmentsRouter(trx))
+        .use(attachmentEndpoint, createAttachmentsRouter(appDependencies))
         .use(bookEndpoint, booksRouter)
         .use(cookListEndpoint, cookListsRouter)
         .use(ingredientEndpoint, ingredientRouter)
@@ -42,4 +42,4 @@ const appRouter = (trx: Knex) =>
         .use(usersEndpoint, usersRouter)
         .use("/", notFoundMiddleware);
 
-export { appRouter, authRouter, docsRouter };
+export { appRouter, createAuthRouter, docsRouter };

@@ -14,7 +14,7 @@ import {
 } from "../../src/controllers/index.ts";
 import { RecipeTagActions } from "../../src/controllers/recipeTag.ts";
 import type { RecipeService } from "../../src/controllers/spec/index.ts";
-import { type ServiceParams } from "../../src/database/index.ts";
+import db, { type ServiceParams } from "../../src/database/index.ts";
 import type { GetAllRecipesResponse, PostRecipeRequestBody } from "../../src/routes/spec/index.ts";
 import { randomElement } from "../../src/utils/index.ts";
 import {
@@ -48,7 +48,7 @@ describe("get all recipes", () => {
     });
 
     it("should return correct recipe details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipe = {
             recipeId: uuid(),
@@ -102,8 +102,8 @@ describe("get all recipes", () => {
     });
 
     it("should return all public recipes from other users", async () => {
-        const [token, _] = await PrepareAuthenticatedUser();
-        const randomUsers = await CreateUsers({ count: randomNumber() });
+        const [token, _] = await PrepareAuthenticatedUser(db);
+        const randomUsers = await CreateUsers(db, { count: randomNumber() });
 
         const recipes = Array.from({ length: randomNumber() }).map(
             (_, i) =>
@@ -127,8 +127,8 @@ describe("get all recipes", () => {
     });
 
     it("should not return private recipes", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const randomUsers = await CreateUsers({ count: randomNumber() });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const randomUsers = await CreateUsers(db, { count: randomNumber() });
 
         const recipes = Array.from({ length: randomNumber() }).map(
             (_, i) =>
@@ -168,8 +168,8 @@ describe("get all recipes", () => {
     it("should respect pagination", async () => {
         const PAGE_SIZE = 50;
 
-        const [token, _] = await PrepareAuthenticatedUser();
-        const randomUsers = await CreateUsers({ count: randomNumber() });
+        const [token, _] = await PrepareAuthenticatedUser(db);
+        const randomUsers = await CreateUsers(db, { count: randomNumber() });
 
         const recipes = Array.from({ length: 75 }).map(
             (_, i) =>
@@ -207,8 +207,8 @@ describe("get all recipes", () => {
     });
 
     it("should respect search", async () => {
-        const [token, _] = await PrepareAuthenticatedUser();
-        const randomUsers = await CreateUsers({ count: randomNumber() });
+        const [token, _] = await PrepareAuthenticatedUser(db);
+        const randomUsers = await CreateUsers(db, { count: randomNumber() });
 
         const recipes = Array.from({ length: randomNumber() }).map(
             () =>
@@ -237,7 +237,7 @@ describe("get all recipes", () => {
     });
 
     it("should respect substring search", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipe = {
             recipeId: uuid(),
@@ -280,7 +280,7 @@ describe("get all recipes", () => {
     });
 
     it("should respect name sorting and ordering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const order = randomBoolean() ? "asc" : "desc";
 
@@ -311,7 +311,7 @@ describe("get all recipes", () => {
     });
 
     it("should respect rating sorting and ordering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const order = randomBoolean() ? "asc" : "desc";
 
@@ -343,7 +343,7 @@ describe("get all recipes", () => {
     });
 
     it("should respect time sorting and ordering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const order = randomBoolean() ? "asc" : "desc";
 
@@ -375,7 +375,7 @@ describe("get all recipes", () => {
     });
 
     it("should respect category filtering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
             () =>
@@ -441,7 +441,7 @@ describe("get all recipes", () => {
     });
 
     it("should respect ingredient filtering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
             () =>
@@ -527,7 +527,7 @@ describe("get all recipes", () => {
     });
 
     it("should respect ingredient and category filtering together", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
             () =>
@@ -671,7 +671,7 @@ describe("get my recipes", () => {
     });
 
     it("should return correct recipe details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipe = {
             recipeId: uuid(),
@@ -725,8 +725,8 @@ describe("get my recipes", () => {
     });
 
     it("should not return any recipes from other users", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const randomUsers = await CreateUsers({ count: randomNumber() });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const randomUsers = await CreateUsers(db, { count: randomNumber() });
 
         const recipes = Array.from({ length: randomNumber() }).map(
             (_, i) =>
@@ -764,7 +764,7 @@ describe("get my recipes", () => {
     it("should respect pagination", async () => {
         const PAGE_SIZE = 50;
 
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipes = Array.from({ length: 50 }).map(
             (_, i) =>
@@ -802,7 +802,7 @@ describe("get my recipes", () => {
     });
 
     it("should respect search", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipes = Array.from({ length: randomNumber() }).map(
             () =>
@@ -831,7 +831,7 @@ describe("get my recipes", () => {
     });
 
     it("should respect substring search", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipe = {
             recipeId: uuid(),
@@ -874,7 +874,7 @@ describe("get my recipes", () => {
     });
 
     it("should respect name sorting and ordering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const order = randomBoolean() ? "asc" : "desc";
 
@@ -905,7 +905,7 @@ describe("get my recipes", () => {
     });
 
     it("should respect rating sorting and ordering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const order = randomBoolean() ? "asc" : "desc";
 
@@ -937,7 +937,7 @@ describe("get my recipes", () => {
     });
 
     it("should respect time sorting and ordering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const order = randomBoolean() ? "asc" : "desc";
 
@@ -969,7 +969,7 @@ describe("get my recipes", () => {
     });
 
     it("should respect category filtering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
             () =>
@@ -1035,7 +1035,7 @@ describe("get my recipes", () => {
     });
 
     it("should respect ingredient filtering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
             () =>
@@ -1121,7 +1121,7 @@ describe("get my recipes", () => {
     });
 
     it("should respect ingredient and category filtering together", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
             () =>
@@ -1265,7 +1265,7 @@ describe("post recipe", () => {
     });
 
     it("should create correct recipe details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipe = {
             recipeId: uuid(),
@@ -1318,7 +1318,7 @@ describe("post recipe", () => {
     });
 
     it("should update correct recipe details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const recipe = {
             recipeId: uuid(),

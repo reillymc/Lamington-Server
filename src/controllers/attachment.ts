@@ -1,13 +1,12 @@
-import type { Knex } from "knex";
 import { attachment, type Attachment } from "../database/definitions/attachment.ts";
-import db, { type CreateQuery, type ReadQuery, type ReadResponse, lamington } from "../database/index.ts";
+import db, { type Conn, type CreateQuery, type ReadQuery, type ReadResponse, lamington } from "../database/index.ts";
 import { EnsureArray } from "../utils/index.ts";
 
 export type SaveAttachmentRequest = Pick<Attachment, "uri" | "createdBy"> & {
     attachmentId?: Attachment["attachmentId"];
 };
 
-const saveAttachments = async (trx: Knex, saveRequests: CreateQuery<SaveAttachmentRequest>) => {
+const saveAttachments = async (conn: Conn, saveRequests: CreateQuery<SaveAttachmentRequest>) => {
     const data = EnsureArray(saveRequests).map(({ attachmentId, uri, createdBy }) => ({
         attachmentId,
         uri,
@@ -16,7 +15,9 @@ const saveAttachments = async (trx: Knex, saveRequests: CreateQuery<SaveAttachme
 
     if (!data.length) return [];
 
-    const result: Pick<Attachment, "attachmentId" | "uri" | "createdBy">[] = await trx<Attachment>(lamington.attachment)
+    const result: Pick<Attachment, "attachmentId" | "uri" | "createdBy">[] = await conn<Attachment>(
+        lamington.attachment
+    )
         .insert(data)
         .returning([attachment.attachmentId, attachment.uri, attachment.createdBy]);
 

@@ -3,10 +3,11 @@ import { describe, it } from "node:test";
 
 import { BookMemberActions } from "../../src/controllers/index.ts";
 import { CreateBooks, CreateUsers, randomCount } from "../helpers/index.ts";
+import db from "../../src/database/index.ts";
 
 describe("save", () => {
     it("should save one book member for one book", async () => {
-        const [user] = await CreateUsers();
+        const [user] = await CreateUsers(db);
         const [[book]] = await CreateBooks({ count: 1, createdBy: user!.userId });
         await BookMemberActions.save({
             bookId: book!.bookId,
@@ -27,7 +28,7 @@ describe("save", () => {
     });
 
     it("should save multiple book members for one book", async () => {
-        const users = await CreateUsers({ count: 5 });
+        const users = await CreateUsers(db, { count: 5 });
         const [[book]] = await CreateBooks({ count: 1, createdBy: users[0]!.userId });
 
         await BookMemberActions.save({ bookId: book!.bookId, members: users.map(user => ({ userId: user!.userId })) });
@@ -44,7 +45,7 @@ describe("save", () => {
     });
 
     it("should save one book member for multiple books", async () => {
-        const [user] = await CreateUsers();
+        const [user] = await CreateUsers(db);
         const [books] = await CreateBooks({ count: 5, createdBy: user!.userId });
 
         await BookMemberActions.save(
@@ -61,7 +62,7 @@ describe("save", () => {
     });
 
     it("should save multiple book members for multiple books", async () => {
-        const users = await CreateUsers({ count: randomCount });
+        const users = await CreateUsers(db, { count: randomCount });
         const [books] = await CreateBooks({ count: randomCount, createdBy: users[0]!.userId });
 
         await BookMemberActions.save(

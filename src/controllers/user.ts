@@ -3,6 +3,7 @@ import { v4 as Uuid } from "uuid";
 import db, {
     lamington,
     user,
+    type Conn,
     type CreateQuery,
     type CreateResponse,
     type DeleteService,
@@ -17,8 +18,10 @@ import { EnsureArray, Undefined } from "../utils/index.ts";
  * Get all users
  * @returns an array of all users in the database
  */
-const readAllUsers = async (): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">> => {
-    const query = db<User>(lamington.user)
+const readAllUsers = async (
+    conn: Conn
+): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">> => {
+    const query = conn<User>(lamington.user)
         .select(user.userId, user.firstName, user.lastName, user.email, user.status)
         .whereNotIn(user.status, [UserStatus.Pending, UserStatus.Blacklisted]);
     return query;
@@ -28,10 +31,10 @@ const readAllUsers = async (): ReadResponse<Pick<User, "userId" | "firstName" | 
  * Get pending users
  * @returns an array of all pending users in the database
  */
-const readPendingUsers = async (): ReadResponse<
-    Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">
-> => {
-    const query = db<User>(lamington.user)
+const readPendingUsers = async (
+    conn: Conn
+): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">> => {
+    const query = conn<User>(lamington.user)
         .select(user.userId, user.firstName, user.lastName, user.email, user.status)
         .where(user.status, UserStatus.Pending);
     return query;
@@ -46,13 +49,14 @@ interface GetUserParams {
  * @returns an array of users matching given ids
  */
 const readUsers = async (
+    conn: Conn,
     params: ReadQuery<GetUserParams>
 ): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "status" | "createdAt">> => {
     const users = EnsureArray(params);
 
     const userIds = users.map(({ userId }) => userId);
 
-    return db<User>(lamington.user)
+    return conn<User>(lamington.user)
         .select("userId", "firstName", "lastName", "status", "createdAt")
         .whereIn("userId", userIds);
 };
@@ -72,12 +76,12 @@ type SaveUser = Omit<User, "createdAt" | "updatedAt" | "preferences">;
  * Saves a user from params
  * @returns the newly created / updated users
  */
-const saveUsers = async (params: CreateQuery<CreateUserParams>): CreateResponse<User> => {
+const saveUsers = async (conn: Conn, params: CreateQuery<CreateUserParams>): CreateResponse<User> => {
     const users: SaveUser[] = EnsureArray(params)
         .map(({ userId, ...params }) => ({ userId: userId ?? Uuid(), ...params }))
         .filter(Undefined);
 
-    return db<User>(lamington.user).insert(users).onConflict("userId").merge().returning("userId");
+    return conn<User>(lamington.user).insert(users).onConflict("userId").merge().returning("userId");
 };
 
 /**
@@ -92,16 +96,19 @@ const deleteUsers: DeleteService<User, "userId"> = async params => {
     return db<User>(lamington.user).whereIn(user.userId, userIds).delete();
 };
 
-const saveUserStatus = async (params: CreateQuery<{ userId: string; status: UserStatus }>): CreateResponse<User> => {
+const saveUserStatus = async (
+    conn: Conn,
+    params: CreateQuery<{ userId: string; status: UserStatus }>
+): CreateResponse<User> => {
     const users = EnsureArray(params);
 
     for (const { status, userId } of users) {
-        await db<User>(lamington.user).where({ userId }).update({ status });
+        await conn<User>(lamington.user).where({ userId }).update({ status });
     }
 
     const userIds = users.map(({ userId }) => userId);
 
-    return db<User>(lamington.user).select("*").whereIn("userId", userIds);
+    return conn<User>(lamington.user).select("*").whereIn("userId", userIds);
 };
 
 export const UserActions = {
@@ -121,10 +128,10 @@ interface ReadUserInternalParams {
  * Get users by id or ids
  * @returns an array of users matching given ids
  */
-const readUsersInternal = async (params: ReadQuery<ReadUserInternalParams>): ReadResponse<User> => {
+const readUsersInternal = async (conn: Conn, params: ReadQuery<ReadUserInternalParams>): ReadResponse<User> => {
     const userEmails = EnsureArray(params).map(({ email }) => email);
 
-    return db<User>(lamington.user)
+    return conn<User>(lamington.user)
         .select(user.userId, user.firstName, user.lastName, user.email, user.status, user.createdAt, user.password)
         .whereIn(user.email, userEmails);
 };

@@ -2,15 +2,15 @@ import { v4 as uuid } from "uuid";
 
 import { BookActions, IngredientActions, ListActions, UserActions } from "../../src/controllers/index.ts";
 import { type ListService } from "../../src/controllers/spec/index.ts";
-import db, { type ServiceParams, lamington } from "../../src/database/index.ts";
+import db, { type Conn, type ServiceParams, lamington } from "../../src/database/index.ts";
 import { UserStatus } from "../../src/routes/spec/index.ts";
 import { hashPassword } from "../../src/services/index.ts";
 import { randomCount } from "./data.ts";
 
-export const CreateUsers = async ({
-    count = 1,
-    status = UserStatus.Member,
-}: { count?: number; status?: UserStatus } = {}) => {
+export const CreateUsers = async (
+    conn: Conn,
+    { count = 1, status = UserStatus.Member }: { count?: number; status?: UserStatus } = {}
+) => {
     const users = Array.from({ length: count }, (_, i) => ({
         userId: uuid(),
         email: uuid(),
@@ -27,7 +27,7 @@ export const CreateUsers = async ({
         }))
     );
 
-    await UserActions.save(hashedUsers);
+    await UserActions.save(conn, hashedUsers);
 
     return users;
 };

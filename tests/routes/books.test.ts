@@ -26,6 +26,7 @@ import {
     randomCount,
     randomNumber,
 } from "../helpers/index.ts";
+import db from "../../src/database/index.ts";
 
 describe("get all books", () => {
     let app: Express;
@@ -41,8 +42,8 @@ describe("get all books", () => {
     });
 
     it("should return only books for current user", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [otherUser] = await CreateUsers({ count: 1 });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [otherUser] = await CreateUsers(db, { count: 1 });
 
         const [_, count] = await CreateBooks({ createdBy: user.userId });
         await CreateBooks({ createdBy: otherUser!.userId });
@@ -57,8 +58,8 @@ describe("get all books", () => {
     });
 
     it("should return correct book membership details for user", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [otherUser] = await CreateUsers({ count: 1 });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [otherUser] = await CreateUsers(db, { count: 1 });
 
         const [editableBooks] = await CreateBooks({ createdBy: otherUser!.userId });
         const [acceptedBooks] = await CreateBooks({ createdBy: otherUser!.userId });
@@ -131,7 +132,7 @@ describe("delete book", () => {
     });
 
     it("should return 404 for non-existent book", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app)
             .delete(BookEndpoint.deleteBook(uuid()))
@@ -142,8 +143,8 @@ describe("delete book", () => {
     });
 
     it("should not allow deletion if not book owner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -163,8 +164,8 @@ describe("delete book", () => {
     });
 
     it("should not allow deletion if book member but not book owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -193,7 +194,7 @@ describe("delete book", () => {
     });
 
     it("should delete book", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const book = {
             bookId: uuid(),
@@ -228,7 +229,7 @@ describe("delete book member", () => {
     });
 
     it("should return 404 for non-existent book", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app).delete(BookEndpoint.deleteBookMember(uuid(), uuid())).set(token).send();
 
@@ -236,8 +237,8 @@ describe("delete book member", () => {
     });
 
     it("should not allow leaving a book the user owns", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -257,8 +258,8 @@ describe("delete book member", () => {
     });
 
     it("should allow removing member if book owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -291,8 +292,8 @@ describe("delete book member", () => {
     });
 
     it("should not allow removing other member if book member with edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [bookOwner, otherMember] = await CreateUsers({ count: 2 });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [bookOwner, otherMember] = await CreateUsers(db, { count: 2 });
 
         const book = {
             bookId: uuid(),
@@ -327,8 +328,8 @@ describe("delete book member", () => {
     });
 
     it("should allow removing self if book member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -371,7 +372,7 @@ describe("delete book recipe", () => {
     });
 
     it("should return 404 for non-existent book", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app).delete(BookEndpoint.deleteBookRecipe(uuid(), uuid())).set(token).send();
 
@@ -379,8 +380,8 @@ describe("delete book recipe", () => {
     });
 
     it("should not allow deletion if not book owner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -414,8 +415,8 @@ describe("delete book recipe", () => {
     });
 
     it("should not allow deletion if book member without edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -458,8 +459,8 @@ describe("delete book recipe", () => {
     });
 
     it("should allow deletion if book member with edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -506,7 +507,7 @@ describe("delete book recipe", () => {
     });
 
     it("should allow deletion if book owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const book = {
             bookId: uuid(),
@@ -544,7 +545,7 @@ describe("delete book recipe", () => {
     });
 
     it("should delete recipe only from specified book", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const book1 = {
             bookId: uuid(),
@@ -620,7 +621,7 @@ describe("get book", () => {
     });
 
     it("should return 404 for non-existent book", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app).get(BookEndpoint.getBook(uuid())).set(token);
 
@@ -628,8 +629,8 @@ describe("get book", () => {
     });
 
     it("should not return book user doesn't have access to", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const createBookParams = {
             bookId: uuid(),
@@ -646,7 +647,7 @@ describe("get book", () => {
     });
 
     it("should return correct book details for book id", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const customisations = getBookCustomisations();
 
@@ -676,8 +677,8 @@ describe("get book", () => {
     });
 
     it("should return a book that a user is a member of", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const createBookParams = {
             bookId: uuid(),
@@ -699,7 +700,7 @@ describe("get book", () => {
     });
 
     it("should return book recipes", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const book = {
             bookId: uuid(),
@@ -760,8 +761,8 @@ describe("get book", () => {
     });
 
     it("should return book members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [bookMember] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [bookMember] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -809,8 +810,8 @@ describe("post book", () => {
     });
 
     it("should not allow editing if not book owner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -830,8 +831,8 @@ describe("post book", () => {
     });
 
     it("should not allow editing if book member but not book owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -860,8 +861,8 @@ describe("post book", () => {
     });
 
     it("should create book", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const users = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const users = await CreateUsers(db);
 
         const books = {
             data: Array.from({ length: randomNumber() }).map((_, i) => ({
@@ -913,7 +914,7 @@ describe("post book", () => {
     });
 
     it("should save updated book details as book owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const book = {
             bookId: uuid(),
@@ -945,9 +946,9 @@ describe("post book", () => {
     });
 
     it("should save additional book members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const initialUsers = await CreateUsers({ count: randomCount });
-        const additionalUsers = await CreateUsers({ count: randomCount });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const initialUsers = await CreateUsers(db, { count: randomCount });
+        const additionalUsers = await CreateUsers(db, { count: randomCount });
 
         const initialMembers: EntityMember[] = initialUsers.map(({ userId }) => ({ userId }));
         const additionalMembers: EntityMember[] = additionalUsers.map(({ userId }) => ({ userId }));
@@ -983,8 +984,8 @@ describe("post book", () => {
     });
 
     it("should remove some book members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const initialMembers = await CreateUsers({ count: randomCount });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const initialMembers = await CreateUsers(db, { count: randomCount });
 
         const members: EntityMember[] = initialMembers.map(({ userId }) => ({ userId }));
         const reducedMembers: EntityMember[] = members.slice(0, Math.max((members.length - 1) / 2));
@@ -1022,8 +1023,8 @@ describe("post book", () => {
     });
 
     it("should remove all book members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const members = await CreateUsers({ count: randomCount });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const members = await CreateUsers(db, { count: randomCount });
 
         const [book] = await BookActions.save({
             bookId: uuid(),
@@ -1063,7 +1064,7 @@ describe("post book member", () => {
     });
 
     it("should return 404 for non-existent book", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app).post(BookEndpoint.postBookMember(uuid())).set(token).send();
 
@@ -1071,8 +1072,8 @@ describe("post book member", () => {
     });
 
     it("should not allow editing if not existing book member", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -1089,8 +1090,8 @@ describe("post book member", () => {
     });
 
     it("should allow accepting if existing book member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -1139,7 +1140,7 @@ describe("post book recipe", () => {
     });
 
     it("should return 404 for non-existent book", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app)
             .post(BookEndpoint.postBookRecipe(uuid()))
@@ -1150,8 +1151,8 @@ describe("post book recipe", () => {
     });
 
     it("should not allow adding recipe if not book owner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -1171,8 +1172,8 @@ describe("post book recipe", () => {
     });
 
     it("should not allow adding recipe if book member without edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -1209,8 +1210,8 @@ describe("post book recipe", () => {
     });
 
     it("should allow adding recipe if book member with edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [bookOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [bookOwner] = await CreateUsers(db);
 
         const book = {
             bookId: uuid(),
@@ -1256,7 +1257,7 @@ describe("post book recipe", () => {
     });
 
     it("should allow editing if book owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const book = {
             bookId: uuid(),

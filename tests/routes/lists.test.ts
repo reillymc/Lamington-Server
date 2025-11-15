@@ -7,7 +7,7 @@ import { v4 as uuid } from "uuid";
 import { setupApp } from "../../src/app.ts";
 import { IngredientActions, ListActions, ListItemActions, ListMemberActions } from "../../src/controllers/index.ts";
 import type { ListItemService, ListService } from "../../src/controllers/spec/index.ts";
-import { type ListCustomisations, type ServiceParams } from "../../src/database/index.ts";
+import db, { type ListCustomisations, type ServiceParams } from "../../src/database/index.ts";
 import {
     type DeleteListRequestParams,
     type EntityMember,
@@ -48,8 +48,8 @@ describe("get lists", () => {
     });
 
     it("should return only lists for current user", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [otherUser] = await CreateUsers({ count: 1 });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [otherUser] = await CreateUsers(db, { count: 1 });
 
         const [_, count] = await CreateLists({ createdBy: user.userId });
         await CreateLists({ createdBy: otherUser!.userId });
@@ -64,8 +64,8 @@ describe("get lists", () => {
     });
 
     it("should return correct list membership details for user", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [otherUser] = await CreateUsers({ count: 1 });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [otherUser] = await CreateUsers(db, { count: 1 });
 
         const [editableLists] = await CreateLists({ createdBy: otherUser!.userId });
         const [acceptedLists] = await CreateLists({ createdBy: otherUser!.userId });
@@ -138,7 +138,7 @@ describe("get list", () => {
     });
 
     it("should return 404 for non-existent list", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app).get(ListEndpoint.getList(uuid())).set(token);
 
@@ -146,8 +146,8 @@ describe("get list", () => {
     });
 
     it("should not return list user doesn't have access to", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const createListParams = {
             listId: uuid(),
@@ -164,7 +164,7 @@ describe("get list", () => {
     });
 
     it("should return correct list details for list id", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const customisations = getListCustomisations();
 
@@ -193,8 +193,8 @@ describe("get list", () => {
     });
 
     it("should return a list that a user is a member of", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const createListParams = {
             listId: uuid(),
@@ -216,7 +216,7 @@ describe("get list", () => {
     });
 
     it("should return list items", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const list = {
             listId: uuid(),
@@ -272,8 +272,8 @@ describe("get list", () => {
     });
 
     it("should return list members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [listMember] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [listMember] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -321,8 +321,8 @@ describe("post list", () => {
     });
 
     it("should not allow editing if not list owner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -342,8 +342,8 @@ describe("post list", () => {
     });
 
     it("should not allow editing if list member but not list owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -372,8 +372,8 @@ describe("post list", () => {
     });
 
     it("should create list", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const users = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const users = await CreateUsers(db);
 
         const lists = {
             data: Array.from({ length: randomNumber() }).map((_, i) => ({
@@ -421,7 +421,7 @@ describe("post list", () => {
     });
 
     it("should save updated list details as list owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const list = {
             listId: uuid(),
@@ -453,9 +453,9 @@ describe("post list", () => {
     });
 
     it("should save additional list members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const initialUsers = await CreateUsers({ count: randomCount });
-        const additionalUsers = await CreateUsers({ count: randomCount });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const initialUsers = await CreateUsers(db, { count: randomCount });
+        const additionalUsers = await CreateUsers(db, { count: randomCount });
 
         const initialMembers: EntityMember[] = initialUsers.map(({ userId }) => ({ userId }));
         const additionalMembers: EntityMember[] = additionalUsers.map(({ userId }) => ({ userId }));
@@ -491,8 +491,8 @@ describe("post list", () => {
     });
 
     it("should remove some list members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const initialMembers = await CreateUsers({ count: randomCount });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const initialMembers = await CreateUsers(db, { count: randomCount });
 
         const members: EntityMember[] = initialMembers.map(({ userId }) => ({ userId }));
         const reducedMembers: EntityMember[] = members.slice(0, Math.max((members.length - 1) / 2));
@@ -530,8 +530,8 @@ describe("post list", () => {
     });
 
     it("should remove all list members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const members = await CreateUsers({ count: randomCount });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const members = await CreateUsers(db, { count: randomCount });
 
         const [list] = await ListActions.Save({
             listId: uuid(),
@@ -571,7 +571,7 @@ describe("delete list", () => {
     });
 
     it("should return 404 for non-existent list", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app)
             .delete(ListEndpoint.deleteList(uuid()))
@@ -582,8 +582,8 @@ describe("delete list", () => {
     });
 
     it("should not allow deletion if not list owner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -603,8 +603,8 @@ describe("delete list", () => {
     });
 
     it("should not allow deletion if list member but not list owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -633,7 +633,7 @@ describe("delete list", () => {
     });
 
     it("should delete list", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const list = {
             listId: uuid(),
@@ -668,7 +668,7 @@ describe("post list item", () => {
     });
 
     it("should return 404 for non-existent list", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app)
             .post(ListEndpoint.postListItem(uuid()))
@@ -679,8 +679,8 @@ describe("post list item", () => {
     });
 
     it("should not allow adding list item if not list owner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -700,8 +700,8 @@ describe("post list item", () => {
     });
 
     it("should not allow editing if list member without edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -739,8 +739,8 @@ describe("post list item", () => {
     });
 
     it("should allow editing if list member with edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -793,7 +793,7 @@ describe("post list item", () => {
     });
 
     it("should allow editing if list owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const list = {
             listId: uuid(),
@@ -837,7 +837,7 @@ describe("post list item", () => {
     });
 
     it("should save and return all fields", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const list = {
             listId: uuid(),
@@ -892,7 +892,7 @@ describe("post list item", () => {
     });
 
     it("should move list item from one list to another", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const sourceList = {
             listId: uuid(),
@@ -944,8 +944,8 @@ describe("post list item", () => {
     });
 
     it("should not move list item from source list to destination list if user does have edit permission on source list", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [otherUser] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [otherUser] = await CreateUsers(db);
 
         const sourceList = {
             listId: uuid(),
@@ -990,8 +990,8 @@ describe("post list item", () => {
     });
 
     it("should not move list item from source list to destination list if user does not have edit permission on destination list", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [otherUser] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [otherUser] = await CreateUsers(db);
 
         const sourceList = {
             listId: uuid(),
@@ -1050,7 +1050,7 @@ describe("delete list item", () => {
     });
 
     it("should return 404 for non-existent list", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app).delete(ListEndpoint.deleteListItem(uuid(), uuid())).set(token).send();
 
@@ -1058,8 +1058,8 @@ describe("delete list item", () => {
     });
 
     it("should not allow deletion if not list owner", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -1088,8 +1088,8 @@ describe("delete list item", () => {
     });
 
     it("should not allow item deletion if list member without edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -1127,8 +1127,8 @@ describe("delete list item", () => {
     });
 
     it("should allow item deletion if list member with edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -1170,7 +1170,7 @@ describe("delete list item", () => {
     });
 
     it("should allow deletion if list owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const list = {
             listId: uuid(),
@@ -1217,7 +1217,7 @@ describe("post list member", () => {
     });
 
     it("should return 404 for non-existent list", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app).post(ListEndpoint.postListMember(uuid())).set(token).send();
 
@@ -1225,8 +1225,8 @@ describe("post list member", () => {
     });
 
     it("should not allow editing if not existing list member", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -1243,8 +1243,8 @@ describe("post list member", () => {
     });
 
     it("should allow accepting if existing list member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -1293,7 +1293,7 @@ describe("delete list member", () => {
     });
 
     it("should return 404 for non-existent list", async () => {
-        const [token] = await PrepareAuthenticatedUser();
+        const [token] = await PrepareAuthenticatedUser(db);
 
         const res = await request(app).delete(ListEndpoint.deleteListMember(uuid(), uuid())).set(token).send();
 
@@ -1301,8 +1301,8 @@ describe("delete list member", () => {
     });
 
     it("should not allow deleting member from list where sender has no rights", async () => {
-        const [token] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -1322,7 +1322,7 @@ describe("delete list member", () => {
     });
 
     it("should not allow leaving a list the user owns", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(db);
 
         const list = {
             listId: uuid(),
@@ -1342,8 +1342,8 @@ describe("delete list member", () => {
     });
 
     it("should not allow member removing list owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -1372,8 +1372,8 @@ describe("delete list member", () => {
     });
 
     it("should allow removing member if list owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),
@@ -1406,8 +1406,8 @@ describe("delete list member", () => {
     });
 
     it("should not allow list member with edit permission to remove other member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [listOwner, otherMember] = await CreateUsers({ count: 2 });
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [listOwner, otherMember] = await CreateUsers(db, { count: 2 });
 
         const list = {
             listId: uuid(),
@@ -1442,8 +1442,8 @@ describe("delete list member", () => {
     });
 
     it("should allow removing self if list member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const [listOwner] = await CreateUsers();
+        const [token, user] = await PrepareAuthenticatedUser(db);
+        const [listOwner] = await CreateUsers(db);
 
         const list = {
             listId: uuid(),

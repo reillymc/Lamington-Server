@@ -1,7 +1,7 @@
 import express from "express";
 
 import { RecipeActions, RecipeRatingActions } from "../controllers/index.ts";
-import { AppError, AttachmentService, MessageAction, userMessage } from "../services/index.ts";
+import { AppError, MessageAction, userMessage } from "../services/index.ts";
 import {
     RecipeQueryResponseToRecipe,
     RecipeReadResponseToRecipe,

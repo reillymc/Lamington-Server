@@ -1,24 +1,32 @@
 import { expect } from "expect";
 import type { Express } from "express";
 import assert from "node:assert";
-import { before, describe, it } from "node:test";
+import { afterEach, before, beforeEach, describe, it } from "node:test";
 import request from "supertest";
+import type { Knex } from "knex";
 
 import { setupApp } from "../../src/app.ts";
 import { InternalUserActions, UserActions } from "../../src/controllers/user.ts";
 import { type LoginResponse, type RegisterRequestBody, UserStatus } from "../../src/routes/spec/index.ts";
 import { comparePassword } from "../../src/services/password.ts";
 import { AuthEndpoint, CreateUsers } from "../helpers/index.ts";
+import db from "../../src/database/index.ts";
 
 describe("login", () => {
+    let conn: Knex.Transaction;
     let app: Express;
 
-    before(async () => {
-        app = setupApp();
+    beforeEach(async () => {
+        conn = await db.transaction();
+        app = setupApp({ conn });
+    });
+
+    afterEach(async () => {
+        conn.rollback();
     });
 
     it("should fail login with invalid email", async () => {
-        const [user] = await CreateUsers();
+        const [user] = await CreateUsers(conn);
 
         if (!user) throw new Error("User not created");
 
@@ -33,7 +41,7 @@ describe("login", () => {
     });
 
     it("should fail login with invalid password", async () => {
-        const [user] = await CreateUsers();
+        const [user] = await CreateUsers(conn);
 
         if (!user) throw new Error("User not created");
 
@@ -48,7 +56,7 @@ describe("login", () => {
     });
 
     it("should login with valid credentials", async () => {
-        const [user] = await CreateUsers();
+        const [user] = await CreateUsers(conn);
 
         if (!user) throw new Error("User not created");
 
@@ -72,7 +80,7 @@ describe("login", () => {
     });
 
     it("should return pending error message when logging in with pending account", async () => {
-        const [user] = await CreateUsers({ status: UserStatus.Pending });
+        const [user] = await CreateUsers(conn, { status: UserStatus.Pending });
 
         if (!user) throw new Error("User not created");
 
@@ -92,10 +100,16 @@ describe("login", () => {
 });
 
 describe("register", () => {
+    let conn: Knex.Transaction;
     let app: Express;
 
-    before(async () => {
-        app = setupApp();
+    beforeEach(async () => {
+        conn = await db.transaction();
+        app = setupApp({ conn });
+    });
+
+    afterEach(async () => {
+        conn.rollback();
     });
 
     it("should fail register missing password", async () => {
@@ -134,7 +148,7 @@ describe("register", () => {
 
         expect(res.statusCode).toEqual(200);
 
-        const pendingUsers = await UserActions.readPending();
+        const pendingUsers = await UserActions.readPending(conn);
 
         expect(pendingUsers.length).toEqual(1);
 
@@ -158,7 +172,7 @@ describe("register", () => {
 
         expect(res.statusCode).toEqual(200);
 
-        const pendingUsers = await UserActions.readPending();
+        const pendingUsers = await UserActions.readPending(conn);
 
         expect(pendingUsers.length).toEqual(1);
 
@@ -179,7 +193,7 @@ describe("register", () => {
 
         expect(res.statusCode).toEqual(200);
 
-        const [user] = await InternalUserActions.read({ email: requestBody.email });
+        const [user] = await InternalUserActions.read(conn, { email: requestBody.email });
 
         if (!user) throw new Error("User not created");
 
