@@ -335,7 +335,38 @@ const save: RecipeService["Save"] = async params => {
         .onConflict("contentId")
         .merge();
 
-    await db<Recipe>(lamington.recipe).insert(recipeData).onConflict("recipeId").merge();
+    await db<Recipe>(lamington.recipe)
+        .insert(
+            recipes.map(
+                ({
+                    name,
+                    public: isPublic,
+                    recipeId,
+                    cookTime,
+                    nutritionalInformation,
+                    prepTime,
+                    servings,
+                    source,
+                    summary,
+                    timesCooked,
+                    tips,
+                }) => ({
+                    name,
+                    public: isPublic,
+                    recipeId,
+                    cookTime,
+                    nutritionalInformation,
+                    prepTime,
+                    servings,
+                    source,
+                    summary,
+                    timesCooked,
+                    tips,
+                })
+            )
+        )
+        .onConflict("recipeId")
+        .merge();
 
     // Create new RecipeSections rows
     const recipesSections = recipes.map(recipeItem => ({

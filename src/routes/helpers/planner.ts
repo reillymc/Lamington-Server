@@ -2,7 +2,7 @@ import { v4 as Uuid } from "uuid";
 
 import { PlannerActions, type PlannerMemberActions } from "../../controllers/index.ts";
 import type { PlannerMealService, PlannerService } from "../../controllers/spec/index.ts";
-import type { PlannerCustomisations, ServiceParams } from "../../database/index.ts";
+import type { ServiceParams } from "../../database/index.ts";
 import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils/index.ts";
 import {
     type Planner,
@@ -24,7 +24,7 @@ export const validatePostPlannerBody = ({ data }: PostPlannerRequestBody, userId
         const validItem: ServiceParams<PlannerService, "Save"> = {
             plannerId,
             name,
-            customisations: { color: DefaultPlannerColor },
+            customisations: { color: color ?? DefaultPlannerColor },
             createdBy: userId,
             ...item,
         };

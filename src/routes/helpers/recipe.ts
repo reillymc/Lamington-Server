@@ -259,7 +259,7 @@ export const RecipeQueryResponseToRecipe = (
         | ServiceResponse<RecipeService, "QueryByUser">
         | ServiceResponse<RecipeService, "QueryByBook">
 ): Recipe => {
-    const heroAttachment = recipe.attachments.find(att => att.displayType === "hero");
+    const heroAttachment = recipe.attachments?.find(att => att.displayType === "hero");
 
     return {
         ...recipe,
