@@ -5,11 +5,9 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import { setupApp } from "../../src/app.ts";
-import type { CreateBookMemberParams } from "../../src/controllers/bookMember.ts";
-import { BookActions, BookMemberActions, BookRecipeActions, RecipeActions } from "../../src/controllers/index.ts";
+import { BookActions, BookRecipeActions, RecipeActions, BookMemberActions } from "../../src/controllers/index.ts";
 import type { RecipeService } from "../../src/controllers/spec/recipe.ts";
-import type { BookRecipe, ServiceParams } from "../../src/database/index.ts";
-import type { BookCustomisations } from "../../src/routes/helpers/book.ts";
+import type { BookCustomisations, BookRecipe, ServiceParams } from "../../src/database/index.ts";
 import {
     type DeleteBookRequestParams,
     type EntityMember,
@@ -67,34 +65,28 @@ describe("get all books", () => {
         const [nonAcceptedBooks] = await CreateBooks({ createdBy: otherUser!.userId });
 
         await BookMemberActions.save([
-            ...editableBooks.map(
-                ({ bookId }): CreateBookMemberParams => ({
-                    bookId,
-                    members: [
-                        {
-                            userId: user.userId,
-                            status: UserStatus.Administrator,
-                        },
-                    ],
-                })
-            ),
-            ...acceptedBooks.map(
-                ({ bookId }): CreateBookMemberParams => ({
-                    bookId,
-                    members: [
-                        {
-                            userId: user.userId,
-                            status: UserStatus.Member,
-                        },
-                    ],
-                })
-            ),
-            ...nonAcceptedBooks.map(
-                ({ bookId }): CreateBookMemberParams => ({
-                    bookId,
-                    members: [{ userId: user.userId, status: UserStatus.Pending }],
-                })
-            ),
+            ...editableBooks.map(({ bookId }) => ({
+                bookId,
+                members: [
+                    {
+                        userId: user.userId,
+                        status: UserStatus.Administrator,
+                    },
+                ],
+            })),
+            ...acceptedBooks.map(({ bookId }) => ({
+                bookId,
+                members: [
+                    {
+                        userId: user.userId,
+                        status: UserStatus.Member,
+                    },
+                ],
+            })),
+            ...nonAcceptedBooks.map(({ bookId }) => ({
+                bookId,
+                members: [{ userId: user.userId, status: UserStatus.Pending }],
+            })),
         ]);
 
         const res = await request(app).get(BookEndpoint.getBooks).set(token);
@@ -138,7 +130,7 @@ describe("delete book", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existant book", async () => {
+    it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser();
 
         const res = await request(app)
@@ -235,7 +227,7 @@ describe("delete book member", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existant book", async () => {
+    it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser();
 
         const res = await request(app).delete(BookEndpoint.deleteBookMember(uuid(), uuid())).set(token).send();
@@ -293,7 +285,7 @@ describe("delete book member", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const bookMembers = await BookMemberActions.read({ entityId: book.bookId });
+        const bookMembers = await BookMemberActions.read(book);
 
         expect(bookMembers.length).toEqual(0);
     });
@@ -378,7 +370,7 @@ describe("delete book recipe", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existant book", async () => {
+    it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser();
 
         const res = await request(app).delete(BookEndpoint.deleteBookRecipe(uuid(), uuid())).set(token).send();
@@ -627,7 +619,7 @@ describe("get book", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existant book", async () => {
+    it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser();
 
         const res = await request(app).get(BookEndpoint.getBook(uuid())).set(token);
@@ -895,7 +887,7 @@ describe("post book", () => {
 
         expect(savedBooks.length).toEqual(books.data.length);
 
-        const savedBookMembers = await BookMemberActions.read(savedBooks.map(({ bookId }) => ({ entityId: bookId })));
+        const savedBookMembers = await BookMemberActions.read(savedBooks);
 
         for (const book of savedBooks) {
             const expectedBook = books.data.find(({ bookId }) => bookId === book.bookId);
@@ -969,7 +961,7 @@ describe("post book", () => {
             members: initialMembers,
         });
 
-        const initialBookMembers = await BookMemberActions.read({ entityId: book!.bookId });
+        const initialBookMembers = await BookMemberActions.read(book!);
         expect(initialBookMembers.length).toEqual(initialMembers.length);
 
         const res = await request(app)
@@ -979,7 +971,7 @@ describe("post book", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const savedBookMembers = await BookMemberActions.read({ entityId: book!.bookId });
+        const savedBookMembers = await BookMemberActions.read(book!);
 
         expect(savedBookMembers.length).toEqual(allMembers.length);
 
@@ -1008,7 +1000,7 @@ describe("post book", () => {
             members,
         });
 
-        const initialBookMembers = await BookMemberActions.read({ entityId: book!.bookId });
+        const initialBookMembers = await BookMemberActions.read(book!);
         expect(initialBookMembers.length).toEqual(members.length);
         const res = await request(app)
             .post(BookEndpoint.postBook)
@@ -1017,7 +1009,7 @@ describe("post book", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const updatedBookMembers = await BookMemberActions.read({ entityId: book!.bookId });
+        const updatedBookMembers = await BookMemberActions.read(book!);
         expect(updatedBookMembers.length).toEqual(reducedMembers.length);
 
         updatedBookMembers.forEach(({ userId }) => {
@@ -1041,7 +1033,7 @@ describe("post book", () => {
             members: members.map(({ userId }) => ({ userId })),
         });
 
-        const initialBookMembers = await BookMemberActions.read({ entityId: book!.bookId });
+        const initialBookMembers = await BookMemberActions.read(book!);
         expect(initialBookMembers.length).toEqual(members.length);
 
         const res = await request(app)
@@ -1051,7 +1043,7 @@ describe("post book", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const savedBookMembers = await BookMemberActions.read({ entityId: book!.bookId });
+        const savedBookMembers = await BookMemberActions.read(book!);
 
         expect(savedBookMembers.length).toEqual(0);
     });
@@ -1070,7 +1062,7 @@ describe("post book member", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existant book", async () => {
+    it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser();
 
         const res = await request(app).post(BookEndpoint.postBookMember(uuid())).set(token).send();
@@ -1122,7 +1114,7 @@ describe("post book member", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const bookMembers = await BookMemberActions.read({ entityId: book.bookId });
+        const bookMembers = await BookMemberActions.read(book);
 
         expect(bookMembers.length).toEqual(1);
 
@@ -1146,7 +1138,7 @@ describe("post book recipe", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existant book", async () => {
+    it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser();
 
         const res = await request(app)

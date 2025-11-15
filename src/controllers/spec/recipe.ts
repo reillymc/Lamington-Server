@@ -1,3 +1,4 @@
+import type { Content } from "../../database/definitions/content.ts";
 import type {
     Book,
     DeleteService,
@@ -7,6 +8,7 @@ import type {
     RecipeIngredient,
     RecipeRating,
     SaveService,
+    ServiceParams,
     ServiceResponse,
     Tag,
     User,
@@ -14,7 +16,9 @@ import type {
 import { RecipeIngredientActions } from "../recipeIngredient.ts";
 import { RecipeSectionActions } from "../recipeSection.ts";
 import { RecipeStepActions } from "../recipeStep.ts";
-import { RecipeTagActions } from "../recipeTag.ts";
+import { ContentTagActions } from "../content/contentTag.ts";
+import type { RecipeTagActions } from "../recipeTag.ts";
+import type { RecipeAttachmentActions } from "../recipeAttachment.ts";
 
 interface Section<T> {
     sectionId: string;
@@ -34,12 +38,11 @@ interface RecipeIngredientItem
 export interface RecipeMethodStep {
     id: string;
     description?: string;
-    photo?: string;
 }
 
 export type RecipeMethod = Array<Section<RecipeMethodStep>>;
 
-export type RecipeTags = { [tagGroup: string]: Partial<Tag> & { tags?: Array<Tag> } };
+export type ContentTags = { [tagGroup: string]: Partial<Tag> & { tags?: Array<Tag> } };
 
 type RecipeIngredients = Array<Section<RecipeIngredientItem>>;
 
@@ -50,14 +53,10 @@ interface ReadRecipeResponse
         Recipe,
         | "recipeId"
         | "name"
-        | "photo"
         | "timesCooked"
         | "cookTime"
         | "prepTime"
-        | "createdAt"
-        | "updatedAt"
         | "public"
-        | "createdBy"
         | "servings"
         | "source"
         | "summary"
@@ -70,21 +69,24 @@ interface ReadRecipeResponse
     sections: ServiceResponse<RecipeSectionActions, "queryByRecipeId">[];
     tags: ServiceResponse<RecipeTagActions, "readByRecipeId">[];
     createdByName: User["firstName"];
+    createdBy: Content["createdBy"];
+    attachments: ServiceResponse<RecipeAttachmentActions, "read">[];
 }
 
-type QueryRecipesResult = Pick<
-    Recipe,
-    "recipeId" | "name" | "photo" | "timesCooked" | "cookTime" | "prepTime" | "createdAt" | "public" | "createdBy"
-> & {
+type QueryRecipesResult = Pick<Recipe, "recipeId" | "name" | "timesCooked" | "cookTime" | "prepTime" | "public"> & {
     ratingAverage: RecipeRating["rating"];
     ratingPersonal: RecipeRating["rating"];
-    tags: ServiceResponse<RecipeTagActions, "readByRecipeId">[];
+    tags: ServiceResponse<ContentTagActions, "readByContentId">[];
     createdByName: User["firstName"];
+    createdBy: Content["createdBy"];
+    attachments: ServiceResponse<RecipeAttachmentActions, "read">[];
 };
 
 type RecipeQuerySortOptions = "name" | "ratingPersonal" | "ratingAverage" | "time";
 
-interface RecipeReadSummaryResponse extends Pick<Recipe, "recipeId" | "photo" | "createdBy"> {}
+interface RecipeReadSummaryResponse extends Pick<Recipe, "recipeId"> {
+    createdBy: Content["createdBy"];
+}
 
 export interface RecipeService {
     Delete: DeleteService<Recipe, "recipeId">;
@@ -94,7 +96,9 @@ export interface RecipeService {
             ingredients?: RecipeIngredients;
             method?: RecipeMethod;
             ratingPersonal?: number;
-            tags?: RecipeTags;
+            tags?: ContentTags;
+            createdBy: Content["createdBy"];
+            attachments?: ServiceParams<RecipeAttachmentActions, "save">["attachments"];
         }
     >;
 

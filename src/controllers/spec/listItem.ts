@@ -1,3 +1,4 @@
+import type { Content } from "../../database/definitions/content.ts";
 import type { DeleteService, ListItem, ReadService, SaveService } from "../../database/index.ts";
 
 interface CountListItemsResponse {
@@ -22,14 +23,14 @@ export interface ListItemService {
      * @security Insecure: route authentication check required (user read permission on lists)
      * @returns an array of listsItems matching given ids
      */
-    Read: ReadService<ListItem, "listId">;
 
+    Read: ReadService<ListItem & { createdBy: Content["createdBy"]; updatedAt: Content["updatedAt"] }, "listId">;
     /**
      * Creates or Saves a new list item from params
      * @security Insecure: route authentication check required (user save permission on lists)
      * @returns the newly created list items
      */
-    Save: SaveService<Omit<ListItem, "updatedAt">>;
+    Save: SaveService<Omit<ListItem, "updatedAt"> & { createdBy: Content["createdBy"] }>;
 
     /**
      * Get outstanding item count for list

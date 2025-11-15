@@ -9,13 +9,13 @@ export const compressImage = (file: Buffer) =>
         .withMetadata()
         .toBuffer();
 
-export const unsavedImagePath = (userId: string, entity: string) =>
-    `${config.attachments.path}/${userId}/${entity}/unsaved.jpg`;
+export const constructAttachmentPath = (userId: string, attachmentId: string, extension: string) => {
+    const uploadPath = `${config.attachments.path}/${userId}/${attachmentId}.${extension}`;
+    const uri = `${config.attachments.storageService}:${uploadPath}`;
+    return { uri, uploadPath };
+};
 
-export const imagePath = (userId: string, entity: string, entityId: string, version: number) =>
-    `${config.attachments.path}/${userId}/${entity}/${entityId}_${version}.jpg`;
-
-export const deconstructUrl = (url: string) => {
-    const [service, filePath] = url.split(":");
+export const deconstructAttachmentUri = (uri: string) => {
+    const [service, filePath] = uri.split(":");
     return { service, filePath };
 };

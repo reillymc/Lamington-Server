@@ -5,9 +5,8 @@ import { lamington } from "./lamington.ts";
  * Meal
  */
 export type Meal = {
-    id: string;
+    mealId: string;
     plannerId?: string;
-    createdBy: string;
     year?: number;
     month?: number;
     dayOfMonth?: number;
@@ -16,12 +15,12 @@ export type Meal = {
     source?: string;
     sequence?: number;
     recipeId?: string;
+    notes?: string;
 };
 
 export const plannerMeal: Table<Meal> = {
-    id: `${lamington.plannerMeal}.id`,
+    mealId: `${lamington.plannerMeal}.mealId`,
     plannerId: `${lamington.plannerMeal}.plannerId`,
-    createdBy: `${lamington.plannerMeal}.createdBy`,
     year: `${lamington.plannerMeal}.year`,
     month: `${lamington.plannerMeal}.month`,
     dayOfMonth: `${lamington.plannerMeal}.dayOfMonth`,
@@ -30,4 +29,5 @@ export const plannerMeal: Table<Meal> = {
     source: `${lamington.plannerMeal}.source`,
     sequence: `${lamington.plannerMeal}.sequence`,
     recipeId: `${lamington.plannerMeal}.recipeId`,
+    notes: `${lamington.plannerMeal}.notes`,
 } as const;

@@ -24,7 +24,6 @@ export interface Ingredient {
     ingredientId: string;
     name: string;
     description?: string;
-    photo?: string;
     createdBy?: User["userId"];
 }
 
@@ -56,7 +55,6 @@ export type PostIngredientRequestBody = BaseRequestBody<{
     ingredientId?: Ingredient["ingredientId"];
     name?: Ingredient["name"];
     description?: Ingredient["description"];
-    photo?: Ingredient["photo"];
 }>;
 
 export type PostIngredientRequest = BaseRequest<PostIngredientRequestBody & PostIngredientRequestParams>;

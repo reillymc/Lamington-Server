@@ -83,10 +83,6 @@
                         "type": "string",
                         "default": "Swagger Generated Note"
                     },
-                    "photo": {
-                        "type": "string",
-                        "default": "default.jpg"
-                    },
                     "servings": {
                         "type": "integer",
                         "default": 1

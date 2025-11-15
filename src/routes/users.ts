@@ -239,7 +239,7 @@ const createDefaultUserData = async (userId: string) => {
         {
             plannerId,
             createdBy: userId,
-            id: Uuid(),
+            mealId: Uuid(),
             recipeId,
             year: new Date().getFullYear(),
             month: new Date().getMonth(),
@@ -250,7 +250,7 @@ const createDefaultUserData = async (userId: string) => {
         {
             plannerId,
             createdBy: userId,
-            id: Uuid(),
+            mealId: Uuid(),
             recipeId: undefined,
             year: new Date().getFullYear(),
             month: new Date().getMonth(),

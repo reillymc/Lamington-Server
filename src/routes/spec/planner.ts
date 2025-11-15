@@ -38,7 +38,7 @@ export type Planner = {
  * Planner meal
  */
 export type PlannerMeal = {
-    id: string;
+    mealId: string;
     plannerId: string;
     createdBy: string;
     year: number;
@@ -103,7 +103,7 @@ export type PostPlannerMealService = (request: PostPlannerMealRequest) => PostPl
 // Delete planner meal
 export type DeletePlannerMealRequestParams = BaseRequestParams<{
     [plannerIdParam]: Planner["plannerId"];
-    [plannerMealIdParam]: PlannerMeal["id"];
+    [plannerMealIdParam]: PlannerMeal["mealId"];
 }>;
 export type DeletePlannerMealRequestBody = BaseRequestBody;
 

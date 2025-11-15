@@ -26,7 +26,7 @@ describe("get ingredients", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return ingredients from all users user", async () => {
+    it("should return ingredients from all users", async () => {
         const [token, _] = await PrepareAuthenticatedUser();
         const randomUsers = await CreateUsers({ count: randomNumber() });
 

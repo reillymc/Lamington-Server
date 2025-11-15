@@ -9,7 +9,6 @@ export type ListItem = {
     itemId: string;
     listId: string;
     name: string;
-    updatedAt: string;
     completed: boolean;
     ingredientId?: string;
     unit?: string;
@@ -20,18 +19,15 @@ export type ListItem = {
      */
     amount?: ListItemIngredientAmount;
     notes?: string;
-    createdBy: string;
 };
 
 export const listItem: Table<ListItem> = {
     itemId: `${lamington.listItem}.itemId`,
     listId: `${lamington.listItem}.listId`,
     name: `${lamington.listItem}.name`,
-    updatedAt: `${lamington.listItem}.updatedAt`,
     completed: `${lamington.listItem}.completed`,
     ingredientId: `${lamington.listItem}.ingredientId`,
     unit: `${lamington.listItem}.unit`,
     amount: `${lamington.listItem}.amount`,
     notes: `${lamington.listItem}.notes`,
-    createdBy: `${lamington.listItem}.createdBy`,
 } as const;

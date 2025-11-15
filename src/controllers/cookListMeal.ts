@@ -1,7 +1,22 @@
-import db, { type DeleteService, type Meal, type ReadMyService, type ReadService, type SaveService, lamington, plannerMeal } from "../database/index.ts";
-import { EnsureArray } from "../utils/index.ts";
+import { attachment, type Attachment } from "../database/definitions/attachment.ts";
+import { content, type Content } from "../database/definitions/content.ts";
+import { contentAttachment } from "../database/definitions/contentAttachment.ts";
+import db, {
+    type DeleteService,
+    type Meal,
+    type ReadMyService,
+    type ReadService,
+    type SaveService,
+    lamington,
+    plannerMeal,
+} from "../database/index.ts";
+import { EnsureArray, Undefined } from "../utils/index.ts";
+import { MealAttachmentActions } from "./mealAttachment.ts";
 
-export type CookListMeal = Pick<Meal, "id" | "meal" | "description" | "createdBy" | "recipeId" | "source" | "sequence">;
+export type CookListMeal = Pick<Meal, "mealId" | "meal" | "description" | "recipeId" | "source" | "sequence"> &
+    Pick<Content, "createdBy"> & {
+        heroImage?: { attachmentId: Attachment["attachmentId"]; uri: Attachment["uri"] };
+    };
 
 /**
  * Get cook list meals by user id
@@ -10,21 +25,30 @@ export type CookListMeal = Pick<Meal, "id" | "meal" | "description" | "createdBy
  * @returns an array of queued cook list meals (no dates assigned) matching given ids,
  */
 const readMyMeals: ReadMyService<CookListMeal> = async params => {
-    const query = db<CookListMeal>(lamington.plannerMeal)
+    const query = await db<CookListMeal>(lamington.plannerMeal)
         .select(
-            plannerMeal.id,
+            plannerMeal.mealId,
             plannerMeal.meal,
             plannerMeal.description,
-            plannerMeal.createdBy,
+            content.createdBy,
             plannerMeal.recipeId,
             plannerMeal.source,
-            plannerMeal.sequence
+            plannerMeal.sequence,
+            db.ref(contentAttachment.attachmentId).as("heroAttachmentId"),
+            db.ref(attachment.uri).as("heroAttachmentUri")
         )
-        .where(plannerMeal.createdBy, params.userId)
+        .where(content.createdBy, params.userId)
+        .leftJoin(lamington.content, content.contentId, plannerMeal.mealId)
+        .leftJoin(lamington.contentAttachment, contentAttachment.contentId, plannerMeal.mealId)
+        .leftJoin(lamington.attachment, attachment.attachmentId, contentAttachment.attachmentId)
         .whereNull(plannerMeal.plannerId)
         .whereNull(plannerMeal.year)
         .whereNull(plannerMeal.month);
-    return query;
+
+    return query.map(({ heroAttachmentId, heroAttachmentUri, ...meal }) => ({
+        ...meal,
+        heroImage: heroAttachmentId ? { attachmentId: heroAttachmentId, uri: heroAttachmentUri } : undefined,
+    }));
 };
 
 /**
@@ -35,7 +59,45 @@ const readMyMeals: ReadMyService<CookListMeal> = async params => {
 const saveMeals: SaveService<CookListMeal> = async params => {
     const meals = EnsureArray(params);
 
-    return db<Meal>(lamington.plannerMeal).insert(meals).onConflict(["id"]).merge().returning("id");
+    // const result = await db.transaction(async trx => {
+    await db<Content>(lamington.content)
+        .insert(
+            meals.map(({ mealId, createdBy }) => ({
+                contentId: mealId,
+                createdBy,
+            }))
+        )
+        .onConflict("contentId")
+        .merge();
+
+    await MealAttachmentActions.save(
+        meals
+            .map(({ heroImage, mealId }) => {
+                if (!heroImage) return;
+                return {
+                    mealId,
+                    attachments: [{ attachmentId: heroImage.attachmentId, displayType: "hero" }],
+                };
+            })
+            .filter(Undefined),
+        { trimNotIn: true }
+    );
+
+    return db<Meal>(lamington.plannerMeal)
+        .insert(
+            meals.map(({ mealId, meal, description, recipeId, source, sequence }) => ({
+                mealId,
+                meal,
+                description,
+                recipeId,
+                source,
+                sequence,
+            }))
+        )
+        .onConflict(["mealId"])
+        .merge()
+        .returning("mealId");
+    // });
 };
 
 /**
@@ -44,11 +106,11 @@ const saveMeals: SaveService<CookListMeal> = async params => {
  * Insecure - route authentication check required (user delete permission on meals)
  * @returns the number of rows deleted
  */
-const deleteMeals: DeleteService<CookListMeal, "id"> = async params =>
-    db<Meal>(lamington.plannerMeal)
+const deleteMeals: DeleteService<CookListMeal, "mealId"> = async params =>
+    db<Content>(lamington.content)
         .whereIn(
-            "id",
-            EnsureArray(params).map(({ id }) => id)
+            "contentId",
+            EnsureArray(params).map(({ mealId }) => mealId)
         )
         .delete();
 
@@ -58,11 +120,12 @@ const deleteMeals: DeleteService<CookListMeal, "id"> = async params =>
  * Insecure - route authentication check required (user read permission on meals)
  * @returns an array of queued cook list meals matching given ids,
  */
-const readMeals: ReadService<CookListMeal, "id"> = async params => {
-    const mealIds = EnsureArray(params).map(({ id }) => id);
+const readMeals: ReadService<CookListMeal, "mealId"> = async params => {
+    const mealIds = EnsureArray(params).map(({ mealId }) => mealId);
     return db<Meal>(lamington.plannerMeal)
-        .select("id", "meal", "description", "createdBy", "recipeId", "source", "sequence")
-        .whereIn("id", mealIds)
+        .select("mealId", "meal", "description", content.createdBy, "recipeId", "source", "sequence")
+        .leftJoin(lamington.content, content.contentId, plannerMeal.mealId)
+        .whereIn("mealId", mealIds)
         .whereNull("plannerId")
         .whereNull("year")
         .whereNull("month");

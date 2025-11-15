@@ -107,7 +107,7 @@ router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(
             if (!list) return next(new NotFoundError("list", listId));
 
             const listItemsResponse = await ListItemActions.Read({ listId });
-            const listMembersResponse = await ListMemberActions.read({ entityId: listId });
+            const listMembersResponse = await ListMemberActions.read({ listId });
 
             const data = prepareGetListResponseBody({
                 list,
@@ -194,8 +194,6 @@ router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequest
             if (!permissionsValid) return next(new PermissionError("list item"));
 
             await ListItemActions.Save(validListItems);
-
-            if (movedItems.length) await ListItemActions.Delete(movedItems);
 
             return res.status(201).json({ error: false, message: "List item added." });
         } catch (e: unknown) {
@@ -361,7 +359,7 @@ router.delete<DeleteListMemberRequestParams, DeleteListMemberResponse, DeleteLis
                 );
             }
 
-            await ListMemberActions.delete({ entityId: listId, userId: userToDelete });
+            await ListMemberActions.delete({ listId, userId: userToDelete });
             return res.status(201).json({ error: false, message: "List member removed." });
         } catch (e: unknown) {
             next(

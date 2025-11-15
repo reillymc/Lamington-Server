@@ -11,8 +11,6 @@ export const recipeMethodRequestToRows = ({
     if (!method?.length) return;
 
     return method.flatMap(({ sectionId, items }) =>
-        items.map(
-            ({ id, description, photo }, index): RecipeStep => ({ id, recipeId, sectionId, index, description, photo })
-        )
+        items.map(({ id, description }, index): RecipeStep => ({ id, recipeId, sectionId, index, description }))
     );
 };

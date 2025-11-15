@@ -1,6 +1,6 @@
 import { v4 as Uuid } from "uuid";
 
-import { PlannerActions, PlannerMemberActions } from "../../controllers/index.ts";
+import { PlannerActions, type PlannerMemberActions } from "../../controllers/index.ts";
 import type { PlannerMealService, PlannerService } from "../../controllers/spec/index.ts";
 import type { ServiceParams } from "../../database/index.ts";
 import { BisectOnValidItems, EnsureArray, EnsureDefinedArray } from "../../utils/index.ts";
@@ -13,6 +13,8 @@ import {
 import { validatePermissions } from "./permissions.ts";
 import { getStatus } from "./user.ts";
 
+const DefaultPlannerColor = "variant1";
+
 export const validatePostPlannerBody = ({ data }: PostPlannerRequestBody, userId: string) => {
     const filteredData = EnsureDefinedArray(data);
 
@@ -22,7 +24,7 @@ export const validatePostPlannerBody = ({ data }: PostPlannerRequestBody, userId
         const validItem: ServiceParams<PlannerService, "Save"> = {
             plannerId,
             name,
-            customisations: { color },
+            customisations: { color: color ?? DefaultPlannerColor },
             createdBy: userId,
             ...item,
         };
@@ -38,11 +40,11 @@ export const validatePostPlannerMealBody = (
 ) => {
     const filteredData = EnsureDefinedArray(data);
 
-    return BisectOnValidItems(filteredData, ({ id = Uuid(), dayOfMonth, month, meal, year, ...item }) => {
+    return BisectOnValidItems(filteredData, ({ mealId = Uuid(), dayOfMonth, month, meal, year, ...item }) => {
         if (dayOfMonth == undefined || month == undefined || !meal || year == undefined) return;
 
         const validItem: ServiceParams<PlannerMealService, "Save"> = {
-            id,
+            mealId,
             meal,
             year,
             month,
@@ -84,26 +86,6 @@ export const prepareGetPlannerResponseBody = (
         : undefined,
     status: getStatus(planner.status, planner.createdBy === userId),
 });
-
-type PlannerCustomisationsV1 = Pick<Planner, "color">;
-export type PlannerCustomisations = PlannerCustomisationsV1;
-const DefaultPlannerIcon = "variant1";
-
-export const parsePlannerCustomisations = (customisations?: string): PlannerCustomisations => {
-    try {
-        const parsed = JSON.parse(customisations ?? "{}") as Partial<PlannerCustomisationsV1>;
-
-        return { color: parsed.color ?? DefaultPlannerIcon };
-    } catch {
-        return { color: DefaultPlannerIcon };
-    }
-};
-
-export const stringifyPlannerCustomisations = (customisations: Partial<PlannerCustomisations>): string => {
-    const { color = DefaultPlannerIcon } = customisations;
-
-    return JSON.stringify({ color });
-};
 
 interface ValidatedPermissions {
     permissionsValid: boolean;

@@ -1,11 +1,8 @@
-import db, { lamington, type Meal, plannerMeal, type ReadService } from "../database/index.ts";
+import { content, type Content } from "../database/definitions/content.ts";
+import db, { lamington, plannerMeal, type ReadService } from "../database/index.ts";
 import { EnsureArray } from "../utils/index.ts";
 import { type PlannerMealService } from "./spec/index.ts";
-
-export type PlannerMeal = Pick<
-    Meal,
-    "id" | "plannerId" | "year" | "month" | "dayOfMonth" | "meal" | "description" | "recipeId" | "createdBy" | "source"
-> & { plannerId: string; year: number; month: number; dayOfMonth: number };
+import type { PlannerMeal } from "./spec/plannerMeal.ts";
 
 /**
  * Get planner meals by id or ids
@@ -28,7 +25,9 @@ const readPlannerMeals: PlannerMealService["Read"] = async params => {
             .orWhere(plannerMeal.month, previousMonth)
             .andWhere(plannerMeal.dayOfMonth, ">=", 21)
             .orWhere(plannerMeal.month, nextMonth)
-            .andWhere(plannerMeal.dayOfMonth, "<=", 7);
+            .andWhere(plannerMeal.dayOfMonth, "<=", 7)
+            .leftJoin(lamington.content, content.contentId, plannerMeal.mealId)
+            .select("planner_meal.*", content.createdBy);
 
         response.push(...plannerItem);
     }
@@ -43,20 +42,56 @@ const readPlannerMeals: PlannerMealService["Read"] = async params => {
 const savePlannerMeals: PlannerMealService["Save"] = async params => {
     const meals = EnsureArray(params);
 
-    return db<PlannerMeal>(lamington.plannerMeal).insert(meals).onConflict("id").merge().returning("id");
+    // const result = await db.transaction(async trx => {
+    await db<Content>(lamington.content)
+        .insert(
+            meals.map(({ mealId, createdBy }) => ({
+                contentId: mealId,
+                createdBy,
+            }))
+        )
+        .onConflict("contentId")
+        .merge();
+
+    const result = await db<PlannerMeal>(lamington.plannerMeal)
+        .insert(
+            meals.map(({ mealId, dayOfMonth, meal, month, plannerId, year, description, recipeId, source }) => ({
+                mealId,
+                dayOfMonth,
+                meal,
+                month,
+                plannerId,
+                year,
+                description,
+                recipeId,
+                source,
+            }))
+        )
+        .onConflict("mealId") // TODO: can this now overwrite other users items on conflict?
+        .merge()
+        .returning(["mealId"]);
+
+    return db(lamington.plannerMeal)
+        .select("planner_meal.*", "content.createdBy", "content.createdAt")
+        .whereIn(
+            "mealId",
+            result.map(item => item.mealId)
+        )
+        .join(lamington.content, plannerMeal.mealId, "content.contentId");
+    // });
+
+    // return result;
 };
 
 /**
  * Creates a new planner from params
  * @returns the newly created planners
  */
-const deletePlannerMeals: PlannerMealService["Delete"] = async params =>
-    db(lamington.plannerMeal)
-        .whereIn(
-            plannerMeal.id,
-            EnsureArray(params).map(({ id }) => id)
-        )
-        .delete();
+const deletePlannerMeals: PlannerMealService["Delete"] = async params => {
+    const plannerMeals = EnsureArray(params).map(({ mealId }) => mealId);
+
+    return db<Content>(lamington.content).whereIn(content.contentId, plannerMeals).delete();
+};
 
 export const PlannerMealActions: PlannerMealService = {
     /**
@@ -89,7 +124,10 @@ export type PlannerMealActions = typeof PlannerMealActions;
 const readAllPlannerMeals: ReadService<PlannerMeal, "plannerId"> = async params => {
     const plannerIds = EnsureArray(params).map(({ plannerId }) => plannerId);
 
-    const query = db<PlannerMeal>(lamington.plannerMeal).whereIn(plannerMeal.plannerId, plannerIds);
+    const query = db<PlannerMeal>(lamington.plannerMeal)
+        .whereIn(plannerMeal.plannerId, plannerIds)
+        .leftJoin(lamington.content, content.contentId, plannerMeal.mealId)
+        .select("planner_meal.*", "content.createdBy");
 
     return query;
 };

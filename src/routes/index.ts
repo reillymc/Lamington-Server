@@ -1,7 +1,7 @@
 import express from "express";
 
 import { notFoundMiddleware } from "../middleware/index.ts";
-import { default as attachmentsRouter } from "./attachments.ts";
+import { createAttachmentsRouter } from "./attachments.ts";
 import { default as authRouter } from "./auth.ts";
 import { default as booksRouter } from "./books.ts";
 import { default as cookListsRouter } from "./cookLists.ts";
@@ -25,20 +25,21 @@ import {
 } from "./spec/index.ts";
 import { default as tagsRouter } from "./tags.ts";
 import { default as usersRouter } from "./users.ts";
+import type { Knex } from "knex";
 
-const appRouter = express.Router();
-
-appRouter.use(assetEndpoint, express.static(assetsDirectory));
-appRouter.use(attachmentEndpoint, attachmentsRouter);
-appRouter.use(bookEndpoint, booksRouter);
-appRouter.use(cookListEndpoint, cookListsRouter);
-appRouter.use(ingredientEndpoint, ingredientRouter);
-appRouter.use(listEndpoint, listsRouter);
-appRouter.use(plannerEndpoint, plannersRouter);
-appRouter.use(recipeEndpoint, recipesRouter);
-appRouter.use(tagEndpoint, tagsRouter);
-appRouter.use(usersEndpoint, usersRouter);
-
-appRouter.use("/", notFoundMiddleware);
+const appRouter = (trx: Knex) =>
+    express
+        .Router()
+        .use(assetEndpoint, express.static(assetsDirectory))
+        .use(attachmentEndpoint, createAttachmentsRouter(trx))
+        .use(bookEndpoint, booksRouter)
+        .use(cookListEndpoint, cookListsRouter)
+        .use(ingredientEndpoint, ingredientRouter)
+        .use(listEndpoint, listsRouter)
+        .use(plannerEndpoint, plannersRouter)
+        .use(recipeEndpoint, recipesRouter)
+        .use(tagEndpoint, tagsRouter)
+        .use(usersEndpoint, usersRouter)
+        .use("/", notFoundMiddleware);
 
 export { appRouter, authRouter, docsRouter };

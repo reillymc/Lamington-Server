@@ -1,23 +1,26 @@
-import db, { type Planner, lamington, planner, plannerMember, user } from "../database/index.ts";
+import { content, type Content } from "../database/definitions/content.ts";
+import { contentMember } from "../database/definitions/contentMember.ts";
+import db, { type Planner, lamington, planner, user } from "../database/index.ts";
 import { EnsureArray } from "../utils/index.ts";
 import { PlannerMemberActions } from "./plannerMember.ts";
 import { type PlannerService } from "./spec/index.ts";
 
 const readMyPlanners: PlannerService["ReadByUser"] = async ({ userId }) => {
-    const query = db<Planner>(lamington.planner)
+    const query = db(lamington.planner)
         .select(
             planner.plannerId,
             planner.name,
             planner.customisations,
             planner.description,
-            planner.createdBy,
+            content.createdBy,
             `${user.firstName} as createdByName`,
-            plannerMember.status
+            contentMember.status
         )
-        .where({ [planner.createdBy]: userId })
-        .orWhere({ [plannerMember.userId]: userId })
-        .leftJoin(lamington.user, planner.createdBy, user.userId)
-        .leftJoin(lamington.plannerMember, planner.plannerId, plannerMember.plannerId);
+        .where({ [content.createdBy]: userId })
+        .orWhere({ [contentMember.userId]: userId })
+        .leftJoin(lamington.content, planner.plannerId, content.contentId)
+        .leftJoin(lamington.user, content.createdBy, user.userId)
+        .leftJoin(lamington.contentMember, planner.plannerId, contentMember.contentId);
 
     return query;
 };
@@ -34,19 +37,20 @@ const readPlanners: PlannerService["Read"] = async params => {
                 "name",
                 "customisations",
                 "description",
-                "createdBy",
+                content.createdBy,
                 `${user.firstName} as createdByName`,
-                plannerMember.status
+                contentMember.status
             )
             .whereIn(
                 planner.plannerId,
-                db<string[]>(lamington.plannerMember)
-                    .select(plannerMember.plannerId)
-                    .where({ [plannerMember.userId]: userId, [plannerMember.plannerId]: plannerId })
+                db(lamington.contentMember)
+                    .select(contentMember.contentId)
+                    .where({ [contentMember.userId]: userId, [contentMember.contentId]: plannerId })
             )
-            .orWhere({ [planner.createdBy]: userId, [planner.plannerId]: plannerId })
-            .leftJoin(lamington.user, planner.createdBy, user.userId)
-            .leftJoin(lamington.plannerMember, planner.plannerId, plannerMember.plannerId)
+            .orWhere({ [content.createdBy]: userId, [planner.plannerId]: plannerId })
+            .leftJoin(lamington.content, content.contentId, planner.plannerId)
+            .leftJoin(lamington.user, content.createdBy, user.userId)
+            .leftJoin(lamington.contentMember, planner.plannerId, contentMember.contentId)
             .first();
 
         if (result) response.push(result);
@@ -58,23 +62,48 @@ const readPlanners: PlannerService["Read"] = async params => {
 const savePlanners: PlannerService["Save"] = async params => {
     const planners = EnsureArray(params);
 
-    const plannerData: Planner[] = planners.map(({ members, ...plannerItem }) => plannerItem);
+    // const result = await db.transaction(async trx => {
+    await db<Content>(lamington.content)
+        .insert(
+            planners.map(({ plannerId, createdBy }) => ({
+                contentId: plannerId,
+                createdBy,
+            }))
+        )
+        .onConflict("contentId")
+        .merge();
 
     const result = await db<Planner>(lamington.planner)
-        .insert(plannerData)
+        .insert(
+            planners.map(({ name, plannerId, customisations, description }) => ({
+                name,
+                plannerId,
+                customisations,
+                description,
+            }))
+        )
         .onConflict("plannerId")
         .merge()
-        .returning(["plannerId", "name", "customisations", "description", "createdBy"]);
+        .returning(["plannerId", "name", "customisations", "description"]);
 
-    if (planners.length > 0) await PlannerMemberActions.save(planners, { trimNotIn: true });
+    const savedPlanners = await db(lamington.planner)
+        .select("planner.*", "content.createdBy", "content.createdAt")
+        .whereIn(
+            "plannerId",
+            result.map(planner => planner.plannerId)
+        )
+        .join(lamington.content, "planner.plannerId", "content.contentId");
+    // });
 
-    return result;
+    if (result.length > 0) await PlannerMemberActions.save(planners, { trimNotIn: true });
+
+    return savedPlanners;
 };
 
 const deletePlanners: PlannerService["Delete"] = async params => {
     const plannerIds = EnsureArray(params).map(({ plannerId }) => plannerId);
 
-    return db(lamington.planner).whereIn(planner.plannerId, plannerIds).delete();
+    return db(lamington.content).whereIn(content.contentId, plannerIds).delete();
 };
 
 const readPermissions: PlannerService["ReadPermissions"] = async params => {
@@ -84,14 +113,15 @@ const readPermissions: PlannerService["ReadPermissions"] = async params => {
     if (!plannersItems.length) return [];
 
     return db<Planner>(lamington.planner)
-        .select(planner.plannerId, planner.createdBy, plannerMember.status)
+        .select(planner.plannerId, content.createdBy, contentMember.status)
         .whereIn(
             planner.plannerId,
             planners.map(({ plannerId }) => plannerId)
         )
-        .leftJoin(lamington.plannerMember, builder => {
-            builder.on(planner.plannerId, "=", plannerMember.plannerId).andOnIn(
-                plannerMember.userId,
+        .leftJoin(lamington.content, planner.plannerId, content.contentId)
+        .leftJoin(lamington.contentMember, builder => {
+            builder.on(planner.plannerId, "=", contentMember.contentId).andOnIn(
+                contentMember.userId,
                 planners.map(({ userId }) => userId)
             );
         });
