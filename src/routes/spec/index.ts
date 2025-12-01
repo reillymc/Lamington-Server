@@ -1,7 +1,7 @@
 import { type AssetServices, ingredientsSubpath } from "./asset.ts";
 import { type AttachmentServices, imageSubpath, uploadDirectory } from "./attachment.ts";
 import { type AuthServices, loginSubpath, registerSubpath } from "./auth.ts";
-import { type BookServices, bookIdParam, bookMemberIdParam, bookMemberSubpath, recipeSubpath } from "./book.ts";
+import { type BookApi, bookIdParam, bookMemberIdParam, bookMemberSubpath, recipeSubpath } from "./book.ts";
 import type { CookListServices } from "./cookList.ts";
 import type { IngredientServices } from "./ingredient.ts";
 import {
@@ -22,7 +22,7 @@ import {
     plannerMemberSubpath,
     yearParam,
 } from "./planner.ts";
-import { type RecipeServices, rateSubpath, recipeIdParam } from "./recipe.ts";
+import { rateSubpath, recipeIdParam, type RecipeApi } from "./recipe.ts";
 import type { TagServices } from "./tag.ts";
 import { type UserServices, approveSubpath, userIdParam } from "./user.ts";
 
@@ -47,9 +47,11 @@ export const BookEndpoint = {
     getBook: `/:${bookIdParam}`,
     getBooks: `/`,
     postBook: `/`,
+    putBook: `/`,
+    getBookRecipes: `/:${bookIdParam}/${recipeSubpath}`,
     postBookMember: `/:${bookIdParam}/${bookMemberSubpath}`,
     postBookRecipe: `/:${bookIdParam}/${recipeSubpath}`,
-} as const satisfies Record<keyof BookServices, string>;
+} as const satisfies Record<keyof BookApi, string>;
 
 export const IngredientEndpoint = {
     getIngredients: `/`,
@@ -91,8 +93,9 @@ export const RecipeEndpoint = {
     getAllRecipes: `/`,
     getMyRecipes: `/my`,
     postRecipe: `/`,
+    putRecipe: `/`,
     postRecipeRating: `/:${recipeIdParam}/${rateSubpath}`,
-} as const satisfies Record<keyof RecipeServices, string>;
+} as const satisfies Record<keyof RecipeApi, string>;
 
 export const TagEndpoint = {
     getTags: `/`,

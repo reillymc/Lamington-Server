@@ -1,20 +1,21 @@
 import { expect } from "expect";
 import { v4 as uuid } from "uuid";
 import { TagActions } from "../../src/controllers/index.ts";
-import { type ContentTags, type RecipeService } from "../../src/controllers/spec/recipe.ts";
-import type { ServiceResponse } from "../../src/database/index.ts";
+import type { KnexDatabase, ServiceResponse } from "../../src/database/index.ts";
 import type {
+    ContentTags,
     RecipeIngredientItem,
     RecipeIngredients,
     RecipeMethod,
     RecipeMethodStep,
     RecipeServings,
 } from "../../src/routes/spec/index.ts";
-import { Undefined } from "../../src/utils/index.ts";
 import { randomBoolean, randomNumber } from "./data.ts";
 import { generateRandomAmount } from "./list.ts";
+import type { RecipeService } from "../../src/services/recipeService.ts";
+import { Undefined } from "../../src/utils/index.ts";
 
-export const generateRandomRecipeIngredientSections = (): ServiceResponse<RecipeService, "Save">["ingredients"] =>
+export const generateRandomRecipeIngredientSections = (): ServiceResponse<RecipeService, "create">["ingredients"] =>
     Array.from({ length: randomNumber() }).map(() => ({
         sectionId: uuid(),
         name: uuid(),
@@ -26,7 +27,7 @@ export const generateRandomRecipeIngredientSections = (): ServiceResponse<Recipe
             description: uuid(),
             multiplier: randomNumber(),
             unit: uuid(),
-            ingredientId: uuid(),
+            // ingredientId: uuid(), TODO: verify or remove ingredient creation support entirely
         })),
     }));
 
@@ -81,7 +82,7 @@ export const generateRandomRecipeServings = (): RecipeServings => {
     };
 };
 
-export const createRandomRecipeTags = async (): Promise<ContentTags> => {
+export const createRandomRecipeTags = async (database: KnexDatabase) => {
     const tags: ContentTags = Object.fromEntries(
         Array.from({ length: randomNumber() }).map(() => {
             const parentTagId = uuid();
@@ -107,10 +108,10 @@ export const createRandomRecipeTags = async (): Promise<ContentTags> => {
         .flatMap(({ tags, tagId }) => tags?.map(tag => ({ ...tag, parentId: tagId })))
         .filter(Undefined);
 
-    await TagActions.save(parentTags);
-    await TagActions.save(childTags);
+    await TagActions.save(database, parentTags);
+    await TagActions.save(database, childTags);
 
-    return tags;
+    return childTags;
 };
 
 export const assertRecipeServingsAreEqual = (

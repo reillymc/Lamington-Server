@@ -6,7 +6,7 @@ import { UserActions } from "../controllers/index.ts";
 import { getStatus } from "../routes/helpers/index.ts";
 import { UserStatus } from "../routes/spec/index.ts";
 import { AppError } from "../services/index.ts";
-import type { Conn } from "../database/index.ts";
+import type { Database, KnexDatabase } from "../database/index.ts";
 
 const { jwtSecret } = config.authentication;
 
@@ -16,7 +16,7 @@ export interface AuthData {
 }
 
 export const createAuthenticationMiddleware =
-    (conn: Conn): RequestHandler =>
+    (conn: Database): RequestHandler =>
     (req, res, next) => {
         if (!jwtSecret) return;
 
@@ -38,7 +38,7 @@ export const createAuthenticationMiddleware =
                 return next(new AppError({ status: 401, message: "Invalid token." }));
             }
 
-            const [user] = await UserActions.read(conn, { userId: decoded.userId });
+            const [user] = await UserActions.read(conn as KnexDatabase, { userId: decoded.userId });
 
             if (!user) {
                 return next(new AppError({ status: 401, message: "User not found." }));

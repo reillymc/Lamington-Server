@@ -1,13 +1,11 @@
 import { attachment, type Attachment } from "../../database/definitions/attachment.ts";
 import { contentAttachment, type ContentAttachment } from "../../database/definitions/contentAttachment.ts";
-import db, {
+import {
     type CreateQuery,
-    type DeleteResponse,
+    type KnexDatabase,
     type ReadQuery,
     type ReadResponse,
-    type User,
     lamington,
-    user,
 } from "../../database/index.ts";
 import { EnsureArray, Undefined } from "../../utils/index.ts";
 
@@ -25,6 +23,7 @@ export interface CreateContentAttachmentOptions {
 }
 
 const saveContentAttachments = async (
+    db: KnexDatabase,
     saveRequests: CreateQuery<SaveContentAttachmentRequest>,
     options?: CreateContentAttachmentOptions
 ) => {
@@ -60,6 +59,7 @@ interface GetContentAttachmentsParams {
 type GetContentAttachmentsResponse = ContentAttachment & Pick<Attachment, "createdBy" | "uri">;
 
 const readContentAttachments = async (
+    db: KnexDatabase,
     params: ReadQuery<GetContentAttachmentsParams>
 ): ReadResponse<GetContentAttachmentsResponse> => {
     const entityIds = EnsureArray(params).map(({ contentId }) => contentId);

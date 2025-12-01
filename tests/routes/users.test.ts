@@ -4,12 +4,9 @@ import { before, describe, it } from "node:test";
 import request from "supertest";
 
 import { setupApp } from "../../src/app.ts";
-import { InternalBookActions } from "../../src/controllers/book.ts";
-import { BookRecipeActions } from "../../src/controllers/bookRecipe.ts";
 import { ListItemActions } from "../../src/controllers/listItem.ts";
 import { PlannerActions } from "../../src/controllers/planner.ts";
 import { InternalPlannerMealActions } from "../../src/controllers/plannerMeal.ts";
-import { RecipeActions } from "../../src/controllers/recipe.ts";
 import { UserActions } from "../../src/controllers/user.ts";
 import {
     type GetPendingUsersResponse,
@@ -27,7 +24,11 @@ import {
     randomCount,
     readAllLists,
 } from "../helpers/index.ts";
-import db from "../../src/database/index.ts";
+import { default as knexDb, type KnexDatabase } from "../../src/database/index.ts";
+import { KnexBookRepository } from "../../src/repositories/knex/bookRepository.ts";
+import { KnexRecipeRepository } from "../../src/repositories/knex/recipeRepository.ts";
+
+const db = knexDb as KnexDatabase;
 
 describe("get users", () => {
     let app: Express;
@@ -176,7 +177,7 @@ describe("delete users", () => {
     it("should delete user and accommodate foreign keys", async () => {
         const [token, { userId }] = await PrepareAuthenticatedUser(db, UserStatus.Member);
 
-        await CreateBooks({ createdBy: userId });
+        await CreateBooks(db, { userId });
         await CreateLists({ createdBy: userId });
         await CreateIngredients({ createdBy: userId });
 
@@ -306,26 +307,19 @@ describe("approve user", () => {
         const listItems = await ListItemActions.Read({ listId: list.listId });
         expect(listItems.length).toEqual(1);
 
-        const books = await InternalBookActions.readAll();
+        const { books } = await KnexBookRepository.readAll(db, { userId: user.userId });
         expect(books.length).toEqual(1);
 
         const [book] = books;
         if (!book) throw new Error("Book not created");
-        expect(book.createdBy).toEqual(user.userId);
+        expect(book.owner.userId).toEqual(user.userId);
 
-        const { result: recipes } = await RecipeActions.QueryByUser({ userId: user.userId });
+        const { recipes } = await KnexRecipeRepository.readAll(db, { userId: user.userId, filter: { books: [book] } });
         expect(recipes.length).toEqual(1);
 
         const [recipe] = recipes;
-        if (!recipe) throw new Error("Recipe not created");
-        expect(recipe.createdBy).toEqual(user.userId);
-
-        const bookRecipes = await BookRecipeActions.read({ bookId: book.bookId });
-        expect(bookRecipes.length).toEqual(1);
-
-        const [bookRecipe] = bookRecipes;
-        if (!bookRecipe) throw new Error("BookRecipe not created");
-        expect(bookRecipe.recipeId).toEqual(recipe.recipeId);
+        if (!recipe) throw new Error("Recipe/BookRecipe not created");
+        expect(recipe.owner.userId).toEqual(user.userId);
 
         const planners = await PlannerActions.ReadByUser({ userId: user.userId });
         expect(planners.length).toEqual(1);

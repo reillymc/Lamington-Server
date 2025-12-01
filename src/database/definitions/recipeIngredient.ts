@@ -35,7 +35,7 @@ export interface RecipeIngredient {
     description?: string;
 }
 
-export const recipeIngredient: Table<RecipeIngredient> = {
+export const recipeIngredient = {
     id: `${lamington.recipeIngredient}.id`,
     recipeId: `${lamington.recipeIngredient}.recipeId`,
     sectionId: `${lamington.recipeIngredient}.sectionId`,
@@ -46,4 +46,4 @@ export const recipeIngredient: Table<RecipeIngredient> = {
     amount: `${lamington.recipeIngredient}.amount`,
     multiplier: `${lamington.recipeIngredient}.multiplier`,
     description: `${lamington.recipeIngredient}.description`,
-} as const;
+} as const satisfies Table<RecipeIngredient>;

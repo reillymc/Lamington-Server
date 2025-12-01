@@ -15,7 +15,7 @@ import {
 } from "../../src/controllers/index.ts";
 import type { PlannerMeal } from "../../src/controllers/spec/plannerMeal.ts";
 import type { PlannerMealService, PlannerService } from "../../src/controllers/spec/index.ts";
-import type { PlannerCustomisations, ServiceParams } from "../../src/database/index.ts";
+import type { KnexDatabase, PlannerCustomisations, ServiceParams } from "../../src/database/index.ts";
 import {
     type DeletePlannerRequestParams,
     type EntityMember,
@@ -24,6 +24,7 @@ import {
     type PostPlannerRequestBody,
     UserStatus,
 } from "../../src/routes/spec/index.ts";
+import { default as knexDb } from "../../src/database/index.ts";
 import {
     CreateUsers,
     PlannerEndpoint,
@@ -33,7 +34,8 @@ import {
     randomCount,
     randomNumber,
 } from "../helpers/index.ts";
-import db from "../../src/database/index.ts";
+
+const db = knexDb as KnexDatabase;
 
 const getPlannerCustomisations = (): PlannerCustomisations => {
     return {
@@ -321,7 +323,7 @@ describe("delete planner", () => {
         } satisfies ServiceParams<PlannerService, "Save">;
 
         await PlannerActions.Save(planner);
-        await ContentMemberActions.save({
+        await ContentMemberActions.save(db, {
             contentId: planner.plannerId,
             members: [
                 {
@@ -621,7 +623,7 @@ describe("post planner meal", () => {
         app = setupApp();
     });
 
-    // TODO: Test whether a user can move a meal from a planner they dont own to their own - therefore deleting the other user's planner's meal. Test general copying/movind of meals, and moving from cooklist
+    // TODO: Test whether a user can move a meal from a planner they don't own to their own - therefore deleting the other user's planner's meal. Test general copying/moving of meals, and moving from cooklist
 
     it("route should require authentication", async () => {
         const res = await request(app).post(PlannerEndpoint.postPlannerMeal(uuid()));

@@ -1,4 +1,4 @@
-import type { Table } from "./index.ts";
+import type { Table, User } from "./index.ts";
 import { lamington } from "./lamington.ts";
 
 /**
@@ -10,7 +10,7 @@ import { lamington } from "./lamington.ts";
  */
 export interface Content {
     contentId: string;
-    createdBy: string;
+    createdBy: User["userId"];
     createdAt: string;
     updatedAt: string;
 }

@@ -1,18 +1,21 @@
 import { contentMember, type ContentMember } from "../../database/definitions/contentMember.ts";
-import db, {
+import {
     type CreateQuery,
-    type DeleteResponse,
+    type KnexDatabase,
     type ReadQuery,
     type ReadResponse,
     type User,
     lamington,
     user,
 } from "../../database/index.ts";
-import { UserStatus } from "../../routes/spec/index.ts";
 import { EnsureArray } from "../../utils/index.ts";
 
 export type SaveContentMemberRequest = Pick<ContentMember, "contentId"> & {
-    members?: Array<{ userId: ContentMember["userId"]; status?: UserStatus }>;
+    members?: Array<{ userId: ContentMember["userId"]; status?: string }>;
+};
+
+export type SaveContentMemberResponse = Pick<ContentMember, "contentId"> & {
+    members: Array<{ userId: ContentMember["userId"]; status?: string }>;
 };
 
 export interface CreateContentMemberOptions {
@@ -20,50 +23,89 @@ export interface CreateContentMemberOptions {
 }
 
 const saveContentMembers = async (
+    db: KnexDatabase,
     saveRequests: CreateQuery<SaveContentMemberRequest>,
     options?: CreateContentMemberOptions
-) => {
-    for (const { members = [], contentId } of EnsureArray(saveRequests)) {
-        const data = members.map(({ status, userId }) => ({
-            contentId,
-            userId,
-            status,
-        }));
+): Promise<SaveContentMemberResponse[]> => {
+    const requests = EnsureArray(saveRequests);
+    if (!requests.length) return [];
 
-        if (options?.trimNotIn) {
-            const res = await db<ContentMember>(lamington.contentMember)
-                .where({ contentId })
-                .whereNotIn(
-                    contentMember.userId,
-                    data.map(({ userId }) => userId)
-                )
-                .delete();
-        }
-
-        if (!data.length) return;
-
+    if (options?.trimNotIn) {
         await db<ContentMember>(lamington.contentMember)
-            .insert(data)
-            .onConflict(["contentId", "userId"])
-            .merge(["status"]);
+            .where(builder => {
+                for (const { contentId, members = [] } of requests) {
+                    const userIdsToKeep = members.map(m => m.userId);
+                    // If a book has no members to keep, all its members should be deleted.
+                    if (userIdsToKeep.length === 0) {
+                        builder.orWhere({ contentId });
+                    } else {
+                        builder.orWhere(b => b.where({ contentId }).whereNotIn("userId", userIdsToKeep));
+                    }
+                }
+            })
+            .delete();
     }
+
+    const allMembersToSave = requests.flatMap(({ contentId, members = [] }) =>
+        members.map(({ userId, status }) => ({ contentId, userId, status }))
+    );
+
+    if (!allMembersToSave.length) {
+        return requests.map(({ contentId }) => ({ contentId, members: [] }));
+    }
+
+    // Batch insert/update all members in a single query.
+    const savedMembers = await db<ContentMember>(lamington.contentMember)
+        .insert(allMembersToSave)
+        .onConflict(["contentId", "userId"])
+        .merge(["status"])
+        .returning(["contentId", "userId", "status"]);
+
+    // Group the results back by contentId to match the response format.
+    return requests.map(({ contentId }) => ({
+        contentId,
+        members: savedMembers.filter(m => m.contentId === contentId),
+    }));
 };
 
-interface DeleteContentMemberParams {
-    contentId: string;
-    userId: string;
-}
+export type DeleteContentMemberParams = Pick<ContentMember, "contentId"> & {
+    members: Array<{ userId: ContentMember["userId"] }>;
+};
 
-const deleteContentMembers = async (params: CreateQuery<DeleteContentMemberParams>): DeleteResponse => {
-    const entityMembers = EnsureArray(params);
+export type DeleteContentMemberResponse = Pick<ContentMember, "contentId"> & {
+    count: number;
+};
 
-    const entityIds = entityMembers.map(({ contentId }) => contentId);
-    const userIds = entityMembers.map(({ userId }) => userId);
+const deleteContentMembers = async (
+    db: KnexDatabase,
+    params: CreateQuery<DeleteContentMemberParams>
+): Promise<DeleteContentMemberResponse[]> => {
+    const requests = EnsureArray(params);
+    const validRequests = requests.filter(r => r.members && r.members.length > 0);
+    if (!validRequests.length) return [];
 
-    return db<ContentMember>(lamington.contentMember)
-        .whereIn("contentId", entityIds)
-        .whereIn("userId", userIds)
-        .delete();
+    const deletedContentIds = await db<ContentMember>(lamington.contentMember)
+        .where(builder => {
+            for (const { contentId, members } of validRequests) {
+                if (!members.length) continue;
+
+                builder.orWhere(b =>
+                    b.where({ contentId }).whereIn(
+                        "userId",
+                        members.map(m => m.userId)
+                    )
+                );
+            }
+        })
+        .delete()
+        .returning("contentId");
+
+    const counts = deletedContentIds.reduce<Record<string, number>>((acc, { contentId }) => {
+        acc[contentId] = (acc[contentId] || 0) + 1;
+        return acc;
+    }, {});
+
+    return requests.map(({ contentId }) => ({ contentId, count: counts[contentId] ?? 0 }));
 };
 
 interface GetContentMembersParams {
@@ -73,6 +115,7 @@ interface GetContentMembersParams {
 type GetContentMembersResponse = ContentMember & Pick<User, "firstName" | "lastName">;
 
 const readContentMembers = async (
+    db: KnexDatabase,
     params: ReadQuery<GetContentMembersParams>
 ): ReadResponse<GetContentMembersResponse> => {
     const entityIds = EnsureArray(params).map(({ contentId }) => contentId);

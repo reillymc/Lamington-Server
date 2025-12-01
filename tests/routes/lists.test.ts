@@ -7,7 +7,13 @@ import { v4 as uuid } from "uuid";
 import { setupApp } from "../../src/app.ts";
 import { IngredientActions, ListActions, ListItemActions, ListMemberActions } from "../../src/controllers/index.ts";
 import type { ListItemService, ListService } from "../../src/controllers/spec/index.ts";
-import db, { type ListCustomisations, type ServiceParams } from "../../src/database/index.ts";
+import {
+    default as knexDb,
+    type KnexDatabase,
+    type ListCustomisations,
+    type ServiceParams,
+    type ServiceParamsDi,
+} from "../../src/database/index.ts";
 import {
     type DeleteListRequestParams,
     type EntityMember,
@@ -27,6 +33,8 @@ import {
     randomCount,
     randomNumber,
 } from "../helpers/index.ts";
+
+const db = knexDb as KnexDatabase;
 
 const getListCustomisations = (): ListCustomisations => {
     return {
@@ -852,9 +860,9 @@ describe("post list item", () => {
             ingredientId: uuid(),
             name: uuid(),
             createdBy: user!.userId,
-        } satisfies ServiceParams<IngredientActions, "save">;
+        } satisfies ServiceParamsDi<IngredientActions, "save">;
 
-        await IngredientActions.save(ingredient);
+        await IngredientActions.save(db, ingredient);
 
         const listItem = {
             itemId: uuid(),

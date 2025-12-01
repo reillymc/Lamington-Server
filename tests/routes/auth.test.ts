@@ -13,20 +13,20 @@ import { AuthEndpoint, CreateUsers } from "../helpers/index.ts";
 import db from "../../src/database/index.ts";
 
 describe("login", () => {
-    let conn: Knex.Transaction;
+    let database: Knex.Transaction;
     let app: Express;
 
     beforeEach(async () => {
-        conn = await db.transaction();
-        app = setupApp({ conn });
+        database = await db.transaction();
+        app = setupApp({ database });
     });
 
     afterEach(async () => {
-        conn.rollback();
+        database.rollback();
     });
 
     it("should fail login with invalid email", async () => {
-        const [user] = await CreateUsers(conn);
+        const [user] = await CreateUsers(database);
 
         if (!user) throw new Error("User not created");
 
@@ -41,7 +41,7 @@ describe("login", () => {
     });
 
     it("should fail login with invalid password", async () => {
-        const [user] = await CreateUsers(conn);
+        const [user] = await CreateUsers(database);
 
         if (!user) throw new Error("User not created");
 
@@ -56,7 +56,7 @@ describe("login", () => {
     });
 
     it("should login with valid credentials", async () => {
-        const [user] = await CreateUsers(conn);
+        const [user] = await CreateUsers(database);
 
         if (!user) throw new Error("User not created");
 
@@ -80,7 +80,7 @@ describe("login", () => {
     });
 
     it("should return pending error message when logging in with pending account", async () => {
-        const [user] = await CreateUsers(conn, { status: UserStatus.Pending });
+        const [user] = await CreateUsers(database, { status: UserStatus.Pending });
 
         if (!user) throw new Error("User not created");
 
@@ -100,16 +100,16 @@ describe("login", () => {
 });
 
 describe("register", () => {
-    let conn: Knex.Transaction;
+    let database: Knex.Transaction;
     let app: Express;
 
     beforeEach(async () => {
-        conn = await db.transaction();
-        app = setupApp({ conn });
+        database = await db.transaction();
+        app = setupApp({ database });
     });
 
     afterEach(async () => {
-        conn.rollback();
+        database.rollback();
     });
 
     it("should fail register missing password", async () => {
@@ -148,7 +148,7 @@ describe("register", () => {
 
         expect(res.statusCode).toEqual(200);
 
-        const pendingUsers = await UserActions.readPending(conn);
+        const pendingUsers = await UserActions.readPending(database);
 
         expect(pendingUsers.length).toEqual(1);
 
@@ -172,7 +172,7 @@ describe("register", () => {
 
         expect(res.statusCode).toEqual(200);
 
-        const pendingUsers = await UserActions.readPending(conn);
+        const pendingUsers = await UserActions.readPending(database);
 
         expect(pendingUsers.length).toEqual(1);
 
@@ -193,7 +193,7 @@ describe("register", () => {
 
         expect(res.statusCode).toEqual(200);
 
-        const [user] = await InternalUserActions.read(conn, { email: requestBody.email });
+        const [user] = await InternalUserActions.read(database, { email: requestBody.email });
 
         if (!user) throw new Error("User not created");
 

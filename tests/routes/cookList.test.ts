@@ -6,9 +6,8 @@ import { v4 as uuid } from "uuid";
 
 import { setupApp } from "../../src/app.ts";
 import type { CookListMeal } from "../../src/controllers/cookListMeal.ts";
-import { CookListMealActions, CookListMealActionsInternal, RecipeActions } from "../../src/controllers/index.ts";
-import { type RecipeService } from "../../src/controllers/spec/index.ts";
-import db, { type ServiceParams } from "../../src/database/index.ts";
+import { CookListMealActions, CookListMealActionsInternal } from "../../src/controllers/index.ts";
+import { default as knexDb, type KnexDatabase, type ServiceParams } from "../../src/database/index.ts";
 import { type GetCookListMealsResponse, type PostCookListMealRequestBody } from "../../src/routes/spec/index.ts";
 import {
     CookListEndpoint,
@@ -18,6 +17,9 @@ import {
     randomCount,
     randomNumber,
 } from "../helpers/index.ts";
+import { KnexRecipeRepository } from "../../src/repositories/knex/recipeRepository.ts";
+
+const db = knexDb as KnexDatabase;
 
 describe("post meal", () => {
     let app: Express;
@@ -77,21 +79,24 @@ describe("post meal", () => {
             createdBy: user.userId,
         } satisfies ServiceParams<CookListMealActions, "save">;
 
-        const recipe = {
-            recipeId: uuid(),
-            name: uuid(),
-            createdBy: user.userId,
-            public: randomBoolean(),
-        } satisfies ServiceParams<RecipeService, "Save">;
-
-        await RecipeActions.Save(recipe);
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(db, {
+            userId: user.userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    public: randomBoolean(),
+                },
+            ],
+        });
 
         await CookListMealActions.save(meal);
 
         const mealUpdate = {
             data: {
                 ...meal,
-                recipeId: recipe.recipeId,
+                recipeId: recipe!.recipeId,
                 description: uuid(),
                 meal: uuid(),
                 sequence: randomNumber(),

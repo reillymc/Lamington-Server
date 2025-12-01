@@ -5,6 +5,7 @@ import request from "supertest";
 
 import { setupApp } from "../../src/app.ts";
 import type { GetIngredientsResponse } from "../../src/routes/spec/index.ts";
+import { default as knexDb, type KnexDatabase } from "../../src/database/index.ts";
 import {
     CreateIngredients,
     CreateUsers,
@@ -12,7 +13,8 @@ import {
     PrepareAuthenticatedUser,
     randomNumber,
 } from "../helpers/index.ts";
-import db from "../../src/database/index.ts";
+
+const db = knexDb as KnexDatabase;
 
 describe("get ingredients", () => {
     let app: Express;

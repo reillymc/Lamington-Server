@@ -3,13 +3,13 @@ import express from "express";
 import { notFoundMiddleware } from "../middleware/index.ts";
 import { createAttachmentsRouter } from "./attachments.ts";
 import { createAuthRouter } from "./auth.ts";
-import { default as booksRouter } from "./books.ts";
+import { createBookRouter } from "./books.ts";
 import { default as cookListsRouter } from "./cookLists.ts";
 import { default as docsRouter } from "./docs.ts";
 import { default as ingredientRouter } from "./ingredient.ts";
 import { default as listsRouter } from "./lists.ts";
 import { default as plannersRouter } from "./planners.ts";
-import { default as recipesRouter } from "./recipes.ts";
+import { createRecipeRouter } from "./recipes.ts";
 import {
     assetEndpoint,
     assetsDirectory,
@@ -32,12 +32,12 @@ const appRouter = (appDependencies: AppDependencies) =>
         .Router()
         .use(assetEndpoint, express.static(assetsDirectory))
         .use(attachmentEndpoint, createAttachmentsRouter(appDependencies))
-        .use(bookEndpoint, booksRouter)
+        .use(bookEndpoint, createBookRouter(appDependencies.services))
         .use(cookListEndpoint, cookListsRouter)
         .use(ingredientEndpoint, ingredientRouter)
         .use(listEndpoint, listsRouter)
         .use(plannerEndpoint, plannersRouter)
-        .use(recipeEndpoint, recipesRouter)
+        .use(recipeEndpoint, createRecipeRouter(appDependencies.services))
         .use(tagEndpoint, tagsRouter)
         .use(usersEndpoint, usersRouter)
         .use("/", notFoundMiddleware);

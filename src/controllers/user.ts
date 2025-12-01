@@ -3,10 +3,10 @@ import { v4 as Uuid } from "uuid";
 import db, {
     lamington,
     user,
-    type Conn,
     type CreateQuery,
     type CreateResponse,
     type DeleteService,
+    type KnexDatabase,
     type ReadQuery,
     type ReadResponse,
     type User,
@@ -19,9 +19,9 @@ import { EnsureArray, Undefined } from "../utils/index.ts";
  * @returns an array of all users in the database
  */
 const readAllUsers = async (
-    conn: Conn
+    db: KnexDatabase
 ): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">> => {
-    const query = conn<User>(lamington.user)
+    const query = db<User>(lamington.user)
         .select(user.userId, user.firstName, user.lastName, user.email, user.status)
         .whereNotIn(user.status, [UserStatus.Pending, UserStatus.Blacklisted]);
     return query;
@@ -32,9 +32,9 @@ const readAllUsers = async (
  * @returns an array of all pending users in the database
  */
 const readPendingUsers = async (
-    conn: Conn
+    db: KnexDatabase
 ): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">> => {
-    const query = conn<User>(lamington.user)
+    const query = db<User>(lamington.user)
         .select(user.userId, user.firstName, user.lastName, user.email, user.status)
         .where(user.status, UserStatus.Pending);
     return query;
@@ -49,14 +49,14 @@ interface GetUserParams {
  * @returns an array of users matching given ids
  */
 const readUsers = async (
-    conn: Conn,
+    db: KnexDatabase,
     params: ReadQuery<GetUserParams>
 ): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "status" | "createdAt">> => {
     const users = EnsureArray(params);
 
     const userIds = users.map(({ userId }) => userId);
 
-    return conn<User>(lamington.user)
+    return db<User>(lamington.user)
         .select("userId", "firstName", "lastName", "status", "createdAt")
         .whereIn("userId", userIds);
 };
@@ -76,12 +76,12 @@ type SaveUser = Omit<User, "createdAt" | "updatedAt" | "preferences">;
  * Saves a user from params
  * @returns the newly created / updated users
  */
-const saveUsers = async (conn: Conn, params: CreateQuery<CreateUserParams>): CreateResponse<User> => {
+const saveUsers = async (db: KnexDatabase, params: CreateQuery<CreateUserParams>): CreateResponse<User> => {
     const users: SaveUser[] = EnsureArray(params)
         .map(({ userId, ...params }) => ({ userId: userId ?? Uuid(), ...params }))
         .filter(Undefined);
 
-    return conn<User>(lamington.user).insert(users).onConflict("userId").merge().returning("userId");
+    return db<User>(lamington.user).insert(users).onConflict("userId").merge().returning("userId");
 };
 
 /**
@@ -97,18 +97,18 @@ const deleteUsers: DeleteService<User, "userId"> = async params => {
 };
 
 const saveUserStatus = async (
-    conn: Conn,
+    db: KnexDatabase,
     params: CreateQuery<{ userId: string; status: UserStatus }>
 ): CreateResponse<User> => {
     const users = EnsureArray(params);
 
     for (const { status, userId } of users) {
-        await conn<User>(lamington.user).where({ userId }).update({ status });
+        await db<User>(lamington.user).where({ userId }).update({ status });
     }
 
     const userIds = users.map(({ userId }) => userId);
 
-    return conn<User>(lamington.user).select("*").whereIn("userId", userIds);
+    return db<User>(lamington.user).select("*").whereIn("userId", userIds);
 };
 
 export const UserActions = {
@@ -128,10 +128,10 @@ interface ReadUserInternalParams {
  * Get users by id or ids
  * @returns an array of users matching given ids
  */
-const readUsersInternal = async (conn: Conn, params: ReadQuery<ReadUserInternalParams>): ReadResponse<User> => {
+const readUsersInternal = async (db: KnexDatabase, params: ReadQuery<ReadUserInternalParams>): ReadResponse<User> => {
     const userEmails = EnsureArray(params).map(({ email }) => email);
 
-    return conn<User>(lamington.user)
+    return db<User>(lamington.user)
         .select(user.userId, user.firstName, user.lastName, user.email, user.status, user.createdAt, user.password)
         .whereIn(user.email, userEmails);
 };

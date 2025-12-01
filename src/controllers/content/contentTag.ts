@@ -1,12 +1,12 @@
 import type { Content } from "../../database/definitions/content.ts";
-import db, {
+import {
     type CreateQuery,
     type ContentTag,
-    type SaveService,
     type Tag,
     lamington,
     contentTag,
     tag,
+    type KnexDatabase,
 } from "../../database/index.ts";
 import { EnsureArray } from "../../utils/index.ts";
 
@@ -16,7 +16,7 @@ import { EnsureArray } from "../../utils/index.ts";
  * @param tagIds to delete
  * @returns count of rows affected/tags deleted?
  */
-const deleteContentTags = async (contentId: string, tagIds: string[]) => {
+const deleteContentTags = async (db: KnexDatabase, contentId: string, tagIds: string[]) => {
     const result = await db<ContentTag>(lamington.contentTag).del().whereIn("tagId", tagIds).andWhere({ contentId });
 
     return result;
@@ -28,7 +28,7 @@ const deleteContentTags = async (contentId: string, tagIds: string[]) => {
  * @param retainedCategoryIds tags to keep
  * @returns
  */
-const deleteExcessRows = async (contentId: string, retainedCategoryIds: string[]) =>
+const deleteExcessRows = async (db: KnexDatabase, contentId: string, retainedCategoryIds: string[]) =>
     db<ContentTag>(lamington.contentTag).where({ contentId }).whereNotIn("tagId", retainedCategoryIds).del();
 
 /**
@@ -36,7 +36,7 @@ const deleteExcessRows = async (contentId: string, retainedCategoryIds: string[]
  * @param contentTags
  * @returns
  */
-const insertRows = async (contentTags: CreateQuery<ContentTag>) =>
+const insertRows = async (db: KnexDatabase, contentTags: CreateQuery<ContentTag>) =>
     db<ContentTag>(lamington.contentTag).insert(contentTags).onConflict(["contentId", "tagId"]).merge();
 
 /**
@@ -44,13 +44,15 @@ const insertRows = async (contentTags: CreateQuery<ContentTag>) =>
  * @param contentId content to modify
  * @param contentTags tags to include in content
  */
-const updateRows: SaveService<
-    Pick<Content, "contentId"> & { tags: Array<Pick<ContentTag, "tagId">> }
-> = async params => {
+const updateRows = async (
+    db: KnexDatabase,
+    params: CreateQuery<Pick<Content, "contentId"> & { tags: Array<Pick<ContentTag, "tagId">> }>
+) => {
     const contentTags = EnsureArray(params);
 
     for (const contentTagList of contentTags) {
         await deleteExcessRows(
+            db,
             contentTagList.contentId,
             contentTagList.tags.map(({ tagId }) => tagId)
         );
@@ -58,7 +60,7 @@ const updateRows: SaveService<
 
     const tags = contentTags.flatMap(({ contentId, tags }) => tags.map(({ tagId }) => ({ contentId, tagId })));
 
-    if (tags.length) await insertRows(tags);
+    if (tags.length) await insertRows(db, tags);
 
     return [];
 };
@@ -70,7 +72,7 @@ export type TagReadByContentIdResults = Array<ContentTag & Pick<Tag, "parentId" 
  * @param contentId content to retrieve tags from
  * @returns ContentTagResults
  */
-const readByContentId = async (contentIds: string | string[]): Promise<TagReadByContentIdResults> => {
+const readByContentId = async (db: KnexDatabase, contentIds: string | string[]): Promise<TagReadByContentIdResults> => {
     const contentIdList = Array.isArray(contentIds) ? contentIds : [contentIds];
 
     return db(lamington.tag)

@@ -12,12 +12,12 @@ import {
 import { appRouter, createAuthRouter, docsRouter } from "./routes/index.ts";
 import { attachmentEndpoint, authEndpoint, uploadDirectory } from "./routes/spec/index.ts";
 import { DefaultAppDependencies, type AppDependencies } from "./appDependencies.ts";
+import db from "./database/index.ts";
 
-// TODO: Knex.Transaction
 export const setupApp = (dependencies?: Partial<AppDependencies>) => {
     const app = express();
 
-    const appDependencies = { ...DefaultAppDependencies, ...dependencies };
+    const appDependencies = { ...DefaultAppDependencies(dependencies?.database ?? db), ...dependencies };
 
     // app setup
     app.use(express.json());
@@ -33,7 +33,7 @@ export const setupApp = (dependencies?: Partial<AppDependencies>) => {
         app.use(`/v1${attachmentEndpoint}/${uploadDirectory}`, express.static(uploadDirectory));
     }
     app.use(`/v1${authEndpoint}`, createAuthRouter(appDependencies));
-    app.use("/v1/", createAuthenticationMiddleware(appDependencies.conn), appRouter(appDependencies));
+    app.use("/v1/", createAuthenticationMiddleware(appDependencies.database), appRouter(appDependencies));
     app.use("/", docsRouter);
 
     // Catch 404 and forward to error handler

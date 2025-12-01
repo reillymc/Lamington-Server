@@ -14,8 +14,9 @@ import {
     UserStatus,
 } from "./spec/index.ts";
 import type { AppDependencies } from "../appDependencies.ts";
+import type { KnexDatabase } from "../database/index.ts";
 
-export const createAuthRouter = ({ conn }: AppDependencies) => {
+export const createAuthRouter = ({ database }: AppDependencies) => {
     const router = express.Router();
 
     /**
@@ -39,7 +40,7 @@ export const createAuthRouter = ({ conn }: AppDependencies) => {
 
             // Update database and return status
             try {
-                const [createdUser] = await InternalUserActions.save(conn, {
+                const [createdUser] = await InternalUserActions.save(database as KnexDatabase, {
                     userId: undefined,
                     email: email.toLowerCase(),
                     firstName,
@@ -85,7 +86,7 @@ export const createAuthRouter = ({ conn }: AppDependencies) => {
 
             // Fetch and return data from database
             try {
-                const [user] = await InternalUserActions.read(conn, { email: email.toLowerCase() });
+                const [user] = await InternalUserActions.read(database as KnexDatabase, { email: email.toLowerCase() });
                 if (!user) {
                     return next(
                         new AppError({

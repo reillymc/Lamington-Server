@@ -2,8 +2,8 @@ import type { Table } from "./index.ts";
 import { lamington } from "./lamington.ts";
 
 type BookCustomisationsV1 = {
-    color: string;
-    icon: string;
+    color?: string;
+    icon?: string;
 };
 
 export type BookCustomisations = BookCustomisationsV1;
@@ -14,7 +14,6 @@ export type BookCustomisations = BookCustomisationsV1;
 export interface Book {
     bookId: string;
     name: string;
-    // TODO: define this properly and handle via partials with defaults filled in in controller?
     customisations?: BookCustomisations;
     description?: string;
 }

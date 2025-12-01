@@ -1,13 +1,22 @@
 import { v4 as Uuid } from "uuid";
 
-import db, { type CreateQuery, type CreateResponse, type ReadQuery, type ReadResponse, type Tag, lamington, tag } from "../database/index.ts";
+import {
+    type CreateQuery,
+    type CreateResponse,
+    type KnexDatabase,
+    type ReadQuery,
+    type ReadResponse,
+    type Tag,
+    lamington,
+    tag,
+} from "../database/index.ts";
 import { EnsureArray, Undefined } from "../utils/index.ts";
 
 /**
  * Get all tags
  * @returns an array of all tags in the database
  */
-const readAllTags = async (): ReadResponse<Tag> =>
+const readAllTags = async (db: KnexDatabase): ReadResponse<Tag> =>
     db<Tag>(lamington.tag).select("tagId", "parentId", "name", "description");
 
 interface GetCategoryParams {
@@ -18,7 +27,7 @@ interface GetCategoryParams {
  * Get tags by id or ids
  * @returns an array of tags matching given ids
  */
-const readTags = async (params: ReadQuery<GetCategoryParams>): ReadResponse<Tag> => {
+const readTags = async (db: KnexDatabase, params: ReadQuery<GetCategoryParams>): ReadResponse<Tag> => {
     const categoryIds = EnsureArray(params).map(({ id }) => id);
 
     return db<Tag>(lamington.tag).select("tagId", "parentId", "name", "description").whereIn(tag.tagId, categoryIds);
@@ -29,7 +38,7 @@ const readTags = async (params: ReadQuery<GetCategoryParams>): ReadResponse<Tag>
  * @param tags a list of category objects
  * @returns the list of newly created category ids
  */
-const createTags = async (params: CreateQuery<Partial<Tag>>): CreateResponse<Tag> => {
+const createTags = async (db: KnexDatabase, params: CreateQuery<Partial<Tag>>): CreateResponse<Tag> => {
     const data: Tag[] = EnsureArray(params)
         .map(({ tagId = Uuid(), name, ...tag }) => {
             if (!name) return undefined;

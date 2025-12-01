@@ -11,8 +11,9 @@ import {
 import { compressImage, constructAttachmentPath } from "../services/attachment/helper.ts";
 import config from "../config.ts";
 import type { AppDependencies } from "../appDependencies.ts";
+import type { KnexDatabase } from "../database/index.ts";
 
-export const createAttachmentsRouter = ({ attachmentService, attachmentActions, conn }: AppDependencies) => {
+export const createAttachmentsRouter = ({ attachmentService, attachmentActions, database }: AppDependencies) => {
     const router = express.Router();
 
     // upload image
@@ -41,8 +42,8 @@ export const createAttachmentsRouter = ({ attachmentService, attachmentActions, 
 
                 const compressedImage = await compressImage(file.buffer);
                 const { uri, uploadPath } = constructAttachmentPath(userId, attachmentId, "jpg");
-                await conn.transaction(async trx => {
-                    const [attachmentEntry] = await attachmentActions.save(trx, {
+                await database.transaction(async trx => {
+                    const [attachmentEntry] = await attachmentActions.save(trx as KnexDatabase, {
                         attachmentId,
                         createdBy: userId,
                         uri,

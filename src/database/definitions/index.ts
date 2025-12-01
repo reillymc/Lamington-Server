@@ -21,6 +21,7 @@ import { recipeSection } from "./recipeSection.ts";
 import { recipeStep } from "./recipeStep.ts";
 import { tag } from "./tag.ts";
 import { type User, user } from "./user.ts";
+import type { KnexDatabase } from "../index.ts";
 
 export const Lamington = {
     [lamington.attachment]: attachment,
@@ -74,6 +75,11 @@ export type QueryService<T extends {}, R extends {} = {}, TSort extends string =
     params: QueryRequest<R, TSort>
 ) => Promise<{ result: Array<T>; nextPage?: number }>;
 
+export type QueryServiceDi<T extends {}, R extends {} = {}, TSort extends string = DefaultSortOptions> = (
+    db: KnexDatabase,
+    params: QueryRequest<R, TSort>
+) => Promise<{ result: Array<T>; nextPage?: number }>;
+
 // READ MY
 export type ReadMyRequest<T extends {}, K extends keyof T = never> =
     | (Record<K, T[K]> & Pick<User, "userId">)
@@ -99,6 +105,7 @@ export type DeleteService<T extends {}, K extends keyof T> = (params: DeleteRequ
 
 // Helpers
 export type ServiceParams<T extends Record<string, any>, K extends keyof T> = Exclude<Parameters<T[K]>[0], any[]>;
+export type ServiceParamsDi<T extends Record<string, any>, K extends keyof T> = Exclude<Parameters<T[K]>[1], any[]>;
 export type ServiceResponse<T extends Record<string, any>, K extends keyof T> = Awaited<ReturnType<T[K]>> extends {
     result: Array<any>;
 }
@@ -107,8 +114,6 @@ export type ServiceResponse<T extends Record<string, any>, K extends keyof T> = 
 
 export const PAGE_SIZE = config.app.pageSize;
 
-export * from "./book.ts";
-export * from "./bookRecipe.ts";
 export * from "./contentTag.ts";
 export * from "./ingredient.ts";
 export { lamington } from "./lamington.ts";
@@ -116,10 +121,5 @@ export * from "./list.ts";
 export * from "./listItem.ts";
 export * from "./meal.ts";
 export * from "./planner.ts";
-export * from "./recipe.ts";
-export * from "./recipeIngredient.ts";
-export * from "./recipeRating.ts";
-export * from "./recipeSection.ts";
-export * from "./recipeStep.ts";
 export * from "./tag.ts";
 export * from "./user.ts";
