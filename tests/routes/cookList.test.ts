@@ -17,7 +17,7 @@ import {
     randomCount,
     randomNumber,
 } from "../helpers/index.ts";
-import { KnexRecipeRepository } from "../../src/repositories/knex/recipeRepository.ts";
+import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 
 const db = knexDb as KnexDatabase;
 

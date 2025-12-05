@@ -1,6 +1,6 @@
 import { expect } from "expect";
 import type { Express } from "express";
-import { after, afterEach, before, beforeEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 
@@ -30,7 +30,7 @@ import {
     randomBoolean,
     randomNumber,
 } from "../helpers/index.ts";
-import { KnexRecipeRepository } from "../../src/repositories/knex/recipeRepository.ts";
+import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 
 describe("get all recipes", () => {
     let database: KnexDatabase;

@@ -7,8 +7,8 @@ import type { Knex } from "knex";
 
 import { setupApp } from "../../src/app.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
-import { KnexBookRepository } from "../../src/repositories/knex/bookRepository.ts";
-import { KnexRecipeRepository } from "../../src/repositories/knex/recipeRepository.ts";
+import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
+import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import {
     type DeleteBookRequestParams,
     type GetBookResponse,

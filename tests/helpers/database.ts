@@ -11,7 +11,7 @@ import db, {
 import { UserStatus } from "../../src/routes/spec/index.ts";
 import { hashPassword } from "../../src/services/index.ts";
 import { randomCount } from "./data.ts";
-import { KnexBookRepository } from "../../src/repositories/knex/bookRepository.ts";
+import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 
 export const CreateUsers = async (
     database: KnexDatabase,

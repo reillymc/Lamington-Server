@@ -3,6 +3,9 @@ import { v4 as Uuid } from "uuid";
 
 import { ListActions, ListItemActions, PlannerActions, PlannerMealActions, UserActions } from "../controllers/index.ts";
 import { AppError, MessageAction, userMessage } from "../services/index.ts";
+import db, { type KnexDatabase } from "../database/index.ts";
+import { KnexBookRepository } from "../repositories/knex/knexBookRepository.ts";
+import { KnexRecipeRepository } from "../repositories/knex/knexRecipeRepository.ts";
 import { getStatus } from "./helpers/index.ts";
 import {
     UserEndpoint,
@@ -19,9 +22,6 @@ import {
     type PostUserApprovalRequestParams,
     type PostUserApprovalResponse,
 } from "./spec/index.ts";
-import db, { type KnexDatabase } from "../database/index.ts";
-import { KnexRecipeRepository } from "../repositories/knex/recipeRepository.ts";
-import { KnexBookRepository } from "../repositories/knex/bookRepository.ts";
 
 const router = express.Router();
 

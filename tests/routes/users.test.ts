@@ -25,8 +25,8 @@ import {
     readAllLists,
 } from "../helpers/index.ts";
 import { default as knexDb, type KnexDatabase } from "../../src/database/index.ts";
-import { KnexBookRepository } from "../../src/repositories/knex/bookRepository.ts";
-import { KnexRecipeRepository } from "../../src/repositories/knex/recipeRepository.ts";
+import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
+import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 
 const db = knexDb as KnexDatabase;
 

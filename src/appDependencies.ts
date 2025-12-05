@@ -1,8 +1,8 @@
 import { AttachmentActions } from "./controllers/attachment.ts";
 import type { Database, KnexDatabase } from "./database/index.ts";
 import type { AppRepositories } from "./repositories/index.ts";
-import { KnexBookRepository } from "./repositories/knex/bookRepository.ts";
-import { KnexRecipeRepository } from "./repositories/knex/recipeRepository.ts";
+import { KnexBookRepository } from "./repositories/knex/knexBookRepository.ts";
+import { KnexRecipeRepository } from "./repositories/knex/knexRecipeRepository.ts";
 import { LocalAttachmentService, type AttachmentService } from "./services/attachment/index.ts";
 import { createBookService } from "./services/bookService.ts";
 import type { AppServices } from "./services/index.ts";

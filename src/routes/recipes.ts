@@ -27,7 +27,6 @@ import {
     type PutRecipeRequestBody,
     type PutRecipeRequestParams,
     type PutRecipeResponse,
-    type Recipe,
 } from "./spec/recipe.ts";
 import type { QueryParam } from "./spec/base.ts";
 import type { ReadAllRequest } from "../repositories/recipeRepository.ts";
@@ -80,10 +79,8 @@ export const createRecipeRouter = ({ recipeService }: AppDependencies["services"
         RecipeEndpoint.getAllRecipes,
         async ({ query, session }, res) => {
             const options = parseRecipeQuery(query);
-            const result = await recipeService.getAll(session.userId, options);
-            return res
-                .status(200)
-                .json({ error: false, data: result.recipes, page: options.page, nextPage: result.nextPage });
+            const { recipes: data, nextPage } = await recipeService.getAll(session.userId, options);
+            return res.status(200).json({ error: false, data, page: options.page, nextPage });
         }
     );
 
@@ -94,13 +91,11 @@ export const createRecipeRouter = ({ recipeService }: AppDependencies["services"
         RecipeEndpoint.getMyRecipes,
         async ({ query, session }, res) => {
             const options = parseRecipeQuery(query);
-            const result = await recipeService.getAll(session.userId, {
+            const { recipes: data, nextPage } = await recipeService.getAll(session.userId, {
                 ...options,
                 filter: { ...options.filter, owner: session.userId },
             });
-            return res
-                .status(200)
-                .json({ error: false, data: result.recipes, page: options.page, nextPage: result.nextPage });
+            return res.status(200).json({ error: false, data, page: options.page, nextPage });
         }
     );
 
@@ -111,8 +106,8 @@ export const createRecipeRouter = ({ recipeService }: AppDependencies["services"
     router.get<GetRecipeRequestParams, GetRecipeResponse, GetRecipeRequestBody>(
         RecipeEndpoint.getRecipe,
         async ({ params, session }, res) => {
-            const result = await recipeService.get(session.userId, params);
-            return res.status(200).json({ error: false, data: result });
+            const data = await recipeService.get(session.userId, params);
+            return res.status(200).json({ error: false, data });
         }
     );
 
@@ -135,8 +130,8 @@ export const createRecipeRouter = ({ recipeService }: AppDependencies["services"
     router.post<PostRecipeRequestParams, PostRecipeResponse, PostRecipeRequestBody>(
         RecipeEndpoint.postRecipe,
         async ({ body, session }, res) => {
-            const result = await recipeService.create(session.userId, body.data);
-            return res.status(201).json({ error: false, data: result as Array<Recipe> });
+            const data = await recipeService.create(session.userId, body.data);
+            return res.status(201).json({ error: false, data });
         }
     );
 
@@ -146,8 +141,8 @@ export const createRecipeRouter = ({ recipeService }: AppDependencies["services"
     router.put<PutRecipeRequestParams, PutRecipeResponse, PutRecipeRequestBody>(
         RecipeEndpoint.putRecipe,
         async ({ body, session }, res) => {
-            const result = await recipeService.update(session.userId, body.data);
-            return res.status(200).json({ error: false, data: result as Array<Recipe> });
+            const data = await recipeService.update(session.userId, body.data);
+            return res.status(200).json({ error: false, data });
         }
     );
 
@@ -158,8 +153,8 @@ export const createRecipeRouter = ({ recipeService }: AppDependencies["services"
     router.post<PostRecipeRatingRequestParams, PostRecipeRatingResponse, PostRecipeRatingRequestBody>(
         RecipeEndpoint.postRecipeRating,
         async ({ body, session, params }, res) => {
-            const result = await recipeService.saveRating(session.userId, { ...params, ...body });
-            return res.status(201).json({ error: false, data: result });
+            const data = await recipeService.saveRating(session.userId, { ...params, ...body });
+            return res.status(201).json({ error: false, data });
         }
     );
 
