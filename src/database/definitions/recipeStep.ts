@@ -15,7 +15,6 @@ export interface RecipeStep {
     sectionId: string | undefined;
     index: number;
     description: string | undefined;
-    photo: string | undefined;
 }
 
 export const recipeStep: Table<RecipeStep> = {
@@ -24,5 +23,4 @@ export const recipeStep: Table<RecipeStep> = {
     sectionId: `${lamington.recipeStep}.sectionId`,
     index: `${lamington.recipeStep}.index`,
     description: `${lamington.recipeStep}.description`,
-    photo: `${lamington.recipeStep}.photo`,
 };

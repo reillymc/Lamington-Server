@@ -1,24 +1,25 @@
 import { type Knex } from "knex";
 import { hashPassword } from "../../../services/password.ts";
 import {
-    type Book,
-    type BookRecipe,
     type Ingredient,
     type List,
     type ListItem,
     type Meal,
     type Planner,
-    type Recipe,
-    type RecipeIngredient,
-    type RecipeRating,
-    type RecipeSection,
-    type RecipeStep,
-    type RecipeTag,
+    type ContentTag,
     type Tag,
     type User,
     lamington,
 } from "../../definitions/index.ts";
 import { clearDatabase } from "../helpers.ts";
+import type { Content } from "../../definitions/content.ts";
+import type { Book } from "../../definitions/book.ts";
+import type { Recipe } from "../../definitions/recipe.ts";
+import type { BookRecipe } from "../../definitions/bookRecipe.ts";
+import type { RecipeRating } from "../../definitions/recipeRating.ts";
+import type { RecipeIngredient } from "../../definitions/recipeIngredient.ts";
+import type { RecipeSection } from "../../definitions/recipeSection.ts";
+import type { RecipeStep } from "../../definitions/recipeStep.ts";
 
 export const seed = async (knex: Knex): Promise<void> => {
     // Delete ALL existing entries
@@ -388,7 +389,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ]);
 
-    await knex<Book>(lamington.book).insert([
+    const books = [
         {
             bookId: "00ba8d00-7360-46dc-ba97-858d5bfee24b",
             createdBy: "3812f892-31d7-4ac8-bca0-5f5819b100cc",
@@ -431,9 +432,23 @@ export const seed = async (knex: Knex): Promise<void> => {
             createdBy: "3812f892-31d7-4ac8-bca0-5f5819b100cc",
             name: "Fun",
         },
-    ]);
+    ];
 
-    await knex<Ingredient>(lamington.ingredient).insert([
+    await knex<Content>(lamington.content).insert(
+        books.map(({ bookId, createdBy }) => ({
+            contentId: bookId,
+            createdBy,
+        }))
+    );
+    await knex<Book>(lamington.book).insert(
+        books.map(({ bookId, name, description }) => ({
+            bookId,
+            name,
+            description,
+        }))
+    );
+
+    const ingredients = [
         {
             ingredientId: "0ba54249-1f93-4c56-b788-05b91e81a3e5",
             name: "Capsicum",
@@ -494,13 +509,25 @@ export const seed = async (knex: Knex): Promise<void> => {
             name: "Salt",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
         },
-    ]);
+    ];
 
-    await knex<Recipe>(lamington.recipe).insert([
+    await knex<Content>(lamington.content).insert(
+        ingredients.map(({ ingredientId, createdBy }) => ({
+            contentId: ingredientId,
+            createdBy,
+        }))
+    );
+    await knex<Ingredient>(lamington.ingredient).insert(
+        ingredients.map(({ ingredientId, name }) => ({
+            ingredientId,
+            name,
+        }))
+    );
+
+    const recipes = [
         {
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             name: "Gnocchi with Tomato Cream Sauce",
-            photo: "lamington:dev/839c1893-e03b-4479-85f2-138e4d42a2e8/recipe/02eab0b9-d8f2-4d64-bc76-cbac36e4c59f_0.jpg",
             servings: { unit: "people", count: { representation: "number", value: "4" } },
             prepTime: 20,
             cookTime: 30,
@@ -513,7 +540,6 @@ export const seed = async (knex: Knex): Promise<void> => {
         {
             recipeId: "99656745-3325-4a47-9361-caba8849a4e2",
             name: "Black Bean Enchiladas",
-            photo: "lamington:dev/839c1893-e03b-4479-85f2-138e4d42a2e8/recipe/99656745-3325-4a47-9361-caba8849a4e2_0.jpg",
             servings: { unit: "people", count: { representation: "number", value: "3" } },
             prepTime: 20,
             cookTime: 40,
@@ -523,7 +549,40 @@ export const seed = async (knex: Knex): Promise<void> => {
             public: false,
             timesCooked: 0,
         },
-    ]);
+    ] as const;
+
+    await knex<Content>(lamington.content).insert(
+        recipes.map(({ recipeId, createdBy }) => ({
+            contentId: recipeId,
+            createdBy,
+        }))
+    );
+
+    await knex<Recipe>(lamington.recipe).insert(
+        recipes.map(
+            ({
+                recipeId,
+                name,
+                servings,
+                prepTime,
+                cookTime,
+                createdAt,
+                updatedAt,
+                public: isPublic,
+                timesCooked,
+            }) => ({
+                recipeId,
+                name,
+                servings,
+                prepTime,
+                cookTime,
+                createdAt,
+                updatedAt,
+                public: isPublic,
+                timesCooked,
+            })
+        )
+    );
 
     await knex<BookRecipe>(lamington.bookRecipe).insert([
         {
@@ -545,29 +604,29 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ]);
 
-    await knex<RecipeTag>(lamington.recipeTag).insert([
+    await knex<ContentTag>(lamington.contentTag).insert([
         {
-            recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
+            contentId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             tagId: "46839022-4057-4722-b2c0-0f376b5ad2f9",
         },
         {
-            recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
+            contentId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             tagId: "61ee0516-1987-4b6b-a59a-251cc07b2995",
         },
         {
-            recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
+            contentId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             tagId: "20b77d21-acba-48af-8876-0a590e940e41",
         },
         {
-            recipeId: "99656745-3325-4a47-9361-caba8849a4e2",
+            contentId: "99656745-3325-4a47-9361-caba8849a4e2",
             tagId: "06158727-fc25-4d99-b356-7a36a07a8993",
         },
         {
-            recipeId: "99656745-3325-4a47-9361-caba8849a4e2",
+            contentId: "99656745-3325-4a47-9361-caba8849a4e2",
             tagId: "61ee0516-1987-4b6b-a59a-251cc07b2995",
         },
         {
-            recipeId: "99656745-3325-4a47-9361-caba8849a4e2",
+            contentId: "99656745-3325-4a47-9361-caba8849a4e2",
             tagId: "c5db7042-4aae-49fd-ae09-0e7514a2a369",
         },
     ]);
@@ -734,7 +793,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ]);
 
-    await knex<List>(lamington.list).insert([
+    const lists = [
         {
             listId: "3f94889b-3125-4052-9dc1-7f41bb15971e",
             name: "Fruit and Vegetable Market",
@@ -747,9 +806,24 @@ export const seed = async (knex: Knex): Promise<void> => {
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             description: "A list of all the items I need to buy",
         },
-    ]);
+    ];
 
-    await knex<ListItem>(lamington.listItem).insert([
+    await knex<Content>(lamington.content).insert(
+        lists.map(({ listId, createdBy }) => ({
+            contentId: listId,
+            createdBy,
+        }))
+    );
+
+    await knex<List>(lamington.list).insert(
+        lists.map(({ listId, name, description }) => ({
+            listId,
+            name,
+            description,
+        }))
+    );
+
+    const listItems = [
         {
             listId: "517959f9-02d8-42a3-9dc9-5934f68561d0",
             itemId: "01177fd7-89d9-44b6-a9f2-e79949451d04",
@@ -788,7 +862,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             itemId: "76be7e77-afee-4e1d-866a-61e68ee09354",
             name: "Banana[|s]",
             unit: "bunch",
-            amount: { representation: "number", value: "2" },
+            amount: { representation: "number", value: "2" } as const,
             updatedAt: "2023-05-21 06:48:14",
             completed: false,
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
@@ -815,25 +889,60 @@ export const seed = async (knex: Knex): Promise<void> => {
             itemId: "cbaaaa0a-fcd8-42fe-8ac4-1cf995f90098",
             name: "Flour",
             unit: "g",
-            amount: { representation: "number", value: "500" },
+            amount: { representation: "number", value: "500" } as const,
             updatedAt: "2023-05-21 06:46:21",
             completed: false,
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
         },
-    ]);
+    ];
 
-    await knex<Planner>(lamington.planner).insert([
+    await knex<Content>(lamington.content).insert(
+        listItems.map(({ itemId, createdBy }) => ({
+            contentId: itemId,
+            createdBy,
+        }))
+    );
+
+    await knex<ListItem>(lamington.listItem).insert(
+        listItems.map(({ listId, itemId, name, ingredientId, unit, amount, updatedAt, completed }) => ({
+            listId,
+            itemId,
+            name,
+            ingredientId: ingredientId,
+            unit: unit,
+            amount: amount,
+            updatedAt,
+            completed,
+        }))
+    );
+
+    const planners = [
         {
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             name: "My Meal Planner",
             description: "A planner for all the meals I want to cook",
         },
-    ]);
+    ];
 
-    await knex<Meal>(lamington.plannerMeal).insert([
+    await knex<Content>(lamington.content).insert(
+        planners.map(({ plannerId, createdBy }) => ({
+            contentId: plannerId,
+            createdBy,
+        }))
+    );
+
+    await knex<Planner>(lamington.planner).insert(
+        planners.map(({ plannerId, name, description }) => ({
+            plannerId,
+            name,
+            description,
+        }))
+    );
+
+    const plannerMeals = [
         {
-            id: "02609a6a-4d94-44a2-9972-42723a089ceb",
+            mealId: "02609a6a-4d94-44a2-9972-42723a089ceb",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             year: 2024,
@@ -843,7 +952,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             description: "Lunch with Bob",
         },
         {
-            id: "09ada2e6-ac60-4c6e-bfd2-f3809d446823",
+            mealId: "09ada2e6-ac60-4c6e-bfd2-f3809d446823",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             year: 2024,
@@ -853,7 +962,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             description: "Salad",
         },
         {
-            id: "34f7b97e-8117-495a-ba60-758a7e176df7",
+            mealId: "34f7b97e-8117-495a-ba60-758a7e176df7",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             year: 2024,
@@ -863,7 +972,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             description: "Overnight Oats",
         },
         {
-            id: "6d83889e-9d50-47b6-b847-19faaeaa6d45",
+            mealId: "6d83889e-9d50-47b6-b847-19faaeaa6d45",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             year: 2024,
@@ -873,7 +982,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             description: "Pizza",
         },
         {
-            id: "73f98131-06c8-4b43-95cf-ed0c3ec2f3a1",
+            mealId: "73f98131-06c8-4b43-95cf-ed0c3ec2f3a1",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             year: 2024,
@@ -883,7 +992,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             description: "Family Lunch",
         },
         {
-            id: "92c7818f-5a27-48b4-b51c-1332d56337b9",
+            mealId: "92c7818f-5a27-48b4-b51c-1332d56337b9",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             year: 2024,
@@ -893,7 +1002,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             description: "Scrambled Eggs",
         },
         {
-            id: "aab75e80-957a-4c6c-86c7-dd3d514b979b",
+            mealId: "aab75e80-957a-4c6c-86c7-dd3d514b979b",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             year: 2024,
@@ -904,7 +1013,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             recipeId: "99656745-3325-4a47-9361-caba8849a4e2",
         },
         {
-            id: "ad7d8c9a-2809-4fab-a52c-695ebb54f80f",
+            mealId: "ad7d8c9a-2809-4fab-a52c-695ebb54f80f",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             year: 2024,
@@ -914,7 +1023,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             description: "Muesli",
         },
         {
-            id: "bb2c76dd-926c-474c-be2e-c64b4f86d6d3",
+            mealId: "bb2c76dd-926c-474c-be2e-c64b4f86d6d3",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             meal: "breakfast",
@@ -922,7 +1031,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             source: "www.google.com",
         },
         {
-            id: "d1749d9e-1a6e-42f7-9292-bb9a1533d6ab",
+            mealId: "d1749d9e-1a6e-42f7-9292-bb9a1533d6ab",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             meal: "dinner",
             description: "Risotto-Stuffed Tomatoes",
@@ -931,7 +1040,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             dayOfMonth: 25,
         },
         {
-            id: "eec01654-1a29-48de-bdac-70b0267f9087",
+            mealId: "eec01654-1a29-48de-bdac-70b0267f9087",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             meal: "dinner",
             description: "Black Bean Enchiladas",
@@ -941,7 +1050,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             recipeId: "99656745-3325-4a47-9361-caba8849a4e2",
         },
         {
-            id: "f4795472-90cc-493b-af99-523a23bcff3c",
+            mealId: "f4795472-90cc-493b-af99-523a23bcff3c",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             meal: "dinner",
             description: "Risotto-Stuffed Tomatoes",
@@ -950,7 +1059,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             dayOfMonth: 24,
         },
         {
-            id: "f65ebeef-a0bc-4d27-b865-caf3c6fb8023",
+            mealId: "f65ebeef-a0bc-4d27-b865-caf3c6fb8023",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             meal: "breakfast",
             description: "Overnight Oats",
@@ -959,7 +1068,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             dayOfMonth: 21,
         },
         {
-            id: "e7aaf2b9-631b-4b07-b624-ccd0b479ed7b",
+            mealId: "e7aaf2b9-631b-4b07-b624-ccd0b479ed7b",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
             meal: "breakfast",
             description: "Fruit Smoothie",
@@ -967,5 +1076,26 @@ export const seed = async (knex: Knex): Promise<void> => {
             month: 4,
             dayOfMonth: 23,
         },
-    ]);
+    ];
+
+    await knex<Content>(lamington.content).insert(
+        plannerMeals.map(({ mealId, createdBy }) => ({
+            contentId: mealId,
+            createdBy,
+        }))
+    );
+
+    await knex<Meal>(lamington.plannerMeal).insert(
+        plannerMeals.map(({ mealId, plannerId, year, month, dayOfMonth, meal, description, recipeId, source }) => ({
+            mealId,
+            plannerId,
+            year,
+            month,
+            dayOfMonth,
+            meal,
+            description,
+            recipeId: recipeId,
+            source: source,
+        }))
+    );
 };

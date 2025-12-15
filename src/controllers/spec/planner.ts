@@ -1,23 +1,18 @@
-import type {
-    DeleteService,
-    Planner,
-    PlannerMember,
-    ReadMyService,
-    ReadService,
-    SaveService,
-    User,
-} from "../../database/index.ts";
-import type { EntityMember } from "../entity/index.ts";
+import type { Content } from "../../database/definitions/content.ts";
+import type { ContentMember } from "../../database/definitions/contentMember.ts";
+import type { DeleteService, Planner, ReadMyService, ReadService, SaveService, User } from "../../database/index.ts";
+import type { UserStatus } from "../../routes/spec/user.ts";
 
 interface PlannerReadResponse
-    extends Pick<Planner, "plannerId" | "name" | "customisations" | "createdBy" | "description"> {
+    extends Pick<Planner, "plannerId" | "name" | "customisations" | "description">,
+        Pick<Content, "createdBy"> {
     createdByName: User["firstName"];
-    status: PlannerMember["status"];
+    status: ContentMember["status"];
 }
 
-interface PlannerReadPermissionsResponse extends Pick<Planner, "plannerId" | "createdBy"> {
+interface PlannerReadPermissionsResponse extends Pick<Planner, "plannerId">, Pick<Content, "createdBy"> {
     userId: User["userId"];
-    status: PlannerMember["status"];
+    status: ContentMember["status"];
 }
 
 export interface PlannerService {
@@ -46,7 +41,12 @@ export interface PlannerService {
      * @security Insecure: route authentication check required (user save permission on planners)
      * @returns the newly created planners
      */
-    Save: SaveService<Planner & { members?: Array<EntityMember> }>;
+    Save: SaveService<
+        Planner & {
+            members?: Array<Pick<ContentMember, "userId"> & { status?: string }>;
+            createdBy: Content["createdBy"];
+        }
+    >;
 
     /**
      * Get planners by id or ids

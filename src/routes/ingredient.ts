@@ -2,7 +2,7 @@ import express from "express";
 import { v4 as Uuid } from "uuid";
 
 import { IngredientActions } from "../controllers/index.ts";
-import type { ServiceParams } from "../database/index.ts";
+import type { KnexDatabase, ServiceParamsDi } from "../database/index.ts";
 import { AppError, MessageAction, userMessage } from "../services/index.ts";
 import { BisectOnValidItems, EnsureDefinedArray } from "../utils/index.ts";
 import { parseBaseQuery } from "./helpers/index.ts";
@@ -20,6 +20,7 @@ import {
     type PostIngredientRequestParams,
     type PostIngredientResponse,
 } from "./spec/index.ts";
+import db from "../database/index.ts";
 
 const router = express.Router();
 
@@ -32,7 +33,7 @@ router.get<GetIngredientsRequestParams, GetIngredientsResponse, GetIngredientsRe
         const { page, search, sort } = parseBaseQuery(query);
 
         try {
-            const { result, nextPage } = await IngredientActions.query({ page, search, sort });
+            const { result, nextPage } = await IngredientActions.query(db as KnexDatabase, { page, search, sort });
             const data = Object.fromEntries(result.map(row => [row.ingredientId, row]));
 
             return res.status(200).json({ error: false, data, nextPage, page });
@@ -60,7 +61,12 @@ router.get<
     const { userId } = session;
 
     try {
-        const { result, nextPage } = await IngredientActions.queryByUser({ userId, page, search, sort });
+        const { result, nextPage } = await IngredientActions.queryByUser(db as KnexDatabase, {
+            userId,
+            page,
+            search,
+            sort,
+        });
 
         const data = Object.fromEntries(result.map(row => [row.ingredientId, row]));
 
@@ -102,7 +108,7 @@ router.post<PostIngredientRequestParams, PostIngredientResponse, PostIngredientR
 
         // Update database and return status
         try {
-            const [result] = await IngredientActions.save(validIngredients);
+            const [result] = await IngredientActions.save(db as KnexDatabase, validIngredients);
 
             if (!result) {
                 next(
@@ -136,11 +142,10 @@ const validatePostIngredientBody = ({ data }: PostIngredientRequestBody, userId:
     return BisectOnValidItems(filteredData, ({ name, ...item }) => {
         if (!name) return;
 
-        const validItem: ServiceParams<IngredientActions, "save"> = {
+        const validItem: ServiceParamsDi<IngredientActions, "save"> = {
             ingredientId: Uuid(), // Currently updating is not supported
             name,
             description: item.description,
-            photo: item.photo,
             createdBy: userId,
         };
 

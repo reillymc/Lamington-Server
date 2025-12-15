@@ -5,7 +5,7 @@ import { EnsureArray, Undefined } from "../utils/index.ts";
 
 const logPath = "logs";
 
-interface AppErrorConstructor {
+export interface AppErrorConstructor {
     status?: number;
     code?: string;
     message?: string;
@@ -129,7 +129,9 @@ export type MessageAction = typeof MessageAction;
 
 interface UserMessage {
     entity: string;
+    subEntity?: string;
     action: MessageAction | string;
 }
 
-export const userMessage = ({ action, entity }: UserMessage) => `An error occurred when ${action} your ${entity}.`;
+export const userMessage = ({ action, entity, subEntity }: UserMessage) =>
+    `An error occurred when ${action} your ${entity}${subEntity ? ` ${subEntity}` : ""}.`;

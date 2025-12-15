@@ -1,6 +1,12 @@
-import type { BookCustomisations } from "../../routes/helpers/index.ts";
 import type { Table } from "./index.ts";
 import { lamington } from "./lamington.ts";
+
+type BookCustomisationsV1 = {
+    color?: string;
+    icon?: string;
+};
+
+export type BookCustomisations = BookCustomisationsV1;
 
 /**
  * Book
@@ -8,10 +14,8 @@ import { lamington } from "./lamington.ts";
 export interface Book {
     bookId: string;
     name: string;
-    // TODO: define this properly and handle via partials with defaults filled in in controller?
     customisations?: BookCustomisations;
     description?: string;
-    createdBy: string;
 }
 
 export const book: Table<Book> = {
@@ -19,5 +23,4 @@ export const book: Table<Book> = {
     name: `${lamington.book}.name`,
     customisations: `${lamington.book}.customisations`,
     description: `${lamington.book}.description`,
-    createdBy: `${lamington.book}.createdBy`,
 } as const;

@@ -94,7 +94,7 @@ router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
             const [planner] = await PlannerActions.Read({ plannerId, userId });
             if (!planner) return next(new NotFoundError("planner", plannerId));
 
-            const plannerMembersResponse = await PlannerMemberActions.read({ entityId: plannerId });
+            const plannerMembersResponse = await PlannerMemberActions.read({ plannerId });
 
             const plannerMealsResponse =
                 parsedYear !== undefined && parsedMonth !== undefined
@@ -301,7 +301,7 @@ router.delete<DeletePlannerMealRequestParams, DeletePlannerMealResponse, DeleteP
 
             if (!permissionsValid) return next(new PermissionError("planner item"));
 
-            await PlannerMealActions.Delete({ id: mealId });
+            await PlannerMealActions.Delete({ mealId });
             return res.status(201).json({ error: false, message: "Planner meal deleted." });
         } catch (e: unknown) {
             next(
@@ -348,7 +348,7 @@ router.delete<DeletePlannerMemberRequestParams, DeletePlannerMemberResponse, Del
                 );
             }
 
-            await PlannerMemberActions.delete({ entityId: plannerId, userId: userToDelete });
+            await PlannerMemberActions.delete({ plannerId, userId: userToDelete });
             return res.status(201).json({ error: false, message: "Planner member removed." });
         } catch (e: unknown) {
             next(

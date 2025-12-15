@@ -1,22 +1,18 @@
-import type {
-    DeleteService,
-    List,
-    ListMember,
-    ReadMyService,
-    ReadService,
-    SaveService,
-    User,
-} from "../../database/index.ts";
-import type { EntityMember } from "../entity/index.ts";
+import type { Content } from "../../database/definitions/content.ts";
+import type { ContentMember } from "../../database/definitions/contentMember.ts";
+import type { DeleteService, List, ReadMyService, ReadService, SaveService, User } from "../../database/index.ts";
+import type { UserStatus } from "../../routes/spec/user.ts";
 
-interface ListReadResponse extends Pick<List, "listId" | "name" | "customisations" | "createdBy" | "description"> {
+interface ListReadResponse
+    extends Pick<List, "listId" | "name" | "customisations" | "description">,
+        Pick<Content, "createdBy"> {
     createdByName: User["firstName"];
-    status: ListMember["status"];
+    status: ContentMember["status"];
 }
 
-interface ListReadPermissionsResponse extends Pick<List, "listId" | "createdBy"> {
+interface ListReadPermissionsResponse extends Pick<List, "listId">, Pick<Content, "createdBy"> {
     userId: User["userId"];
-    status: ListMember["status"];
+    status: ContentMember["status"];
 }
 
 export interface ListService {
@@ -45,7 +41,12 @@ export interface ListService {
      * @security Insecure: route authentication check required (user save permission on lists)
      * @returns the newly created lists
      */
-    Save: SaveService<List & { members?: Array<EntityMember> }>;
+    Save: SaveService<
+        List & {
+            members?: Array<Pick<ContentMember, "userId"> & { status?: string }>;
+            createdBy: Content["createdBy"];
+        }
+    >;
 
     /**
      * Get lists by id or ids

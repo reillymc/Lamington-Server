@@ -1,3 +1,4 @@
+import type { ImageAttachment } from "./attachment.ts";
 import type { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from "./base.ts";
 import type { User } from "./user.ts";
 
@@ -8,13 +9,14 @@ export const cookListMealIdParam = "mealId" as const;
  * Cook list meal
  */
 export type CookListMeal = {
-    id: string;
+    mealId: string;
     createdBy: User["userId"];
     sequence?: number;
     meal: string;
     description?: string;
     source?: string;
     recipeId?: string;
+    heroImage?: ImageAttachment;
 };
 
 // Get Cook List
@@ -35,7 +37,7 @@ export type PostCookListMealService = (request: PostCookListMealRequest) => Post
 
 // Delete cook list meal
 export type DeleteCookListMealRequestParams = BaseRequestParams<{
-    [cookListMealIdParam]: CookListMeal["id"];
+    [cookListMealIdParam]: CookListMeal["mealId"];
 }>;
 export type DeleteCookListMealRequestBody = BaseRequestBody;
 

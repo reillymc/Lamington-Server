@@ -3,6 +3,7 @@ import express from "express";
 import { TagActions } from "../controllers/index.ts";
 import { AppError, MessageAction, userMessage } from "../services/index.ts";
 import type { GetTagsRequestBody, GetTagsRequestParams, GetTagsResponse, TagGroups } from "./spec/index.ts";
+import db, { type KnexDatabase } from "../database/index.ts";
 
 const router = express.Router();
 
@@ -11,7 +12,7 @@ const router = express.Router();
  */
 router.get<GetTagsRequestParams, GetTagsResponse, GetTagsRequestBody>("/", async (req, res, next) => {
     try {
-        const result = await TagActions.readAll();
+        const result = await TagActions.readAll(db as KnexDatabase);
 
         const parents = result.filter(row => row.parentId === null);
         const children = result.filter(row => row.parentId !== null);

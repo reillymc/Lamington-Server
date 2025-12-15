@@ -6,6 +6,7 @@ import db, {
     type CreateQuery,
     type CreateResponse,
     type DeleteService,
+    type KnexDatabase,
     type ReadQuery,
     type ReadResponse,
     type User,
@@ -17,7 +18,9 @@ import { EnsureArray, Undefined } from "../utils/index.ts";
  * Get all users
  * @returns an array of all users in the database
  */
-const readAllUsers = async (): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">> => {
+const readAllUsers = async (
+    db: KnexDatabase
+): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">> => {
     const query = db<User>(lamington.user)
         .select(user.userId, user.firstName, user.lastName, user.email, user.status)
         .whereNotIn(user.status, [UserStatus.Pending, UserStatus.Blacklisted]);
@@ -28,9 +31,9 @@ const readAllUsers = async (): ReadResponse<Pick<User, "userId" | "firstName" | 
  * Get pending users
  * @returns an array of all pending users in the database
  */
-const readPendingUsers = async (): ReadResponse<
-    Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">
-> => {
+const readPendingUsers = async (
+    db: KnexDatabase
+): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "email" | "status">> => {
     const query = db<User>(lamington.user)
         .select(user.userId, user.firstName, user.lastName, user.email, user.status)
         .where(user.status, UserStatus.Pending);
@@ -46,6 +49,7 @@ interface GetUserParams {
  * @returns an array of users matching given ids
  */
 const readUsers = async (
+    db: KnexDatabase,
     params: ReadQuery<GetUserParams>
 ): ReadResponse<Pick<User, "userId" | "firstName" | "lastName" | "status" | "createdAt">> => {
     const users = EnsureArray(params);
@@ -72,7 +76,7 @@ type SaveUser = Omit<User, "createdAt" | "updatedAt" | "preferences">;
  * Saves a user from params
  * @returns the newly created / updated users
  */
-const saveUsers = async (params: CreateQuery<CreateUserParams>): CreateResponse<User> => {
+const saveUsers = async (db: KnexDatabase, params: CreateQuery<CreateUserParams>): CreateResponse<User> => {
     const users: SaveUser[] = EnsureArray(params)
         .map(({ userId, ...params }) => ({ userId: userId ?? Uuid(), ...params }))
         .filter(Undefined);
@@ -92,7 +96,10 @@ const deleteUsers: DeleteService<User, "userId"> = async params => {
     return db<User>(lamington.user).whereIn(user.userId, userIds).delete();
 };
 
-const saveUserStatus = async (params: CreateQuery<{ userId: string; status: UserStatus }>): CreateResponse<User> => {
+const saveUserStatus = async (
+    db: KnexDatabase,
+    params: CreateQuery<{ userId: string; status: UserStatus }>
+): CreateResponse<User> => {
     const users = EnsureArray(params);
 
     for (const { status, userId } of users) {
@@ -121,7 +128,7 @@ interface ReadUserInternalParams {
  * Get users by id or ids
  * @returns an array of users matching given ids
  */
-const readUsersInternal = async (params: ReadQuery<ReadUserInternalParams>): ReadResponse<User> => {
+const readUsersInternal = async (db: KnexDatabase, params: ReadQuery<ReadUserInternalParams>): ReadResponse<User> => {
     const userEmails = EnsureArray(params).map(({ email }) => email);
 
     return db<User>(lamington.user)
