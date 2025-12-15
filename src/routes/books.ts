@@ -15,6 +15,7 @@ import {
     type DeleteBookResponse,
     type GetBookRecipesRequestBody,
     type GetBookRecipesRequestParams,
+    type GetBookRecipesRequestQuery,
     type GetBookRecipesResponse,
     type GetBookRequestBody,
     type GetBookRequestParams,
@@ -34,6 +35,7 @@ import {
     type PutBookRequestBody,
     type PutBookRequestParams,
 } from "./spec/book.ts";
+import { parseBaseQuery } from "./helpers/queryParams.ts";
 
 export const createBookRouter = ({ bookService }: AppDependencies["services"]) => {
     const router = express.Router();
@@ -96,13 +98,21 @@ export const createBookRouter = ({ bookService }: AppDependencies["services"]) =
     /**
      * GET request to fetch all recipes for a book
      */
-    router.get<GetBookRecipesRequestParams, GetBookRecipesResponse, GetBookRecipesRequestBody>(
-        BookEndpoint.getBookRecipes,
-        async ({ params, session }, res) => {
-            const result = await bookService.readRecipes(session.userId, params);
-            return res.status(200).json({ error: false, data: result.recipes, nextPage: result.nextPage });
-        }
-    );
+    router.get<
+        GetBookRecipesRequestParams,
+        GetBookRecipesResponse,
+        GetBookRecipesRequestBody,
+        GetBookRecipesRequestQuery
+    >(BookEndpoint.getBookRecipes, async ({ params, session, query }, res) => {
+        const parsedQuery = parseBaseQuery(query);
+        const result = await bookService.readRecipes(session.userId, {
+            ...params,
+            filter: { name: parsedQuery.search },
+            page: parsedQuery.page,
+            order: parsedQuery.order,
+        });
+        return res.status(200).json({ error: false, data: result.recipes, nextPage: result.nextPage });
+    });
 
     /**
      * POST request to save a book recipe.

@@ -1,4 +1,5 @@
 import type {
+    BasePaginatedRequestQuery,
     BasePaginatedResponse,
     BaseRequest,
     BaseRequestBody,
@@ -29,7 +30,6 @@ export type Book = {
     color?: string;
     icon?: string;
     status?: string;
-    recipes?: Array<Recipe>;
     members?: Array<EntityMember>;
 };
 
@@ -101,10 +101,13 @@ export type PostBookRecipeResponse = BaseResponse<{
 export type PostBookRecipeService = (request: PostBookRecipeRequest) => PostBookRecipeResponse;
 
 // Get book recipes
+export type GetBookRecipesRequestQuery = BasePaginatedRequestQuery;
 export type GetBookRecipesRequestParams = BaseRequestParams<{ [bookIdParam]: Book["bookId"] }>;
 export type GetBookRecipesRequestBody = BaseRequestBody;
 
-export type GetBookRecipesRequest = BaseRequest<GetBookRecipesRequestParams & GetBookRecipesRequestBody>;
+export type GetBookRecipesRequest = BaseRequest<
+    GetBookRecipesRequestQuery & GetBookRecipesRequestParams & GetBookRecipesRequestBody
+>;
 export type GetBookRecipesResponse = BasePaginatedResponse<Array<Recipe>>;
 export type GetBookRecipesService = (request: GetBookRecipesRequest) => GetBookRecipesResponse;
 

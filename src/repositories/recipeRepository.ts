@@ -48,7 +48,7 @@ type ReadFilters = {
     owner?: Content["createdBy"];
     tags?: Array<{ tagId: Tag["tagId"] }>;
     books?: Array<{ bookId: Book["bookId"] }>;
-    ingredients?: Array<{ ingredientId: Ingredient["ingredientId"] }>;
+    ingredients?: Array<{ name: Ingredient["name"] }>;
 };
 
 export type ReadAllRequest = {

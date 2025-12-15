@@ -63,7 +63,7 @@ export const parseRecipeQuery = ({
 
     const ingredients = (Array.isArray(rawIngredients) ? rawIngredients : [rawIngredients])
         .filter(Undefined)
-        .map(ingredientId => ({ ingredientId }));
+        .map(name => ({ name }));
     const tags = (Array.isArray(rawTags) ? rawTags : [rawTags]).filter(Undefined).map(tagId => ({ tagId }));
 
     return { page, sort, order, filter: { name: search, tags, ingredients } };

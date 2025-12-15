@@ -221,7 +221,6 @@ const RecipeBase = (db: KnexDatabase, userId: string) => {
             db.ref(attachment.uri).as("heroAttachmentUri")
         )
         .leftJoin(lamington.content, recipe.recipeId, content.contentId)
-        .leftJoin(lamington.recipeRating, recipe.recipeId, recipeRating.recipeId)
         .leftJoin(lamington.user, content.createdBy, user.userId)
         .leftJoin(ratingsSubquery, recipe.recipeId, "avg_ratings.recipeId")
         .leftJoin(lamington.contentAttachment, join => {
@@ -553,20 +552,20 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                         )
                 );
             })
-            .where(builder => {
-                if (!filter.ingredients?.length) return;
-                return builder.whereIn(
-                    recipe.recipeId,
-                    db
-                        .select(recipeIngredient.recipeId)
-                        .from(lamington.recipeIngredient)
-                        .whereIn(
-                            recipeIngredient.ingredientId,
-                            filter.ingredients.map(({ ingredientId }) => ingredientId)
-                        )
-                        .groupBy(recipeIngredient.recipeId)
-                );
-            })
+            // .where(builder => {
+            //     if (!filter.ingredients?.length) return;
+            //     return builder.whereIn(
+            //         recipe.recipeId,
+            //         db
+            //             .select(recipeIngredient.recipeId)
+            //             .from(lamington.recipeIngredient)
+            //             .whereIn(
+            //                 recipeIngredient.description,
+            //                 filter.ingredients.map(({ name }) => name)
+            //             )
+            //             .groupBy(recipeIngredient.recipeId)
+            //     );
+            // })
             .orderBy([{ column: sortColumn, order }, recipe.recipeId])
             .limit(PAGE_SIZE + 1)
             .offset((page - 1) * PAGE_SIZE);

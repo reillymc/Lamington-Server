@@ -11,7 +11,6 @@ import type {
     PutBookRequest,
     PostBookRequestBody,
     PutBookRequestBody,
-    GetBookRecipesRequest,
 } from "../routes/spec/book.ts";
 import { BisectOnValidPartialItems, EnsureDefinedArray, Undefined } from "../utils/index.ts";
 import type {
@@ -20,7 +19,7 @@ import type {
     SaveMembersResponse,
     SaveRecipesResponse,
 } from "../repositories/bookRepository.ts";
-import type { ReadAllResponse as ReadAllRecipesResponse } from "../repositories/recipeRepository.ts";
+import type { ReadAllResponse as ReadAllRecipesResponse, ReadAllRequest } from "../repositories/recipeRepository.ts";
 
 import { type CreateService } from "./service.ts";
 import { AppError } from "./logging.ts";
@@ -36,7 +35,10 @@ export interface BookService {
         request: PostBookRecipeRequest
     ) => Promise<NonNullable<SaveRecipesResponse["recipes"]>[number]>;
     removeRecipe: (userId: string, request: DeleteBookRecipeRequest) => Promise<boolean>;
-    readRecipes: (userId: string, request: GetBookRecipesRequest) => Promise<ReadAllRecipesResponse>;
+    readRecipes: (
+        userId: string,
+        request: { bookId: string } & Omit<ReadAllRequest, "userId"> & { filter?: { name?: string } }
+    ) => Promise<ReadAllRecipesResponse>;
     joinMembership: (
         userId: string,
         request: PostBookMemberRequest
@@ -282,10 +284,10 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
             }
             return true;
         }),
-    readRecipes: async (userId, params) => {
+    readRecipes: async (userId, { bookId, page, order, sort, filter }) => {
         const permissions = await bookRepository.verifyPermissions(database, {
             userId,
-            books: [params],
+            books: [{ bookId }],
         });
 
         const missingPermissions = permissions.books.some(({ hasPermissions }) => !hasPermissions);
@@ -294,7 +296,13 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
             throw new AppError({ status: 404, message: "Book not found" });
         }
 
-        return recipeRepository.readAll(database, { userId, filter: { books: [{ bookId: params.bookId }] } });
+        return recipeRepository.readAll(database, {
+            userId,
+            filter: { ...filter, books: [{ bookId }] },
+            order,
+            page,
+            sort,
+        });
     },
 });
 
