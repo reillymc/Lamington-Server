@@ -1,14 +1,14 @@
 import {
     type AttachmentServices,
     type AuthServices,
-    type BookServices,
+    type BookApi,
+    type RecipeApi,
     type CookListServices,
     type GetAllRecipesRequestQuery,
     type GetMyRecipesRequestQuery,
     type IngredientServices,
     type ListServices,
     type PlannerServices,
-    type RecipeServices,
     type TagServices,
     type UserServices,
     approveSubpath,
@@ -65,11 +65,13 @@ export const BookEndpoint = {
     getBook: (bookId: string) => `${ApiUrl}${bookEndpoint}/${bookId}` as const,
     getBooks: `${ApiUrl}${bookEndpoint}`,
     postBook: `${ApiUrl}${bookEndpoint}`,
+    putBook: `${ApiUrl}${bookEndpoint}`,
     postBookRecipe: (bookId: string) => `${ApiUrl}${bookEndpoint}/${bookId}/${recipeSubpath}` as const,
     deleteBookMember: (bookId: string, memberId: string) =>
         `${ApiUrl}${bookEndpoint}/${bookId}/${bookMemberSubpath}/${memberId}` as const,
     postBookMember: (bookId: string) => `${ApiUrl}${bookEndpoint}/${bookId}/${bookMemberSubpath}` as const,
-} as const satisfies Record<keyof BookServices, Endpoint>;
+    getBookRecipes: (bookId: string) => `${ApiUrl}${bookEndpoint}/${bookId}/${recipeSubpath}` as const,
+} as const satisfies Record<keyof BookApi, Endpoint>;
 
 export const PlannerEndpoint = {
     deletePlanner: (plannerId: string) => `${ApiUrl}${plannerEndpoint}/${plannerId}` as const,
@@ -122,7 +124,8 @@ export const RecipeEndpoint = {
         `${ApiUrl}${recipeEndpoint}/my${appendQuery(query)}` as const,
     postRecipe: `${ApiUrl}${recipeEndpoint}`,
     postRecipeRating: (recipeId: string) => `${ApiUrl}${recipeEndpoint}/${recipeId}/${rateSubpath}` as const,
-} as const satisfies Record<keyof RecipeServices, Endpoint>;
+    putRecipe: `${ApiUrl}${recipeEndpoint}`,
+} as const satisfies Record<keyof RecipeApi, Endpoint>;
 
 export const TagEndpoint = {
     getTags: `${ApiUrl}${tagEndpoint}`,

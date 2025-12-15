@@ -1,6 +1,7 @@
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 import config from "../../config.ts";
+import type { AttachmentService } from "./attachmentService.ts";
 
 const createS3Client = () => {
     if (
@@ -38,7 +39,7 @@ const uploadObject = async (file: Buffer, name: string) => {
     return true;
 };
 
-const deleteObject = (url: string) => {
+const deleteObject = async (url: string) => {
     const s3 = createS3Client();
 
     const command = new DeleteObjectCommand({
@@ -46,10 +47,15 @@ const deleteObject = (url: string) => {
         Key: url,
     });
 
-    s3.send(command);
+    const result = await s3.send(command);
+    if (result.$metadata.httpStatusCode !== 200) {
+        throw new Error("Failed to upload object to S3");
+    }
+
+    return true;
 };
 
-export const S3Attachment = {
+export const S3AttachmentService: AttachmentService = {
     delete: deleteObject,
-    upload: uploadObject,
+    put: uploadObject,
 };

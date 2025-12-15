@@ -43,7 +43,7 @@ export interface PlannerService {
      */
     Save: SaveService<
         Planner & {
-            members?: Array<Pick<ContentMember, "userId"> & { status?: UserStatus }>;
+            members?: Array<Pick<ContentMember, "userId"> & { status?: string }>;
             createdBy: Content["createdBy"];
         }
     >;

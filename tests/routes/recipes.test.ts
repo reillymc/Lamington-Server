@@ -1,21 +1,18 @@
 import { expect } from "expect";
 import type { Express } from "express";
-import { before, describe, it } from "node:test";
+import { afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import { setupApp } from "../../src/app.ts";
-import {
-    IngredientActions,
-    RecipeActions,
-    RecipeIngredientActions,
-    RecipeSectionActions,
-    TagActions,
-} from "../../src/controllers/index.ts";
-import { RecipeTagActions } from "../../src/controllers/recipeTag.ts";
-import type { RecipeService } from "../../src/controllers/spec/index.ts";
-import { type ServiceParams } from "../../src/database/index.ts";
-import type { GetAllRecipesResponse, PostRecipeRequestBody } from "../../src/routes/spec/index.ts";
+import { IngredientActions, TagActions } from "../../src/controllers/index.ts";
+import db, { type KnexDatabase, type ServiceParamsDi } from "../../src/database/index.ts";
+import type {
+    GetAllRecipesResponse,
+    PostRecipeRequestBody,
+    PostRecipeResponse,
+    PutRecipeRequestBody,
+} from "../../src/routes/spec/index.ts";
 import { randomElement } from "../../src/utils/index.ts";
 import {
     CreateUsers,
@@ -33,12 +30,19 @@ import {
     randomBoolean,
     randomNumber,
 } from "../helpers/index.ts";
+import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 
 describe("get all recipes", () => {
+    let database: KnexDatabase;
     let app: Express;
 
-    before(async () => {
-        app = setupApp();
+    beforeEach(async () => {
+        database = await db.transaction();
+        app = setupApp({ database });
+    });
+
+    afterEach(async () => {
+        database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -48,27 +52,30 @@ describe("get all recipes", () => {
     });
 
     it("should return correct recipe details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const recipe = {
-            recipeId: uuid(),
-            name: uuid(),
-            createdBy: user.userId,
-            public: true,
-            cookTime: randomNumber(),
-            ingredients: generateRandomRecipeIngredientSections(),
-            method: generateRandomRecipeMethodSections(),
-            servings: generateRandomRecipeServings(),
-            prepTime: randomNumber(),
-            ratingPersonal: randomNumber(),
-            source: uuid(),
-            tags: await createRandomRecipeTags(),
-            timesCooked: randomNumber(),
-        } satisfies ServiceParams<RecipeService, "Save">;
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user!.userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    public: true,
+                    cookTime: randomNumber(),
+                    ingredients: generateRandomRecipeIngredientSections(),
+                    method: generateRandomRecipeMethodSections(),
+                    servings: generateRandomRecipeServings(),
+                    prepTime: randomNumber(),
+                    rating: randomNumber(),
+                    source: uuid(),
+                    timesCooked: randomNumber(),
+                    tags: await createRandomRecipeTags(database),
+                },
+            ],
+        });
 
-        const nonAssociatedTags = await createRandomRecipeTags();
-
-        await RecipeActions.Save(recipe);
+        const nonAssociatedTags = await createRandomRecipeTags(database);
 
         const res = await request(app).get(RecipeEndpoint.getAllRecipes()).set(token);
 
@@ -76,46 +83,45 @@ describe("get all recipes", () => {
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(1);
+        expect(data!.length).toEqual(1);
 
-        const recipeResponse = data![recipe.recipeId]!;
+        const [recipeResponse] = data!;
 
-        expect(recipeResponse.recipeId).toEqual(recipe.recipeId);
-        expect(recipeResponse.name).toEqual(recipe.name);
-        expect(recipeResponse.createdBy.userId).toEqual(recipe.createdBy);
-        expect(recipeResponse.public).toEqual(recipe.public);
-        expect(recipeResponse.cookTime).toEqual(recipe.cookTime);
-        expect(recipeResponse.ingredients).toBeUndefined();
-        expect(recipeResponse.method).toBeUndefined();
-        expect(recipeResponse.tips).toBeUndefined();
-        expect(recipeResponse.summary).toBeUndefined();
-        // expect(recipeResponse.photo).toEqual(recipe.photo);
-        expect(recipeResponse.prepTime).toEqual(recipe.prepTime);
-        expect(recipeResponse.ratingPersonal).toEqual(recipe.ratingPersonal);
-        expect(recipeResponse.servings).toBeUndefined();
-        expect(recipeResponse.source).toBeUndefined();
-        expect(recipeResponse.timesCooked).toEqual(recipe.timesCooked);
-        expect(recipeResponse.ratingAverage).toEqual(recipe.ratingPersonal);
+        expect(recipeResponse!.recipeId).toEqual(recipe!.recipeId);
+        expect(recipeResponse!.name).toEqual(recipe!.name);
+        expect(recipeResponse!.owner.userId).toEqual(recipe!.owner.userId);
+        expect(recipeResponse!.public).toEqual(recipe!.public);
+        expect(recipeResponse!.cookTime).toEqual(recipe!.cookTime);
+        expect(recipeResponse!.ingredients).toBeUndefined();
+        expect(recipeResponse!.method).toBeUndefined();
+        expect(recipeResponse!.tips).toBeUndefined();
+        expect(recipeResponse!.summary).toBeUndefined();
+        // expect(recipeResponse!.photo).toEqual(recipe!.photo);
+        expect(recipeResponse!.prepTime).toEqual(recipe!.prepTime);
+        expect(recipeResponse!.ratingPersonal).toEqual(recipe!.rating!.personal);
+        expect(recipeResponse!.servings).toBeUndefined();
+        expect(recipeResponse!.source).toBeUndefined();
+        expect(recipeResponse!.timesCooked).toEqual(recipe!.timesCooked);
+        expect(recipeResponse!.ratingAverage).toEqual(recipe!.rating!.personal);
         // expect(recipeResponse.createdAt).toBeDefined();
 
-        assertRecipeTagsAreEqual(recipeResponse.tags, recipe.tags);
+        assertRecipeTagsAreEqual(recipeResponse!.tags, recipe!.tags);
     });
 
     it("should return all public recipes from other users", async () => {
-        const [token, _] = await PrepareAuthenticatedUser();
-        const randomUsers = await CreateUsers({ count: randomNumber() });
-
-        const recipes = Array.from({ length: randomNumber() }).map(
-            (_, i) =>
-                ({
-                    recipeId: uuid(),
+        const [token, _] = await PrepareAuthenticatedUser(database);
+        const randomUsers = await CreateUsers(database, { count: randomNumber() });
+        const allCreatedRecipes = [];
+        for (const user of randomUsers) {
+            const { recipes } = await KnexRecipeRepository.create(database, {
+                userId: user.userId,
+                recipes: Array.from({ length: randomNumber(1, 3) }).map(() => ({
                     name: uuid(),
-                    createdBy: randomUsers[i % randomUsers.length]!.userId,
                     public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
-
-        await RecipeActions.Save(recipes);
+                })),
+            });
+            allCreatedRecipes.push(...recipes);
+        }
 
         const res = await request(app).get(RecipeEndpoint.getAllRecipes()).set(token);
 
@@ -123,36 +129,31 @@ describe("get all recipes", () => {
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(recipes.length);
+        expect(data!.length).toEqual(allCreatedRecipes.length);
     });
 
     it("should not return private recipes", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const randomUsers = await CreateUsers({ count: randomNumber() });
-
-        const recipes = Array.from({ length: randomNumber() }).map(
-            (_, i) =>
-                ({
-                    recipeId: uuid(),
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const randomUsers = await CreateUsers(database, { count: randomNumber() });
+        const otherUsersRecipes = [];
+        for (const otherUser of randomUsers) {
+            const { recipes } = await KnexRecipeRepository.create(database, {
+                userId: otherUser.userId,
+                recipes: Array.from({ length: randomNumber(1, 3) }).map(() => ({
                     name: uuid(),
-                    createdBy: randomUsers[i % randomUsers.length]!.userId,
                     public: randomBoolean(),
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
+                })),
+            });
+            otherUsersRecipes.push(...recipes);
+        }
 
-        const myRecipes = Array.from({ length: randomNumber() }).map(
-            (_, i) =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    public: randomBoolean(),
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
-
-        const allRecipes = [...recipes, ...myRecipes];
-
-        RecipeActions.Save(allRecipes);
+        const { recipes: myRecipes } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: randomNumber() }).map(() => ({
+                name: uuid(),
+                public: randomBoolean(),
+            })),
+        });
 
         const res = await request(app).get(RecipeEndpoint.getAllRecipes()).set(token);
 
@@ -160,28 +161,24 @@ describe("get all recipes", () => {
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(
-            allRecipes.filter(recipe => recipe.public || recipe.createdBy === user.userId).length
-        );
+        const expectedCount = myRecipes.length + otherUsersRecipes.filter(recipe => recipe.public).length;
+        expect(data!.length).toEqual(expectedCount);
     });
 
     it("should respect pagination", async () => {
         const PAGE_SIZE = 50;
 
-        const [token, _] = await PrepareAuthenticatedUser();
-        const randomUsers = await CreateUsers({ count: randomNumber() });
-
-        const recipes = Array.from({ length: 75 }).map(
-            (_, i) =>
-                ({
-                    recipeId: uuid(),
+        const [token, _] = await PrepareAuthenticatedUser(database);
+        const randomUsers = await CreateUsers(database, { count: 6 });
+        for (const user of randomUsers) {
+            await KnexRecipeRepository.create(database, {
+                userId: user.userId,
+                recipes: Array.from({ length: 10 }).map(() => ({
                     name: uuid(),
-                    createdBy: randomUsers[i % randomUsers.length]!.userId,
                     public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
-
-        await RecipeActions.Save(recipes);
+                })),
+            });
+        }
 
         const res = await request(app).get(RecipeEndpoint.getAllRecipes()).set(token);
 
@@ -189,7 +186,7 @@ describe("get all recipes", () => {
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(PAGE_SIZE);
+        expect(data!.length).toEqual(PAGE_SIZE);
 
         const resPage2 = await request(app)
             .get(RecipeEndpoint.getAllRecipes({ page: 2 }))
@@ -199,30 +196,30 @@ describe("get all recipes", () => {
 
         const { data: dataPage2 } = resPage2.body as GetAllRecipesResponse;
 
-        expect(Object.keys(dataPage2 ?? {}).length).toEqual(recipes.length - PAGE_SIZE!);
+        expect(dataPage2!.length).toEqual(10);
 
-        const duplicateRecipeKeys = Object.keys(data!).filter(key => Object.keys(dataPage2!).includes(key));
+        const page1Ids = data!.map(r => r.recipeId);
+        const duplicateRecipeKeys = dataPage2!.filter(r => page1Ids.includes(r.recipeId));
 
         expect(duplicateRecipeKeys.length).toEqual(0);
     });
 
     it("should respect search", async () => {
-        const [token, _] = await PrepareAuthenticatedUser();
-        const randomUsers = await CreateUsers({ count: randomNumber() });
-
-        const recipes = Array.from({ length: randomNumber() }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
+        const [token, _] = await PrepareAuthenticatedUser(database);
+        const randomUsers = await CreateUsers(database, { count: randomNumber() });
+        const allCreatedRecipes = [];
+        for (const user of randomUsers) {
+            const { recipes } = await KnexRecipeRepository.create(database, {
+                userId: user.userId,
+                recipes: Array.from({ length: randomNumber(1, 3) }).map(() => ({
                     name: uuid(),
-                    createdBy: randomElement(randomUsers)!.userId,
                     public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
+                })),
+            });
+            allCreatedRecipes.push(...recipes);
+        }
 
-        await RecipeActions.Save(recipes);
-
-        const recipeToSearchBy = randomElement(recipes)!;
+        const recipeToSearchBy = randomElement(allCreatedRecipes)!;
 
         const res = await request(app)
             .get(RecipeEndpoint.getAllRecipes({ search: recipeToSearchBy.name }))
@@ -232,167 +229,151 @@ describe("get all recipes", () => {
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(1);
-        expect(data![recipeToSearchBy.recipeId]?.recipeId).toEqual(recipeToSearchBy.recipeId);
+        const [recipe] = data!;
+
+        expect(data!.length).toEqual(1);
+        expect(recipe!.recipeId).toEqual(recipeToSearchBy.recipeId);
     });
 
     it("should respect substring search", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const recipe = {
-            recipeId: uuid(),
-            name: "Hardcoded Recipe Title To Search By",
-            createdBy: user.userId,
-            public: true,
-        } satisfies ServiceParams<RecipeService, "Save">;
-
-        RecipeActions.Save(recipe);
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [
+                { name: "Hardcoded Recipe Title To Search By", public: true },
+                { name: "z", public: true },
+            ],
+        });
 
         const resPrefix = await request(app)
-            .get(RecipeEndpoint.getAllRecipes({ search: recipe.name.substring(0, randomNumber()) }))
+            .get(RecipeEndpoint.getAllRecipes({ search: recipe!.name.substring(0, randomNumber() * 2) }))
             .set(token);
 
         expect(resPrefix.statusCode).toEqual(200);
 
         const { data: dataPrefix } = resPrefix.body as GetAllRecipesResponse;
 
-        expect(dataPrefix![recipe.recipeId]?.recipeId).toEqual(recipe.recipeId);
+        expect(dataPrefix![0]!.recipeId).toEqual(recipe!.recipeId);
 
         const resSuffix = await request(app)
-            .get(RecipeEndpoint.getAllRecipes({ search: recipe.name.substring(randomNumber()) }))
+            .get(RecipeEndpoint.getAllRecipes({ search: recipe!.name.substring(randomNumber()) }))
             .set(token);
 
         expect(resSuffix.statusCode).toEqual(200);
 
         const { data: dataSuffix } = resSuffix.body as GetAllRecipesResponse;
 
-        expect(dataSuffix![recipe.recipeId]?.recipeId).toEqual(recipe.recipeId);
+        expect(dataSuffix![0]!.recipeId).toEqual(recipe!.recipeId);
 
         const resMiddle = await request(app)
-            .get(RecipeEndpoint.getAllRecipes({ search: recipe.name.substring(randomNumber(), randomNumber() * 2) }))
+            .get(
+                RecipeEndpoint.getAllRecipes({
+                    search: recipe!.name.substring(randomNumber(10, 1), randomNumber(20, 11)),
+                })
+            )
             .set(token);
 
         expect(resMiddle.statusCode).toEqual(200);
 
         const { data: dataMiddle } = resMiddle.body as GetAllRecipesResponse;
 
-        expect(dataMiddle![recipe.recipeId]?.recipeId).toEqual(recipe.recipeId);
+        expect(dataMiddle![0]!.recipeId).toEqual(recipe!.recipeId);
     });
 
     it("should respect name sorting and ordering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
         const order = randomBoolean() ? "asc" : "desc";
 
-        const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
-
-        await RecipeActions.Save(recipes);
+        await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
+                name: uuid(),
+                public: true,
+            })),
+        });
 
         const res = await request(app)
-            .get(RecipeEndpoint.getAllRecipes({ sort: "name" }))
+            .get(RecipeEndpoint.getAllRecipes({ sort: "name", order }))
             .set(token);
 
         expect(res.statusCode).toEqual(200);
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(TEST_ITEM_COUNT);
+        expect(data!.length).toEqual(TEST_ITEM_COUNT);
 
-        const recipeNames = Object.values(data!).map(({ name }) => name);
+        const recipeNames = data!.map(({ name }) => name);
         expect(recipeNames).toEqual(order === "asc" ? recipeNames.sort() : recipeNames.sort().reverse());
     });
 
     it("should respect rating sorting and ordering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
         const order = randomBoolean() ? "asc" : "desc";
 
-        const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    ratingPersonal: randomNumber(),
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
-
-        await RecipeActions.Save(recipes);
+        await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
+                name: uuid(),
+                rating: randomNumber(),
+                public: true,
+            })),
+        });
 
         const res = await request(app)
-            .get(RecipeEndpoint.getAllRecipes({ sort: "rating" }))
+            .get(RecipeEndpoint.getAllRecipes({ sort: "ratingPersonal", order }))
             .set(token);
 
         expect(res.statusCode).toEqual(200);
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(TEST_ITEM_COUNT);
+        expect(data!.length).toEqual(TEST_ITEM_COUNT);
 
-        const recipeRatings = Object.values(data!).map(({ ratingPersonal }) => ratingPersonal);
-        expect(recipeRatings).toEqual(order === "asc" ? recipeRatings.sort() : recipeRatings.sort().reverse());
+        const recipeRatings = data!.map(({ ratingPersonal }) => ratingPersonal);
+        expect(recipeRatings).toEqual(order === "asc" ? recipeRatings!.sort() : recipeRatings!.sort().reverse());
     });
 
     it("should respect time sorting and ordering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
         const order = randomBoolean() ? "asc" : "desc";
 
-        const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    prepTime: randomNumber(5),
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
-
-        await RecipeActions.Save(recipes);
+        await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
+                name: uuid(),
+                prepTime: randomNumber(5),
+                public: true,
+            })),
+        });
 
         const res = await request(app)
-            .get(RecipeEndpoint.getAllRecipes({ sort: "time", order }))
+            .get(RecipeEndpoint.getAllRecipes({ sort: "cookTime", order }))
             .set(token);
 
         expect(res.statusCode).toEqual(200);
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(TEST_ITEM_COUNT);
+        expect(data!.length).toEqual(TEST_ITEM_COUNT);
 
-        const recipeRatings = Object.values(data!).map(({ prepTime }) => prepTime);
-        expect(recipeRatings).toEqual(order === "asc" ? recipeRatings.sort() : recipeRatings.sort().reverse());
+        const recipeTimes = data!.map(({ prepTime }) => prepTime);
+        expect(recipeTimes).toEqual(order === "asc" ? recipeTimes.sort() : recipeTimes.sort().reverse());
     });
 
     it("should respect category filtering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-
-        const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    prepTime: randomNumber(5),
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
         const parentTag = {
             tagId: uuid(),
             name: uuid(),
             description: uuid(),
-        } satisfies ServiceParams<TagActions, "save">;
+        } satisfies ServiceParamsDi<TagActions, "save">;
 
         const tags = Array.from({ length: randomNumber(TEST_ITEM_COUNT, TEST_ITEM_COUNT / 2) }).map(
             () =>
@@ -401,58 +382,47 @@ describe("get all recipes", () => {
                     tagId: uuid(),
                     name: uuid(),
                     description: uuid(),
-                } satisfies ServiceParams<TagActions, "save">)
-        );
-
-        const recipeTags = recipes.map(
-            recipe =>
-                ({ recipeId: recipe.recipeId, tags: [randomElement(tags)!] } satisfies ServiceParams<
-                    RecipeTagActions,
-                    "save"
-                >)
+                } satisfies ServiceParamsDi<TagActions, "save">)
         );
 
         const tagsToFilterBy = {
             [parentTag.tagId]: tags.slice(0, randomNumber(tags.length / 2)).map(({ tagId }) => tagId),
         };
 
-        await RecipeActions.Save(recipes);
-        await TagActions.save([parentTag, ...tags]);
-        await RecipeTagActions.save(recipeTags);
+        await TagActions.save(database, [parentTag, ...tags]);
+
+        const { recipes } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
+                name: uuid(),
+                prepTime: randomNumber(5),
+                public: true,
+                tags: [randomElement(tags)!],
+            })),
+        });
 
         const res = await request(app)
-            .get(RecipeEndpoint.getAllRecipes({ ...tagsToFilterBy }))
+            .get(RecipeEndpoint.getAllRecipes({ tags: tagsToFilterBy[parentTag.tagId] }))
             .set(token);
 
         expect(res.statusCode).toEqual(200);
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        const expectedRecipeIds = recipeTags
-            .filter(recipe => recipe.tags.some(({ tagId }) => tagsToFilterBy[parentTag.tagId]!.includes(tagId)))
-            .map(({ recipeId }) => recipeId)
-            .sort();
+        const expectedRecipeIds = recipes
+            .filter(r =>
+                Object.values(r.tags ?? {}).some(tagGroup =>
+                    (tagGroup.tags ?? []).some(t => (tagsToFilterBy[parentTag.tagId] ?? []).includes(t.tagId))
+                )
+            )
+            .map(r => r.recipeId);
+        const actualRecipeIds = data!.map(({ recipeId }) => recipeId);
 
-        const actualRecipeIds = Object.values(data!)
-            .map(({ recipeId }) => recipeId)
-            .sort();
-
-        expect(actualRecipeIds).toEqual(expectedRecipeIds);
+        expect(actualRecipeIds.sort()).toEqual(expectedRecipeIds.sort());
     });
 
     it("should respect ingredient filtering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-
-        const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    prepTime: randomNumber(5),
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
         const ingredients = Array.from({ length: randomNumber(TEST_ITEM_COUNT * 2, TEST_ITEM_COUNT) }).map(
             () =>
@@ -460,49 +430,42 @@ describe("get all recipes", () => {
                     ingredientId: uuid(),
                     name: uuid(),
                     createdBy: user.userId,
-                } satisfies ServiceParams<IngredientActions, "save">)
+                } satisfies ServiceParamsDi<IngredientActions, "save">)
         );
-
-        const recipeSections = recipes.map(
-            recipe =>
-                ({
-                    recipeId: recipe.recipeId,
-                    sections: [
-                        {
-                            sectionId: "00000000-0000-0000-0000-000000000000",
-                            name: uuid(),
-                            description: uuid(),
-                            index: randomNumber(),
-                        },
-                    ],
-                } satisfies ServiceParams<RecipeSectionActions, "save">)
-        );
-
-        const recipeIngredients = recipes.map(recipe => {
-            const randomIngredientIds = Array.from({ length: randomNumber(ingredients.length / 4) }).map(
-                () => randomElement(ingredients)!.ingredientId
-            );
-            return {
-                recipeId: recipe.recipeId,
-                ingredients: randomIngredientIds.map(ingredientId => ({
-                    ingredientId,
-                    description: uuid(),
-                    amount: generateRandomAmount(),
-                    id: uuid(),
-                    index: randomNumber(),
-                    sectionId: "00000000-0000-0000-0000-000000000000",
-                })),
-            } satisfies ServiceParams<RecipeIngredientActions, "save">;
-        });
 
         const ingredientsToFilterBy = ingredients
             .slice(0, randomNumber(ingredients.length / 2))
             .map(({ ingredientId }) => ingredientId);
 
-        await IngredientActions.save(ingredients);
-        await RecipeActions.Save(recipes);
-        await RecipeSectionActions.save(recipeSections);
-        await RecipeIngredientActions.save(recipeIngredients);
+        await IngredientActions.save(database, ingredients);
+
+        const { recipes } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => {
+                const recipeIngredients = Array.from({ length: randomNumber(ingredients.length / 4) })
+                    .map(() => randomElement(ingredients)!.ingredientId)
+                    .map(ingredientId => ({
+                        ingredientId,
+                        description: uuid(),
+                        amount: generateRandomAmount(),
+                        id: uuid(),
+                        index: randomNumber(),
+                    }));
+
+                return {
+                    name: uuid(),
+                    prepTime: randomNumber(5),
+                    public: true,
+                    ingredients: [
+                        {
+                            sectionId: uuid(),
+                            name: uuid(),
+                            items: recipeIngredients,
+                        },
+                    ],
+                };
+            }),
+        });
 
         const res = await request(app)
             .get(RecipeEndpoint.getAllRecipes({ ingredients: ingredientsToFilterBy }))
@@ -512,33 +475,20 @@ describe("get all recipes", () => {
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        const expectedRecipeIds = recipeIngredients
-            .filter(recipe =>
-                recipe.ingredients.some(({ ingredientId }) => ingredientsToFilterBy.includes(ingredientId))
+        const expectedRecipeIds = recipes
+            .filter(r =>
+                (r.ingredients ?? []).some(section =>
+                    section.items.some(i => i.ingredientId && ingredientsToFilterBy.includes(i.ingredientId))
+                )
             )
-            .map(({ recipeId }) => recipeId)
-            .sort();
+            .map(r => r.recipeId);
+        const actualRecipeIds = data!.map(({ recipeId }) => recipeId);
 
-        const actualRecipeIds = Object.values(data!)
-            .map(({ recipeId }) => recipeId)
-            .sort();
-
-        expect(actualRecipeIds).toEqual(expectedRecipeIds);
+        expect(actualRecipeIds.sort()).toEqual(expectedRecipeIds.sort());
     });
 
     it("should respect ingredient and category filtering together", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-
-        const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    prepTime: randomNumber(5),
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
         const ingredients = Array.from({ length: randomNumber(TEST_ITEM_COUNT * 2, TEST_ITEM_COUNT) }).map(
             () =>
@@ -546,14 +496,14 @@ describe("get all recipes", () => {
                     ingredientId: uuid(),
                     name: uuid(),
                     createdBy: user.userId,
-                } satisfies ServiceParams<IngredientActions, "save">)
+                } satisfies ServiceParamsDi<IngredientActions, "save">)
         );
 
         const parentTag = {
             tagId: uuid(),
             name: uuid(),
             description: uuid(),
-        } satisfies ServiceParams<TagActions, "save">;
+        } satisfies ServiceParamsDi<TagActions, "save">;
 
         const tags = Array.from({ length: randomNumber(TEST_ITEM_COUNT, TEST_ITEM_COUNT / 2) }).map(
             () =>
@@ -562,47 +512,7 @@ describe("get all recipes", () => {
                     tagId: uuid(),
                     name: uuid(),
                     description: uuid(),
-                } satisfies ServiceParams<TagActions, "save">)
-        );
-
-        const recipeSections = recipes.map(
-            recipe =>
-                ({
-                    recipeId: recipe.recipeId,
-                    sections: [
-                        {
-                            sectionId: "00000000-0000-0000-0000-000000000000",
-                            name: uuid(),
-                            description: uuid(),
-                            index: randomNumber(),
-                        },
-                    ],
-                } satisfies ServiceParams<RecipeSectionActions, "save">)
-        );
-
-        const recipeIngredients = recipes.map(recipe => {
-            const randomIngredientIds = Array.from({ length: randomNumber(ingredients.length / 4) }).map(
-                () => randomElement(ingredients)!.ingredientId
-            );
-            return {
-                recipeId: recipe.recipeId,
-                ingredients: randomIngredientIds.map(ingredientId => ({
-                    ingredientId,
-                    description: uuid(),
-                    amount: generateRandomAmount(),
-                    id: uuid(),
-                    index: randomNumber(),
-                    sectionId: "00000000-0000-0000-0000-000000000000",
-                })),
-            } satisfies ServiceParams<RecipeIngredientActions, "save">;
-        });
-
-        const recipeTags = recipes.map(
-            recipe =>
-                ({ recipeId: recipe.recipeId, tags: [randomElement(tags)!] } satisfies ServiceParams<
-                    RecipeTagActions,
-                    "save"
-                >)
+                } satisfies ServiceParamsDi<TagActions, "save">)
         );
 
         const ingredientsToFilterBy = ingredients
@@ -613,18 +523,45 @@ describe("get all recipes", () => {
             [parentTag.tagId]: tags.slice(0, randomNumber(tags.length / 2)).map(({ tagId }) => tagId),
         };
 
-        await IngredientActions.save(ingredients);
-        await TagActions.save([parentTag, ...tags]);
-        await RecipeActions.Save(recipes);
-        await RecipeSectionActions.save(recipeSections);
-        await RecipeIngredientActions.save(recipeIngredients);
-        await RecipeTagActions.save(recipeTags);
+        await IngredientActions.save(database, ingredients);
+        await TagActions.save(database, [parentTag, ...tags]);
+
+        const { recipes } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => {
+                const recipeIngredients = Array.from({ length: randomNumber(ingredients.length / 4) })
+                    .map(() => randomElement(ingredients)!.ingredientId)
+                    .map(ingredientId => ({
+                        ingredientId,
+                        description: uuid(),
+                        amount: generateRandomAmount(),
+                        id: uuid(),
+                        index: randomNumber(),
+                    }));
+
+                const recipeTags = [randomElement(tags)!];
+
+                return {
+                    name: uuid(),
+                    prepTime: randomNumber(5),
+                    public: true,
+                    ingredients: [
+                        {
+                            sectionId: uuid(),
+                            name: uuid(),
+                            items: recipeIngredients,
+                        },
+                    ],
+                    tags: recipeTags,
+                };
+            }),
+        });
 
         const res = await request(app)
             .get(
                 RecipeEndpoint.getAllRecipes({
                     ingredients: ingredientsToFilterBy,
-                    ...tagsToFilterBy,
+                    tags: tagsToFilterBy[parentTag.tagId],
                 })
             )
             .set(token);
@@ -633,35 +570,42 @@ describe("get all recipes", () => {
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        const expectedRecipeIdByIngredient = recipeIngredients
-            .filter(recipe =>
-                recipe.ingredients.some(({ ingredientId }) => ingredientsToFilterBy.includes(ingredientId))
+        const expectedRecipeIdByIngredient = recipes
+            .filter(r =>
+                (r.ingredients ?? []).some(section =>
+                    section.items.some(i => i.ingredientId && ingredientsToFilterBy.includes(i.ingredientId))
+                )
             )
-            .map(({ recipeId }) => recipeId)
-            .sort();
+            .map(r => r.recipeId);
 
-        const expectedRecipeIdByTag = recipeTags
-            .filter(recipe => recipe.tags.some(({ tagId }) => tagsToFilterBy[parentTag.tagId]!.includes(tagId)))
-            .map(({ recipeId }) => recipeId)
-            .sort();
-
+        const expectedRecipeIdByTag = recipes
+            .filter(r =>
+                Object.values(r.tags ?? {}).some(tagGroup =>
+                    (tagGroup.tags ?? []).some(t => (tagsToFilterBy[parentTag.tagId] ?? []).includes(t.tagId))
+                )
+            )
+            .map(r => r.recipeId);
         const expectedRecipeIds = expectedRecipeIdByIngredient.filter(recipeId =>
             expectedRecipeIdByTag.includes(recipeId)
         );
 
-        const actualRecipeIds = Object.values(data!)
-            .map(({ recipeId }) => recipeId)
-            .sort();
+        const actualRecipeIds = data!.map(({ recipeId }) => recipeId);
 
-        expect(actualRecipeIds).toEqual(expectedRecipeIds);
+        expect(actualRecipeIds.sort()).toEqual(expectedRecipeIds.sort());
     });
 });
 
 describe("get my recipes", () => {
+    let database: KnexDatabase;
     let app: Express;
 
-    before(async () => {
-        app = setupApp();
+    beforeEach(async () => {
+        database = await db.transaction();
+        app = setupApp({ database });
+    });
+
+    afterEach(async () => {
+        database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -671,27 +615,28 @@ describe("get my recipes", () => {
     });
 
     it("should return correct recipe details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const recipe = {
-            recipeId: uuid(),
-            name: uuid(),
-            createdBy: user.userId,
-            public: true,
-            cookTime: randomNumber(),
-            ingredients: generateRandomRecipeIngredientSections(),
-            method: generateRandomRecipeMethodSections(),
-            servings: generateRandomRecipeServings(),
-            prepTime: randomNumber(),
-            ratingPersonal: randomNumber(),
-            source: uuid(),
-            tags: await createRandomRecipeTags(),
-            timesCooked: randomNumber(),
-        } satisfies ServiceParams<RecipeService, "Save">;
-
-        const nonAssociatedTags = await createRandomRecipeTags();
-
-        await RecipeActions.Save(recipe);
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    public: true,
+                    cookTime: randomNumber(),
+                    ingredients: generateRandomRecipeIngredientSections(),
+                    method: generateRandomRecipeMethodSections(),
+                    servings: generateRandomRecipeServings(),
+                    prepTime: randomNumber(),
+                    rating: randomNumber(),
+                    source: uuid(),
+                    tags: await createRandomRecipeTags(database),
+                    timesCooked: randomNumber(),
+                },
+            ],
+        });
 
         const res = await request(app).get(RecipeEndpoint.getMyRecipes()).set(token);
 
@@ -699,58 +644,52 @@ describe("get my recipes", () => {
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(1);
+        expect(data!.length).toEqual(1);
 
-        const recipeResponse = data![recipe.recipeId]!;
+        const [recipeResponse] = data!;
 
-        expect(recipeResponse.recipeId).toEqual(recipe.recipeId);
-        expect(recipeResponse.name).toEqual(recipe.name);
-        expect(recipeResponse.createdBy.userId).toEqual(recipe.createdBy);
-        expect(recipeResponse.public).toEqual(recipe.public);
-        expect(recipeResponse.cookTime).toEqual(recipe.cookTime);
-        expect(recipeResponse.ingredients).toBeUndefined();
-        expect(recipeResponse.method).toBeUndefined();
-        expect(recipeResponse.tips).toBeUndefined();
-        expect(recipeResponse.summary).toBeUndefined();
-        // expect(recipeResponse.photo).toEqual(recipe.photo);
-        expect(recipeResponse.prepTime).toEqual(recipe.prepTime);
-        expect(recipeResponse.ratingPersonal).toEqual(recipe.ratingPersonal);
-        expect(recipeResponse.servings).toBeUndefined();
-        expect(recipeResponse.source).toBeUndefined();
-        expect(recipeResponse.timesCooked).toEqual(recipe.timesCooked);
-        expect(recipeResponse.ratingAverage).toEqual(recipe.ratingPersonal);
+        expect(recipeResponse!.recipeId).toEqual(recipe!.recipeId);
+        expect(recipeResponse!.name).toEqual(recipe!.name);
+        expect(recipeResponse!.owner.userId).toEqual(recipe!.owner.userId);
+        expect(recipeResponse!.public).toEqual(recipe!.public);
+        expect(recipeResponse!.cookTime).toEqual(recipe!.cookTime);
+        expect(recipeResponse!.ingredients).toBeUndefined();
+        expect(recipeResponse!.method).toBeUndefined();
+        expect(recipeResponse!.tips).toBeUndefined();
+        expect(recipeResponse!.summary).toBeUndefined();
+        // expect(recipeResponse.photo).toEqual(recipe!.photo);
+        expect(recipeResponse!.prepTime).toEqual(recipe!.prepTime);
+        expect(recipeResponse!.ratingPersonal).toEqual(recipe!.rating!.personal);
+        expect(recipeResponse!.servings).toBeUndefined();
+        expect(recipeResponse!.source).toBeUndefined();
+        expect(recipeResponse!.timesCooked).toEqual(recipe!.timesCooked);
+        expect(recipeResponse!.ratingAverage).toEqual(recipe!.rating!.personal);
         // expect(recipeResponse.createdAt).toBeDefined();
 
-        assertRecipeTagsAreEqual(recipeResponse.tags, recipe.tags);
+        assertRecipeTagsAreEqual(recipeResponse!.tags, recipe!.tags);
     });
 
     it("should not return any recipes from other users", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-        const randomUsers = await CreateUsers({ count: randomNumber() });
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const randomUsers = await CreateUsers(database, { count: randomNumber() });
 
-        const recipes = Array.from({ length: randomNumber() }).map(
-            (_, i) =>
-                ({
-                    recipeId: uuid(),
+        for (const otherUser of randomUsers) {
+            await KnexRecipeRepository.create(database, {
+                userId: otherUser.userId,
+                recipes: Array.from({ length: randomNumber(1, 3) }).map(() => ({
                     name: uuid(),
-                    createdBy: randomUsers[i % randomUsers.length]!.userId,
                     public: randomBoolean(),
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
+                })),
+            });
+        }
 
-        const myRecipes = Array.from({ length: randomNumber() }).map(
-            (_, i) =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    public: randomBoolean(),
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
-
-        const allRecipes = [...recipes, ...myRecipes];
-
-        RecipeActions.Save(allRecipes);
+        const { recipes: myRecipes } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: randomNumber() }).map(() => ({
+                name: uuid(),
+                public: randomBoolean(),
+            })),
+        });
 
         const res = await request(app).get(RecipeEndpoint.getMyRecipes()).set(token);
 
@@ -758,25 +697,21 @@ describe("get my recipes", () => {
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(myRecipes.length);
+        expect(data!.length).toEqual(myRecipes.length);
     });
 
     it("should respect pagination", async () => {
         const PAGE_SIZE = 50;
 
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const recipes = Array.from({ length: 50 }).map(
-            (_, i) =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user!.userId,
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
-
-        await RecipeActions.Save(recipes);
+        const { recipes } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: 75 }).map(() => ({
+                name: uuid(),
+                public: true,
+            })),
+        });
 
         const res = await request(app).get(RecipeEndpoint.getMyRecipes()).set(token);
 
@@ -784,7 +719,7 @@ describe("get my recipes", () => {
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(PAGE_SIZE);
+        expect(data!.length).toEqual(PAGE_SIZE);
 
         const resPage2 = await request(app)
             .get(RecipeEndpoint.getMyRecipes({ page: 2 }))
@@ -794,27 +729,24 @@ describe("get my recipes", () => {
 
         const { data: dataPage2 } = resPage2.body as GetAllRecipesResponse;
 
-        expect(Object.keys(dataPage2 ?? {}).length).toEqual(recipes.length - PAGE_SIZE!);
+        expect(dataPage2!.length).toEqual(recipes.length - PAGE_SIZE!);
 
-        const duplicateRecipeKeys = Object.keys(data!).filter(key => Object.keys(dataPage2!).includes(key));
+        const page1Ids = data!.map(r => r.recipeId);
+        const duplicateRecipeKeys = dataPage2!.filter(r => page1Ids.includes(r.recipeId));
 
         expect(duplicateRecipeKeys.length).toEqual(0);
     });
 
     it("should respect search", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const recipes = Array.from({ length: randomNumber() }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user!.userId,
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
-
-        await RecipeActions.Save(recipes);
+        const { recipes } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: randomNumber() }).map(() => ({
+                name: uuid(),
+                public: true,
+            })),
+        });
 
         const recipeToSearchBy = randomElement(recipes)!;
 
@@ -825,168 +757,151 @@ describe("get my recipes", () => {
         expect(res.statusCode).toEqual(200);
 
         const { data } = res.body as GetAllRecipesResponse;
+        const [recipe] = data!;
 
-        expect(Object.keys(data ?? {}).length).toEqual(1);
-        expect(data![recipeToSearchBy.recipeId]?.recipeId).toEqual(recipeToSearchBy.recipeId);
+        expect(data!.length).toEqual(1);
+        expect(recipe!.recipeId).toEqual(recipeToSearchBy.recipeId);
     });
 
     it("should respect substring search", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const recipe = {
-            recipeId: uuid(),
-            name: "Hardcoded Recipe Title To Search By",
-            createdBy: user.userId,
-            public: true,
-        } satisfies ServiceParams<RecipeService, "Save">;
-
-        RecipeActions.Save(recipe);
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [
+                { name: "Hardcoded Recipe Title To Search By", public: true },
+                { name: "z", public: true },
+            ],
+        });
 
         const resPrefix = await request(app)
-            .get(RecipeEndpoint.getMyRecipes({ search: recipe.name.substring(0, randomNumber()) }))
+            .get(RecipeEndpoint.getMyRecipes({ search: recipe!.name.substring(0, randomNumber()) }))
             .set(token);
 
         expect(resPrefix.statusCode).toEqual(200);
 
         const { data: dataPrefix } = resPrefix.body as GetAllRecipesResponse;
 
-        expect(dataPrefix![recipe.recipeId]?.recipeId).toEqual(recipe.recipeId);
+        expect(dataPrefix![0]!.recipeId).toEqual(recipe!.recipeId);
 
         const resSuffix = await request(app)
-            .get(RecipeEndpoint.getMyRecipes({ search: recipe.name.substring(randomNumber()) }))
+            .get(RecipeEndpoint.getMyRecipes({ search: recipe!.name.substring(randomNumber()) }))
             .set(token);
 
         expect(resSuffix.statusCode).toEqual(200);
 
         const { data: dataSuffix } = resSuffix.body as GetAllRecipesResponse;
 
-        expect(dataSuffix![recipe.recipeId]?.recipeId).toEqual(recipe.recipeId);
+        expect(dataSuffix![0]!.recipeId).toEqual(recipe!.recipeId);
 
         const resMiddle = await request(app)
-            .get(RecipeEndpoint.getMyRecipes({ search: recipe.name.substring(randomNumber(), randomNumber() * 2) }))
+            .get(
+                RecipeEndpoint.getMyRecipes({
+                    search: recipe!.name.substring(randomNumber(10, 1), randomNumber(20, 11)),
+                })
+            )
             .set(token);
 
         expect(resMiddle.statusCode).toEqual(200);
 
         const { data: dataMiddle } = resMiddle.body as GetAllRecipesResponse;
 
-        expect(dataMiddle![recipe.recipeId]?.recipeId).toEqual(recipe.recipeId);
+        expect(dataMiddle![0]!.recipeId).toEqual(recipe!.recipeId);
     });
 
     it("should respect name sorting and ordering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
         const order = randomBoolean() ? "asc" : "desc";
 
-        const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
-
-        await RecipeActions.Save(recipes);
+        await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
+                name: uuid(),
+                public: true,
+            })),
+        });
 
         const res = await request(app)
-            .get(RecipeEndpoint.getMyRecipes({ sort: "name" }))
+            .get(RecipeEndpoint.getMyRecipes({ sort: "name", order }))
             .set(token);
 
         expect(res.statusCode).toEqual(200);
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(TEST_ITEM_COUNT);
+        expect(data!.length).toEqual(TEST_ITEM_COUNT);
 
-        const recipeNames = Object.values(data!).map(({ name }) => name);
+        const recipeNames = data!.map(({ name }) => name);
         expect(recipeNames).toEqual(order === "asc" ? recipeNames.sort() : recipeNames.sort().reverse());
     });
 
     it("should respect rating sorting and ordering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
         const order = randomBoolean() ? "asc" : "desc";
 
-        const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    ratingPersonal: randomNumber(),
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
-
-        await RecipeActions.Save(recipes);
+        await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
+                name: uuid(),
+                rating: randomNumber(),
+                public: true,
+            })),
+        });
 
         const res = await request(app)
-            .get(RecipeEndpoint.getMyRecipes({ sort: "rating" }))
+            .get(RecipeEndpoint.getMyRecipes({ sort: "ratingPersonal", order }))
             .set(token);
 
         expect(res.statusCode).toEqual(200);
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(TEST_ITEM_COUNT);
+        expect(data!.length).toEqual(TEST_ITEM_COUNT);
 
-        const recipeRatings = Object.values(data!).map(({ ratingPersonal }) => ratingPersonal);
-        expect(recipeRatings).toEqual(order === "asc" ? recipeRatings.sort() : recipeRatings.sort().reverse());
+        const recipeRatings = data!.map(({ ratingPersonal }) => ratingPersonal);
+        expect(recipeRatings).toEqual(order === "asc" ? recipeRatings!.sort() : recipeRatings!.sort().reverse());
     });
 
     it("should respect time sorting and ordering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
         const order = randomBoolean() ? "asc" : "desc";
 
-        const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    prepTime: randomNumber(5),
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
-
-        await RecipeActions.Save(recipes);
+        await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
+                name: uuid(),
+                prepTime: randomNumber(5),
+                public: true,
+            })),
+        });
 
         const res = await request(app)
-            .get(RecipeEndpoint.getMyRecipes({ sort: "time", order }))
+            .get(RecipeEndpoint.getMyRecipes({ sort: "cookTime", order }))
             .set(token);
 
         expect(res.statusCode).toEqual(200);
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(TEST_ITEM_COUNT);
+        expect(data!.length).toEqual(TEST_ITEM_COUNT);
 
-        const recipeRatings = Object.values(data!).map(({ prepTime }) => prepTime);
-        expect(recipeRatings).toEqual(order === "asc" ? recipeRatings.sort() : recipeRatings.sort().reverse());
+        const recipeTimes = data!.map(({ prepTime }) => prepTime);
+        expect(recipeTimes).toEqual(order === "asc" ? recipeTimes.sort() : recipeTimes.sort().reverse());
     });
 
     it("should respect category filtering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-
-        const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    prepTime: randomNumber(5),
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
         const parentTag = {
             tagId: uuid(),
             name: uuid(),
             description: uuid(),
-        } satisfies ServiceParams<TagActions, "save">;
+        } satisfies ServiceParamsDi<TagActions, "save">;
 
         const tags = Array.from({ length: randomNumber(TEST_ITEM_COUNT, TEST_ITEM_COUNT / 2) }).map(
             () =>
@@ -995,58 +910,47 @@ describe("get my recipes", () => {
                     tagId: uuid(),
                     name: uuid(),
                     description: uuid(),
-                } satisfies ServiceParams<TagActions, "save">)
-        );
-
-        const recipeTags = recipes.map(
-            recipe =>
-                ({ recipeId: recipe.recipeId, tags: [randomElement(tags)!] } satisfies ServiceParams<
-                    RecipeTagActions,
-                    "save"
-                >)
+                } satisfies ServiceParamsDi<TagActions, "save">)
         );
 
         const tagsToFilterBy = {
             [parentTag.tagId]: tags.slice(0, randomNumber(tags.length / 2)).map(({ tagId }) => tagId),
         };
 
-        await RecipeActions.Save(recipes);
-        await TagActions.save([parentTag, ...tags]);
-        await RecipeTagActions.save(recipeTags);
+        await TagActions.save(database, [parentTag, ...tags]);
+
+        const { recipes } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
+                name: uuid(),
+                prepTime: randomNumber(5),
+                public: true,
+                tags: [randomElement(tags)!],
+            })),
+        });
 
         const res = await request(app)
-            .get(RecipeEndpoint.getMyRecipes({ ...tagsToFilterBy }))
+            .get(RecipeEndpoint.getMyRecipes({ tags: tagsToFilterBy[parentTag.tagId] }))
             .set(token);
 
         expect(res.statusCode).toEqual(200);
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        const expectedRecipeIds = recipeTags
-            .filter(recipe => recipe.tags.some(({ tagId }) => tagsToFilterBy[parentTag.tagId]!.includes(tagId)))
-            .map(({ recipeId }) => recipeId)
-            .sort();
+        const expectedRecipeIds = recipes
+            .filter(r =>
+                Object.values(r.tags ?? {}).some(tagGroup =>
+                    (tagGroup.tags ?? []).some(t => (tagsToFilterBy[parentTag.tagId] ?? []).includes(t.tagId))
+                )
+            )
+            .map(r => r.recipeId);
+        const actualRecipeIds = data!.map(({ recipeId }) => recipeId);
 
-        const actualRecipeIds = Object.values(data!)
-            .map(({ recipeId }) => recipeId)
-            .sort();
-
-        expect(actualRecipeIds).toEqual(expectedRecipeIds);
+        expect(actualRecipeIds.sort()).toEqual(expectedRecipeIds.sort());
     });
 
     it("should respect ingredient filtering", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-
-        const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    prepTime: randomNumber(5),
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
         const ingredients = Array.from({ length: randomNumber(TEST_ITEM_COUNT * 2, TEST_ITEM_COUNT) }).map(
             () =>
@@ -1054,49 +958,42 @@ describe("get my recipes", () => {
                     ingredientId: uuid(),
                     name: uuid(),
                     createdBy: user.userId,
-                } satisfies ServiceParams<IngredientActions, "save">)
+                } satisfies ServiceParamsDi<IngredientActions, "save">)
         );
-
-        const recipeSections = recipes.map(
-            recipe =>
-                ({
-                    recipeId: recipe.recipeId,
-                    sections: [
-                        {
-                            sectionId: "00000000-0000-0000-0000-000000000000",
-                            name: uuid(),
-                            description: uuid(),
-                            index: randomNumber(),
-                        },
-                    ],
-                } satisfies ServiceParams<RecipeSectionActions, "save">)
-        );
-
-        const recipeIngredients = recipes.map(recipe => {
-            const randomIngredientIds = Array.from({ length: randomNumber(ingredients.length / 4) }).map(
-                () => randomElement(ingredients)!.ingredientId
-            );
-            return {
-                recipeId: recipe.recipeId,
-                ingredients: randomIngredientIds.map(ingredientId => ({
-                    ingredientId,
-                    description: uuid(),
-                    amount: generateRandomAmount(),
-                    id: uuid(),
-                    index: randomNumber(),
-                    sectionId: "00000000-0000-0000-0000-000000000000",
-                })),
-            } satisfies ServiceParams<RecipeIngredientActions, "save">;
-        });
 
         const ingredientsToFilterBy = ingredients
             .slice(0, randomNumber(ingredients.length / 2))
             .map(({ ingredientId }) => ingredientId);
 
-        await IngredientActions.save(ingredients);
-        await RecipeActions.Save(recipes);
-        await RecipeSectionActions.save(recipeSections);
-        await RecipeIngredientActions.save(recipeIngredients);
+        await IngredientActions.save(database, ingredients);
+
+        const { recipes } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => {
+                const recipeIngredients = Array.from({ length: randomNumber(ingredients.length / 4) })
+                    .map(() => randomElement(ingredients)!.ingredientId)
+                    .map(ingredientId => ({
+                        ingredientId,
+                        description: uuid(),
+                        amount: generateRandomAmount(),
+                        id: uuid(),
+                        index: randomNumber(),
+                    }));
+
+                return {
+                    name: uuid(),
+                    prepTime: randomNumber(5),
+                    public: true,
+                    ingredients: [
+                        {
+                            sectionId: uuid(),
+                            name: uuid(),
+                            items: recipeIngredients,
+                        },
+                    ],
+                };
+            }),
+        });
 
         const res = await request(app)
             .get(RecipeEndpoint.getMyRecipes({ ingredients: ingredientsToFilterBy }))
@@ -1106,33 +1003,20 @@ describe("get my recipes", () => {
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        const expectedRecipeIds = recipeIngredients
-            .filter(recipe =>
-                recipe.ingredients.some(({ ingredientId }) => ingredientsToFilterBy.includes(ingredientId))
+        const expectedRecipeIds = recipes
+            .filter(r =>
+                (r.ingredients ?? []).some(section =>
+                    section.items.some(i => i.ingredientId && ingredientsToFilterBy.includes(i.ingredientId))
+                )
             )
-            .map(({ recipeId }) => recipeId)
-            .sort();
+            .map(r => r.recipeId);
+        const actualRecipeIds = data!.map(({ recipeId }) => recipeId);
 
-        const actualRecipeIds = Object.values(data!)
-            .map(({ recipeId }) => recipeId)
-            .sort();
-
-        expect(actualRecipeIds).toEqual(expectedRecipeIds);
+        expect(actualRecipeIds.sort()).toEqual(expectedRecipeIds.sort());
     });
 
     it("should respect ingredient and category filtering together", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
-
-        const recipes = Array.from({ length: TEST_ITEM_COUNT }).map(
-            () =>
-                ({
-                    recipeId: uuid(),
-                    name: uuid(),
-                    createdBy: user.userId,
-                    prepTime: randomNumber(5),
-                    public: true,
-                } satisfies ServiceParams<RecipeService, "Save">)
-        );
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
         const ingredients = Array.from({ length: randomNumber(TEST_ITEM_COUNT * 2, TEST_ITEM_COUNT) }).map(
             () =>
@@ -1140,14 +1024,14 @@ describe("get my recipes", () => {
                     ingredientId: uuid(),
                     name: uuid(),
                     createdBy: user.userId,
-                } satisfies ServiceParams<IngredientActions, "save">)
+                } satisfies ServiceParamsDi<IngredientActions, "save">)
         );
 
         const parentTag = {
             tagId: uuid(),
             name: uuid(),
             description: uuid(),
-        } satisfies ServiceParams<TagActions, "save">;
+        } satisfies ServiceParamsDi<TagActions, "save">;
 
         const tags = Array.from({ length: randomNumber(TEST_ITEM_COUNT, TEST_ITEM_COUNT / 2) }).map(
             () =>
@@ -1156,47 +1040,7 @@ describe("get my recipes", () => {
                     tagId: uuid(),
                     name: uuid(),
                     description: uuid(),
-                } satisfies ServiceParams<TagActions, "save">)
-        );
-
-        const recipeSections = recipes.map(
-            recipe =>
-                ({
-                    recipeId: recipe.recipeId,
-                    sections: [
-                        {
-                            sectionId: "00000000-0000-0000-0000-000000000000",
-                            name: uuid(),
-                            description: uuid(),
-                            index: randomNumber(),
-                        },
-                    ],
-                } satisfies ServiceParams<RecipeSectionActions, "save">)
-        );
-
-        const recipeIngredients = recipes.map(recipe => {
-            const randomIngredientIds = Array.from({ length: randomNumber(ingredients.length / 4) }).map(
-                () => randomElement(ingredients)!.ingredientId
-            );
-            return {
-                recipeId: recipe.recipeId,
-                ingredients: randomIngredientIds.map(ingredientId => ({
-                    ingredientId,
-                    description: uuid(),
-                    amount: generateRandomAmount(),
-                    id: uuid(),
-                    index: randomNumber(),
-                    sectionId: "00000000-0000-0000-0000-000000000000",
-                })),
-            } satisfies ServiceParams<RecipeIngredientActions, "save">;
-        });
-
-        const recipeTags = recipes.map(
-            recipe =>
-                ({ recipeId: recipe.recipeId, tags: [randomElement(tags)!] } satisfies ServiceParams<
-                    RecipeTagActions,
-                    "save"
-                >)
+                } satisfies ServiceParamsDi<TagActions, "save">)
         );
 
         const ingredientsToFilterBy = ingredients
@@ -1207,18 +1051,45 @@ describe("get my recipes", () => {
             [parentTag.tagId]: tags.slice(0, randomNumber(tags.length / 2)).map(({ tagId }) => tagId),
         };
 
-        await IngredientActions.save(ingredients);
-        await TagActions.save([parentTag, ...tags]);
-        await RecipeActions.Save(recipes);
-        await RecipeSectionActions.save(recipeSections);
-        await RecipeIngredientActions.save(recipeIngredients);
-        await RecipeTagActions.save(recipeTags);
+        await IngredientActions.save(database, ingredients);
+        await TagActions.save(database, [parentTag, ...tags]);
+
+        const { recipes } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => {
+                const recipeIngredients = Array.from({ length: randomNumber(ingredients.length / 4) })
+                    .map(() => randomElement(ingredients)!.ingredientId)
+                    .map(ingredientId => ({
+                        ingredientId,
+                        description: uuid(),
+                        amount: generateRandomAmount(),
+                        id: uuid(),
+                        index: randomNumber(),
+                    }));
+
+                const recipeTags = [randomElement(tags)!];
+
+                return {
+                    name: uuid(),
+                    prepTime: randomNumber(5),
+                    public: true,
+                    ingredients: [
+                        {
+                            sectionId: uuid(),
+                            name: uuid(),
+                            items: recipeIngredients,
+                        },
+                    ],
+                    tags: recipeTags,
+                };
+            }),
+        });
 
         const res = await request(app)
             .get(
                 RecipeEndpoint.getMyRecipes({
                     ingredients: ingredientsToFilterBy,
-                    ...tagsToFilterBy,
+                    tags: tagsToFilterBy[parentTag.tagId],
                 })
             )
             .set(token);
@@ -1227,35 +1098,42 @@ describe("get my recipes", () => {
 
         const { data } = res.body as GetAllRecipesResponse;
 
-        const expectedRecipeIdByIngredient = recipeIngredients
-            .filter(recipe =>
-                recipe.ingredients.some(({ ingredientId }) => ingredientsToFilterBy.includes(ingredientId))
+        const expectedRecipeIdByIngredient = recipes
+            .filter(r =>
+                (r.ingredients ?? []).some(section =>
+                    section.items.some(i => i.ingredientId && ingredientsToFilterBy.includes(i.ingredientId))
+                )
             )
-            .map(({ recipeId }) => recipeId)
-            .sort();
+            .map(r => r.recipeId);
 
-        const expectedRecipeIdByTag = recipeTags
-            .filter(recipe => recipe.tags.some(({ tagId }) => tagsToFilterBy[parentTag.tagId]!.includes(tagId)))
-            .map(({ recipeId }) => recipeId)
-            .sort();
-
+        const expectedRecipeIdByTag = recipes
+            .filter(r =>
+                Object.values(r.tags ?? {}).some(tagGroup =>
+                    (tagGroup.tags ?? []).some(t => (tagsToFilterBy[parentTag.tagId] ?? []).includes(t.tagId))
+                )
+            )
+            .map(r => r.recipeId);
         const expectedRecipeIds = expectedRecipeIdByIngredient.filter(recipeId =>
             expectedRecipeIdByTag.includes(recipeId)
         );
 
-        const actualRecipeIds = Object.values(data!)
-            .map(({ recipeId }) => recipeId)
-            .sort();
+        const actualRecipeIds = data!.map(({ recipeId }) => recipeId);
 
-        expect(actualRecipeIds).toEqual(expectedRecipeIds);
+        expect(actualRecipeIds.sort()).toEqual(expectedRecipeIds.sort());
     });
 });
 
 describe("post recipe", () => {
+    let database: KnexDatabase;
     let app: Express;
 
-    before(async () => {
-        app = setupApp();
+    beforeEach(async () => {
+        database = await db.transaction();
+        app = setupApp({ database });
+    });
+
+    afterEach(async () => {
+        database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -1265,10 +1143,9 @@ describe("post recipe", () => {
     });
 
     it("should create correct recipe details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const recipe = {
-            recipeId: uuid(),
+        const recipe: PostRecipeRequestBody["data"] = {
             name: uuid(),
             public: true,
             cookTime: randomNumber(),
@@ -1277,12 +1154,12 @@ describe("post recipe", () => {
             summary: uuid(),
             tips: uuid(),
             prepTime: randomNumber(),
-            ratingPersonal: randomNumber(),
+            rating: randomNumber(),
             servings: generateRandomRecipeServings(),
             source: uuid(),
-            tags: await createRandomRecipeTags(),
+            tags: await createRandomRecipeTags(database),
             timesCooked: randomNumber(),
-        } satisfies PostRecipeRequestBody["data"];
+        };
 
         const res = await request(app)
             .post(RecipeEndpoint.postRecipe)
@@ -1291,15 +1168,20 @@ describe("post recipe", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const recipeReadResponse = await RecipeActions.Read({ recipeId: recipe.recipeId, userId: user.userId });
-        expect(recipeReadResponse.length).toEqual(1);
+        const { data } = res.body as PostRecipeResponse;
+        const [createdRecipe] = data!;
 
-        const [recipeResponse] = recipeReadResponse;
+        const {
+            recipes: [recipeResponse],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: createdRecipe!.recipeId }],
+        });
 
-        expect(recipeResponse!.recipeId).toEqual(recipe.recipeId);
+        expect(recipeResponse!.recipeId).toEqual(createdRecipe!.recipeId);
         expect(recipeResponse!.name).toEqual(recipe.name);
-        expect(recipeResponse!.createdBy).toEqual(user.userId);
-        expect(recipeResponse!.createdByName).toEqual(user.firstName);
+        expect(recipeResponse!.owner.userId).toEqual(user.userId);
+        expect(recipeResponse!.owner.firstName).toEqual(user.firstName);
         expect(recipeResponse!.public).toEqual(recipe.public);
         expect(recipeResponse!.cookTime).toEqual(recipe.cookTime);
         // expect(recipeResponse!.photo).toEqual(recipe.photo);
@@ -1307,9 +1189,9 @@ describe("post recipe", () => {
         expect(recipeResponse!.source).toEqual(recipe.source);
         expect(recipeResponse!.tips).toEqual(recipe.tips);
         expect(recipeResponse!.prepTime).toEqual(recipe.prepTime);
-        expect(recipeResponse!.ratingPersonal).toEqual(recipe.ratingPersonal);
+        expect(recipeResponse!.rating!.personal).toEqual(recipe.rating);
         expect(recipeResponse!.timesCooked).toEqual(recipe.timesCooked);
-        expect(recipeResponse!.ratingAverage).toEqual(recipe.ratingPersonal);
+        expect(recipeResponse!.rating!.average).toEqual(recipe.rating);
         // expect(recipeResponse!.createdAt).toEqual(recipeResponse?.updatedAt);
         assertRecipeServingsAreEqual(recipeResponse!.servings, recipe.servings);
         // expect(recipeResponse!.ingredients).toEqual(recipe.ingredients); TODO create validator functions
@@ -1318,10 +1200,33 @@ describe("post recipe", () => {
     });
 
     it("should update correct recipe details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser();
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const recipe = {
-            recipeId: uuid(),
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    public: true,
+                    cookTime: randomNumber(),
+                    ingredients: generateRandomPostRecipeIngredientSections(),
+                    method: generateRandomRecipeMethodSections(),
+                    summary: uuid(),
+                    tips: uuid(),
+                    prepTime: randomNumber(),
+                    rating: randomNumber(),
+                    servings: generateRandomRecipeServings(),
+                    source: uuid(),
+                    tags: await createRandomRecipeTags(database),
+                    timesCooked: randomNumber(),
+                },
+            ],
+        });
+
+        const updatedRecipe: PutRecipeRequestBody["data"] = {
+            recipeId: recipe!.recipeId,
             name: uuid(),
             public: true,
             cookTime: randomNumber(),
@@ -1330,55 +1235,31 @@ describe("post recipe", () => {
             summary: uuid(),
             tips: uuid(),
             prepTime: randomNumber(),
-            ratingPersonal: randomNumber(),
+            rating: randomNumber(),
             servings: generateRandomRecipeServings(),
             source: uuid(),
-            tags: await createRandomRecipeTags(),
+            tags: await createRandomRecipeTags(database),
             timesCooked: randomNumber(),
-        } satisfies PostRecipeRequestBody["data"];
+        };
 
         const res = await request(app)
-            .post(RecipeEndpoint.postRecipe)
+            .put(RecipeEndpoint.putRecipe)
             .set(token)
-            .send({ data: recipe } satisfies PostRecipeRequestBody);
+            .send({ data: updatedRecipe } satisfies PutRecipeRequestBody);
 
-        expect(res.statusCode).toEqual(201);
+        expect(res.statusCode).toEqual(200);
 
-        const recipeReadResponse = await RecipeActions.Read({ recipeId: recipe.recipeId, userId: user.userId });
-        expect(recipeReadResponse.length).toEqual(1);
-
-        const updatedRecipe = {
-            recipeId: recipe.recipeId,
-            name: uuid(),
-            public: true,
-            cookTime: randomNumber(),
-            ingredients: generateRandomPostRecipeIngredientSections(),
-            method: generateRandomRecipeMethodSections(),
-            summary: uuid(),
-            tips: uuid(),
-            prepTime: randomNumber(),
-            ratingPersonal: randomNumber(),
-            servings: generateRandomRecipeServings(),
-            source: uuid(),
-            tags: await createRandomRecipeTags(),
-            timesCooked: randomNumber(),
-        } satisfies PostRecipeRequestBody["data"];
-
-        const res2 = await request(app)
-            .post(RecipeEndpoint.postRecipe)
-            .set(token)
-            .send({ data: updatedRecipe } satisfies PostRecipeRequestBody);
-
-        expect(res2.statusCode).toEqual(201);
-
-        const recipeReadResponse2 = await RecipeActions.Read({ recipeId: recipe.recipeId, userId: user.userId });
-
-        const [recipeResponse] = recipeReadResponse2;
+        const {
+            recipes: [recipeResponse],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
 
         expect(recipeResponse!.recipeId).toEqual(updatedRecipe.recipeId);
         expect(recipeResponse!.name).toEqual(updatedRecipe.name);
-        expect(recipeResponse!.createdBy).toEqual(user.userId);
-        expect(recipeResponse!.createdByName).toEqual(user.firstName);
+        expect(recipeResponse!.owner.userId).toEqual(user.userId);
+        expect(recipeResponse!.owner.firstName).toEqual(user.firstName);
         expect(recipeResponse!.public).toEqual(updatedRecipe.public);
         expect(recipeResponse!.cookTime).toEqual(updatedRecipe.cookTime);
         // expect(recipeResponse!.photo).toEqual(updatedRecipe.photo);
@@ -1386,9 +1267,9 @@ describe("post recipe", () => {
         expect(recipeResponse!.source).toEqual(updatedRecipe.source);
         expect(recipeResponse!.tips).toEqual(updatedRecipe.tips);
         expect(recipeResponse!.prepTime).toEqual(updatedRecipe.prepTime);
-        expect(recipeResponse!.ratingPersonal).toEqual(updatedRecipe.ratingPersonal);
+        expect(recipeResponse!.rating!.personal).toEqual(updatedRecipe.rating);
         expect(recipeResponse!.timesCooked).toEqual(updatedRecipe.timesCooked);
-        expect(recipeResponse!.ratingAverage).toEqual(updatedRecipe.ratingPersonal);
+        expect(recipeResponse!.rating!.average).toEqual(updatedRecipe.rating);
         // expect(new Date(recipeResponse!.createdAt!).getTime()).toBeLessThan(new Date(recipeResponse?.updatedAt!).getTime()); // TODO: reinvestigate this check in a way that works within the transactions used for testing
         assertRecipeServingsAreEqual(recipeResponse!.servings, updatedRecipe.servings);
         // expect(recipeResponse!.ingredients).toEqual(recipe.ingredients); TODO create validator functions

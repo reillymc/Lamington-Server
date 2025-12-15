@@ -1,17 +1,23 @@
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
-import type { Knex } from "knex";
 
 import config from "./config.ts";
-import { authenticationMiddleware, errorMiddleware, loggerMiddleware, notFoundMiddleware } from "./middleware/index.ts";
-import { appRouter, authRouter, docsRouter } from "./routes/index.ts";
+import {
+    createAuthenticationMiddleware,
+    errorMiddleware,
+    loggerMiddleware,
+    notFoundMiddleware,
+} from "./middleware/index.ts";
+import { appRouter, createAuthRouter, docsRouter } from "./routes/index.ts";
 import { attachmentEndpoint, authEndpoint, uploadDirectory } from "./routes/spec/index.ts";
+import { DefaultAppDependencies, type AppDependencies } from "./appDependencies.ts";
 import db from "./database/index.ts";
 
-// TODO: Knex.Transaction
-export const setupApp = (trx?: Knex) => {
+export const setupApp = (dependencies?: Partial<AppDependencies>) => {
     const app = express();
+
+    const appDependencies = { ...DefaultAppDependencies(dependencies?.database ?? db), ...dependencies };
 
     // app setup
     app.use(express.json());
@@ -26,8 +32,8 @@ export const setupApp = (trx?: Knex) => {
     if (config.attachments.storageService === "local" || process.env.NODE_ENV !== "production") {
         app.use(`/v1${attachmentEndpoint}/${uploadDirectory}`, express.static(uploadDirectory));
     }
-    app.use(`/v1${authEndpoint}`, authRouter);
-    app.use("/v1/", authenticationMiddleware, appRouter(trx ?? db));
+    app.use(`/v1${authEndpoint}`, createAuthRouter(appDependencies));
+    app.use("/v1/", createAuthenticationMiddleware(appDependencies.database), appRouter(appDependencies));
     app.use("/", docsRouter);
 
     // Catch 404 and forward to error handler

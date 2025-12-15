@@ -1,12 +1,13 @@
 import type { ContentMember } from "../database/definitions/contentMember.ts";
-import type { List, CreateQuery } from "../database/index.ts";
+import type { List, CreateQuery, KnexDatabase } from "../database/index.ts";
+import db from "../database/index.ts";
 import type { UserStatus } from "../routes/spec/user.ts";
 import { EnsureArray } from "../utils/index.ts";
 import { ContentMemberActions, type CreateContentMemberOptions } from "./content/contentMember.ts";
 
 export type SaveListMemberRequest = CreateQuery<{
     listId: List["listId"];
-    members?: Array<{ userId: ContentMember["userId"]; status?: UserStatus }>;
+    members?: Array<{ userId: ContentMember["userId"]; status?: string }>;
 }>;
 
 type DeleteListMemberRequest = CreateQuery<{
@@ -20,13 +21,18 @@ type ReadListMembersRequest = CreateQuery<{
 
 export const ListMemberActions = {
     delete: (request: DeleteListMemberRequest) =>
-        ContentMemberActions.delete(EnsureArray(request).map(({ listId, userId }) => ({ contentId: listId, userId }))),
-    read: (request: ReadListMembersRequest) =>
-        ContentMemberActions.read(EnsureArray(request).map(({ listId }) => ({ contentId: listId }))).then(response =>
-            response.map(({ contentId, ...rest }) => ({ listId: contentId, ...rest }))
+        ContentMemberActions.delete(
+            db as KnexDatabase,
+            EnsureArray(request).map(({ listId, userId }) => ({ contentId: listId, members: [{ userId }] }))
         ),
+    read: (request: ReadListMembersRequest) =>
+        ContentMemberActions.read(
+            db as KnexDatabase,
+            EnsureArray(request).map(({ listId }) => ({ contentId: listId }))
+        ).then(response => response.map(({ contentId, ...rest }) => ({ listId: contentId, ...rest }))),
     save: (request: SaveListMemberRequest, options?: CreateContentMemberOptions) =>
         ContentMemberActions.save(
+            db as KnexDatabase,
             EnsureArray(request).map(({ listId, members }) => ({ contentId: listId, members })),
             options
         ),

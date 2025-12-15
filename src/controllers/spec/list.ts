@@ -43,7 +43,7 @@ export interface ListService {
      */
     Save: SaveService<
         List & {
-            members?: Array<Pick<ContentMember, "userId"> & { status?: UserStatus }>;
+            members?: Array<Pick<ContentMember, "userId"> & { status?: string }>;
             createdBy: Content["createdBy"];
         }
     >;

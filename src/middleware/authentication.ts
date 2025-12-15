@@ -6,6 +6,7 @@ import { UserActions } from "../controllers/index.ts";
 import { getStatus } from "../routes/helpers/index.ts";
 import { UserStatus } from "../routes/spec/index.ts";
 import { AppError } from "../services/index.ts";
+import type { Database, KnexDatabase } from "../database/index.ts";
 
 const { jwtSecret } = config.authentication;
 
@@ -14,48 +15,50 @@ export interface AuthData {
     status?: UserStatus;
 }
 
-export const authenticationMiddleware: RequestHandler = (req, res, next) => {
-    if (!jwtSecret) return;
+export const createAuthenticationMiddleware =
+    (conn: Database): RequestHandler =>
+    (req, res, next) => {
+        if (!jwtSecret) return;
 
-    var token = req.headers["authorization"];
-    if (!token) {
-        return next(new AppError({ status: 401, message: "Authentication required to access this service." }));
-    }
-
-    if (token.startsWith("Bearer ")) {
-        token = token.slice(7, token.length);
-    }
-
-    jwt.verify(token, jwtSecret, async (err, decoded) => {
-        if (err) {
-            return next(new AppError({ status: 401, message: "Failed to authenticate user.", innerError: err }));
+        var token = req.headers["authorization"];
+        if (!token) {
+            return next(new AppError({ status: 401, message: "Authentication required to access this service." }));
         }
 
-        if (!isUserToken(decoded)) {
-            return next(new AppError({ status: 401, message: "Invalid token." }));
+        if (token.startsWith("Bearer ")) {
+            token = token.slice(7, token.length);
         }
 
-        const [user] = await UserActions.read({ userId: decoded.userId });
+        jwt.verify(token, jwtSecret, async (err, decoded) => {
+            if (err) {
+                return next(new AppError({ status: 401, message: "Failed to authenticate user.", innerError: err }));
+            }
 
-        if (!user) {
-            return next(new AppError({ status: 401, message: "User not found." }));
-        }
+            if (!isUserToken(decoded)) {
+                return next(new AppError({ status: 401, message: "Invalid token." }));
+            }
 
-        const userStatus = getStatus(user.status);
+            const [user] = await UserActions.read(conn as KnexDatabase, { userId: decoded.userId });
 
-        if (userStatus === UserStatus.Pending) {
-            return next(new AppError({ status: 401, message: "User account is pending approval." }));
-        }
+            if (!user) {
+                return next(new AppError({ status: 401, message: "User not found." }));
+            }
 
-        if (userStatus === UserStatus.Blacklisted) {
-            return next(new AppError({ status: 401, message: "User account access denied." }));
-        }
+            const userStatus = getStatus(user.status);
 
-        req.session = { userId: decoded.userId, status: userStatus };
+            if (userStatus === UserStatus.Pending) {
+                return next(new AppError({ status: 401, message: "User account is pending approval." }));
+            }
 
-        return next();
-    });
-};
+            if (userStatus === UserStatus.Blacklisted) {
+                return next(new AppError({ status: 401, message: "User account access denied." }));
+            }
+
+            req.session = { userId: decoded.userId, status: userStatus };
+
+            return next();
+        });
+    };
 
 const isUserToken = (decoded: string | undefined | JwtPayload): decoded is Pick<AuthData, "userId"> => {
     if (decoded === undefined || typeof decoded === "string") return false;

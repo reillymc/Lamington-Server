@@ -4,7 +4,7 @@ export type EntityMember = {
     userId: User["userId"];
     firstName?: User["firstName"];
     lastName?: User["lastName"];
-    status?: UserStatus;
+    status?: string;
 };
 
 export type EntityMembers = {

@@ -1,4 +1,5 @@
 import type { RecipeServings } from "../../routes/spec/index.ts";
+import type { Content } from "./content.ts";
 import type { Table } from "./index.ts";
 import { lamington } from "./lamington.ts";
 
@@ -6,7 +7,7 @@ import { lamington } from "./lamington.ts";
  * Recipe
  */
 export interface Recipe {
-    recipeId: string;
+    recipeId: Content["contentId"];
     name: string;
     source?: string;
 

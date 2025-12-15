@@ -1,17 +1,11 @@
 import express from "express";
 import { v4 as Uuid } from "uuid";
 
-import {
-    BookActions,
-    BookRecipeActions,
-    ListActions,
-    ListItemActions,
-    PlannerActions,
-    PlannerMealActions,
-    RecipeActions,
-    UserActions,
-} from "../controllers/index.ts";
+import { ListActions, ListItemActions, PlannerActions, PlannerMealActions, UserActions } from "../controllers/index.ts";
 import { AppError, MessageAction, userMessage } from "../services/index.ts";
+import db, { type KnexDatabase } from "../database/index.ts";
+import { KnexBookRepository } from "../repositories/knex/knexBookRepository.ts";
+import { KnexRecipeRepository } from "../repositories/knex/knexRecipeRepository.ts";
 import { getStatus } from "./helpers/index.ts";
 import {
     UserEndpoint,
@@ -40,7 +34,7 @@ router.get<GetUsersRequestParams, GetUsersResponse, GetUsersRequestBody>(
         const isAdmin = session.status === UserStatus.Administrator || session.status === UserStatus.Owner;
 
         try {
-            const users = await UserActions.readAll();
+            const users = await UserActions.readAll(db as KnexDatabase as KnexDatabase);
 
             const data = Object.fromEntries(
                 users
@@ -77,7 +71,7 @@ router.get<GetPendingUsersRequestParams, GetPendingUsersResponse, GetPendingUser
         }
 
         try {
-            const users = await UserActions.readPending();
+            const users = await UserActions.readPending(db as KnexDatabase);
 
             const data = Object.fromEntries(
                 users.map(user => [
@@ -117,13 +111,13 @@ router.post<PostUserApprovalRequestParams, PostUserApprovalResponse, PostUserApp
         }
 
         try {
-            const [user] = await UserActions.read({ userId: userToUpdate });
+            const [user] = await UserActions.read(db as KnexDatabase, { userId: userToUpdate });
 
             if (!user) {
                 return next(new AppError({ status: 400, message: "User does not exist" }));
             }
 
-            const [updatedUser] = await UserActions.saveStatus({
+            const [updatedUser] = await UserActions.saveStatus(db as KnexDatabase, {
                 userId: userToUpdate,
                 status: accept ? UserStatus.Member : UserStatus.Blacklisted,
             });
@@ -171,8 +165,6 @@ export default router;
 const createDefaultUserData = async (userId: string) => {
     const listId = Uuid();
     const listItemId = Uuid();
-    const bookId = Uuid();
-    const recipeId = Uuid();
     const plannerId = Uuid();
 
     await ListActions.Save({
@@ -191,42 +183,45 @@ const createDefaultUserData = async (userId: string) => {
         notes: "You can edit or delete this item by swiping left on it",
     });
 
-    await BookActions.save({
-        bookId,
-        createdBy: userId,
-        name: "Favourite Recipes",
-        description: "A recipe book for all my favourite recipes",
+    const {
+        books: [book],
+    } = await KnexBookRepository.create(db as KnexDatabase, {
+        userId,
+        books: [{ name: "Favourite Recipes", description: "A recipe book for all my favourite recipes" }],
     });
 
-    await RecipeActions.Save({
-        name: "Example Recipe",
-        recipeId,
-        createdBy: userId,
-        public: false,
-        ingredients: [
+    const { recipes } = await KnexRecipeRepository.create(db as KnexDatabase, {
+        userId,
+        recipes: [
             {
-                sectionId: Uuid(),
-                name: "This is an ingredient section",
-                description:
-                    "Ingredients can be added in a simple list above, and/or divided into sections like this one",
-                items: [],
+                name: "Example Recipe",
+                public: false,
+                ingredients: [
+                    {
+                        sectionId: Uuid(),
+                        name: "This is an ingredient section",
+                        description:
+                            "Ingredients can be added in a simple list above, and/or divided into sections like this one",
+                        items: [],
+                    },
+                ],
+                method: [
+                    {
+                        sectionId: Uuid(),
+                        name: "This is a method section",
+                        description:
+                            "Steps can be added in a simple list above, and/or divided into sections like this one",
+                        items: [],
+                    },
+                ],
+                tips: "There are many other entries you can use to create your recipe, such as adding a photo, recording the prep/cook time, servings, additional details, source and more.",
             },
         ],
-        method: [
-            {
-                sectionId: Uuid(),
-                name: "This is a method section",
-                description: "Steps can be added in a simple list above, and/or divided into sections like this one",
-                items: [],
-            },
-        ],
-        tips: "There are many other entries you can use to create your recipe, such as adding a photo, recording the prep/cook time, servings, additional details, source and more.",
     });
 
-    await BookRecipeActions.save({
-        bookId,
-        recipeId,
-    });
+    if (book) {
+        await KnexBookRepository.saveRecipes(db as KnexDatabase, { bookId: book.bookId, recipes });
+    }
 
     await PlannerActions.Save({
         plannerId,
@@ -235,28 +230,32 @@ const createDefaultUserData = async (userId: string) => {
         description: "A planner for all the meals I want to cook",
     });
 
-    await PlannerMealActions.Save([
-        {
-            plannerId,
-            createdBy: userId,
-            mealId: Uuid(),
-            recipeId,
-            year: new Date().getFullYear(),
-            month: new Date().getMonth(),
-            dayOfMonth: new Date().getDate(),
-            meal: "lunch",
-            description: undefined,
-        },
-        {
-            plannerId,
-            createdBy: userId,
-            mealId: Uuid(),
-            recipeId: undefined,
-            year: new Date().getFullYear(),
-            month: new Date().getMonth(),
-            dayOfMonth: new Date().getDate(),
-            meal: "breakfast",
-            description: "Example meal with no recipe",
-        },
-    ]);
+    const [recipe] = recipes;
+
+    if (recipe) {
+        await PlannerMealActions.Save([
+            {
+                plannerId,
+                createdBy: userId,
+                mealId: Uuid(),
+                recipeId: recipe.recipeId,
+                year: new Date().getFullYear(),
+                month: new Date().getMonth(),
+                dayOfMonth: new Date().getDate(),
+                meal: "lunch",
+                description: undefined,
+            },
+            {
+                plannerId,
+                createdBy: userId,
+                mealId: Uuid(),
+                recipeId: undefined,
+                year: new Date().getFullYear(),
+                month: new Date().getMonth(),
+                dayOfMonth: new Date().getDate(),
+                meal: "breakfast",
+                description: "Example meal with no recipe",
+            },
+        ]);
+    }
 };

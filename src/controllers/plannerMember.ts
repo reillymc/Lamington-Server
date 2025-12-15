@@ -1,12 +1,13 @@
 import type { ContentMember } from "../database/definitions/contentMember.ts";
-import type { Planner, CreateQuery } from "../database/index.ts";
+import type { Planner, CreateQuery, KnexDatabase } from "../database/index.ts";
+import db from "../database/index.ts";
 import type { UserStatus } from "../routes/spec/user.ts";
 import { EnsureArray } from "../utils/index.ts";
 import { ContentMemberActions, type CreateContentMemberOptions } from "./content/contentMember.ts";
 
 type SavePlannerMemberRequest = CreateQuery<{
     plannerId: Planner["plannerId"];
-    members?: Array<{ userId: ContentMember["userId"]; status?: UserStatus }>;
+    members?: Array<{ userId: ContentMember["userId"]; status?: string }>;
 }>;
 
 type DeletePlannerMemberRequest = CreateQuery<{
@@ -21,14 +22,17 @@ type ReadPlannerMembersRequest = CreateQuery<{
 export const PlannerMemberActions = {
     delete: (request: DeletePlannerMemberRequest) =>
         ContentMemberActions.delete(
-            EnsureArray(request).map(({ plannerId, userId }) => ({ contentId: plannerId, userId }))
+            db as KnexDatabase,
+            EnsureArray(request).map(({ plannerId, userId }) => ({ contentId: plannerId, members: [{ userId }] }))
         ),
     read: (request: ReadPlannerMembersRequest) =>
-        ContentMemberActions.read(EnsureArray(request).map(({ plannerId }) => ({ contentId: plannerId }))).then(
-            response => response.map(({ contentId, ...rest }) => ({ plannerId: contentId, ...rest }))
-        ),
+        ContentMemberActions.read(
+            db as KnexDatabase,
+            EnsureArray(request).map(({ plannerId }) => ({ contentId: plannerId }))
+        ).then(response => response.map(({ contentId, ...rest }) => ({ plannerId: contentId, ...rest }))),
     save: (request: SavePlannerMemberRequest, options?: CreateContentMemberOptions) =>
         ContentMemberActions.save(
+            db as KnexDatabase,
             EnsureArray(request).map(({ plannerId, members }) => ({ contentId: plannerId, members })),
             options
         ),

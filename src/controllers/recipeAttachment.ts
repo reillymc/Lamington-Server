@@ -1,6 +1,7 @@
 import type { Attachment } from "../database/definitions/attachment.ts";
 import type { ContentAttachment } from "../database/definitions/contentAttachment.ts";
-import type { Recipe, CreateQuery, CreateResponse } from "../database/index.ts";
+import type { Recipe } from "../database/definitions/recipe.ts";
+import type { CreateQuery, CreateResponse, KnexDatabase } from "../database/index.ts";
 import { EnsureArray } from "../utils/index.ts";
 import { ContentAttachmentActions, type CreateContentAttachmentOptions } from "./content/contentAttachment.ts";
 
@@ -29,12 +30,14 @@ type ReadRecipeAttachmentsResponse = {
 };
 
 export const RecipeAttachmentActions = {
-    read: (request: ReadRecipeAttachmentsRequest): CreateResponse<ReadRecipeAttachmentsResponse> =>
-        ContentAttachmentActions.read(EnsureArray(request).map(({ recipeId }) => ({ contentId: recipeId }))).then(
-            response => response.map(({ contentId, ...rest }) => ({ recipeId: contentId, ...rest }))
-        ),
-    save: (request: SaveRecipeAttachmentRequest, options?: CreateContentAttachmentOptions) =>
+    read: (db: KnexDatabase, request: ReadRecipeAttachmentsRequest): CreateResponse<ReadRecipeAttachmentsResponse> =>
+        ContentAttachmentActions.read(
+            db,
+            EnsureArray(request).map(({ recipeId }) => ({ contentId: recipeId }))
+        ).then(response => response.map(({ contentId, ...rest }) => ({ recipeId: contentId, ...rest }))),
+    save: (db: KnexDatabase, request: SaveRecipeAttachmentRequest, options?: CreateContentAttachmentOptions) =>
         ContentAttachmentActions.save(
+            db,
             EnsureArray(request).map(({ recipeId, attachments }) => ({
                 contentId: recipeId,
                 attachments,
