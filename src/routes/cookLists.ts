@@ -68,7 +68,7 @@ router.post<PostCookListMealRequestParams, PostCookListMealResponse, PostCookLis
 
         // Update database and return status
         try {
-            const existingMeals = await CookListMealActionsInternal.read(validMeals);
+            const existingMeals = await CookListMealActionsInternal.read(validMeals as any);
 
             if (existingMeals.some(meal => meal.createdBy !== userId)) {
                 return next(
@@ -80,7 +80,7 @@ router.post<PostCookListMealRequestParams, PostCookListMealResponse, PostCookLis
                 );
             }
 
-            await CookListMealActions.save(validMeals);
+            await CookListMealActions.save(validMeals as any);
             return res.status(201).json({ error: false, message: "Cook list meal added." });
         } catch (e: unknown) {
             next(

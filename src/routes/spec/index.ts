@@ -3,6 +3,7 @@ import { type AttachmentServices, imageSubpath, uploadDirectory } from "./attach
 import { type AuthServices, loginSubpath, registerSubpath } from "./auth.ts";
 import { type BookApi, bookIdParam, bookMemberIdParam, bookMemberSubpath, recipeSubpath } from "./book.ts";
 import type { CookListServices } from "./cookList.ts";
+import { recipeDataSubpath, recipePreviewsSubpath, type ExtractorApi } from "./extractor.ts";
 import type { IngredientServices } from "./ingredient.ts";
 import {
     type ListServices,
@@ -52,6 +53,11 @@ export const BookEndpoint = {
     postBookMember: `/:${bookIdParam}/${bookMemberSubpath}`,
     postBookRecipe: `/:${bookIdParam}/${recipeSubpath}`,
 } as const satisfies Record<keyof BookApi, string>;
+
+export const ExtractorEndpoint = {
+    getExtractRecipeMetadata: `/${recipePreviewsSubpath}`,
+    getExtractRecipe: `/:${recipeDataSubpath}`,
+} as const satisfies Record<keyof ExtractorApi, string>;
 
 export const IngredientEndpoint = {
     getIngredients: `/`,

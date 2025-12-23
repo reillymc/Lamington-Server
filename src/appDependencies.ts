@@ -5,6 +5,7 @@ import { KnexBookRepository } from "./repositories/knex/knexBookRepository.ts";
 import { KnexRecipeRepository } from "./repositories/knex/knexRecipeRepository.ts";
 import { LocalAttachmentService, type AttachmentService } from "./services/attachment/index.ts";
 import { createBookService } from "./services/bookService.ts";
+import { createContentExtractionService } from "./services/contentExtractionService.ts";
 import type { AppServices } from "./services/index.ts";
 import { createRecipeService } from "./services/recipeService.ts";
 
@@ -20,6 +21,7 @@ export type ServiceDependencies<T extends Database = Database> = AppRepositories
 export const DefaultAppServices = (database: Database): AppServices => ({
     recipeService: createRecipeService(database, DefaultAppRepositories as ServiceDependencies),
     bookService: createBookService(database, DefaultAppRepositories as ServiceDependencies),
+    contentExtractionService: createContentExtractionService(),
 });
 
 export type AppDependencies<T extends Database = Database> = {

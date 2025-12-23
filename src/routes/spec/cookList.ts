@@ -1,4 +1,4 @@
-import type { ImageAttachment } from "./attachment.ts";
+import type { AttachmentKey, ImageAttachment } from "./attachment.ts";
 import type { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from "./base.ts";
 import type { User } from "./user.ts";
 
@@ -29,7 +29,15 @@ export type GetCookListMealsService = (request: GetCookListMealsRequest) => GetC
 
 // Post cook list meal
 export type PostCookListMealRequestParams = BaseRequestParams;
-export type PostCookListMealRequestBody = BaseRequestBody<CookListMeal>;
+export type PostCookListMealRequestBody = BaseRequestBody<{
+    mealId?: string;
+    sequence?: number;
+    meal: string;
+    description?: string;
+    source?: string;
+    recipeId?: string;
+    heroImage?: AttachmentKey;
+}>;
 
 export type PostCookListMealRequest = BaseRequest<PostCookListMealRequestParams & PostCookListMealRequestBody>;
 export type PostCookListMealResponse = BaseResponse;

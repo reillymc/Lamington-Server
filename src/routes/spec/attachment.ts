@@ -12,6 +12,10 @@ export interface ImageAttachment {
     uri: string;
 }
 
+export interface AttachmentKey {
+    attachmentId: string;
+}
+
 // Post image attachment
 export type PostImageAttachmentRequestParams = BaseRequestParams;
 export type PostImageAttachmentRequest = BaseRequest<PostImageAttachmentRequestParams>;

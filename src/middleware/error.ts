@@ -3,7 +3,7 @@ import type { ErrorRequestHandler } from "express";
 import { authEndpoint } from "../routes/spec/index.ts";
 import { AppError, logger } from "../services/index.ts";
 
-export const errorMiddleware: ErrorRequestHandler = (error: AppError, request, response) => {
+export const errorMiddleware: ErrorRequestHandler = (error: AppError, request, response, _next) => {
     logger.log({
         level: "error",
         message: error.message,

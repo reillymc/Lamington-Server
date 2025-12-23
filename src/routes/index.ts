@@ -26,6 +26,8 @@ import {
 import { default as tagsRouter } from "./tags.ts";
 import { default as usersRouter } from "./users.ts";
 import type { AppDependencies } from "../appDependencies.ts";
+import { extractorEndpoint } from "./spec/extractor.ts";
+import { createExtractorRouter } from "./extractor.ts";
 
 const appRouter = (appDependencies: AppDependencies) =>
     express
@@ -40,6 +42,7 @@ const appRouter = (appDependencies: AppDependencies) =>
         .use(recipeEndpoint, createRecipeRouter(appDependencies.services))
         .use(tagEndpoint, tagsRouter)
         .use(usersEndpoint, usersRouter)
+        .use(extractorEndpoint, createExtractorRouter(appDependencies.services))
         .use("/", notFoundMiddleware);
 
 export { appRouter, createAuthRouter, docsRouter };
