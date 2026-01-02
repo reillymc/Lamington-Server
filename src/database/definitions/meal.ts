@@ -6,16 +6,16 @@ import { lamington } from "./lamington.ts";
  */
 export type Meal = {
     mealId: string;
-    plannerId?: string;
-    year?: number;
-    month?: number;
-    dayOfMonth?: number;
+    plannerId: string | null;
+    year: number | null;
+    month: number | null;
+    dayOfMonth: number | null;
     meal: string;
-    description?: string;
-    source?: string;
-    sequence?: number;
-    recipeId?: string;
-    notes?: string;
+    description: string | null;
+    source: string | null;
+    sequence: number | null;
+    recipeId: string | null;
+    notes: string | null;
 };
 
 export const plannerMeal: Table<Meal> = {

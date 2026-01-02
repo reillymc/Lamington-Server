@@ -33,10 +33,11 @@ type KnownEntities =
     | "list"
     | "list item"
     | "list member"
-    | "planner meal"
+    | "meal"
     | "planner"
     | "planner member"
-    | "planner item";
+    | "planner meal"
+    | "cooklist meal";
 
 export class PermissionError extends AppError {
     constructor(entity: KnownEntities) {
@@ -60,6 +61,27 @@ export class NotFoundError extends AppError {
     }
 }
 
+export class UpdatedDataFetchError extends AppError {
+    constructor(entity: KnownEntities, entityIds: string | string[]) {
+        super({
+            status: 500,
+            code: "UPDATE_READ_FAILED",
+            message: `The updated ${entity} entries were not found: ${
+                entityIds.length ? `Ids: ${EnsureArray(entityIds).join(", ")}` : ""
+            }`,
+        });
+    }
+}
+export class CreatedDataFetchError extends AppError {
+    constructor(entity: KnownEntities) {
+        super({
+            status: 500,
+            code: "CREATE_READ_FAILED",
+            message: `The created ${entity} entries were not found`,
+        });
+    }
+}
+
 export class InsufficientDataError extends AppError {
     constructor(entity: KnownEntities) {
         super({
@@ -70,6 +92,15 @@ export class InsufficientDataError extends AppError {
     }
 }
 
+export class ValidationError extends AppError {
+    constructor(innerError: any) {
+        super({
+            status: innerError.status,
+            message: innerError.message,
+            innerError,
+        });
+    }
+}
 const ErrorLogFileTransport = new transports.DailyRotateFile({
     level: "error",
     filename: "error-%DATE%.log",

@@ -1,15 +1,12 @@
 import { load } from "cheerio";
 import moment from "moment";
 
-import type { Recipe, RecipeIngredientItem, RecipeMethodStep } from "../routes/spec/recipe.ts";
-import { v4 } from "uuid";
+import type { components } from "../routes/spec/index.ts";
 import { AppError } from "./logging.ts";
 
 export interface ContentExtractionService {
-    extractRecipeMetadata: (url: string) => Promise<Pick<Recipe, "name"> & { imageUrl?: string }>;
-    extractRecipe: (
-        url: string
-    ) => Promise<Omit<Recipe, "recipeId" | "public" | "timesCooked" | "owner">> & { imageUrl?: string };
+    extractRecipeMetadata: (url: string) => Promise<components["schemas"]["ExtractedRecipeMetadata"]>;
+    extractRecipe: (url: string) => Promise<components["schemas"]["ExtractedRecipe"]>;
 }
 
 export const createContentExtractionService = (): ContentExtractionService => ({
@@ -73,7 +70,7 @@ export const createContentExtractionService = (): ContentExtractionService => ({
         const prepTime = moment.duration(recipeData.prepTime || 0).asMinutes();
         const cookTime = moment.duration(recipeData.cookTime || 0).asMinutes();
 
-        const recipe: Omit<Recipe, "recipeId" | "public" | "timesCooked" | "owner"> & { imageUrl?: string } = {
+        return {
             name: recipeData.name || "Untitled Recipe",
             source: url,
             servings: recipeData.recipeYield,
@@ -81,30 +78,6 @@ export const createContentExtractionService = (): ContentExtractionService => ({
             prepTime,
             cookTime,
             imageUrl: Array.isArray(recipeData.image) ? recipeData.image[0] : recipeData.image?.url ?? recipeData.image,
-            ingredients: [
-                {
-                    sectionId: v4(),
-                    name: "default",
-                    items: (recipeData.recipeIngredient || []).map(
-                        (name: string): RecipeIngredientItem => ({ id: v4(), name })
-                    ),
-                },
-            ],
-            method: [
-                {
-                    sectionId: v4(),
-                    name: "default",
-                    items: (recipeData.recipeInstructions || []).map(
-                        (instruction: any): RecipeMethodStep => ({
-                            id: v4(),
-                            description: typeof instruction === "string" ? instruction : instruction.text,
-                        })
-                    ),
-                },
-            ],
-            // TODO parse cuisine and meal tags
         };
-
-        return recipe;
     },
 });

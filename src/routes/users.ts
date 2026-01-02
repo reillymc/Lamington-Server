@@ -1,10 +1,11 @@
 import express from "express";
 import { v4 as Uuid } from "uuid";
 
-import { ListActions, ListItemActions, PlannerActions, PlannerMealActions, UserActions } from "../controllers/index.ts";
+import { ListActions, ListItemActions, UserActions } from "../controllers/index.ts";
 import { AppError, MessageAction, userMessage } from "../services/index.ts";
 import db, { type KnexDatabase } from "../database/index.ts";
 import { KnexBookRepository } from "../repositories/knex/knexBookRepository.ts";
+import { KnexPlannerRepository } from "../repositories/knex/knexPlannerRepository.ts";
 import { KnexRecipeRepository } from "../repositories/knex/knexRecipeRepository.ts";
 import { getStatus } from "./helpers/index.ts";
 import {
@@ -165,7 +166,6 @@ export default router;
 const createDefaultUserData = async (userId: string) => {
     const listId = Uuid();
     const listItemId = Uuid();
-    const plannerId = Uuid();
 
     await ListActions.Save({
         listId,
@@ -223,39 +223,40 @@ const createDefaultUserData = async (userId: string) => {
         await KnexBookRepository.saveRecipes(db as KnexDatabase, { bookId: book.bookId, recipes });
     }
 
-    await PlannerActions.Save({
-        plannerId,
-        createdBy: userId,
-        name: "My Meal Planner",
-        description: "A planner for all the meals I want to cook",
+    const { planners } = await KnexPlannerRepository.create(db as KnexDatabase, {
+        userId,
+        planners: [
+            {
+                name: "My Meal Planner",
+                description: "A planner for all the meals I want to cook",
+            },
+        ],
     });
 
+    const [planner] = planners;
     const [recipe] = recipes;
 
-    if (recipe) {
-        await PlannerMealActions.Save([
-            {
-                plannerId,
-                createdBy: userId,
-                mealId: Uuid(),
-                recipeId: recipe.recipeId,
-                year: new Date().getFullYear(),
-                month: new Date().getMonth(),
-                dayOfMonth: new Date().getDate(),
-                meal: "lunch",
-                description: undefined,
-            },
-            {
-                plannerId,
-                createdBy: userId,
-                mealId: Uuid(),
-                recipeId: undefined,
-                year: new Date().getFullYear(),
-                month: new Date().getMonth(),
-                dayOfMonth: new Date().getDate(),
-                meal: "breakfast",
-                description: "Example meal with no recipe",
-            },
-        ]);
+    if (planner && recipe) {
+        await KnexPlannerRepository.createMeals(db as KnexDatabase, {
+            userId,
+            meals: [
+                {
+                    plannerId: planner.plannerId,
+                    recipeId: recipe.recipeId,
+                    year: new Date().getFullYear(),
+                    month: new Date().getMonth(),
+                    dayOfMonth: new Date().getDate(),
+                    course: "lunch",
+                },
+                {
+                    plannerId: planner.plannerId,
+                    year: new Date().getFullYear(),
+                    month: new Date().getMonth(),
+                    dayOfMonth: new Date().getDate(),
+                    course: "breakfast",
+                    description: "Example meal with no recipe",
+                },
+            ],
+        });
     }
 };

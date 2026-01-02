@@ -10,12 +10,31 @@ import {
 } from "../../database/index.ts";
 import { EnsureArray } from "../../utils/index.ts";
 
+export type ContentMemberStatus = "O" | "A" | "M" | "P" | "B";
+
 export type SaveContentMemberRequest = Pick<ContentMember, "contentId"> & {
-    members?: Array<{ userId: ContentMember["userId"]; status?: string }>;
+    members?: Readonly<Array<{ userId: ContentMember["userId"]; status?: ContentMemberStatus }>>;
 };
 
 export type SaveContentMemberResponse = Pick<ContentMember, "contentId"> & {
-    members: Array<{ userId: ContentMember["userId"]; status?: string }>;
+    members: Array<{
+        userId: ContentMember["userId"];
+        status?: ContentMemberStatus;
+        firstName: string;
+    }>;
+};
+
+const parseStatus = (status?: string): ContentMemberStatus | undefined => {
+    switch (status) {
+        case "A":
+        case "B":
+        case "M":
+        case "O":
+        case "P":
+            return status;
+        default:
+            return undefined;
+    }
 };
 
 export interface CreateContentMemberOptions {
@@ -50,21 +69,23 @@ const saveContentMembers = async (
         members.map(({ userId, status }) => ({ contentId, userId, status }))
     );
 
-    if (!allMembersToSave.length) {
-        return requests.map(({ contentId }) => ({ contentId, members: [] }));
+    if (allMembersToSave.length) {
+        // Batch insert/update all members in a single query.
+        await db<ContentMember>(lamington.contentMember)
+            .insert(allMembersToSave)
+            .onConflict(["contentId", "userId"])
+            .merge(["status"]);
     }
 
-    // Batch insert/update all members in a single query.
-    const savedMembers = await db<ContentMember>(lamington.contentMember)
-        .insert(allMembersToSave)
-        .onConflict(["contentId", "userId"])
-        .merge(["status"])
-        .returning(["contentId", "userId", "status"]);
+    const savedMembers = await readContentMembers(
+        db,
+        requests.map(({ contentId }) => ({ contentId }))
+    );
 
     // Group the results back by contentId to match the response format.
     return requests.map(({ contentId }) => ({
         contentId,
-        members: savedMembers.filter(m => m.contentId === contentId),
+        members: savedMembers.filter(m => m.contentId === contentId).map(({ contentId: _, ...member }) => member),
     }));
 };
 
@@ -112,7 +133,11 @@ interface GetContentMembersParams {
     contentId: string;
 }
 
-type GetContentMembersResponse = ContentMember & Pick<User, "firstName" | "lastName">;
+type GetContentMembersResponse = {
+    contentId: ContentMember["contentId"];
+    userId: ContentMember["userId"];
+    status: ContentMemberStatus;
+} & Pick<User, "firstName" | "lastName">;
 
 const readContentMembers = async (
     db: KnexDatabase,
@@ -120,12 +145,12 @@ const readContentMembers = async (
 ): ReadResponse<GetContentMembersResponse> => {
     const entityIds = EnsureArray(params).map(({ contentId }) => contentId);
 
-    const query = db<ContentMember>(lamington.contentMember)
+    const query = await db<ContentMember>(lamington.contentMember)
         .select(contentMember.contentId, contentMember.userId, contentMember.status, user.firstName, user.lastName)
         .whereIn(contentMember.contentId, entityIds)
         .leftJoin(lamington.user, contentMember.userId, user.userId);
 
-    return query;
+    return query.map(row => ({ ...row, status: parseStatus(row.status) }));
 };
 
 export const ContentMemberActions = {

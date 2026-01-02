@@ -3,12 +3,10 @@ import {
     type AuthServices,
     type BookApi,
     type RecipeApi,
-    type CookListServices,
     type GetAllRecipesRequestQuery,
     type GetMyRecipesRequestQuery,
     type IngredientServices,
     type ListServices,
-    type PlannerServices,
     type TagServices,
     type UserServices,
     approveSubpath,
@@ -16,16 +14,12 @@ import {
     authEndpoint,
     bookEndpoint,
     bookMemberSubpath,
-    cookListEndpoint,
     imageSubpath,
     ingredientEndpoint,
     itemSubpath,
     listEndpoint,
     listMemberSubpath,
     loginSubpath,
-    mealSubpath,
-    plannerEndpoint,
-    plannerMemberSubpath,
     rateSubpath,
     recipeEndpoint,
     recipeSubpath,
@@ -73,28 +67,35 @@ export const BookEndpoint = {
     getBookRecipes: (bookId: string) => `${ApiUrl}${bookEndpoint}/${bookId}/${recipeSubpath}` as const,
 } as const satisfies Record<keyof BookApi, Endpoint>;
 
+const plannerEndpoint = "/planners";
+const mealSubpath = "/meals";
+const plannerMemberSubpath = "/members";
 export const PlannerEndpoint = {
-    deletePlanner: (plannerId: string) => `${ApiUrl}${plannerEndpoint}/${plannerId}` as const,
-    deletePlannerMeal: (plannerId: string, id: string) =>
-        `${ApiUrl}${plannerEndpoint}/${plannerId}/${mealSubpath}/${id}` as const,
-    getPlanner: (plannerId: string, year?: number, month?: number) =>
-        `${ApiUrl}${plannerEndpoint}/${plannerId}${
-            year ? (`/${year}${month ? (`/${month}` as const) : ("" as const)}` as const) : ("" as const)
-        }` as const,
     getPlanners: `${ApiUrl}${plannerEndpoint}`,
+    getPlanner: (plannerId: string) => `${ApiUrl}${plannerEndpoint}/${plannerId}` as const,
     postPlanner: `${ApiUrl}${plannerEndpoint}`,
+    patchPlanner: (plannerId: string) => `${ApiUrl}${plannerEndpoint}/${plannerId}` as const,
+    deletePlanner: (plannerId: string) => `${ApiUrl}${plannerEndpoint}/${plannerId}` as const,
+    getPlannerMeals: (plannerId: string, year: number, month: number) =>
+        `${ApiUrl}${plannerEndpoint}/${plannerId}${mealSubpath}/${year}/${month}` as const,
     postPlannerMeal: (plannerId: string) => `${ApiUrl}${plannerEndpoint}/${plannerId}/${mealSubpath}` as const,
-    deletePlannerMember: (plannerId: string, memberId: string) =>
-        `${ApiUrl}${plannerEndpoint}/${plannerId}/${plannerMemberSubpath}/${memberId}` as const,
+    patchPlannerMeal: (plannerId: string, mealId: string) =>
+        `${ApiUrl}${plannerEndpoint}/${plannerId}${mealSubpath}/${mealId}` as const,
+    deletePlannerMeal: (plannerId: string, mealId: string) =>
+        `${ApiUrl}${plannerEndpoint}/${plannerId}${mealSubpath}/${mealId}` as const,
     postPlannerMember: (plannerId: string) =>
         `${ApiUrl}${plannerEndpoint}/${plannerId}/${plannerMemberSubpath}` as const,
-} as const satisfies Record<keyof PlannerServices, Endpoint>;
+    deletePlannerMember: (plannerId: string, memberId: string) =>
+        `${ApiUrl}${plannerEndpoint}/${plannerId}/${plannerMemberSubpath}/${memberId}` as const,
+} as const satisfies Record<string, Endpoint>;
 
+const cookListEndpoint = "/cooklist/meals";
 export const CookListEndpoint = {
     getMeals: `${ApiUrl}${cookListEndpoint}`,
     postMeal: `${ApiUrl}${cookListEndpoint}`,
+    patchMeal: (mealId: string) => `${ApiUrl}${cookListEndpoint}/${mealId}` as const,
     deleteMeal: (mealId: string) => `${ApiUrl}${cookListEndpoint}/${mealId}` as const,
-} as const satisfies Record<keyof CookListServices, Endpoint>;
+} as const satisfies Record<string, Endpoint>;
 
 export const IngredientEndpoint = {
     getIngredients: `${ApiUrl}${ingredientEndpoint}`,
