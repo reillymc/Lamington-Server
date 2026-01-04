@@ -71,3 +71,5 @@ export const BisectOnPredicate = <T>(arr: T[], predicate: (item: T) => boolean) 
 };
 
 export const randomElement = <T>(array: T[]): T | undefined => array[Math.floor(Math.random() * array.length)];
+
+export const toUndefined = <T>(value: T | null): T | undefined => (value === null ? undefined : value);

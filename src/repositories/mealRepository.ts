@@ -2,14 +2,14 @@ import type { Meal } from "../database/definitions/meal.ts";
 import type { Database, User } from "../database/index.ts";
 import type { RepositoryService } from "./repository.ts";
 
-export type ReadRequest = {
+type ReadRequest = {
     userId: User["userId"];
     meals: Array<{
         mealId: Meal["mealId"];
     }>;
 };
 
-export type ReadResponse = {
+type ReadResponse = {
     userId: User["userId"];
     meals: Array<{
         mealId: Meal["mealId"];
@@ -18,15 +18,15 @@ export type ReadResponse = {
             userId: User["userId"];
             firstName: User["firstName"];
         };
-        plannerId?: Meal["plannerId"];
-        year?: Meal["year"];
-        month?: Meal["month"];
-        dayOfMonth?: Meal["dayOfMonth"];
-        description?: Meal["description"];
-        source?: Meal["source"];
-        sequence?: Meal["sequence"];
-        recipeId?: Meal["recipeId"];
-        notes?: Meal["notes"];
+        plannerId: Meal["plannerId"];
+        year: Meal["year"];
+        month: Meal["month"];
+        dayOfMonth: Meal["dayOfMonth"];
+        description: Meal["description"];
+        source: Meal["source"];
+        sequence: Meal["sequence"];
+        recipeId: Meal["recipeId"];
+        notes: Meal["notes"];
         heroImage?: {
             attachmentId: string;
             uri: string;

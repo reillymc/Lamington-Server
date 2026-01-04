@@ -17,9 +17,13 @@ export interface Planner {
     description: string | null;
 }
 
-export const planner = {
-    plannerId: `${lamington.planner}.plannerId`,
-    name: `${lamington.planner}.name`,
-    customisations: `${lamington.planner}.customisations`,
-    description: `${lamington.planner}.description`,
-} satisfies Table<Planner>;
+export const plannerColumns = [
+    "plannerId",
+    "name",
+    "customisations",
+    "description",
+] as const satisfies (keyof Planner)[];
+
+export const planner = Object.fromEntries(
+    plannerColumns.map(column => [column, `${lamington.planner}.${column}`])
+) as Table<Planner>;

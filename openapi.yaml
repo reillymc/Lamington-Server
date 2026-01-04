@@ -334,6 +334,24 @@ paths:
         required: true
         schema:
           $ref: "#/components/schemas/Uuid"
+    get:
+      tags:
+        - Planners
+      summary: Get planner members
+      operationId: getPlannerMembers
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlannerMember"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
     post:
       tags:
         - Planners
@@ -373,6 +391,66 @@ paths:
         - Planners
       summary: Remove a member from a planner
       operationId: deletePlannerMember
+      responses:
+        204:
+          description: No Content
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Planners
+      summary: Update a planner member
+      operationId: updatePlannerMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlannerMemberUpdate"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlannerMember"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /planners/{plannerId}/invite/accept:
+    parameters:
+      - name: plannerId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Planners
+      summary: Accept planner invitation
+      operationId: acceptPlannerInvite
+      responses:
+        204:
+          description: No Content
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /planners/{plannerId}/invite/decline:
+    parameters:
+      - name: plannerId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Planners
+      summary: Decline planner invitation
+      operationId: declinePlannerInvite
       responses:
         204:
           description: No Content
@@ -507,43 +585,25 @@ components:
         mealId:
           $ref: "#/components/schemas/Uuid"
         plannerId:
-          oneOf:
-            - $ref: "#/components/schemas/Uuid"
-            - type: 'null'
+          $ref: "#/components/schemas/Uuid"
         year:
-          oneOf:
-            - $ref: "#/components/schemas/Year"
-            - type: 'null'
+          $ref: "#/components/schemas/Year"
         month:
-          oneOf:
-            - $ref: "#/components/schemas/Month"
-            - type: 'null'
+          $ref: "#/components/schemas/Month"
         dayOfMonth:
-          oneOf:
-            - $ref: "#/components/schemas/DayOfMonth"
-            - type: 'null'
+          $ref: "#/components/schemas/DayOfMonth"
         course:
           $ref: "#/components/schemas/Course"
         description:
-          type:
-            - string
-            - 'null'
+          type: string
         source:
-          type:
-            - string
-            - 'null'
+          type: string
         sequence:
-          type:
-            - integer
-            - 'null'
+          type: integer
         recipeId:
-          oneOf:
-            - $ref: "#/components/schemas/Uuid"
-            - type: 'null'
+          $ref: "#/components/schemas/Uuid"
         notes:
-          type:
-            - string
-            - 'null'
+          type: string
       dependentRequired:
         plannerId:
           - year
@@ -580,17 +640,11 @@ components:
         course:
           $ref: "#/components/schemas/Course"
         description:
-          type:
-            - string
-            - 'null'
+          type: string
         source:
-          type:
-            - string
-            - 'null'
+          type: string
         recipeId:
-          oneOf:
-            - $ref: "#/components/schemas/Uuid"
-            - type: 'null'
+          $ref: "#/components/schemas/Uuid"
         heroImage:
           $ref: "#/components/schemas/ImageAttachment"
       required:
@@ -601,7 +655,9 @@ components:
         course:
           $ref: "#/components/schemas/Course"
         description:
-          type: string
+          type:
+            - string
+            - 'null'
         source:
           type:
             - string
@@ -620,7 +676,9 @@ components:
         course:
           $ref: "#/components/schemas/Course"
         description:
-          type: string
+          type:
+            - string
+            - 'null'
         source:
           type:
             - string
@@ -630,7 +688,9 @@ components:
             - $ref: "#/components/schemas/Uuid"
             - type: 'null'
         heroImage:
-          type: string
+          type:
+            - string
+            - 'null'
     CookListMeal:
       allOf:
         - $ref: "#/components/schemas/MealBase"
@@ -641,9 +701,7 @@ components:
             owner:
               $ref: "#/components/schemas/Owner"
             sequence:
-              type:
-                - integer
-                - 'null'
+              type: integer
           required:
             - mealId
             - owner
@@ -679,17 +737,9 @@ components:
         color:
           type: string
         description:
-          type:
-            - string
-            - 'null'
+          type: string
         status:
-          oneOf:
-            - $ref: "#/components/schemas/UserStatus"
-            - type: 'null'
-        members:
-          type: array
-          items:
-            $ref: "#/components/schemas/PlannerMember"
+          $ref: "#/components/schemas/UserStatus"
       required:
         - plannerId
         - owner
@@ -735,6 +785,8 @@ components:
           $ref: "#/components/schemas/Uuid"
         firstName:
           type: string
+        lastName:
+          type: string
         status:
           $ref: "#/components/schemas/UserStatus"
       required:
@@ -750,14 +802,19 @@ components:
       required:
         - userId
       unevaluatedProperties: false
+    PlannerMemberUpdate:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/UserStatus"
+      required:
+        - status
+      unevaluatedProperties: false
     PlannerMemberCreate:
       type: object
       properties:
-        email:
+        userId:
           type: string
-          format: email
-      required:
-        - email
       unevaluatedProperties: false
     PlannerMeal:
       allOf:

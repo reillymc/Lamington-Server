@@ -15,7 +15,10 @@ export const openApiValidatorMiddlewares = OpenApiValidator.middleware({
     ajvFormats: {
         mode: "full",
     },
-    validateResponses: true,
+    validateResponses: {
+        allErrors: process.env.NODE_ENV !== "production",
+        removeAdditional: true,
+    },
 });
 
 export const validationMiddleware: RequestHandler[] = openApiValidatorMiddlewares.map(

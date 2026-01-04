@@ -3,8 +3,9 @@ import { content } from "../../database/definitions/content.ts";
 import { contentAttachment } from "../../database/definitions/contentAttachment.ts";
 import { plannerMeal } from "../../database/definitions/meal.ts";
 import { lamington, user, type KnexDatabase } from "../../database/index.ts";
+import { toUndefined } from "../../utils/index.ts";
 import type { MealRepository } from "../mealRepository.ts";
-import { withContentReadPermissions } from "./common/content.ts";
+import { withContentReadPermissions } from "./common/contentQueries.ts";
 
 export const KnexMealRepository: MealRepository<KnexDatabase> = {
     read: async (db, { userId, meals }) => {
@@ -48,15 +49,15 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
                     userId: meal.createdBy,
                     firstName: meal.firstName,
                 },
-                plannerId: meal.plannerId,
-                year: meal.year,
-                month: meal.month,
-                dayOfMonth: meal.dayOfMonth,
-                description: meal.description,
-                source: meal.source,
-                sequence: meal.sequence,
-                recipeId: meal.recipeId,
-                notes: meal.notes,
+                plannerId: toUndefined(meal.plannerId),
+                year: toUndefined(meal.year),
+                month: toUndefined(meal.month),
+                dayOfMonth: toUndefined(meal.dayOfMonth),
+                description: toUndefined(meal.description),
+                source: toUndefined(meal.source),
+                sequence: toUndefined(meal.sequence),
+                recipeId: toUndefined(meal.recipeId),
+                notes: toUndefined(meal.notes),
                 heroImage: meal.heroAttachmentId
                     ? {
                           attachmentId: meal.heroAttachmentId,

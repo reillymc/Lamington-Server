@@ -1,3 +1,4 @@
+import type { Attachment } from "../database/definitions/attachment.ts";
 import type { Content } from "../database/definitions/content.ts";
 import type { ContentMember } from "../database/definitions/contentMember.ts";
 import type { Planner } from "../database/definitions/planner.ts";
@@ -19,14 +20,14 @@ type VerifyPermissionsRequest = {
 
 type VerifyPermissionsResponse = {
     userId: User["userId"];
-    status?: PlannerUserStatus | Array<PlannerUserStatus>;
+    status: PlannerUserStatus | Array<PlannerUserStatus> | null;
     planners: Array<{
         plannerId: Planner["plannerId"];
         hasPermissions: boolean;
     }>;
 };
 
-export type PlannerMealResponse = {
+type PlannerMealResponse = {
     mealId: Meal["mealId"];
     course: "breakfast" | "lunch" | "dinner";
     owner: {
@@ -37,14 +38,14 @@ export type PlannerMealResponse = {
     year: NonNullable<Meal["year"]>;
     month: NonNullable<Meal["month"]>;
     dayOfMonth: NonNullable<Meal["dayOfMonth"]>;
-    description?: Meal["description"];
-    source?: Meal["source"];
-    recipeId?: Meal["recipeId"];
-    notes?: Meal["notes"];
-    heroImage?: {
+    description: Meal["description"] | null;
+    source: Meal["source"] | null;
+    recipeId: Meal["recipeId"] | null;
+    notes: Meal["notes"] | null;
+    heroImage: {
         attachmentId: string;
         uri: string;
-    };
+    } | null;
 };
 
 type ReadFilters = {
@@ -53,16 +54,16 @@ type ReadFilters = {
     month?: Meal["month"];
 };
 
-export type ReadAllMealsRequest = {
+type ReadAllMealsRequest = {
     userId: User["userId"];
     filter: ReadFilters;
 };
 
-export type ReadAllMealsResponse = {
+type ReadAllMealsResponse = {
     meals: Array<PlannerMealResponse>;
 };
 
-export type CreatePlannerMealPayload = {
+type CreatePlannerMealPayload = {
     plannerId: Meal["plannerId"];
     year: Meal["year"];
     month: Meal["month"];
@@ -75,35 +76,44 @@ export type CreatePlannerMealPayload = {
     heroImage?: string;
 };
 
-export type CreateMealsRequest = {
+type CreateMealsRequest = {
     userId: User["userId"];
     meals: Array<CreatePlannerMealPayload>;
 };
 
-export type CreateMealsResponse = {
+type CreateMealsResponse = {
     meals: Array<PlannerMealResponse>;
 };
 
-export type UpdatePlannerMealPayload = Partial<Omit<CreatePlannerMealPayload, "plannerId">> & {
+type UpdatePlannerMealPayload = {
+    year?: Meal["year"];
+    month?: Meal["month"];
+    dayOfMonth?: Meal["dayOfMonth"];
+    course?: "breakfast" | "lunch" | "dinner";
+    description?: Meal["description"];
+    source?: Meal["source"];
+    recipeId?: Meal["recipeId"];
+    notes?: Meal["notes"];
+    heroImage?: Attachment["attachmentId"] | null;
     mealId: Meal["mealId"];
 };
 
-export type UpdateMealsRequest = {
+type UpdateMealsRequest = {
     // userId: User["userId"];
     meals: Array<UpdatePlannerMealPayload>;
 };
 
-export type UpdateMealsResponse = {
+type UpdateMealsResponse = {
     meals: Array<PlannerMealResponse>;
 };
 
-export type DeleteMealsRequest = {
+type DeleteMealsRequest = {
     meals: Array<{
         mealId: Meal["mealId"];
     }>;
 };
 
-export type DeleteMealsResponse = {
+type DeleteMealsResponse = {
     count: number;
 };
 
@@ -129,26 +139,26 @@ type BasePlannerResponse = {
     status?: PlannerUserStatus;
 };
 
-export type ReadAllPlannersRequest = {
+type ReadAllPlannersRequest = {
     userId: User["userId"];
     filter?: {
         owner?: Content["createdBy"];
     };
 };
 
-export type ReadAllPlannersResponse = {
+type ReadAllPlannersResponse = {
     userId: User["userId"];
     planners: Array<BasePlannerResponse>;
 };
 
-export type ReadPlannersRequest = {
+type ReadPlannersRequest = {
     userId: User["userId"];
     planners: Array<{
         plannerId: Planner["plannerId"];
     }>;
 };
 
-export type ReadPlannersResponse = {
+type ReadPlannersResponse = {
     userId: User["userId"];
     planners: Array<
         BasePlannerResponse & {
@@ -157,7 +167,7 @@ export type ReadPlannersResponse = {
     >;
 };
 
-export type CreatePlannersRequest = {
+type CreatePlannersRequest = {
     userId: User["userId"];
     planners: Readonly<
         Array<{
@@ -169,9 +179,9 @@ export type CreatePlannersRequest = {
     >;
 };
 
-export type CreatePlannersResponse = ReadPlannersResponse;
+type CreatePlannersResponse = ReadPlannersResponse;
 
-export type UpdatePlannersRequest = {
+type UpdatePlannersRequest = {
     userId: User["userId"];
     planners: Array<{
         plannerId: Planner["plannerId"];
@@ -182,15 +192,15 @@ export type UpdatePlannersRequest = {
     }>;
 };
 
-export type UpdatePlannersResponse = ReadPlannersResponse;
+type UpdatePlannersResponse = ReadPlannersResponse;
 
-export type DeletePlannersRequest = {
+type DeletePlannersRequest = {
     planners: Array<{
         plannerId: Planner["plannerId"];
     }>;
 };
 
-export type DeletePlannersResponse = {
+type DeletePlannersResponse = {
     count: number;
 };
 
@@ -213,7 +223,17 @@ type SaveMembersRequest = {
     members?: Readonly<Array<MemberSaveItem>>;
 };
 
-export type SaveMembersResponse = {
+type SaveMembersResponse = {
+    plannerId: Planner["plannerId"];
+    members: Array<MemberResponseItem>;
+};
+
+type UpdateMembersRequest = {
+    plannerId: Planner["plannerId"];
+    members?: Readonly<Array<MemberSaveItem>>;
+};
+
+type UpdateMembersResponse = {
     plannerId: Planner["plannerId"];
     members: Array<MemberResponseItem>;
 };
@@ -245,5 +265,6 @@ export interface PlannerRepository<TDatabase extends Database = Database> {
 
     readMembers: RepositoryBulkService<TDatabase, ReadMembersRequest, ReadMembersResponse>;
     saveMembers: RepositoryBulkService<TDatabase, SaveMembersRequest, SaveMembersResponse>;
+    updateMembers: RepositoryBulkService<TDatabase, UpdateMembersRequest, UpdateMembersResponse>;
     removeMembers: RepositoryBulkService<TDatabase, RemoveMembersRequest, RemoveMembersResponse>;
 }

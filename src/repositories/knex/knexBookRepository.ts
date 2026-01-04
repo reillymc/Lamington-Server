@@ -6,7 +6,7 @@ import { contentMember } from "../../database/definitions/contentMember.ts";
 import { lamington, user, type KnexDatabase } from "../../database/index.ts";
 import { EnsureArray, EnsureDefinedArray } from "../../utils/index.ts";
 import type { BookRepository } from "../bookRepository.ts";
-import { withContentReadPermissions } from "./common/content.ts";
+import { withContentReadPermissions } from "./common/contentQueries.ts";
 
 const readMembers: BookRepository<KnexDatabase>["readMembers"] = async (db, request) => {
     const requests = EnsureArray(request);

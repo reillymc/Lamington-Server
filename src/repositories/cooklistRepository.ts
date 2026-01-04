@@ -3,35 +3,35 @@ import type { Meal } from "../database/definitions/meal.ts";
 import type { Database, User } from "../database/index.ts";
 import type { RepositoryService } from "./repository.ts";
 
-export type CookListMealResponse = {
+type CookListMealResponse = {
     mealId: Meal["mealId"];
     course: "breakfast" | "lunch" | "dinner";
     owner: {
         userId: User["userId"];
         firstName: User["firstName"];
     };
-    sequence?: Meal["sequence"];
-    description?: Meal["description"];
-    source?: Meal["source"];
-    recipeId?: Meal["recipeId"];
-    notes?: Meal["notes"];
-    heroImage?: {
+    sequence: Meal["sequence"] | null;
+    description: Meal["description"] | null;
+    source: Meal["source"] | null;
+    recipeId: Meal["recipeId"] | null;
+    notes: Meal["notes"] | null;
+    heroImage: {
         attachmentId: string;
         uri: string;
-    };
+    } | null;
 };
 
-export type ReadAllMealsRequest = {
+type ReadAllMealsRequest = {
     userId: User["userId"];
 };
 
-export type ReadAllMealsResponse = {
+type ReadAllMealsResponse = {
     meals: Array<CookListMealResponse>;
 };
 
-export type CreateCookListMealPayload = {
+type CreateCookListMealPayload = {
     course: "breakfast" | "lunch" | "dinner";
-    sequence?: Meal["sequence"] | null;
+    sequence?: Meal["sequence"];
     description?: Meal["description"];
     source?: Meal["source"];
     recipeId?: Meal["recipeId"];
@@ -39,35 +39,42 @@ export type CreateCookListMealPayload = {
     heroImage?: Attachment["attachmentId"];
 };
 
-export type CreateMealsRequest = {
+type CreateMealsRequest = {
     userId: User["userId"];
     meals: Readonly<Array<CreateCookListMealPayload>>;
 };
 
-export type CreateMealsResponse = {
+type CreateMealsResponse = {
     meals: Array<CookListMealResponse>;
 };
 
-export type UpdateCookListMealPayload = Partial<CreateCookListMealPayload> & {
+type UpdateCookListMealPayload = {
+    course?: "breakfast" | "lunch" | "dinner" | null;
+    sequence?: Meal["sequence"];
+    description?: Meal["description"];
+    source?: Meal["source"];
+    recipeId?: Meal["recipeId"];
+    notes?: Meal["notes"];
+    heroImage?: Attachment["attachmentId"] | null;
     mealId: Meal["mealId"];
 };
 
-export type UpdateMealsRequest = {
+type UpdateMealsRequest = {
     // userId: User["userId"];
     meals: Array<UpdateCookListMealPayload>;
 };
 
-export type UpdateMealsResponse = {
+type UpdateMealsResponse = {
     meals: Array<CookListMealResponse>;
 };
 
-export type DeleteMealsRequest = {
+type DeleteMealsRequest = {
     meals: Array<{
         mealId: Meal["mealId"];
     }>;
 };
 
-export type DeleteMealsResponse = {
+type DeleteMealsResponse = {
     count: number;
 };
 

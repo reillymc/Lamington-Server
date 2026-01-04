@@ -5,6 +5,7 @@ import type { Recipe } from "../database/definitions/recipe.ts";
 import type { Database, User } from "../database/index.ts";
 import type { RepositoryBulkService, RepositoryService } from "./repository.ts";
 
+// TODO: clean up extraneous exports after migration to openapi spec at service layer is complete
 type BookUserStatus = "O" | "A" | "M" | "P" | "B";
 
 type MemberItem = {

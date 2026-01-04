@@ -109,7 +109,8 @@ export interface paths {
             };
             readonly cookie?: never;
         };
-        readonly get?: never;
+        /** Get planner members */
+        readonly get: operations["getPlannerMembers"];
         readonly put?: never;
         /** Add a meal to a planner */
         readonly post: operations["postPlannerMeal"];
@@ -197,6 +198,45 @@ export interface paths {
         readonly delete: operations["deletePlannerMember"];
         readonly options?: never;
         readonly head?: never;
+        /** Update a planner member */
+        readonly patch: operations["updatePlannerMember"];
+        readonly trace?: never;
+    };
+    readonly "/planners/{plannerId}/invite/accept": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly plannerId: components["schemas"]["Uuid"];
+            };
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Accept planner invitation */
+        readonly post: operations["acceptPlannerInvite"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/planners/{plannerId}/invite/decline": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly plannerId: components["schemas"]["Uuid"];
+            };
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Decline planner invitation */
+        readonly post: operations["declinePlannerInvite"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
         readonly patch?: never;
         readonly trace?: never;
     };
@@ -261,16 +301,16 @@ export interface components {
         readonly Course: "breakfast" | "lunch" | "dinner";
         readonly MealProperties: {
             readonly mealId?: components["schemas"]["Uuid"];
-            readonly plannerId?: components["schemas"]["Uuid"] | null;
-            readonly year?: components["schemas"]["Year"] | null;
-            readonly month?: components["schemas"]["Month"] | null;
-            readonly dayOfMonth?: components["schemas"]["DayOfMonth"] | null;
+            readonly plannerId?: components["schemas"]["Uuid"];
+            readonly year?: components["schemas"]["Year"];
+            readonly month?: components["schemas"]["Month"];
+            readonly dayOfMonth?: components["schemas"]["DayOfMonth"];
             readonly course?: components["schemas"]["Course"];
-            readonly description?: string | null;
-            readonly source?: string | null;
-            readonly sequence?: number | null;
-            readonly recipeId?: components["schemas"]["Uuid"] | null;
-            readonly notes?: string | null;
+            readonly description?: string;
+            readonly source?: string;
+            readonly sequence?: number;
+            readonly recipeId?: components["schemas"]["Uuid"];
+            readonly notes?: string;
         };
         readonly Meal: WithRequired<components["schemas"]["MealProperties"], "mealId" | "course"> & {
             readonly owner: components["schemas"]["Owner"];
@@ -278,29 +318,29 @@ export interface components {
         };
         readonly MealBase: {
             readonly course: components["schemas"]["Course"];
-            readonly description?: string | null;
-            readonly source?: string | null;
-            readonly recipeId?: components["schemas"]["Uuid"] | null;
+            readonly description?: string;
+            readonly source?: string;
+            readonly recipeId?: components["schemas"]["Uuid"];
             readonly heroImage?: components["schemas"]["ImageAttachment"];
         };
         readonly MealCreateBase: {
             readonly course: components["schemas"]["Course"];
-            readonly description?: string;
+            readonly description?: string | null;
             readonly source?: string | null;
             readonly recipeId?: components["schemas"]["Uuid"] | null;
             readonly heroImage?: string;
         };
         readonly MealUpdateBase: {
             readonly course?: components["schemas"]["Course"];
-            readonly description?: string;
+            readonly description?: string | null;
             readonly source?: string | null;
             readonly recipeId?: components["schemas"]["Uuid"] | null;
-            readonly heroImage?: string;
+            readonly heroImage?: string | null;
         };
         readonly CookListMeal: components["schemas"]["MealBase"] & {
             readonly mealId: components["schemas"]["Uuid"];
             readonly owner: components["schemas"]["Owner"];
-            readonly sequence?: number | null;
+            readonly sequence?: number;
         };
         readonly CookListMealCreate: components["schemas"]["MealCreateBase"] & {
             readonly sequence?: number | null;
@@ -313,9 +353,8 @@ export interface components {
             readonly owner: components["schemas"]["Owner"];
             readonly name: string;
             readonly color?: string;
-            readonly description?: string | null;
-            readonly status?: components["schemas"]["UserStatus"] | null;
-            readonly members?: readonly components["schemas"]["PlannerMember"][];
+            readonly description?: string;
+            readonly status?: components["schemas"]["UserStatus"];
         };
         readonly PlannerCreate: {
             readonly name: string;
@@ -338,9 +377,11 @@ export interface components {
             readonly userId: components["schemas"]["Uuid"];
             readonly status?: components["schemas"]["UserStatus"];
         };
+        readonly PlannerMemberUpdate: {
+            readonly status: components["schemas"]["UserStatus"];
+        };
         readonly PlannerMemberCreate: {
-            /** Format: email */
-            readonly email: string;
+            readonly userId?: string;
         };
         readonly PlannerMeal: components["schemas"]["MealBase"] & {
             readonly mealId: components["schemas"]["Uuid"];
@@ -653,6 +694,30 @@ export interface operations {
             readonly 500: components["responses"]["InternalServerError"];
         };
     };
+    readonly getPlannerMembers: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly plannerId: components["schemas"]["Uuid"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful response */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": readonly components["schemas"]["PlannerMember"][];
+                };
+            };
+            readonly 404: components["responses"]["NotFound"];
+            readonly 500: components["responses"]["InternalServerError"];
+        };
+    };
     readonly postPlannerMeal: {
         readonly parameters: {
             readonly query?: never;
@@ -794,6 +859,79 @@ export interface operations {
             readonly path: {
                 readonly plannerId: components["schemas"]["Uuid"];
                 readonly userId: components["schemas"]["Uuid"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description No Content */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            readonly 404: components["responses"]["NotFound"];
+            readonly 500: components["responses"]["InternalServerError"];
+        };
+    };
+    readonly updatePlannerMember: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly plannerId: components["schemas"]["Uuid"];
+                readonly userId: components["schemas"]["Uuid"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["PlannerMemberUpdate"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful response */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PlannerMember"];
+                };
+            };
+            readonly 404: components["responses"]["NotFound"];
+            readonly 500: components["responses"]["InternalServerError"];
+        };
+    };
+    readonly acceptPlannerInvite: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly plannerId: components["schemas"]["Uuid"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description No Content */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            readonly 404: components["responses"]["NotFound"];
+            readonly 500: components["responses"]["InternalServerError"];
+        };
+    };
+    readonly declinePlannerInvite: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly plannerId: components["schemas"]["Uuid"];
             };
             readonly cookie?: never;
         };

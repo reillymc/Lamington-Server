@@ -1,37 +1,39 @@
 import { ContentMemberActions } from "../../controllers/index.ts";
-import { planner, type Planner } from "../../database/definitions/planner.ts";
-import { plannerMeal } from "../../database/definitions/meal.ts";
+import { planner, plannerColumns, type Planner } from "../../database/definitions/planner.ts";
+import { plannerMeal, plannerMealColumns } from "../../database/definitions/meal.ts";
 import { content } from "../../database/definitions/content.ts";
 import { contentMember } from "../../database/definitions/contentMember.ts";
 import { user } from "../../database/definitions/user.ts";
 import { contentAttachment } from "../../database/definitions/contentAttachment.ts";
 import { attachment } from "../../database/definitions/attachment.ts";
 import { lamington, type KnexDatabase } from "../../database/index.ts";
-import { EnsureArray, EnsureDefinedArray, Undefined } from "../../utils/index.ts";
-import type { PlannerMealResponse, PlannerRepository } from "../plannerRepository.ts";
-import { withContentReadPermissions } from "./common/content.ts";
+import { EnsureArray, EnsureDefinedArray, toUndefined, Undefined } from "../../utils/index.ts";
+import type { PlannerRepository } from "../plannerRepository.ts";
+import { withContentReadPermissions } from "./common/contentQueries.ts";
+import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
 
-const formatPlannerMeal = (meal: any): PlannerMealResponse => ({
+const formatPlannerMeal = (meal: any): Awaited<ReturnType<PlannerRepository["readAllMeals"]>>["meals"][number] => ({
     mealId: meal.mealId,
     course: meal.meal.toLowerCase(),
     owner: {
         userId: meal.createdBy,
         firstName: meal.firstName,
     },
-    plannerId: meal.plannerId,
-    year: meal.year,
-    month: meal.month,
-    dayOfMonth: meal.dayOfMonth,
-    description: meal.description,
-    source: meal.source,
-    recipeId: meal.recipeId,
-    notes: meal.notes,
-    heroImage: meal.heroAttachmentId
-        ? {
-              attachmentId: meal.heroAttachmentId,
-              uri: meal.heroAttachmentUri,
-          }
-        : undefined,
+    plannerId: toUndefined(meal.plannerId),
+    year: toUndefined(meal.year),
+    month: toUndefined(meal.month),
+    dayOfMonth: toUndefined(meal.dayOfMonth),
+    description: toUndefined(meal.description),
+    source: toUndefined(meal.source),
+    recipeId: toUndefined(meal.recipeId),
+    notes: toUndefined(meal.notes),
+    heroImage:
+        meal.heroAttachmentId && meal.heroAttachmentUri
+            ? {
+                  attachmentId: meal.heroAttachmentId,
+                  uri: meal.heroAttachmentUri,
+              }
+            : undefined,
 });
 
 const readByIds = async (db: KnexDatabase, mealIds: string[]) => {
@@ -115,7 +117,7 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (db, { planners, use
         planners: result.map(p => ({
             plannerId: p.plannerId,
             name: p.name,
-            description: p.description,
+            description: toUndefined(p.description),
             color: p.customisations?.color,
             owner: { userId: p.createdBy, firstName: p.firstName },
             status: p.status ?? "O",
@@ -259,17 +261,9 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
     },
     updateMeals: async (db, { meals }) => {
         for (const meal of meals) {
-            const updateData: any = {};
-            if (meal.year !== undefined) updateData.year = meal.year;
-            if (meal.month !== undefined) updateData.month = meal.month;
-            if (meal.dayOfMonth !== undefined) updateData.dayOfMonth = meal.dayOfMonth;
-            if (meal.course !== undefined) updateData.meal = meal.course;
-            if (meal.description !== undefined) updateData.description = meal.description;
-            if (meal.source !== undefined) updateData.source = meal.source;
-            if (meal.recipeId !== undefined) updateData.recipeId = meal.recipeId;
-            if (meal.notes !== undefined) updateData.notes = meal.notes;
+            const updateData = buildUpdateRecord(meal, plannerMealColumns, { course: "meal" });
 
-            if (Object.keys(updateData).length > 0) {
+            if (updateData) {
                 await db(lamington.plannerMeal).where(plannerMeal.mealId, meal.mealId).update(updateData);
             }
 
@@ -330,7 +324,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
             planners: plannerList.map(p => ({
                 plannerId: p.plannerId,
                 name: p.name,
-                description: p.description,
+                description: toUndefined(p.description),
                 color: p.customisations?.color,
                 owner: { userId: p.createdBy, firstName: p.firstName },
                 status: p.status ?? "O",
@@ -361,12 +355,11 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
     },
     update: async (db, { userId, planners }) => {
         for (const p of planners) {
-            const updateData: any = {};
-            if (p.name !== undefined) updateData.name = p.name;
-            if (p.description !== undefined) updateData.description = p.description;
-            if (p.color !== undefined) updateData.customisations = { color: p.color };
+            const updateData = buildUpdateRecord(p, plannerColumns, {
+                color: { target: "customisations", transform: color => ({ color }) },
+            });
 
-            if (Object.keys(updateData).length > 0) {
+            if (updateData) {
                 await db(lamington.planner).where(planner.plannerId, p.plannerId).update(updateData);
             }
         }
@@ -389,6 +382,14 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
     },
     readMembers,
     saveMembers: setMembers,
+    updateMembers: (db, params) =>
+        ContentMemberActions.save(
+            db,
+            EnsureArray(params).map(({ plannerId, members }) => ({ contentId: plannerId, members })),
+            {
+                trimNotIn: false,
+            }
+        ).then(response => response.map(({ contentId, ...rest }) => ({ plannerId: contentId, ...rest }))),
     removeMembers: (db, request) =>
         ContentMemberActions.delete(
             db,

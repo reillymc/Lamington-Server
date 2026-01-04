@@ -13,7 +13,10 @@ export const createPlannerRouter = ({ plannerService }: AppDependencies["service
             paths["/planners"]["get"]["responses"]["200"]["content"]["application/json"],
             paths["/planners"]["get"]["requestBody"],
             paths["/planners"]["get"]["parameters"]["query"]
-        >("/planners", async ({ session }, res) => plannerService.getAll(session.userId).then(res.status(200).json))
+        >("/planners", async ({ session }, res) => {
+            const data = await plannerService.getAll(session.userId);
+            return res.status(200).json(data);
+        })
         .get<
             routes,
             paths["/planners/{plannerId}"]["get"]["parameters"]["path"],
