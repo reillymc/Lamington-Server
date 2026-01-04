@@ -7,19 +7,19 @@ import { v4 as uuid } from "uuid";
 import { setupApp } from "../../src/app.ts";
 import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
 import type { KnexDatabase } from "../../src/database/index.ts";
-import { type components, type EntityMember, UserStatus } from "../../src/routes/spec/index.ts";
+import { type components, UserStatus } from "../../src/routes/spec/index.ts";
 import db from "../../src/database/index.ts";
 import {
     CreateUsers,
     PrepareAuthenticatedUser,
     TEST_ITEM_COUNT,
     randomBoolean,
-    randomCount,
     randomDay,
     randomMonth,
     randomYear,
 } from "../helpers/index.ts";
 
+// TODO: thorough tests for new stuff, and on new meals endpoint and cooklist
 describe("get planner", () => {
     let database: KnexDatabase;
     let app: Express;
@@ -95,7 +95,12 @@ describe("get planner", () => {
             planners: [planner],
         } = await KnexPlannerRepository.create(database, {
             userId: plannerOwner!.userId,
-            planners: [{ name: uuid(), description: uuid(), members: [{ userId: user.userId, status: "M" }] }],
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        await KnexPlannerRepository.saveMembers(database, {
+            plannerId: planner!.plannerId,
+            members: [{ userId: user.userId, status: "M" }],
         });
 
         const res = await request(app).get(`/v1/planners/${planner!.plannerId}`).set(token);
@@ -120,26 +125,43 @@ describe("get planner", () => {
                 {
                     name: uuid(),
                     description: uuid(),
-                    members: [{ userId: user.userId, status: UserStatus.Member }],
                 },
             ],
         });
 
-        await KnexPlannerRepository.create(database, {
+        await KnexPlannerRepository.saveMembers(database, {
+            plannerId: mainPlanner!.plannerId,
+            members: [{ userId: user.userId, status: UserStatus.Member }],
+        });
+
+        const { planners: otherPlanners } = await KnexPlannerRepository.create(database, {
             userId: plannerOwner!.userId,
             planners: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
                 name: uuid(),
                 description: uuid(),
-                members: randomBoolean()
-                    ? [
-                          {
-                              userId: user.userId,
-                              status: randomBoolean() ? UserStatus.Administrator : UserStatus.Member,
-                          },
-                      ]
-                    : undefined,
             })),
         });
+
+        const membersToSave = otherPlanners
+            .map(p => {
+                if (randomBoolean()) {
+                    return {
+                        plannerId: p.plannerId,
+                        members: [
+                            {
+                                userId: user.userId,
+                                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Member,
+                            },
+                        ],
+                    };
+                }
+                return undefined;
+            })
+            .filter((x): x is NonNullable<typeof x> => x !== undefined);
+
+        if (membersToSave.length) {
+            await KnexPlannerRepository.saveMembers(database, membersToSave);
+        }
 
         const res = await request(app).get(`/v1/planners/${mainPlanner!.plannerId}`).set(token);
 
@@ -199,7 +221,7 @@ describe("get planner", () => {
         expect(plannerMeal.month).toEqual(meal!.month);
         expect(plannerMeal.year).toEqual(meal!.year);
         expect(plannerMeal.owner.userId).toEqual(user.userId);
-        expect(plannerMeal.recipeId).toEqual(null);
+        expect(plannerMeal.recipeId).toEqual(undefined);
     });
 
     it("should return planner members", async () => {
@@ -286,9 +308,13 @@ describe("delete planner", () => {
                 {
                     name: uuid(),
                     description: uuid(),
-                    members: [{ userId: user!.userId, status: UserStatus.Administrator }],
                 },
             ],
+        });
+
+        await KnexPlannerRepository.saveMembers(database, {
+            plannerId: planner!.plannerId,
+            members: [{ userId: user!.userId, status: UserStatus.Administrator }],
         });
 
         const res = await request(app).delete(`/v1/planners/${planner!.plannerId}`).set(token).send();
@@ -337,16 +363,11 @@ describe("post planner", () => {
 
     it("should create planner", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
-        const users = await CreateUsers(database);
 
         const planner = {
             name: uuid(),
             description: uuid(),
             color: uuid(),
-            members: users!.map(({ userId }) => ({
-                userId,
-                status: randomBoolean() ? UserStatus.Administrator : UserStatus.Member,
-            })),
         } satisfies components["schemas"]["PlannerCreate"];
 
         const res = await request(app).post("/v1/planners").set(token).send(planner);
@@ -358,23 +379,11 @@ describe("post planner", () => {
         expect(savedPlanners.length).toEqual(1);
 
         const [savedPlanner] = savedPlanners;
-        const [savedPlannerMembers] = await KnexPlannerRepository.readMembers(database, [savedPlanner!]);
 
         expect(savedPlanner?.name).toEqual(planner.name);
         expect(savedPlanner?.color).toEqual(planner.color);
         expect(savedPlanner?.description).toEqual(planner.description);
         expect(savedPlanner?.owner.userId).toEqual(user.userId);
-        expect(savedPlannerMembers!.members.length).toEqual(planner.members!.length);
-
-        for (const { userId, status } of planner.members!) {
-            const savedPlannerMember = savedPlannerMembers!.members.find(
-                ({ userId: savedUserId }) => savedUserId === userId
-            );
-
-            expect(savedPlannerMember).toBeTruthy();
-
-            expect(savedPlannerMember?.status).toEqual(status);
-        }
     });
 
     it("should save updated planner details as planner owner", async () => {
@@ -406,119 +415,6 @@ describe("post planner", () => {
         expect(savedPlanner?.description).toEqual(updatedPlanner.description);
         expect(savedPlanner?.plannerId).toEqual(planner!.plannerId);
         expect(savedPlanner?.owner.userId).toEqual(user.userId);
-    });
-
-    it("should save additional planner members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const initialUsers = await CreateUsers(database, { count: randomCount });
-        const additionalUsers = await CreateUsers(database, { count: randomCount });
-
-        const initialMembers: EntityMember[] = initialUsers.map(({ userId }) => ({ userId }));
-        const additionalMembers: EntityMember[] = additionalUsers.map(({ userId }) => ({ userId }));
-        const allMembers = [...initialMembers, ...additionalMembers];
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid(), members: initialMembers }],
-        });
-
-        const [initialPlannerMembers] = await KnexPlannerRepository.readMembers(database, [
-            { plannerId: planner!.plannerId },
-        ]);
-        expect(initialPlannerMembers!.members.length).toEqual(initialMembers.length);
-
-        const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}`)
-            .set(token)
-            .send({ members: allMembers } satisfies components["schemas"]["PlannerUpdate"]);
-
-        expect(res.statusCode).toEqual(200);
-
-        const [savedPlannerMembers] = await KnexPlannerRepository.readMembers(database, [
-            { plannerId: planner!.plannerId },
-        ]);
-
-        expect(savedPlannerMembers!.members.length).toEqual(allMembers.length);
-
-        savedPlannerMembers!.members.forEach(({ userId }) => {
-            const savedPlannerMember = allMembers.find(({ userId: savedUserId }) => savedUserId === userId);
-
-            expect(savedPlannerMember).toBeTruthy();
-        });
-    });
-
-    it("should remove some planner members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const initialMembers = await CreateUsers(database, { count: randomCount });
-
-        const members: EntityMember[] = initialMembers.map(({ userId }) => ({ userId }));
-        const reducedMembers: EntityMember[] = members.slice(0, Math.max((members.length - 1) / 2));
-        const excludedMembers: EntityMember[] = members.filter(
-            ({ userId }) => !reducedMembers.find(({ userId: savedUserId }) => savedUserId === userId)
-        );
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid(), members }],
-        });
-
-        const [initialPlannerMembers] = await KnexPlannerRepository.readMembers(database, [
-            { plannerId: planner!.plannerId },
-        ]);
-        expect(initialPlannerMembers!.members.length).toEqual(members.length);
-        const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}`)
-            .set(token)
-            .send({ members: reducedMembers } satisfies components["schemas"]["PlannerUpdate"]);
-
-        expect(res.statusCode).toEqual(200);
-
-        const [updatedPlannerMembers] = await KnexPlannerRepository.readMembers(database, [
-            { plannerId: planner!.plannerId },
-        ]);
-        expect(updatedPlannerMembers!.members.length).toEqual(reducedMembers.length);
-
-        updatedPlannerMembers!.members.forEach(({ userId }) => {
-            const savedPlannerMember = reducedMembers.find(({ userId: savedUserId }) => savedUserId === userId);
-            const illegalMember = excludedMembers.some(({ userId: savedUserId }) => savedUserId === userId);
-
-            expect(savedPlannerMember).toBeTruthy();
-            expect(illegalMember).toBeFalsy();
-        });
-    });
-
-    it("should remove all planner members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const members = await CreateUsers(database, { count: randomCount });
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid(), members: members.map(({ userId }) => ({ userId })) }],
-        });
-
-        const [initialPlannerMembers] = await KnexPlannerRepository.readMembers(database, [
-            { plannerId: planner!.plannerId },
-        ]);
-        expect(initialPlannerMembers!.members.length).toEqual(members.length);
-
-        const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}`)
-            .set(token)
-            .send({ members: [] } satisfies components["schemas"]["PlannerUpdate"]);
-
-        expect(res.statusCode).toEqual(200);
-
-        const [savedPlannerMembers] = await KnexPlannerRepository.readMembers(database, [
-            { plannerId: planner!.plannerId },
-        ]);
-
-        expect(savedPlannerMembers!.members.length).toEqual(0);
     });
 });
 
@@ -597,9 +493,13 @@ describe("post planner meal", () => {
                 {
                     name: uuid(),
                     description: uuid(),
-                    members: [{ userId: user!.userId, status: UserStatus.Member }],
                 },
             ],
+        });
+
+        await KnexPlannerRepository.saveMembers(database, {
+            plannerId: planner!.plannerId,
+            members: [{ userId: user!.userId, status: UserStatus.Member }],
         });
 
         const res = await request(app)
@@ -788,9 +688,13 @@ describe("delete planner meal", () => {
                 {
                     name: uuid(),
                     description: uuid(),
-                    members: [{ userId: user!.userId, status: UserStatus.Member }],
                 },
             ],
+        });
+
+        await KnexPlannerRepository.saveMembers(database, {
+            plannerId: planner!.plannerId,
+            members: [{ userId: user!.userId, status: UserStatus.Member }],
         });
 
         const {
@@ -824,13 +728,12 @@ describe("delete planner meal", () => {
             planners: [planner],
         } = await KnexPlannerRepository.create(database, {
             userId: plannerOwner!.userId,
-            planners: [
-                {
-                    name: uuid(),
-                    description: uuid(),
-                    members: [{ userId: user!.userId, status: UserStatus.Administrator }],
-                },
-            ],
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        await KnexPlannerRepository.saveMembers(database, {
+            plannerId: planner!.plannerId,
+            members: [{ userId: user!.userId, status: UserStatus.Administrator }],
         });
 
         const {

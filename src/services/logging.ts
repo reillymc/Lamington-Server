@@ -44,7 +44,7 @@ export class PermissionError extends AppError {
         super({
             status: 403,
             code: "MISSING_PERMISSIONS",
-            message: `You do not have permission to access this ${entity}.`,
+            message: `You do not have permission to access this ${entity}`,
         });
     }
 }
@@ -87,7 +87,17 @@ export class InsufficientDataError extends AppError {
         super({
             status: 400,
             code: "INSUFFICIENT_DATA",
-            message: `Insufficient data provided to perform the requested operation on this ${entity}.`,
+            message: `Insufficient data provided to perform the requested operation on this ${entity}`,
+        });
+    }
+}
+
+export class InvalidOperationError extends AppError {
+    constructor(entity: KnownEntities, reason?: string) {
+        super({
+            status: 400,
+            code: "INVALID_OPERATION",
+            message: `Invalid operation performed on this ${entity}${reason ? ` (${reason})` : ""}`,
         });
     }
 }
@@ -165,4 +175,4 @@ interface UserMessage {
 }
 
 export const userMessage = ({ action, entity, subEntity }: UserMessage) =>
-    `An error occurred when ${action} your ${entity}${subEntity ? ` ${subEntity}` : ""}.`;
+    `An error occurred when ${action} your ${entity}${subEntity ? ` ${subEntity}` : ""}`;

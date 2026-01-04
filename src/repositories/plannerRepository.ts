@@ -160,11 +160,7 @@ type ReadPlannersRequest = {
 
 type ReadPlannersResponse = {
     userId: User["userId"];
-    planners: Array<
-        BasePlannerResponse & {
-            members: Array<MemberResponseItem>;
-        }
-    >;
+    planners: Array<BasePlannerResponse>;
 };
 
 type CreatePlannersRequest = {
@@ -174,7 +170,6 @@ type CreatePlannersRequest = {
             name: Planner["name"];
             description?: Planner["description"];
             color?: string;
-            members?: Readonly<Array<MemberSaveItem>>;
         }>
     >;
 };
@@ -188,7 +183,6 @@ type UpdatePlannersRequest = {
         name?: Planner["name"];
         description?: Planner["description"];
         color?: string;
-        members?: Readonly<Array<MemberSaveItem>>;
     }>;
 };
 

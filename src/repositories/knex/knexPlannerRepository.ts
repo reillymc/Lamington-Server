@@ -85,13 +85,6 @@ const readMembers: PlannerRepository<KnexDatabase>["readMembers"] = async (db, r
     }));
 };
 
-const setMembers: PlannerRepository<KnexDatabase>["saveMembers"] = (db, request) =>
-    ContentMemberActions.save(
-        db,
-        EnsureArray(request).map(({ plannerId, members }) => ({ contentId: plannerId, members })),
-        { trimNotIn: true }
-    ).then(response => response.map(({ contentId, members }) => ({ plannerId: contentId, members })));
-
 const read: PlannerRepository<KnexDatabase>["read"] = async (db, { planners, userId }) => {
     const members = await readMembers(db, planners);
     const result: any[] = await db(lamington.planner)
@@ -350,7 +343,6 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
             }))
         );
 
-        await setMembers(db, plannersToCreate);
         return read(db, { userId, planners: plannersToCreate });
     },
     update: async (db, { userId, planners }) => {
@@ -364,11 +356,6 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
             }
         }
 
-        await setMembers(
-            db,
-            planners.filter(p => p.members)
-        );
-
         return read(db, { userId, planners });
     },
     delete: async (db, params) => {
@@ -381,7 +368,11 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
         return { count };
     },
     readMembers,
-    saveMembers: setMembers,
+    saveMembers: (db, request) =>
+        ContentMemberActions.save(
+            db,
+            EnsureArray(request).map(({ plannerId, members }) => ({ contentId: plannerId, members }))
+        ).then(response => response.map(({ contentId, members }) => ({ plannerId: contentId, members }))),
     updateMembers: (db, params) =>
         ContentMemberActions.save(
             db,

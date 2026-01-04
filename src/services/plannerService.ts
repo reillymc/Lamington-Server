@@ -1,5 +1,5 @@
 import type { components } from "../routes/spec/index.ts";
-import { CreatedDataFetchError, NotFoundError, UpdatedDataFetchError } from "./logging.ts";
+import { CreatedDataFetchError, InvalidOperationError, NotFoundError, UpdatedDataFetchError } from "./logging.ts";
 import { type CreateService } from "./service.ts";
 
 export interface PlannerService {
@@ -33,8 +33,17 @@ export interface PlannerService {
         meal: components["schemas"]["PlannerMealUpdate"]
     ) => Promise<components["schemas"]["PlannerMeal"]>;
     deleteMeal: (userId: string, plannerId: string, mealId: string) => Promise<void>;
-    joinMembership: (userId: string, plannerId: string) => Promise<void>;
+    getMembers: (userId: string, plannerId: string) => Promise<components["schemas"]["PlannerMember"][]>;
+    inviteMember: (userId: string, plannerId: string, targetUserId: string) => Promise<void>;
+    updateMember: (
+        userId: string,
+        plannerId: string,
+        memberId: string,
+        status: components["schemas"]["UserStatus"]
+    ) => Promise<components["schemas"]["PlannerMember"]>;
     leaveMembership: (userId: string, plannerId: string, memberId?: string) => Promise<void>;
+    acceptInvite: (userId: string, plannerId: string) => Promise<void>;
+    declineInvite: (userId: string, plannerId: string) => Promise<void>;
 }
 
 export const createPlannerService: CreateService<PlannerService, "plannerRepository"> = (
@@ -178,12 +187,32 @@ export const createPlannerService: CreateService<PlannerService, "plannerReposit
 
             await plannerRepository.deleteMeals(trx, { meals: [{ mealId }] });
         }),
-    joinMembership: (userId, plannerId) =>
+    getMembers: async (userId, plannerId) => {
+        const permissions = await plannerRepository.verifyPermissions(database, {
+            userId,
+            planners: [{ plannerId }],
+            status: ["O", "A", "M"],
+        });
+
+        if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
+            throw new NotFoundError("planner", plannerId);
+        }
+
+        const [plannerMembers] = await plannerRepository.readMembers(database, { plannerId });
+
+        if (!plannerMembers) {
+            throw new NotFoundError("planner", plannerId);
+        }
+
+        const { members } = plannerMembers;
+
+        return members;
+    },
+    inviteMember: (userId, plannerId, targetUserId) =>
         database.transaction(async trx => {
             const permissions = await plannerRepository.verifyPermissions(trx, {
                 userId,
                 planners: [{ plannerId }],
-                status: "P",
             });
 
             if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
@@ -192,8 +221,46 @@ export const createPlannerService: CreateService<PlannerService, "plannerReposit
 
             await plannerRepository.saveMembers(trx, {
                 plannerId,
-                members: [{ userId, status: "M" }],
+                members: [{ userId: targetUserId, status: "P" }],
             });
+        }),
+    updateMember: (userId, plannerId, memberId, status) =>
+        database.transaction(async trx => {
+            const permissions = await plannerRepository.verifyPermissions(trx, {
+                userId,
+                planners: [{ plannerId }],
+                status: ["O"],
+            });
+
+            if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
+                throw new NotFoundError("planner", plannerId);
+            }
+
+            const [currentPlannerMembers] = await plannerRepository.readMembers(trx, { plannerId });
+            const currentMember = currentPlannerMembers?.members.find(m => m.userId === memberId);
+
+            if (!currentMember) {
+                throw new NotFoundError("planner member", memberId);
+            }
+
+            if (currentMember.status === "P") {
+                throw new InvalidOperationError("planner member", "Cannot update a pending member");
+            }
+
+            await plannerRepository.saveMembers(trx, {
+                plannerId,
+                members: [{ userId: memberId, status }],
+            });
+
+            const [plannerMembers] = await plannerRepository.readMembers(trx, { plannerId });
+
+            const member = plannerMembers?.members.find(m => m.userId === memberId);
+
+            if (!member) {
+                throw new NotFoundError("planner member", memberId);
+            }
+
+            return member;
         }),
     leaveMembership: (userId, plannerId, memberId) =>
         database.transaction(async trx => {
@@ -221,5 +288,36 @@ export const createPlannerService: CreateService<PlannerService, "plannerReposit
             }
 
             await plannerRepository.removeMembers(trx, { plannerId, members: [{ userId: targetId }] });
+        }),
+    acceptInvite: (userId, plannerId) =>
+        database.transaction(async trx => {
+            const permissions = await plannerRepository.verifyPermissions(trx, {
+                userId,
+                planners: [{ plannerId }],
+                status: "P",
+            });
+
+            if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
+                throw new NotFoundError("planner", plannerId);
+            }
+
+            await plannerRepository.saveMembers(trx, {
+                plannerId,
+                members: [{ userId, status: "M" }],
+            });
+        }),
+    declineInvite: (userId, plannerId) =>
+        database.transaction(async trx => {
+            const permissions = await plannerRepository.verifyPermissions(trx, {
+                userId,
+                planners: [{ plannerId }],
+                status: "P",
+            });
+
+            if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
+                throw new NotFoundError("planner", plannerId);
+            }
+
+            await plannerRepository.removeMembers(trx, { plannerId, members: [{ userId }] });
         }),
 });

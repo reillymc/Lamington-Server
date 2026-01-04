@@ -22,7 +22,7 @@ export const withContentReadPermissions =
                 b
                     .where(ownerColumn, userId)
                     .orWhere(sub =>
-                        sub.whereNotNull(contentMember.userId).whereIn(contentMember.status, ["A", "M", "O"])
+                        sub.whereNotNull(contentMember.userId).whereIn(contentMember.status, ["A", "M", "O", "P"])
                     )
             );
     };

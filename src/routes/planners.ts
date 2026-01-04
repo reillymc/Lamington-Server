@@ -87,15 +87,55 @@ export const createPlannerRouter = ({ plannerService }: AppDependencies["service
             const data = await plannerService.updateMeal(session.userId, params.plannerId, params.mealId, body);
             return res.status(200).json(data);
         })
+        .get<
+            routes,
+            paths["/planners/{plannerId}/members"]["get"]["parameters"]["path"],
+            paths["/planners/{plannerId}/members"]["get"]["responses"]["200"]["content"]["application/json"],
+            paths["/planners/{plannerId}/members"]["get"]["requestBody"],
+            paths["/planners/{plannerId}/members"]["get"]["parameters"]["query"]
+        >("/planners/:plannerId/members", async ({ params, session }, res) => {
+            const data = await plannerService.getMembers(session.userId, params.plannerId);
+            return res.status(200).json(data);
+        })
         .post<
             routes,
             paths["/planners/{plannerId}/members"]["post"]["parameters"]["path"],
-            paths["/planners/{plannerId}/members"]["post"]["responses"]["200"]["content"]["application/json"],
+            paths["/planners/{plannerId}/members"]["post"]["responses"]["204"]["content"],
             paths["/planners/{plannerId}/members"]["post"]["requestBody"]["content"]["application/json"],
             paths["/planners/{plannerId}/members"]["post"]["parameters"]["query"]
-        >("/planners/:plannerId/members", async ({ params, session }, res) => {
-            await plannerService.joinMembership(session.userId, params.plannerId);
-            return res.status(200).json();
+        >("/planners/:plannerId/members", async ({ params, body, session }, res) => {
+            await plannerService.inviteMember(session.userId, params.plannerId, body.userId);
+            return res.status(204).send();
+        })
+        .post<
+            routes,
+            paths["/planners/{plannerId}/invite/accept"]["post"]["parameters"]["path"],
+            paths["/planners/{plannerId}/invite/accept"]["post"]["responses"]["204"]["content"],
+            paths["/planners/{plannerId}/invite/accept"]["post"]["requestBody"],
+            paths["/planners/{plannerId}/invite/accept"]["post"]["parameters"]["query"]
+        >("/planners/:plannerId/invite/accept", async ({ params, session }, res) => {
+            await plannerService.acceptInvite(session.userId, params.plannerId);
+            return res.status(204).send();
+        })
+        .post<
+            routes,
+            paths["/planners/{plannerId}/invite/decline"]["post"]["parameters"]["path"],
+            paths["/planners/{plannerId}/invite/decline"]["post"]["responses"]["204"]["content"],
+            paths["/planners/{plannerId}/invite/decline"]["post"]["requestBody"],
+            paths["/planners/{plannerId}/invite/decline"]["post"]["parameters"]["query"]
+        >("/planners/:plannerId/invite/decline", async ({ params, session }, res) => {
+            await plannerService.declineInvite(session.userId, params.plannerId);
+            return res.status(204).send();
+        })
+        .post<
+            routes,
+            paths["/planners/{plannerId}/leave"]["post"]["parameters"]["path"],
+            paths["/planners/{plannerId}/leave"]["post"]["responses"]["204"]["content"],
+            paths["/planners/{plannerId}/leave"]["post"]["requestBody"],
+            paths["/planners/{plannerId}/leave"]["post"]["parameters"]["query"]
+        >("/planners/:plannerId/leave", async ({ params, session }, res) => {
+            await plannerService.leaveMembership(session.userId, params.plannerId);
+            return res.status(204).send();
         })
         .delete<
             routes,
@@ -115,5 +155,20 @@ export const createPlannerRouter = ({ plannerService }: AppDependencies["service
             paths["/planners/{plannerId}/members/{userId}"]["delete"]["parameters"]["query"]
         >("/planners/:plannerId/members/:userId", async ({ params, session }, res) => {
             await plannerService.leaveMembership(session.userId, params.plannerId, params.userId);
-            return res.status(200).json();
+            return res.status(204).send();
+        })
+        .patch<
+            routes,
+            paths["/planners/{plannerId}/members/{userId}"]["patch"]["parameters"]["path"],
+            paths["/planners/{plannerId}/members/{userId}"]["patch"]["responses"]["200"]["content"]["application/json"],
+            paths["/planners/{plannerId}/members/{userId}"]["patch"]["requestBody"]["content"]["application/json"],
+            paths["/planners/{plannerId}/members/{userId}"]["patch"]["parameters"]["query"]
+        >("/planners/:plannerId/members/:userId", async ({ params, body, session }, res) => {
+            const data = await plannerService.updateMember(
+                session.userId,
+                params.plannerId,
+                params.userId,
+                body.status
+            );
+            return res.status(200).json(data);
         });

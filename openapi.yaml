@@ -355,7 +355,7 @@ paths:
     post:
       tags:
         - Planners
-      summary: Add a member to a planner
+      summary: Invite a member to a planner
       operationId: postPlannerMember
       requestBody:
         required: true
@@ -364,12 +364,8 @@ paths:
             schema:
               $ref: "#/components/schemas/PlannerMemberCreate"
       responses:
-        200:
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                type: object
+        204:
+          description: No Content
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -451,6 +447,25 @@ paths:
         - Planners
       summary: Decline planner invitation
       operationId: declinePlannerInvite
+      responses:
+        204:
+          description: No Content
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /planners/{plannerId}/leave:
+    parameters:
+      - name: plannerId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Planners
+      summary: Leave a planner
+      operationId: leavePlanner
       responses:
         204:
           description: No Content
@@ -755,10 +770,6 @@ components:
           type:
             - string
             - 'null'
-        members:
-          type: array
-          items:
-            $ref: "#/components/schemas/PlannerMemberInput"
       required:
         - name
       unevaluatedProperties: false
@@ -773,10 +784,6 @@ components:
           type:
             - string
             - 'null'
-        members:
-          type: array
-          items:
-            $ref: "#/components/schemas/PlannerMemberInput"
       unevaluatedProperties: false
     PlannerMember:
       type: object
@@ -792,16 +799,6 @@ components:
       required:
         - userId
         - firstName
-    PlannerMemberInput:
-      type: object
-      properties:
-        userId:
-          $ref: "#/components/schemas/Uuid"
-        status:
-          $ref: "#/components/schemas/UserStatus"
-      required:
-        - userId
-      unevaluatedProperties: false
     PlannerMemberUpdate:
       type: object
       properties:
@@ -815,6 +812,8 @@ components:
       properties:
         userId:
           type: string
+      required:
+        - userId
       unevaluatedProperties: false
     PlannerMeal:
       allOf:

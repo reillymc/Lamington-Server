@@ -54,7 +54,7 @@ describe("post meal", () => {
             expect(meal.sequence).toEqual(expectedMeal!.sequence);
             expect(meal.owner.userId).toEqual(user.userId);
             expect(meal.source).toEqual(expectedMeal!.source);
-            expect(meal.recipeId).toEqual(null);
+            expect(meal.recipeId).toEqual(undefined);
         });
     });
 });
@@ -292,7 +292,7 @@ describe("get meals", () => {
         expect(plannerMeal!.source).toEqual(createdMeal!.source);
         expect(plannerMeal!.sequence).toEqual(createdMeal!.sequence);
         expect(plannerMeal!.owner.userId).toEqual(user.userId);
-        expect(plannerMeal!.recipeId).toEqual(null);
+        expect(plannerMeal!.recipeId).toEqual(undefined);
     });
 
     it("should not return cook list meals for other users", async () => {
