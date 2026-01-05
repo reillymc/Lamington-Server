@@ -12,7 +12,7 @@ type VerifyPermissionsRequest = {
     /**
      * Will return true of user is a member of a planner with the provided statuses
      */
-    status?: PlannerUserStatus | Array<PlannerUserStatus>;
+    status: PlannerUserStatus | Array<PlannerUserStatus>;
     planners: Array<{
         plannerId: Planner["plannerId"];
     }>;
@@ -64,7 +64,6 @@ type ReadAllMealsResponse = {
 };
 
 type CreatePlannerMealPayload = {
-    plannerId: Meal["plannerId"];
     year: Meal["year"];
     month: Meal["month"];
     dayOfMonth: Meal["dayOfMonth"];
@@ -78,6 +77,7 @@ type CreatePlannerMealPayload = {
 
 type CreateMealsRequest = {
     userId: User["userId"];
+    plannerId: Planner["plannerId"];
     meals: Array<CreatePlannerMealPayload>;
 };
 
@@ -99,21 +99,24 @@ type UpdatePlannerMealPayload = {
 };
 
 type UpdateMealsRequest = {
-    // userId: User["userId"];
+    plannerId: Planner["plannerId"];
     meals: Array<UpdatePlannerMealPayload>;
 };
 
 type UpdateMealsResponse = {
+    plannerId: Planner["plannerId"];
     meals: Array<PlannerMealResponse>;
 };
 
 type DeleteMealsRequest = {
+    plannerId: Planner["plannerId"];
     meals: Array<{
         mealId: Meal["mealId"];
     }>;
 };
 
 type DeleteMealsResponse = {
+    plannerId: Planner["plannerId"];
     count: number;
 };
 

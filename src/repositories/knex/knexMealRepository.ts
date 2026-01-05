@@ -10,6 +10,7 @@ import { withContentReadPermissions } from "./common/contentQueries.ts";
 export const KnexMealRepository: MealRepository<KnexDatabase> = {
     read: async (db, { userId, meals }) => {
         const mealIds = meals.map(({ mealId }) => mealId);
+        const plannerContentAlias = "plannerContent";
 
         const result: any[] = await db(lamington.plannerMeal)
             .select(
@@ -32,7 +33,19 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
             .whereIn(plannerMeal.mealId, mealIds)
             .leftJoin(lamington.content, plannerMeal.mealId, content.contentId)
             .leftJoin(lamington.user, content.createdBy, user.userId)
-            .modify(withContentReadPermissions({ userId, idColumn: plannerMeal.plannerId }))
+            .leftJoin(
+                `${lamington.content} as ${plannerContentAlias}`,
+                plannerMeal.plannerId,
+                `${plannerContentAlias}.contentId`
+            )
+            .modify(
+                withContentReadPermissions({
+                    userId,
+                    idColumn: plannerMeal.plannerId,
+                    ownerColumns: [content.createdBy, `${plannerContentAlias}.createdBy`],
+                    allowedStatuses: ["A", "M", "O"],
+                })
+            )
             .leftJoin(lamington.contentAttachment, join =>
                 join
                     .on(contentAttachment.contentId, "=", plannerMeal.mealId)

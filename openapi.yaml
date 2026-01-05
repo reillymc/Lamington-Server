@@ -20,7 +20,7 @@ paths:
     get:
       tags:
         - CookList
-      summary: Get cook list
+      summary: Get cook list meals
       operationId: getCookList
       responses:
         200:
@@ -36,7 +36,7 @@ paths:
     post:
       tags:
         - CookList
-      summary: Add to cook list
+      summary: Add meal to cook list
       operationId: postCookList
       requestBody:
         required: true
@@ -57,6 +57,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CookListMeal"
+        400:
+          $ref: "#/components/responses/BadRequest"
         500:
           $ref: "#/components/responses/InternalServerError"
   /cooklist/meals/{mealId}:
@@ -69,7 +71,7 @@ paths:
     delete:
       tags:
         - CookList
-      summary: Remove from cook list
+      summary: Remove meal from cook list
       operationId: deleteCookList
       responses:
         204:
@@ -81,7 +83,7 @@ paths:
     patch:
       tags:
         - CookList
-      summary: Update cook list meal
+      summary: Update meal in cook list
       operationId: putCookList
       requestBody:
         required: true
@@ -96,6 +98,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CookListMeal"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -158,6 +162,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Planner"
+        400:
+          $ref: "#/components/responses/BadRequest"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}:
@@ -179,6 +185,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Planner"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -242,6 +250,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PlannerMeal"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -311,6 +321,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PlannerMeal"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -323,6 +335,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -366,6 +380,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -390,6 +406,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -412,6 +430,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PlannerMember"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -431,6 +451,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -450,6 +472,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -469,6 +493,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -526,6 +552,12 @@ components:
       scheme: bearer
       bearerFormat: JWT
   responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
     NotFound:
       description: Not Found
       content:

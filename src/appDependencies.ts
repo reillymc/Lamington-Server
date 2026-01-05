@@ -51,3 +51,22 @@ export const DefaultAppDependencies = (database: Database): AppDependencies => (
     attachmentActions: AttachmentActions,
     database,
 });
+
+export type PartialAppDependencies<T extends Database = Database> = Partial<{
+    services: Partial<AppServices>;
+    repositories: Partial<AppRepositories<T>>;
+    attachmentService: AttachmentService;
+    attachmentActions: AttachmentActions;
+    database: Database;
+}>;
+
+export const MergeAppDependencies = <T extends Database = Database>(
+    defaults: AppDependencies<T>,
+    overrides: PartialAppDependencies = {}
+): AppDependencies<T> => ({
+    services: { ...defaults.services, ...overrides.services },
+    repositories: { ...defaults.repositories, ...overrides.repositories },
+    attachmentService: overrides.attachmentService ?? defaults.attachmentService,
+    attachmentActions: overrides.attachmentActions ?? defaults.attachmentActions,
+    database: overrides.database ?? defaults.database,
+});

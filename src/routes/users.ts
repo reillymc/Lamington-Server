@@ -239,9 +239,9 @@ const createDefaultUserData = async (userId: string) => {
     if (planner && recipe) {
         await KnexPlannerRepository.createMeals(db as KnexDatabase, {
             userId,
+            plannerId: planner.plannerId,
             meals: [
                 {
-                    plannerId: planner.plannerId,
                     recipeId: recipe.recipeId,
                     year: new Date().getFullYear(),
                     month: new Date().getMonth(),
@@ -249,7 +249,6 @@ const createDefaultUserData = async (userId: string) => {
                     course: "lunch",
                 },
                 {
-                    plannerId: planner.plannerId,
                     year: new Date().getFullYear(),
                     month: new Date().getMonth(),
                     dayOfMonth: new Date().getDate(),

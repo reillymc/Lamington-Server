@@ -109,8 +109,7 @@ export interface paths {
             };
             readonly cookie?: never;
         };
-        /** Get planner members */
-        readonly get: operations["getPlannerMembers"];
+        readonly get?: never;
         readonly put?: never;
         /** Add a meal to a planner */
         readonly post: operations["postPlannerMeal"];
@@ -171,9 +170,10 @@ export interface paths {
             };
             readonly cookie?: never;
         };
-        readonly get?: never;
+        /** Get planner members */
+        readonly get: operations["getPlannerMembers"];
         readonly put?: never;
-        /** Add a member to a planner */
+        /** Invite a member to a planner */
         readonly post: operations["postPlannerMember"];
         readonly delete?: never;
         readonly options?: never;
@@ -234,6 +234,25 @@ export interface paths {
         readonly put?: never;
         /** Decline planner invitation */
         readonly post: operations["declinePlannerInvite"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/planners/{plannerId}/leave": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly plannerId: components["schemas"]["Uuid"];
+            };
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Leave a planner */
+        readonly post: operations["leavePlanner"];
         readonly delete?: never;
         readonly options?: never;
         readonly head?: never;
@@ -360,28 +379,23 @@ export interface components {
             readonly name: string;
             readonly color?: string;
             readonly description?: string | null;
-            readonly members?: readonly components["schemas"]["PlannerMemberInput"][];
         };
         readonly PlannerUpdate: {
             readonly name?: string;
             readonly color?: string;
             readonly description?: string | null;
-            readonly members?: readonly components["schemas"]["PlannerMemberInput"][];
         };
         readonly PlannerMember: {
             readonly userId: components["schemas"]["Uuid"];
             readonly firstName: string;
-            readonly status?: components["schemas"]["UserStatus"];
-        };
-        readonly PlannerMemberInput: {
-            readonly userId: components["schemas"]["Uuid"];
+            readonly lastName?: string;
             readonly status?: components["schemas"]["UserStatus"];
         };
         readonly PlannerMemberUpdate: {
             readonly status: components["schemas"]["UserStatus"];
         };
         readonly PlannerMemberCreate: {
-            readonly userId?: string;
+            readonly userId: string;
         };
         readonly PlannerMeal: components["schemas"]["MealBase"] & {
             readonly mealId: components["schemas"]["Uuid"];
@@ -428,6 +442,15 @@ export interface components {
         };
     };
     responses: {
+        /** @description Bad Request */
+        readonly BadRequest: {
+            headers: {
+                readonly [name: string]: unknown;
+            };
+            content: {
+                readonly "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
         /** @description Not Found */
         readonly NotFound: {
             headers: {
@@ -497,6 +520,7 @@ export interface operations {
                     readonly "application/json": readonly components["schemas"]["CookListMeal"][];
                 };
             };
+            readonly 400: components["responses"]["BadRequest"];
             readonly 500: components["responses"]["InternalServerError"];
         };
     };
@@ -546,6 +570,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["CookListMeal"];
                 };
             };
+            readonly 400: components["responses"]["BadRequest"];
             readonly 404: components["responses"]["NotFound"];
             readonly 500: components["responses"]["InternalServerError"];
         };
@@ -617,6 +642,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["Planner"];
                 };
             };
+            readonly 400: components["responses"]["BadRequest"];
             readonly 500: components["responses"]["InternalServerError"];
         };
     };
@@ -640,6 +666,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["Planner"];
                 };
             };
+            readonly 400: components["responses"]["BadRequest"];
             readonly 404: components["responses"]["NotFound"];
             readonly 500: components["responses"]["InternalServerError"];
         };
@@ -694,30 +721,6 @@ export interface operations {
             readonly 500: components["responses"]["InternalServerError"];
         };
     };
-    readonly getPlannerMembers: {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path: {
-                readonly plannerId: components["schemas"]["Uuid"];
-            };
-            readonly cookie?: never;
-        };
-        readonly requestBody?: never;
-        readonly responses: {
-            /** @description Successful response */
-            readonly 200: {
-                headers: {
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": readonly components["schemas"]["PlannerMember"][];
-                };
-            };
-            readonly 404: components["responses"]["NotFound"];
-            readonly 500: components["responses"]["InternalServerError"];
-        };
-    };
     readonly postPlannerMeal: {
         readonly parameters: {
             readonly query?: never;
@@ -742,6 +745,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["PlannerMeal"];
                 };
             };
+            readonly 400: components["responses"]["BadRequest"];
             readonly 404: components["responses"]["NotFound"];
             readonly 500: components["responses"]["InternalServerError"];
         };
@@ -791,6 +795,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            readonly 400: components["responses"]["BadRequest"];
             readonly 404: components["responses"]["NotFound"];
             readonly 500: components["responses"]["InternalServerError"];
         };
@@ -820,6 +825,31 @@ export interface operations {
                     readonly "application/json": components["schemas"]["PlannerMeal"];
                 };
             };
+            readonly 400: components["responses"]["BadRequest"];
+            readonly 404: components["responses"]["NotFound"];
+            readonly 500: components["responses"]["InternalServerError"];
+        };
+    };
+    readonly getPlannerMembers: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly plannerId: components["schemas"]["Uuid"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful response */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": readonly components["schemas"]["PlannerMember"][];
+                };
+            };
             readonly 404: components["responses"]["NotFound"];
             readonly 500: components["responses"]["InternalServerError"];
         };
@@ -839,14 +869,12 @@ export interface operations {
             };
         };
         readonly responses: {
-            /** @description Successful response */
-            readonly 200: {
+            /** @description No Content */
+            readonly 204: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content: {
-                    readonly "application/json": Record<string, never>;
-                };
+                content?: never;
             };
             readonly 404: components["responses"]["NotFound"];
             readonly 500: components["responses"]["InternalServerError"];
@@ -900,6 +928,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["PlannerMember"];
                 };
             };
+            readonly 400: components["responses"]["BadRequest"];
             readonly 404: components["responses"]["NotFound"];
             readonly 500: components["responses"]["InternalServerError"];
         };
@@ -922,6 +951,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            readonly 400: components["responses"]["BadRequest"];
             readonly 404: components["responses"]["NotFound"];
             readonly 500: components["responses"]["InternalServerError"];
         };
@@ -944,6 +974,30 @@ export interface operations {
                 };
                 content?: never;
             };
+            readonly 400: components["responses"]["BadRequest"];
+            readonly 404: components["responses"]["NotFound"];
+            readonly 500: components["responses"]["InternalServerError"];
+        };
+    };
+    readonly leavePlanner: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly plannerId: components["schemas"]["Uuid"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description No Content */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            readonly 400: components["responses"]["BadRequest"];
             readonly 404: components["responses"]["NotFound"];
             readonly 500: components["responses"]["InternalServerError"];
         };

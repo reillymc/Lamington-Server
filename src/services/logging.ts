@@ -30,14 +30,15 @@ export class AppError {
 }
 
 type KnownEntities =
-    | "list"
+    | "cooklist meal"
     | "list item"
     | "list member"
+    | "list"
     | "meal"
-    | "planner"
-    | "planner member"
     | "planner meal"
-    | "cooklist meal";
+    | "planner member"
+    | "planner"
+    | "user";
 
 export class PermissionError extends AppError {
     constructor(entity: KnownEntities) {
@@ -111,6 +112,7 @@ export class ValidationError extends AppError {
         });
     }
 }
+
 const ErrorLogFileTransport = new transports.DailyRotateFile({
     level: "error",
     filename: "error-%DATE%.log",

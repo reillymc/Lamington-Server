@@ -1,4 +1,5 @@
 import type { components } from "../routes/spec/index.ts";
+import { ForeignKeyViolationError } from "../repositories/common/errors.ts";
 import { CreatedDataFetchError, InvalidOperationError, NotFoundError, UpdatedDataFetchError } from "./logging.ts";
 import { type CreateService } from "./service.ts";
 
@@ -119,24 +120,21 @@ export const createPlannerService: CreateService<PlannerService, "plannerReposit
             const permissions = await plannerRepository.verifyPermissions(trx, {
                 userId,
                 planners: [{ plannerId }],
-                status: "A",
+                status: ["O", "A"],
             });
 
             if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
                 throw new NotFoundError("planner", plannerId);
             }
 
-            const { meals: createdMeals } = await plannerRepository.createMeals(trx, {
-                userId,
-                meals: meals.map(meal => ({ ...meal, plannerId })),
-            });
+            const { meals: createdMeals } = await plannerRepository.createMeals(trx, { plannerId, userId, meals });
             return createdMeals;
         }),
     getMeals: async (userId, plannerId, year, month) => {
         const permissions = await plannerRepository.verifyPermissions(database, {
             userId,
             planners: [{ plannerId }],
-            status: "A",
+            status: ["O", "A", "M"],
         });
 
         if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
@@ -158,17 +156,17 @@ export const createPlannerService: CreateService<PlannerService, "plannerReposit
             const permissions = await plannerRepository.verifyPermissions(trx, {
                 userId,
                 planners: [{ plannerId }],
-                status: "A",
+                status: ["O", "A"],
             });
 
             if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
                 throw new NotFoundError("planner", plannerId);
             }
 
-            const { meals } = await plannerRepository.updateMeals(trx, { meals: [{ ...request, mealId }] });
+            const { meals } = await plannerRepository.updateMeals(trx, { plannerId, meals: [{ ...request, mealId }] });
             const [meal] = meals;
             if (!meal) {
-                throw new UpdatedDataFetchError("planner meal", mealId);
+                throw new NotFoundError("planner meal", mealId);
             }
 
             return meal;
@@ -178,20 +176,24 @@ export const createPlannerService: CreateService<PlannerService, "plannerReposit
             const permissions = await plannerRepository.verifyPermissions(trx, {
                 userId,
                 planners: [{ plannerId }],
-                status: "A",
+                status: ["O", "A"],
             });
 
             if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
                 throw new NotFoundError("planner", plannerId);
             }
 
-            await plannerRepository.deleteMeals(trx, { meals: [{ mealId }] });
+            const { count } = await plannerRepository.deleteMeals(trx, { plannerId, meals: [{ mealId }] });
+
+            if (count === 0) {
+                throw new NotFoundError("planner meal", mealId);
+            }
         }),
     getMembers: async (userId, plannerId) => {
         const permissions = await plannerRepository.verifyPermissions(database, {
             userId,
             planners: [{ plannerId }],
-            status: ["O", "A", "M"],
+            status: "O",
         });
 
         if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
@@ -213,23 +215,36 @@ export const createPlannerService: CreateService<PlannerService, "plannerReposit
             const permissions = await plannerRepository.verifyPermissions(trx, {
                 userId,
                 planners: [{ plannerId }],
+                status: "O",
             });
 
             if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
                 throw new NotFoundError("planner", plannerId);
             }
 
-            await plannerRepository.saveMembers(trx, {
-                plannerId,
-                members: [{ userId: targetUserId, status: "P" }],
-            });
+            const [currentMembers] = await plannerRepository.readMembers(trx, { plannerId });
+            if (currentMembers?.members.some(m => m.userId === targetUserId)) {
+                throw new InvalidOperationError("planner member", "User is already a member");
+            }
+
+            try {
+                await plannerRepository.saveMembers(trx, {
+                    plannerId,
+                    members: [{ userId: targetUserId, status: "P" }],
+                });
+            } catch (error: unknown) {
+                if (error instanceof ForeignKeyViolationError) {
+                    throw new NotFoundError("user", targetUserId);
+                }
+                throw error;
+            }
         }),
     updateMember: (userId, plannerId, memberId, status) =>
         database.transaction(async trx => {
             const permissions = await plannerRepository.verifyPermissions(trx, {
                 userId,
                 planners: [{ plannerId }],
-                status: ["O"],
+                status: "O",
             });
 
             if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
