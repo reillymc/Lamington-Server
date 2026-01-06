@@ -1,7 +1,17 @@
-import type { RecipeServings } from "../../routes/spec/index.ts";
 import type { Content } from "./content.ts";
 import type { Table } from "./index.ts";
 import { lamington } from "./lamington.ts";
+
+export type NumberValue = { representation: "number"; value: string };
+export type RangeValue = { representation: "range"; value: [string, string] };
+export type FractionValue = { representation: "fraction"; value: [string, string, string] };
+
+type RecipeServingsV1 = {
+    unit: string;
+    count: RangeValue | NumberValue;
+};
+
+export type RecipeServings = RecipeServingsV1;
 
 /**
  * Recipe
@@ -10,11 +20,6 @@ export interface Recipe {
     recipeId: Content["contentId"];
     name: string;
     source?: string;
-
-    /**
-     * JSON blob with data on unit and number or number range.
-     * TODO: Define this type correctly like other new json types
-     */
     servings?: RecipeServings;
     prepTime?: number;
     cookTime?: number;

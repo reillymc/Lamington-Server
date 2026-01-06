@@ -5,8 +5,6 @@ import request from "supertest";
 
 import { setupApp } from "../../src/app.ts";
 import { ListItemActions } from "../../src/controllers/listItem.ts";
-import { PlannerActions } from "../../src/controllers/planner.ts";
-import { InternalPlannerMealActions } from "../../src/controllers/plannerMeal.ts";
 import { UserActions } from "../../src/controllers/user.ts";
 import {
     type GetPendingUsersResponse,
@@ -27,6 +25,7 @@ import {
 import { default as knexDb, type KnexDatabase } from "../../src/database/index.ts";
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
+import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
 
 const db = knexDb as KnexDatabase;
 
@@ -321,19 +320,22 @@ describe("approve user", () => {
         if (!recipe) throw new Error("Recipe/BookRecipe not created");
         expect(recipe.owner.userId).toEqual(user.userId);
 
-        const planners = await PlannerActions.ReadByUser({ userId: user.userId });
+        const { planners } = await KnexPlannerRepository.readAll(db, { userId: user.userId });
         expect(planners.length).toEqual(1);
 
         const [planner] = planners;
         if (!planner) throw new Error("Planner not created");
-        expect(planner.createdBy).toEqual(user.userId);
+        expect(planner.owner.userId).toEqual(user.userId);
 
-        const meals = await InternalPlannerMealActions.readAll({ plannerId: planner.plannerId });
+        const { meals } = await KnexPlannerRepository.readAllMeals(db, {
+            userId: user.userId,
+            filter: { plannerId: planner.plannerId },
+        });
         expect(meals.length).toEqual(2);
 
         const [meal1, meal2] = meals;
         if (!meal1 || !meal2) throw new Error("PlannerMeal not created");
-        expect(meal1.createdBy).toEqual(user.userId);
-        expect(meal2.createdBy).toEqual(user.userId);
+        expect(meal1.owner.userId).toEqual(user.userId);
+        expect(meal2.owner.userId).toEqual(user.userId);
     });
 });

@@ -1,367 +1,174 @@
 import express from "express";
 
-import { PlannerActions, PlannerMealActions, PlannerMemberActions } from "../controllers/index.ts";
-import {
-    AppError,
-    InsufficientDataError,
-    MessageAction,
-    NotFoundError,
-    PermissionError,
-    userMessage,
-} from "../services/index.ts";
-import {
-    prepareGetPlannerResponseBody,
-    validatePlannerPermissions,
-    validatePostPlannerBody,
-    validatePostPlannerMealBody,
-} from "./helpers/index.ts";
-import {
-    type DeletePlannerMealRequestBody,
-    type DeletePlannerMealRequestParams,
-    type DeletePlannerMealResponse,
-    type DeletePlannerMemberRequestBody,
-    type DeletePlannerMemberRequestParams,
-    type DeletePlannerMemberResponse,
-    type DeletePlannerRequestBody,
-    type DeletePlannerRequestParams,
-    type DeletePlannerResponse,
-    type GetPlannerRequestBody,
-    type GetPlannerRequestParams,
-    type GetPlannerResponse,
-    type GetPlannersRequestBody,
-    type GetPlannersRequestParams,
-    type GetPlannersResponse,
-    PlannerEndpoint,
-    type Planners,
-    type PostPlannerMealRequestBody,
-    type PostPlannerMealRequestParams,
-    type PostPlannerMealResponse,
-    type PostPlannerMemberRequestBody,
-    type PostPlannerMemberRequestParams,
-    type PostPlannerMemberResponse,
-    type PostPlannerRequestBody,
-    type PostPlannerRequestParams,
-    type PostPlannerResponse,
-    UserStatus,
-} from "./spec/index.ts";
+import type { AppDependencies } from "../appDependencies.ts";
+import { EnsureArray } from "../utils/index.ts";
+import type { paths, routes } from "./spec/index.ts";
 
-const router = express.Router();
-
-/**
- * GET request to fetch all planners for a user
- */
-router.get<GetPlannersRequestParams, GetPlannersResponse, GetPlannersRequestBody>(
-    PlannerEndpoint.getPlanners,
-    async ({ session }, res, next) => {
-        const { userId } = session;
-
-        // Fetch and return result
-        try {
-            const results = await PlannerActions.ReadByUser({ userId });
-            const data: Planners = Object.fromEntries(
-                results.map(planner => [planner.plannerId, prepareGetPlannerResponseBody(planner, userId)])
+export const createPlannerRouter = ({ plannerService }: AppDependencies["services"]) =>
+    express
+        .Router()
+        .get<
+            routes,
+            paths["/planners"]["get"]["parameters"]["path"],
+            paths["/planners"]["get"]["responses"]["200"]["content"]["application/json"],
+            paths["/planners"]["get"]["requestBody"],
+            paths["/planners"]["get"]["parameters"]["query"]
+        >("/planners", async ({ session }, res) => {
+            const data = await plannerService.getAll(session.userId);
+            return res.status(200).json(data);
+        })
+        .get<
+            routes,
+            paths["/planners/{plannerId}"]["get"]["parameters"]["path"],
+            paths["/planners/{plannerId}"]["get"]["responses"]["200"]["content"]["application/json"],
+            paths["/planners/{plannerId}"]["get"]["requestBody"],
+            paths["/planners/{plannerId}"]["get"]["parameters"]["query"]
+        >("/planners/:plannerId", async ({ params, session }, res) => {
+            const data = await plannerService.get(session.userId, params.plannerId);
+            return res.status(200).json(data);
+        })
+        .post<
+            routes,
+            paths["/planners"]["post"]["parameters"]["path"],
+            paths["/planners"]["post"]["responses"]["201"]["content"]["application/json"],
+            paths["/planners"]["post"]["requestBody"]["content"]["application/json"],
+            paths["/planners"]["post"]["parameters"]["query"]
+        >("/planners", async ({ body, session }, res) => {
+            const data = await plannerService.create(session.userId, body);
+            return res.status(201).json(data);
+        })
+        .patch<
+            routes,
+            paths["/planners/{plannerId}"]["patch"]["parameters"]["path"],
+            paths["/planners/{plannerId}"]["patch"]["responses"]["200"]["content"]["application/json"],
+            paths["/planners/{plannerId}"]["patch"]["requestBody"]["content"]["application/json"],
+            paths["/planners/{plannerId}"]["patch"]["parameters"]["query"]
+        >("/planners/:plannerId", async ({ params, body, session }, res) => {
+            const data = await plannerService.update(session.userId, params.plannerId, body);
+            return res.status(200).json(data);
+        })
+        .delete<
+            routes,
+            paths["/planners/{plannerId}"]["delete"]["parameters"]["path"],
+            paths["/planners/{plannerId}"]["delete"]["responses"]["204"]["content"],
+            paths["/planners/{plannerId}"]["delete"]["requestBody"],
+            paths["/planners/{plannerId}"]["delete"]["parameters"]["query"]
+        >("/planners/:plannerId", async ({ params, session }, res) => {
+            await plannerService.delete(session.userId, params.plannerId);
+            return res.status(204).send();
+        })
+        .get<
+            routes,
+            paths["/planners/{plannerId}/meals/{year}/{month}"]["get"]["parameters"]["path"],
+            paths["/planners/{plannerId}/meals/{year}/{month}"]["get"]["responses"]["200"]["content"]["application/json"],
+            paths["/planners/{plannerId}/meals/{year}/{month}"]["get"]["requestBody"],
+            paths["/planners/{plannerId}/meals/{year}/{month}"]["get"]["parameters"]["query"]
+        >("/planners/:plannerId/meals/:year/:month", async ({ params, session }, res) => {
+            const data = await plannerService.getMeals(session.userId, params.plannerId, params.year, params.month);
+            return res.status(200).json(data);
+        })
+        .post<
+            routes,
+            paths["/planners/{plannerId}/meals"]["post"]["parameters"]["path"],
+            paths["/planners/{plannerId}/meals"]["post"]["responses"]["201"]["content"]["application/json"],
+            paths["/planners/{plannerId}/meals"]["post"]["requestBody"]["content"]["application/json"],
+            paths["/planners/{plannerId}/meals"]["post"]["parameters"]["query"]
+        >("/planners/:plannerId/meals", async ({ params, body, session }, res) => {
+            const [data] = await plannerService.createMeals(session.userId, params.plannerId, EnsureArray(body));
+            return res.status(201).json(data);
+        })
+        .patch<
+            routes,
+            paths["/planners/{plannerId}/meals/{mealId}"]["patch"]["parameters"]["path"],
+            paths["/planners/{plannerId}/meals/{mealId}"]["patch"]["responses"]["200"]["content"]["application/json"],
+            paths["/planners/{plannerId}/meals/{mealId}"]["patch"]["requestBody"]["content"]["application/json"],
+            paths["/planners/{plannerId}/meals/{mealId}"]["patch"]["parameters"]["query"]
+        >("/planners/:plannerId/meals/:mealId", async ({ params, body, session }, res) => {
+            const data = await plannerService.updateMeal(session.userId, params.plannerId, params.mealId, body);
+            return res.status(200).json(data);
+        })
+        .get<
+            routes,
+            paths["/planners/{plannerId}/members"]["get"]["parameters"]["path"],
+            paths["/planners/{plannerId}/members"]["get"]["responses"]["200"]["content"]["application/json"],
+            paths["/planners/{plannerId}/members"]["get"]["requestBody"],
+            paths["/planners/{plannerId}/members"]["get"]["parameters"]["query"]
+        >("/planners/:plannerId/members", async ({ params, session }, res) => {
+            const data = await plannerService.getMembers(session.userId, params.plannerId);
+            return res.status(200).json(data);
+        })
+        .post<
+            routes,
+            paths["/planners/{plannerId}/members"]["post"]["parameters"]["path"],
+            paths["/planners/{plannerId}/members"]["post"]["responses"]["204"]["content"],
+            paths["/planners/{plannerId}/members"]["post"]["requestBody"]["content"]["application/json"],
+            paths["/planners/{plannerId}/members"]["post"]["parameters"]["query"]
+        >("/planners/:plannerId/members", async ({ params, body, session }, res) => {
+            await plannerService.inviteMember(session.userId, params.plannerId, body.userId);
+            return res.status(204).send();
+        })
+        .post<
+            routes,
+            paths["/planners/{plannerId}/invite/accept"]["post"]["parameters"]["path"],
+            paths["/planners/{plannerId}/invite/accept"]["post"]["responses"]["204"]["content"],
+            paths["/planners/{plannerId}/invite/accept"]["post"]["requestBody"],
+            paths["/planners/{plannerId}/invite/accept"]["post"]["parameters"]["query"]
+        >("/planners/:plannerId/invite/accept", async ({ params, session }, res) => {
+            await plannerService.acceptInvite(session.userId, params.plannerId);
+            return res.status(204).send();
+        })
+        .post<
+            routes,
+            paths["/planners/{plannerId}/invite/decline"]["post"]["parameters"]["path"],
+            paths["/planners/{plannerId}/invite/decline"]["post"]["responses"]["204"]["content"],
+            paths["/planners/{plannerId}/invite/decline"]["post"]["requestBody"],
+            paths["/planners/{plannerId}/invite/decline"]["post"]["parameters"]["query"]
+        >("/planners/:plannerId/invite/decline", async ({ params, session }, res) => {
+            await plannerService.declineInvite(session.userId, params.plannerId);
+            return res.status(204).send();
+        })
+        .post<
+            routes,
+            paths["/planners/{plannerId}/leave"]["post"]["parameters"]["path"],
+            paths["/planners/{plannerId}/leave"]["post"]["responses"]["204"]["content"],
+            paths["/planners/{plannerId}/leave"]["post"]["requestBody"],
+            paths["/planners/{plannerId}/leave"]["post"]["parameters"]["query"]
+        >("/planners/:plannerId/leave", async ({ params, session }, res) => {
+            await plannerService.leaveMembership(session.userId, params.plannerId);
+            return res.status(204).send();
+        })
+        .delete<
+            routes,
+            paths["/planners/{plannerId}/meals/{mealId}"]["delete"]["parameters"]["path"],
+            paths["/planners/{plannerId}/meals/{mealId}"]["delete"]["responses"]["204"]["content"],
+            paths["/planners/{plannerId}/meals/{mealId}"]["delete"]["requestBody"],
+            paths["/planners/{plannerId}/meals/{mealId}"]["delete"]["parameters"]["query"]
+        >("/planners/:plannerId/meals/:mealId", async ({ params, session }, res) => {
+            await plannerService.deleteMeal(session.userId, params.plannerId, params.mealId);
+            return res.status(204).send();
+        })
+        .delete<
+            routes,
+            paths["/planners/{plannerId}/members/{userId}"]["delete"]["parameters"]["path"],
+            paths["/planners/{plannerId}/members/{userId}"]["delete"]["responses"]["204"]["content"],
+            paths["/planners/{plannerId}/members/{userId}"]["delete"]["requestBody"],
+            paths["/planners/{plannerId}/members/{userId}"]["delete"]["parameters"]["query"]
+        >("/planners/:plannerId/members/:userId", async ({ params, session }, res) => {
+            await plannerService.leaveMembership(session.userId, params.plannerId, params.userId);
+            return res.status(204).send();
+        })
+        .patch<
+            routes,
+            paths["/planners/{plannerId}/members/{userId}"]["patch"]["parameters"]["path"],
+            paths["/planners/{plannerId}/members/{userId}"]["patch"]["responses"]["200"]["content"]["application/json"],
+            paths["/planners/{plannerId}/members/{userId}"]["patch"]["requestBody"]["content"]["application/json"],
+            paths["/planners/{plannerId}/members/{userId}"]["patch"]["parameters"]["query"]
+        >("/planners/:plannerId/members/:userId", async ({ params, body, session }, res) => {
+            const data = await plannerService.updateMember(
+                session.userId,
+                params.plannerId,
+                params.userId,
+                body.status
             );
-
-            return res.status(200).json({ error: false, data });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({ action: MessageAction.Read, entity: "planners" }),
-                })
-            );
-        }
-    }
-);
-
-/**
- * GET request to fetch a planner
- */
-router.get<GetPlannerRequestParams, GetPlannerResponse, GetPlannerRequestBody>(
-    PlannerEndpoint.getPlanner,
-    async ({ params, session }, res, next) => {
-        // Extract request fields
-        const { plannerId, year, month } = params;
-        const { userId } = session;
-
-        let parsedYear = year ? parseInt(year, 10) : undefined;
-        let parsedMonth = month ? parseInt(month, 10) : undefined;
-
-        if (!plannerId) return next(new InsufficientDataError("planner"));
-
-        // Fetch and return result
-        try {
-            const [planner] = await PlannerActions.Read({ plannerId, userId });
-            if (!planner) return next(new NotFoundError("planner", plannerId));
-
-            const plannerMembersResponse = await PlannerMemberActions.read({ plannerId });
-
-            const plannerMealsResponse =
-                parsedYear !== undefined && parsedMonth !== undefined
-                    ? await PlannerMealActions.Read({ plannerId, year: parsedYear, month: parsedMonth })
-                    : undefined;
-
-            const data = prepareGetPlannerResponseBody(planner, userId, plannerMealsResponse, plannerMembersResponse);
-
-            return res.status(200).json({ error: false, data });
-        } catch (e: unknown) {
-            next(
-                new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "planner" }) })
-            );
-        }
-    }
-);
-
-/**
- * POST request to create a planner.
- */
-router.post<PostPlannerRequestParams, PostPlannerResponse, PostPlannerRequestBody>(
-    PlannerEndpoint.postPlanner,
-    async ({ body, session }, res, next) => {
-        // Extract request fields
-        const { userId } = session;
-        const [validPlanners, invalidPlanners] = validatePostPlannerBody(body, userId);
-
-        // Check all required fields are present
-        if (!validPlanners.length || invalidPlanners.length) {
-            return next(new InsufficientDataError("planner"));
-        }
-
-        // Update database and return status
-        try {
-            const { permissionsValid } = await validatePlannerPermissions(
-                validPlanners.map(({ plannerId }) => plannerId),
-                userId,
-                UserStatus.Owner
-            );
-
-            if (!permissionsValid) return next(new PermissionError("planner"));
-
-            await PlannerActions.Save(validPlanners);
-            return res.status(201).json({ error: false, message: `Planner saved` });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({
-                        action: MessageAction.Save,
-                        entity: "planner",
-                    }),
-                })
-            );
-        }
-    }
-);
-
-/**
- * DELETE request to delete a planner.
- */
-router.delete<DeletePlannerRequestParams, DeletePlannerResponse, DeletePlannerRequestBody>(
-    PlannerEndpoint.deletePlanner,
-    async ({ params, session }, res, next) => {
-        // Extract request fields
-        const { plannerId } = params;
-        const { userId } = session;
-
-        // Check all required fields are present
-        if (!plannerId) return next(new InsufficientDataError("planner"));
-
-        // Update database and return status
-        try {
-            const { permissionsValid, missingPlanners } = await validatePlannerPermissions(
-                plannerId,
-                userId,
-                UserStatus.Owner
-            );
-
-            if (missingPlanners.length) return next(new NotFoundError("planner", missingPlanners));
-
-            if (!permissionsValid) return next(new PermissionError("planner"));
-
-            await PlannerActions.Delete({ plannerId });
-            return res.status(201).json({ error: false, message: "Planner deleted." });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({ action: MessageAction.Delete, entity: "planner" }),
-                })
-            );
-        }
-    }
-);
-
-/**
- * POST request to save a planner meal.
- */
-router.post<PostPlannerMealRequestParams, PostPlannerMealResponse, PostPlannerMealRequestBody>(
-    PlannerEndpoint.postPlannerMeal,
-    async ({ params, body, session }, res, next) => {
-        // Extract request fields
-        const { plannerId } = params;
-        const { userId } = session;
-        const [validPlannerMeals, invalidPlannerMeals] = validatePostPlannerMealBody(body, userId, plannerId);
-
-        // Check all required fields are present
-        if (!validPlannerMeals.length || invalidPlannerMeals.length) {
-            return next(new InsufficientDataError("planner meal"));
-        }
-
-        // Update database and return status
-        try {
-            const { permissionsValid, missingPlanners } = await validatePlannerPermissions(
-                plannerId,
-                userId,
-                UserStatus.Administrator
-            );
-
-            if (missingPlanners.length) return next(new NotFoundError("planner", missingPlanners));
-
-            if (!permissionsValid) return next(new PermissionError("planner meal"));
-
-            await PlannerMealActions.Save(validPlannerMeals);
-            return res.status(201).json({ error: false, message: "Planner recipe added." });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({
-                        action: plannerId ? MessageAction.Update : MessageAction.Create,
-                        entity: "planner recipe",
-                    }),
-                })
-            );
-        }
-    }
-);
-
-/**
- * POST request to update a planner member. Currently only used to accept self into a planner.
- */
-router.post<PostPlannerMemberRequestParams, PostPlannerMemberResponse, PostPlannerMemberRequestBody>(
-    PlannerEndpoint.postPlannerMember,
-    async ({ params, session }, res, next) => {
-        // Extract request fields
-        const { plannerId } = params;
-        const { userId } = session;
-
-        // Check all required fields are present
-        if (!plannerId) return next(new InsufficientDataError("planner member"));
-
-        // Update database and return status
-        try {
-            const { permissionsValid, missingPlanners } = await validatePlannerPermissions(
-                plannerId,
-                userId,
-                UserStatus.Pending
-            );
-
-            if (missingPlanners.length) return next(new NotFoundError("planner", missingPlanners));
-
-            if (!permissionsValid) return next(new PermissionError("planner member"));
-
-            await PlannerMemberActions.save({ plannerId, members: [{ userId, status: UserStatus.Member }] });
-            return res.status(201).json({ error: false, message: "Planner member removed." });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({
-                        action: MessageAction.Delete,
-                        entity: "planner member",
-                    }),
-                })
-            );
-        }
-    }
-);
-
-/**
- * DELETE request to delete a planner meal.
- */
-router.delete<DeletePlannerMealRequestParams, DeletePlannerMealResponse, DeletePlannerMealRequestBody>(
-    PlannerEndpoint.deletePlannerMeal,
-    async ({ params, session }, res, next) => {
-        // Extract request fields
-        const { plannerId, mealId } = params;
-        const { userId } = session;
-
-        // Check all required fields are present
-        if (!plannerId || !mealId) return next(new InsufficientDataError("planner meal"));
-
-        // Update database and return status
-        try {
-            const { permissionsValid, missingPlanners } = await validatePlannerPermissions(
-                plannerId,
-                userId,
-                UserStatus.Administrator
-            );
-
-            if (missingPlanners.length) return next(new NotFoundError("planner", missingPlanners));
-
-            if (!permissionsValid) return next(new PermissionError("planner item"));
-
-            await PlannerMealActions.Delete({ mealId });
-            return res.status(201).json({ error: false, message: "Planner meal deleted." });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({ action: MessageAction.Delete, entity: "planner meal" }),
-                })
-            );
-        }
-    }
-);
-
-/**
- * DELETE request to delete a planner member.
- */
-router.delete<DeletePlannerMemberRequestParams, DeletePlannerMemberResponse, DeletePlannerMemberRequestBody>(
-    PlannerEndpoint.deletePlannerMember,
-    async ({ params, session }, res, next) => {
-        // Extract request fields
-        const { plannerId, userId: userIdReq } = params;
-        const { userId } = session;
-
-        const userToDelete = userIdReq || userId;
-
-        // Check all required fields are present
-        if (!userToDelete || !plannerId) return next(new InsufficientDataError("planner member"));
-
-        // Update database and return status
-        try {
-            const [existingPlanner] = await PlannerActions.ReadPermissions({ plannerId, userId });
-            if (!existingPlanner) return next(new NotFoundError("planner", plannerId));
-
-            if (userIdReq && userId !== userIdReq && existingPlanner.createdBy !== userId) {
-                return next(new PermissionError("planner member"));
-            }
-
-            if (existingPlanner.createdBy === userToDelete) {
-                return next(
-                    new AppError({
-                        status: 400,
-                        code: "OWNER",
-                        message: "Cannot remove planner owner from planner.",
-                    })
-                );
-            }
-
-            await PlannerMemberActions.delete({ plannerId, userId: userToDelete });
-            return res.status(201).json({ error: false, message: "Planner member removed." });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({
-                        action: MessageAction.Delete,
-                        entity: "planner member",
-                    }),
-                })
-            );
-        }
-    }
-);
-
-export default router;
+            return res.status(200).json(data);
+        });

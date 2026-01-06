@@ -48,7 +48,7 @@ const saveContentAttachments = async (
 
         if (!data.length) return;
 
-        await db<ContentAttachment>(lamington.contentAttachment).insert(data).onConflict(["attachmentId"]).merge();
+        await db<ContentAttachment>(lamington.contentAttachment).insert(data).onConflict(["attachmentId", "contentId"]).merge();
     }
 };
 

@@ -91,7 +91,7 @@ export const createBookRouter = ({ bookService }: AppDependencies["services"]) =
         BookEndpoint.deleteBook,
         async ({ params, session }, res) => {
             await bookService.delete(session.userId, params);
-            return res.status(204).json({ error: false });
+            return res.status(204).send();
         }
     );
 
@@ -143,7 +143,7 @@ export const createBookRouter = ({ bookService }: AppDependencies["services"]) =
         BookEndpoint.deleteBookRecipe,
         async ({ params, session }, res) => {
             await bookService.removeRecipe(session.userId, params);
-            return res.status(204).json({ error: false });
+            return res.status(204).send();
         }
     );
 
@@ -154,7 +154,7 @@ export const createBookRouter = ({ bookService }: AppDependencies["services"]) =
         BookEndpoint.deleteBookMember,
         async ({ params, session }, res) => {
             await bookService.leaveMembership(session.userId, params);
-            return res.status(204).json({ error: false });
+            return res.status(204).send();
         }
     );
 

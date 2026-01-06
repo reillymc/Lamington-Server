@@ -10,7 +10,12 @@ export const ObjectFromEntries = <T extends object, K extends symbol | string | 
     return Object.fromEntries(cast(entries)) as any;
 };
 
-export const EnsureArray = <T>(x: T | T[]): T[] => (Array.isArray(x) ? x : [x]);
+export function EnsureArray<T>(x: T | T[]): T[];
+export function EnsureArray<T>(x: readonly T[]): readonly T[];
+export function EnsureArray<T>(x: T | readonly T[]): readonly T[];
+export function EnsureArray<T>(x: T | T[] | readonly T[]): T[] | readonly T[] {
+    return Array.isArray(x) ? x : [x as T];
+}
 export const EnsureDefinedArray = <T>(x: T | T[]): NonNullable<T>[] => (Array.isArray(x) ? x : [x]).filter(Undefined);
 
 export const BisectOnValidPartialItems = <T>(
@@ -66,3 +71,5 @@ export const BisectOnPredicate = <T>(arr: T[], predicate: (item: T) => boolean) 
 };
 
 export const randomElement = <T>(array: T[]): T | undefined => array[Math.floor(Math.random() * array.length)];
+
+export const toUndefined = <T>(value: T | null): T | undefined => (value === null ? undefined : value);

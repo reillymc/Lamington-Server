@@ -11,13 +11,15 @@ import {
 } from "./middleware/index.ts";
 import { appRouter, createAuthRouter, docsRouter } from "./routes/index.ts";
 import { attachmentEndpoint, authEndpoint, uploadDirectory } from "./routes/spec/index.ts";
-import { DefaultAppDependencies, type AppDependencies } from "./appDependencies.ts";
+import { DefaultAppDependencies, MergeAppDependencies, type PartialAppDependencies } from "./appDependencies.ts";
 import db from "./database/index.ts";
 
-export const setupApp = (dependencies?: Partial<AppDependencies>) => {
+export const setupApp = (dependencies?: PartialAppDependencies) => {
     const app = express();
 
-    const appDependencies = { ...DefaultAppDependencies(dependencies?.database ?? db), ...dependencies };
+    const database = dependencies?.database ?? db;
+
+    const appDependencies = MergeAppDependencies(DefaultAppDependencies(database), dependencies);
 
     // app setup
     app.use(express.json());

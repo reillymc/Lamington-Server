@@ -1,0 +1,961 @@
+openapi: 3.1.0
+info:
+  title: Lamington API
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/v1/
+tags:
+  - name: Meals
+    description: Meal planning operations
+  - name: Extractor
+    description: Recipe extraction operations
+  - name: Planners
+    description: Planner operations
+  - name: CookList
+    description: Cook list operations
+security:
+  - bearerAuth: []
+paths:
+  /cooklist/meals:
+    get:
+      tags:
+        - CookList
+      summary: Get cook list meals
+      operationId: getCookList
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CookListMeal"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - CookList
+      summary: Add meal to cook list
+      operationId: postCookList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/CookListMealCreate"
+                - type: array
+                  items:
+                    $ref: "#/components/schemas/CookListMealCreate"
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CookListMeal"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /cooklist/meals/{mealId}:
+    parameters:
+      - name: mealId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    delete:
+      tags:
+        - CookList
+      summary: Remove meal from cook list
+      operationId: deleteCookList
+      responses:
+        204:
+          description: Deleted
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - CookList
+      summary: Update meal in cook list
+      operationId: putCookList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CookListMealUpdate"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CookListMeal"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /meals/{mealId}:
+    parameters:
+      - name: mealId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    get:
+      tags:
+        - Meals
+      summary: Get a meal by ID
+      operationId: getMeal
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meal"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /planners:
+    get:
+      tags:
+        - Planners
+      summary: Get user planners
+      operationId: getPlanners
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Planner"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Planners
+      summary: Create a planner
+      operationId: postPlanner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlannerCreate"
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Planner"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /planners/{plannerId}:
+    parameters:
+      - name: plannerId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    get:
+      tags:
+        - Planners
+      summary: Get a planner
+      operationId: getPlanner
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Planner"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Planners
+      summary: Update a planner
+      operationId: putPlanner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlannerUpdate"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Planner"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - Planners
+      summary: Delete a planner
+      operationId: deletePlanner
+      responses:
+        204:
+          description: No Content
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /planners/{plannerId}/meals:
+    parameters:
+      - name: plannerId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Planners
+      summary: Add a meal to a planner
+      operationId: postPlannerMeal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlannerMealCreate"
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlannerMeal"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /planners/{plannerId}/meals/{year}/{month}:
+    parameters:
+      - name: plannerId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+      - name: year
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Year"
+      - name: month
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Month"
+    get:
+      tags:
+        - Planners
+      summary: Get planner meals
+      operationId: getPlannerMeals
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlannerMeal"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /planners/{plannerId}/meals/{mealId}:
+    parameters:
+      - name: plannerId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+      - name: mealId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    patch:
+      tags:
+        - Planners
+      summary: Update a meal in a planner
+      operationId: putPlannerMeal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlannerMealUpdate"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlannerMeal"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - Planners
+      summary: Remove a meal from a planner
+      operationId: deletePlannerMeal
+      responses:
+        204:
+          description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /planners/{plannerId}/members:
+    parameters:
+      - name: plannerId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    get:
+      tags:
+        - Planners
+      summary: Get planner members
+      operationId: getPlannerMembers
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlannerMember"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Planners
+      summary: Invite a member to a planner
+      operationId: postPlannerMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlannerMemberCreate"
+      responses:
+        204:
+          description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /planners/{plannerId}/members/{userId}:
+    parameters:
+      - name: plannerId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    delete:
+      tags:
+        - Planners
+      summary: Remove a member from a planner
+      operationId: deletePlannerMember
+      responses:
+        204:
+          description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Planners
+      summary: Update a planner member
+      operationId: updatePlannerMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlannerMemberUpdate"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlannerMember"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /planners/{plannerId}/invite/accept:
+    parameters:
+      - name: plannerId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Planners
+      summary: Accept planner invitation
+      operationId: acceptPlannerInvite
+      responses:
+        204:
+          description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /planners/{plannerId}/invite/decline:
+    parameters:
+      - name: plannerId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Planners
+      summary: Decline planner invitation
+      operationId: declinePlannerInvite
+      responses:
+        204:
+          description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /planners/{plannerId}/leave:
+    parameters:
+      - name: plannerId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Planners
+      summary: Leave a planner
+      operationId: leavePlanner
+      responses:
+        204:
+          description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /extractor/recipeMetadata:
+    get:
+      tags:
+        - Extractor
+      summary: Extract recipe metadata
+      operationId: getExtractRecipeMetadata
+      parameters:
+        - name: url
+          in: query
+          description: The URL of the recipe to extract metadata from
+          required: true
+          schema:
+            type: string
+            format: uri
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractedRecipeMetadata"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /extractor/recipe:
+    get:
+      tags:
+        - Extractor
+      summary: Extract full recipe
+      operationId: getExtractRecipe
+      parameters:
+        - name: url
+          in: query
+          description: The URL of the recipe to extract
+          required: true
+          schema:
+            type: string
+            format: uri
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractedRecipe"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: boolean
+          example: true
+        message:
+          type: string
+      required:
+        - error
+    Owner:
+      type: object
+      properties:
+        userId:
+          type: string
+        firstName:
+          type: string
+      required:
+        - userId
+        - firstName
+    Uuid:
+      type: string
+      format: uuid
+    Year:
+      type: integer
+      minimum: 2000
+      maximum: 2199
+    Month:
+      type: integer
+      minimum: 0
+      maximum: 11
+    DayOfMonth:
+      type: integer
+      minimum: 1
+      maximum: 31
+    UserStatus:
+      type: string
+      description: >
+        * `O` - Owner
+        * `A` - Administrator
+        * `M` - Member
+        * `P` - Pending
+        * `B` - Blocked
+      enum:
+        - O
+        - A
+        - M
+        - P
+        - B
+    Course:
+      type: string
+      enum:
+        - breakfast
+        - lunch
+        - dinner
+    MealProperties:
+      type: object
+      properties:
+        mealId:
+          $ref: "#/components/schemas/Uuid"
+        plannerId:
+          $ref: "#/components/schemas/Uuid"
+        year:
+          $ref: "#/components/schemas/Year"
+        month:
+          $ref: "#/components/schemas/Month"
+        dayOfMonth:
+          $ref: "#/components/schemas/DayOfMonth"
+        course:
+          $ref: "#/components/schemas/Course"
+        description:
+          type: string
+        source:
+          type: string
+        sequence:
+          type: integer
+        recipeId:
+          $ref: "#/components/schemas/Uuid"
+        notes:
+          type: string
+      dependentRequired:
+        plannerId:
+          - year
+          - month
+          - dayOfMonth
+        year:
+          - plannerId
+          - month
+          - dayOfMonth
+        month:
+          - plannerId
+          - year
+          - dayOfMonth
+        dayOfMonth:
+          - plannerId
+          - year
+          - month
+    Meal:
+      allOf:
+        - $ref: "#/components/schemas/MealProperties"
+        - type: object
+          properties:
+            owner:
+              $ref: "#/components/schemas/Owner"
+            heroImage:
+              $ref: "#/components/schemas/ImageAttachment"
+      required:
+        - mealId
+        - course
+        - owner
+    MealBase:
+      type: object
+      properties:
+        course:
+          $ref: "#/components/schemas/Course"
+        description:
+          type: string
+        source:
+          type: string
+        recipeId:
+          $ref: "#/components/schemas/Uuid"
+        heroImage:
+          $ref: "#/components/schemas/ImageAttachment"
+      required:
+        - course
+    MealCreateBase:
+      type: object
+      properties:
+        course:
+          $ref: "#/components/schemas/Course"
+        description:
+          type:
+            - string
+            - 'null'
+        source:
+          type:
+            - string
+            - 'null'
+        recipeId:
+          oneOf:
+            - $ref: "#/components/schemas/Uuid"
+            - type: 'null'
+        heroImage:
+          type: string
+      required:
+        - course
+    MealUpdateBase:
+      type: object
+      properties:
+        course:
+          $ref: "#/components/schemas/Course"
+        description:
+          type:
+            - string
+            - 'null'
+        source:
+          type:
+            - string
+            - 'null'
+        recipeId:
+          oneOf:
+            - $ref: "#/components/schemas/Uuid"
+            - type: 'null'
+        heroImage:
+          type:
+            - string
+            - 'null'
+    CookListMeal:
+      allOf:
+        - $ref: "#/components/schemas/MealBase"
+        - type: object
+          properties:
+            mealId:
+              $ref: "#/components/schemas/Uuid"
+            owner:
+              $ref: "#/components/schemas/Owner"
+            sequence:
+              type: integer
+          required:
+            - mealId
+            - owner
+    CookListMealCreate:
+      allOf:
+        - $ref: "#/components/schemas/MealCreateBase"
+        - type: object
+          properties:
+            sequence:
+              type:
+                - integer
+                - 'null'
+      unevaluatedProperties: false
+    CookListMealUpdate:
+      allOf:
+        - $ref: "#/components/schemas/MealUpdateBase"
+        - type: object
+          properties:
+            sequence:
+              type:
+                - integer
+                - 'null'
+      unevaluatedProperties: false
+    Planner:
+      type: object
+      properties:
+        plannerId:
+          $ref: "#/components/schemas/Uuid"
+        owner:
+          $ref: "#/components/schemas/Owner"
+        name:
+          type: string
+        color:
+          type: string
+        description:
+          type: string
+        status:
+          $ref: "#/components/schemas/UserStatus"
+      required:
+        - plannerId
+        - owner
+        - name
+    PlannerCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+      required:
+        - name
+      unevaluatedProperties: false
+    PlannerUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+      unevaluatedProperties: false
+    PlannerMember:
+      type: object
+      properties:
+        userId:
+          $ref: "#/components/schemas/Uuid"
+        firstName:
+          type: string
+        lastName:
+          type: string
+        status:
+          $ref: "#/components/schemas/UserStatus"
+      required:
+        - userId
+        - firstName
+    PlannerMemberUpdate:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/UserStatus"
+      required:
+        - status
+      unevaluatedProperties: false
+    PlannerMemberCreate:
+      type: object
+      properties:
+        userId:
+          type: string
+      required:
+        - userId
+      unevaluatedProperties: false
+    PlannerMeal:
+      allOf:
+        - $ref: "#/components/schemas/MealBase"
+        - type: object
+          properties:
+            mealId:
+              $ref: "#/components/schemas/Uuid"
+            plannerId:
+              $ref: "#/components/schemas/Uuid"
+            owner:
+              $ref: "#/components/schemas/Owner"
+            year:
+              $ref: "#/components/schemas/Year"
+            month:
+              $ref: "#/components/schemas/Month"
+            dayOfMonth:
+              $ref: "#/components/schemas/DayOfMonth"
+          required:
+            - mealId
+            - plannerId
+            - owner
+            - year
+            - month
+            - dayOfMonth
+    PlannerMealCreate:
+      allOf:
+        - $ref: "#/components/schemas/MealCreateBase"
+        - type: object
+          properties:
+            year:
+              $ref: "#/components/schemas/Year"
+            month:
+              $ref: "#/components/schemas/Month"
+            dayOfMonth:
+              $ref: "#/components/schemas/DayOfMonth"
+          required:
+            - year
+            - month
+            - dayOfMonth
+      unevaluatedProperties: false
+    PlannerMealUpdate:
+      allOf:
+        - $ref: "#/components/schemas/MealUpdateBase"
+        - type: object
+          properties:
+            year:
+              $ref: "#/components/schemas/Year"
+            month:
+              $ref: "#/components/schemas/Month"
+            dayOfMonth:
+              $ref: "#/components/schemas/DayOfMonth"
+      unevaluatedProperties: false
+    MealPartial:
+      allOf:
+        - $ref: "#/components/schemas/MealProperties"
+    MealCreate:
+      allOf:
+        - $ref: "#/components/schemas/MealProperties"
+      required:
+        - course
+      unevaluatedProperties: false
+    ExtractedRecipeMetadata:
+      type: object
+      properties:
+        name:
+          type: string
+        imageUrl:
+          type: string
+      required:
+        - name
+    RecipeBase:
+      type: object
+      properties:
+        description:
+          type: string
+        prepTime:
+          type: integer
+        cookTime:
+          type: integer
+        source:
+          type: string
+        url:
+          type: string
+        notes:
+          type: string
+    ExtractedRecipe:
+      allOf:
+        - $ref: "#/components/schemas/ExtractedRecipeMetadata"
+        - $ref: "#/components/schemas/RecipeBase"
+    Recipe:
+      allOf:
+        - $ref: "#/components/schemas/ExtractedRecipe"
+        - type: object
+          properties:
+            recipeId:
+              $ref: "#/components/schemas/Uuid"
+            public:
+              type: boolean
+            timesCooked:
+              type: integer
+            owner:
+              $ref: "#/components/schemas/Owner"
+    ImageAttachment:
+      type: object
+      properties:
+        attachmentId:
+          $ref: "#/components/schemas/Uuid"
+        uri:
+          type: string
+      required:
+        - attachmentId
+        - uri

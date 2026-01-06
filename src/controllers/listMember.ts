@@ -1,13 +1,16 @@
 import type { ContentMember } from "../database/definitions/contentMember.ts";
 import type { List, CreateQuery, KnexDatabase } from "../database/index.ts";
 import db from "../database/index.ts";
-import type { UserStatus } from "../routes/spec/user.ts";
 import { EnsureArray } from "../utils/index.ts";
-import { ContentMemberActions, type CreateContentMemberOptions } from "./content/contentMember.ts";
+import {
+    ContentMemberActions,
+    type ContentMemberStatus,
+    type CreateContentMemberOptions,
+} from "./content/contentMember.ts";
 
 export type SaveListMemberRequest = CreateQuery<{
     listId: List["listId"];
-    members?: Array<{ userId: ContentMember["userId"]; status?: string }>;
+    members?: Array<{ userId: ContentMember["userId"]; status?: ContentMemberStatus }>;
 }>;
 
 type DeleteListMemberRequest = CreateQuery<{

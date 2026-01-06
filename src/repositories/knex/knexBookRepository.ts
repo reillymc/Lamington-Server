@@ -6,6 +6,7 @@ import { contentMember } from "../../database/definitions/contentMember.ts";
 import { lamington, user, type KnexDatabase } from "../../database/index.ts";
 import { EnsureArray, EnsureDefinedArray } from "../../utils/index.ts";
 import type { BookRepository } from "../bookRepository.ts";
+import { withContentReadPermissions } from "./common/contentQueries.ts";
 
 const readMembers: BookRepository<KnexDatabase>["readMembers"] = async (db, request) => {
     const requests = EnsureArray(request);
@@ -35,7 +36,7 @@ const setMembers: BookRepository<KnexDatabase>["saveMembers"] = (db, request) =>
 
 const read: BookRepository<KnexDatabase>["read"] = async (db, { books, userId }) => {
     const members = await readMembers(db, books);
-    const result = await db(lamington.book)
+    const result: any[] = await db(lamington.book)
         .select(
             book.bookId,
             book.name,
@@ -49,10 +50,9 @@ const read: BookRepository<KnexDatabase>["read"] = async (db, { books, userId })
             book.bookId,
             books.map(({ bookId }) => bookId)
         )
-        .andWhere(qb => qb.where({ [content.createdBy]: userId }).orWhere({ [contentMember.userId]: userId }))
         .leftJoin(lamington.content, book.bookId, content.contentId)
         .leftJoin(lamington.user, content.createdBy, user.userId)
-        .leftJoin(lamington.contentMember, book.bookId, contentMember.contentId);
+        .modify(withContentReadPermissions({ userId, idColumn: book.bookId }));
 
     return {
         userId,
@@ -143,7 +143,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         };
     },
     readAll: async (db, { userId, filter }) => {
-        const bookList = await db(lamington.book)
+        const bookList: any[] = await db(lamington.book)
             .select(
                 book.bookId,
                 book.name,
@@ -153,17 +153,14 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
                 user.firstName,
                 contentMember.status
             )
-
-            .where(builder => {
-                builder.where({ [content.createdBy]: userId }).orWhere({ [contentMember.userId]: userId });
-
-                if (!filter?.owner) return builder;
-
-                return builder.andWhere({ [content.createdBy]: filter.owner });
-            })
             .leftJoin(lamington.content, book.bookId, content.contentId)
             .leftJoin(lamington.user, content.createdBy, user.userId)
-            .leftJoin(lamington.contentMember, book.bookId, contentMember.contentId);
+            .modify(withContentReadPermissions({ userId, idColumn: book.bookId }))
+            .modify(qb => {
+                if (filter?.owner) {
+                    qb.where({ [content.createdBy]: filter.owner });
+                }
+            });
 
         return {
             userId,

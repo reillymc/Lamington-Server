@@ -1,7 +1,7 @@
 import { expect } from "expect";
 import type { Express } from "express";
 import assert from "node:assert";
-import { afterEach, before, beforeEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import type { Knex } from "knex";
 

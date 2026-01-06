@@ -119,7 +119,7 @@ export const createRecipeRouter = ({ recipeService }: AppDependencies["services"
         RecipeEndpoint.deleteRecipe,
         async ({ session, params }, res) => {
             await recipeService.delete(session.userId, params);
-            return res.status(204).json({ error: false });
+            return res.status(204).send();
         }
     );
 

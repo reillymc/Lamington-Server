@@ -30,20 +30,22 @@ export class AppError {
 }
 
 type KnownEntities =
-    | "list"
+    | "cooklist meal"
     | "list item"
     | "list member"
+    | "list"
+    | "meal"
     | "planner meal"
-    | "planner"
     | "planner member"
-    | "planner item";
+    | "planner"
+    | "user";
 
 export class PermissionError extends AppError {
     constructor(entity: KnownEntities) {
         super({
             status: 403,
             code: "MISSING_PERMISSIONS",
-            message: `You do not have permission to access this ${entity}.`,
+            message: `You do not have permission to access this ${entity}`,
         });
     }
 }
@@ -60,12 +62,53 @@ export class NotFoundError extends AppError {
     }
 }
 
+export class UpdatedDataFetchError extends AppError {
+    constructor(entity: KnownEntities, entityIds: string | string[]) {
+        super({
+            status: 500,
+            code: "UPDATE_READ_FAILED",
+            message: `The updated ${entity} entries were not found: ${
+                entityIds.length ? `Ids: ${EnsureArray(entityIds).join(", ")}` : ""
+            }`,
+        });
+    }
+}
+export class CreatedDataFetchError extends AppError {
+    constructor(entity: KnownEntities) {
+        super({
+            status: 500,
+            code: "CREATE_READ_FAILED",
+            message: `The created ${entity} entries were not found`,
+        });
+    }
+}
+
 export class InsufficientDataError extends AppError {
     constructor(entity: KnownEntities) {
         super({
             status: 400,
             code: "INSUFFICIENT_DATA",
-            message: `Insufficient data provided to perform the requested operation on this ${entity}.`,
+            message: `Insufficient data provided to perform the requested operation on this ${entity}`,
+        });
+    }
+}
+
+export class InvalidOperationError extends AppError {
+    constructor(entity: KnownEntities, reason?: string) {
+        super({
+            status: 400,
+            code: "INVALID_OPERATION",
+            message: `Invalid operation performed on this ${entity}${reason ? ` (${reason})` : ""}`,
+        });
+    }
+}
+
+export class ValidationError extends AppError {
+    constructor(innerError: any) {
+        super({
+            status: innerError.status,
+            message: innerError.message,
+            innerError,
         });
     }
 }
@@ -134,4 +177,4 @@ interface UserMessage {
 }
 
 export const userMessage = ({ action, entity, subEntity }: UserMessage) =>
-    `An error occurred when ${action} your ${entity}${subEntity ? ` ${subEntity}` : ""}.`;
+    `An error occurred when ${action} your ${entity}${subEntity ? ` ${subEntity}` : ""}`;

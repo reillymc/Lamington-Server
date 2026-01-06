@@ -1,18 +1,18 @@
 import type { Content } from "../../database/definitions/content.ts";
 import type { ContentMember } from "../../database/definitions/contentMember.ts";
 import type { DeleteService, List, ReadMyService, ReadService, SaveService, User } from "../../database/index.ts";
-import type { UserStatus } from "../../routes/spec/user.ts";
+import type { ContentMemberStatus } from "../content/contentMember.ts";
 
 interface ListReadResponse
     extends Pick<List, "listId" | "name" | "customisations" | "description">,
         Pick<Content, "createdBy"> {
     createdByName: User["firstName"];
-    status: ContentMember["status"];
+    status: ContentMemberStatus;
 }
 
 interface ListReadPermissionsResponse extends Pick<List, "listId">, Pick<Content, "createdBy"> {
     userId: User["userId"];
-    status: ContentMember["status"];
+    status: ContentMemberStatus;
 }
 
 export interface ListService {
@@ -43,7 +43,7 @@ export interface ListService {
      */
     Save: SaveService<
         List & {
-            members?: Array<Pick<ContentMember, "userId"> & { status?: string }>;
+            members?: Array<Pick<ContentMember, "userId"> & { status?: ContentMemberStatus }>;
             createdBy: Content["createdBy"];
         }
     >;

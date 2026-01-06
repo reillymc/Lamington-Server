@@ -13,7 +13,7 @@ import {
     type User,
 } from "../../database/index.ts";
 import { EnsureArray, ObjectFromEntries, Undefined } from "../../utils/index.ts";
-import type { CreateRequest, ReadResponse, RecipeRepository, UpdateRequest } from "../recipeRepository.ts";
+import type { RecipeRepository } from "../recipeRepository.ts";
 import { contentAttachment } from "../../database/definitions/contentAttachment.ts";
 import { attachment } from "../../database/definitions/attachment.ts";
 import { RecipeAttachmentActions } from "../../controllers/recipeAttachment.ts";
@@ -297,7 +297,7 @@ const getFullRecipe = async (db: KnexDatabase, recipeId: string, userId: string)
 };
 
 const read: RecipeRepository<KnexDatabase>["read"] = async (db, { userId, recipes }) => {
-    const response: ReadResponse["recipes"] = [];
+    const response: Awaited<ReturnType<RecipeRepository["read"]>>["recipes"] = [];
 
     // TODO: remove loop and use requests keyed by recipe id for sub-queries
     for (const { recipeId } of recipes) {
@@ -640,7 +640,9 @@ export const recipeSectionRequestToRows = ({
     recipeId,
     ingredients = [],
     method = [],
-}: Partial<CreateRequest["recipes"][number]> & { recipeId: string }): Array<RecipeSection> | undefined => {
+}: Parameters<RecipeRepository["update"]>["1"]["recipes"][number] & { recipeId: string }):
+    | Array<RecipeSection>
+    | undefined => {
     const ingSectionRequests: Array<RecipeSection> = ingredients.map(({ sectionId, name, description }, index) => ({
         sectionId,
         recipeId,
@@ -673,7 +675,7 @@ export const recipeSectionRequestToRows = ({
 export const ingredientsRequestToRows = ({
     owner,
     ingredients,
-}: Partial<CreateRequest["recipes"][number]> & { owner: string }):
+}: Parameters<RecipeRepository["create"]>["1"]["recipes"][number] & { owner: string }):
     | Array<Partial<Ingredient & { createdBy: Content["createdBy"] }>>
     | undefined => {
     if (!ingredients?.length) return;
@@ -697,7 +699,7 @@ export const ingredientsRequestToRows = ({
 export const recipeIngredientsRequestToRows = ({
     recipeId,
     ingredients,
-}: UpdateRequest["recipes"][number]): RecipeIngredient[] | undefined => {
+}: Parameters<RecipeRepository["update"]>["1"]["recipes"][number]): RecipeIngredient[] | undefined => {
     if (!ingredients?.length) return;
 
     return ingredients.flatMap(({ sectionId, items }) =>

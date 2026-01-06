@@ -6,28 +6,32 @@ import { lamington } from "./lamington.ts";
  */
 export type Meal = {
     mealId: string;
-    plannerId?: string;
-    year?: number;
-    month?: number;
-    dayOfMonth?: number;
+    plannerId: string | null;
+    year: number | null;
+    month: number | null;
+    dayOfMonth: number | null;
     meal: string;
-    description?: string;
-    source?: string;
-    sequence?: number;
-    recipeId?: string;
-    notes?: string;
+    description: string | null;
+    source: string | null;
+    sequence: number | null;
+    recipeId: string | null;
+    notes: string | null;
 };
 
-export const plannerMeal: Table<Meal> = {
-    mealId: `${lamington.plannerMeal}.mealId`,
-    plannerId: `${lamington.plannerMeal}.plannerId`,
-    year: `${lamington.plannerMeal}.year`,
-    month: `${lamington.plannerMeal}.month`,
-    dayOfMonth: `${lamington.plannerMeal}.dayOfMonth`,
-    meal: `${lamington.plannerMeal}.meal`,
-    description: `${lamington.plannerMeal}.description`,
-    source: `${lamington.plannerMeal}.source`,
-    sequence: `${lamington.plannerMeal}.sequence`,
-    recipeId: `${lamington.plannerMeal}.recipeId`,
-    notes: `${lamington.plannerMeal}.notes`,
-} as const;
+export const plannerMealColumns = [
+    "mealId",
+    "plannerId",
+    "year",
+    "month",
+    "dayOfMonth",
+    "meal",
+    "description",
+    "source",
+    "sequence",
+    "recipeId",
+    "notes",
+] as const satisfies (keyof Meal)[];
+
+export const plannerMeal = Object.fromEntries(
+    plannerMealColumns.map(column => [column, `${lamington.plannerMeal}.${column}`])
+) as Table<Meal>;

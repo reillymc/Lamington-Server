@@ -8,6 +8,7 @@ import type { RecipeStep } from "../database/definitions/recipeStep.ts";
 import type { RepositoryService } from "./repository.ts";
 import type { Database, Ingredient, Tag, User } from "../database/index.ts";
 
+// TODO: clean up extraneous exports after migration to openapi spec at service layer is complete
 type SortKeys<TKeys> = keyof TKeys;
 type Pagination = number;
 
@@ -59,7 +60,7 @@ export type ReadAllRequest = {
     filter?: ReadFilters;
 };
 
-export type BaseResponse = {
+type BaseResponse = {
     recipeId: Recipe["recipeId"];
     name: Recipe["name"];
     public: Recipe["public"];
@@ -114,14 +115,14 @@ type RecipePayload = {
     tags?: Array<SaveTagRequest>;
 };
 
-export type CreateRequest = {
+type CreateRequest = {
     userId: User["userId"];
     recipes: Array<RecipePayload>;
 };
 
 type CreateResponse = ReadResponse;
 
-export type UpdateRequest = {
+type UpdateRequest = {
     userId: User["userId"];
     recipes: Array<
         Partial<RecipePayload> & {
@@ -132,7 +133,7 @@ export type UpdateRequest = {
 
 type UpdateResponse = ReadResponse;
 
-export type ReadRequest = {
+type ReadRequest = {
     userId: User["userId"];
     recipes: Array<{
         recipeId: Recipe["recipeId"];
@@ -196,17 +197,17 @@ export type ReadResponse = {
     >;
 };
 
-export type DeleteRequest = {
+type DeleteRequest = {
     recipes: Array<{
         recipeId: Recipe["recipeId"];
     }>;
 };
 
-export type DeleteResponse = {
+type DeleteResponse = {
     count: number;
 };
 
-export type SaveRatingRequest = {
+type SaveRatingRequest = {
     userId: User["userId"];
     ratings: Array<{
         recipeId: RecipeRating["recipeId"];

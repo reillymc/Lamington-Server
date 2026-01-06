@@ -13,14 +13,17 @@ export type PlannerCustomisations = PlannerCustomisationsV1;
 export interface Planner {
     plannerId: string;
     name: string;
-    // TODO - customisations model same as book
-    customisations?: PlannerCustomisations;
-    description?: string;
+    customisations: PlannerCustomisations | null;
+    description: string | null;
 }
 
-export const planner = {
-    plannerId: `${lamington.planner}.plannerId`,
-    name: `${lamington.planner}.name`,
-    customisations: `${lamington.planner}.customisations`,
-    description: `${lamington.planner}.description`,
-} satisfies Table<Planner>;
+export const plannerColumns = [
+    "plannerId",
+    "name",
+    "customisations",
+    "description",
+] as const satisfies (keyof Planner)[];
+
+export const planner = Object.fromEntries(
+    plannerColumns.map(column => [column, `${lamington.planner}.${column}`])
+) as Table<Planner>;
