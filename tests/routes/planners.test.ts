@@ -12,8 +12,16 @@ import type { KnexDatabase } from "../../src/database/index.ts";
 import { type components, UserStatus } from "../../src/routes/spec/index.ts";
 import db from "../../src/database/index.ts";
 import { CreateUsers, PrepareAuthenticatedUser, randomDay, randomMonth, randomYear } from "../helpers/index.ts";
+import { randomCourse } from "../helpers/meal.ts";
 
-// TODO: test meal heroImage create/update once content attachments use new repository design
+const randomMeal = () =>
+    ({
+        dayOfMonth: randomDay(),
+        month: randomMonth(),
+        course: randomCourse(),
+        year: randomYear(),
+        description: uuid(),
+    } satisfies components["schemas"]["PlannerMealCreate"]);
 
 describe("Get user planners", () => {
     let database: KnexDatabase;
@@ -225,11 +233,11 @@ describe("Get a planner", () => {
         expect(data?.status).toEqual("O");
     });
 
-    it("should return the planner for allowed member statuses (A, M, P)", async () => {
+    it("should return the planner for allowed member statuses (A, M)", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [plannerOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Pending];
+        const statuses = [UserStatus.Administrator, UserStatus.Member];
 
         for (const status of statuses) {
             const {
@@ -254,25 +262,29 @@ describe("Get a planner", () => {
         }
     });
 
-    it("should return 404 for a blacklisted member status", async () => {
+    it("should return 404 for disallowed member statuses (P, B)", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [plannerOwner] = await CreateUsers(database);
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: plannerOwner!.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
+        const statuses = [UserStatus.Pending, UserStatus.Blacklisted];
 
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: user.userId, status: UserStatus.Blacklisted }],
-        });
+        for (const status of statuses) {
+            const {
+                planners: [planner],
+            } = await KnexPlannerRepository.create(database, {
+                userId: plannerOwner!.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
 
-        const res = await request(app).get(`/v1/planners/${planner!.plannerId}`).set(token);
+            await KnexPlannerRepository.saveMembers(database, {
+                plannerId: planner!.plannerId,
+                members: [{ userId: user.userId, status }],
+            });
 
-        expect(res.statusCode).toEqual(404);
+            const res = await request(app).get(`/v1/planners/${planner!.plannerId}`).set(token);
+
+            expect(res.statusCode).toEqual(404);
+        }
     });
 });
 
@@ -400,7 +412,7 @@ describe("Get planner meals", () => {
             plannerId: planner!.plannerId,
             meals: [
                 {
-                    course: "dinner",
+                    course: randomCourse(),
                     description: uuid(),
                     dayOfMonth: randomDay(),
                     month: randomMonth(),
@@ -472,7 +484,7 @@ describe("Get planner meals", () => {
             plannerId: planner!.plannerId,
             meals: [
                 {
-                    course: "dinner",
+                    course: randomCourse(),
                     description: "Target Meal",
                     dayOfMonth: 1,
                     month: targetMonth,
@@ -535,7 +547,7 @@ describe("Get planner meals", () => {
                 plannerId: planner!.plannerId,
                 meals: [
                     {
-                        course: "dinner",
+                        course: randomCourse(),
                         description: uuid(),
                         dayOfMonth: randomDay(),
                         month: randomMonth(),
@@ -596,7 +608,7 @@ describe("Get planner meals", () => {
 
         await KnexCookListRepository.createMeals(database, {
             userId: user.userId,
-            meals: [{ description: uuid(), course: "dinner", sequence: 1 }],
+            meals: [{ description: uuid(), course: randomCourse(), sequence: 1 }],
         });
 
         await KnexPlannerRepository.createMeals(database, {
@@ -604,7 +616,7 @@ describe("Get planner meals", () => {
             plannerId: planner!.plannerId,
             meals: [
                 {
-                    course: "dinner",
+                    course: randomCourse(),
                     description: uuid(),
                     dayOfMonth: randomDay(),
                     month,
@@ -652,7 +664,7 @@ describe("Create a planner", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const { planners: savedPlanners } = await KnexPlannerRepository.readAll(database, { userId: user.userId });
+        const { planners: savedPlanners } = await KnexPlannerRepository.readAll(database, user);
 
         expect(savedPlanners.length).toEqual(1);
 
@@ -800,6 +812,20 @@ describe("Update a planner", () => {
         const res = await request(app).patch(`/v1/planners/${planner!.plannerId}`).set(token).send({ name: 12345 });
         expect(res.statusCode).toEqual(400);
     });
+
+    it("should fail if a required field is set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const res = await request(app).patch(`/v1/planners/${planner!.plannerId}`).set(token).send({ name: null });
+        expect(res.statusCode).toEqual(400);
+    });
 });
 
 describe("Add a meal to a planner", () => {
@@ -829,7 +855,7 @@ describe("Add a meal to a planner", () => {
             .send({
                 dayOfMonth: randomDay(),
                 month: randomMonth(),
-                course: "dinner",
+                course: randomCourse(),
                 year: randomYear(),
                 description: uuid(),
             } satisfies components["schemas"]["PlannerMealCreate"]);
@@ -850,7 +876,7 @@ describe("Add a meal to a planner", () => {
         const mealData = {
             dayOfMonth: randomDay(),
             month: randomMonth(),
-            course: "dinner",
+            course: randomCourse(),
             year: randomYear(),
             description: uuid(),
         } satisfies components["schemas"]["PlannerMealCreate"];
@@ -858,16 +884,15 @@ describe("Add a meal to a planner", () => {
         const res = await request(app).post(`/v1/planners/${planner!.plannerId}/meals`).set(token).send(mealData);
 
         expect(res.statusCode).toEqual(201);
+        const [returnedMeal] = res.body as components["schemas"]["PlannerMeal"][];
 
-        const returnedMeal = res.body as components["schemas"]["PlannerMeal"];
-
-        expect(returnedMeal.plannerId).toEqual(planner!.plannerId);
-        expect(returnedMeal.dayOfMonth).toEqual(mealData.dayOfMonth);
-        expect(returnedMeal.month).toEqual(mealData.month);
-        expect(returnedMeal.year).toEqual(mealData.year);
-        expect(returnedMeal.course).toEqual(mealData.course);
-        expect(returnedMeal.description).toEqual(mealData.description);
-        expect(returnedMeal.owner.userId).toEqual(user.userId);
+        expect(returnedMeal!.plannerId).toEqual(planner!.plannerId);
+        expect(returnedMeal!.dayOfMonth).toEqual(mealData.dayOfMonth);
+        expect(returnedMeal!.month).toEqual(mealData.month);
+        expect(returnedMeal!.year).toEqual(mealData.year);
+        expect(returnedMeal!.course).toEqual(mealData.course);
+        expect(returnedMeal!.description).toEqual(mealData.description);
+        expect(returnedMeal!.owner.userId).toEqual(user.userId);
 
         const { meals: savedMeals } = await KnexPlannerRepository.readAllMeals(database, {
             userId: user.userId,
@@ -877,7 +902,7 @@ describe("Add a meal to a planner", () => {
         expect(savedMeals).toHaveLength(1);
         const savedMeal = savedMeals[0];
 
-        expect(savedMeal!.mealId).toEqual(returnedMeal.mealId);
+        expect(savedMeal!.mealId).toEqual(returnedMeal!.mealId);
         expect(savedMeal!.description).toEqual(mealData.description);
         expect(savedMeal!.dayOfMonth).toEqual(mealData.dayOfMonth);
         expect(savedMeal!.month).toEqual(mealData.month);
@@ -905,7 +930,7 @@ describe("Add a meal to a planner", () => {
         const mealData = {
             dayOfMonth: randomDay(),
             month: randomMonth(),
-            course: "dinner",
+            course: randomCourse(),
             year: randomYear(),
             description: uuid(),
             recipeId: recipe!.recipeId,
@@ -914,8 +939,8 @@ describe("Add a meal to a planner", () => {
         const res = await request(app).post(`/v1/planners/${planner!.plannerId}/meals`).set(token).send(mealData);
 
         expect(res.statusCode).toEqual(201);
-        const returnedMeal = res.body as components["schemas"]["PlannerMeal"];
-        expect(returnedMeal.recipeId).toEqual(recipe!.recipeId);
+        const [returnedMeal] = res.body as components["schemas"]["PlannerMeal"][];
+        expect(returnedMeal!.recipeId).toEqual(recipe!.recipeId);
     });
 
     it("should not allow adding a meal if the user is not the planner owner", async () => {
@@ -935,7 +960,7 @@ describe("Add a meal to a planner", () => {
             .send({
                 dayOfMonth: randomDay(),
                 month: randomMonth(),
-                course: "dinner",
+                course: randomCourse(),
                 year: randomYear(),
                 description: uuid(),
             } satisfies components["schemas"]["PlannerMealCreate"]);
@@ -970,7 +995,7 @@ describe("Add a meal to a planner", () => {
             .send({
                 dayOfMonth: randomDay(),
                 month: randomMonth(),
-                course: "dinner",
+                course: randomCourse(),
                 year: randomYear(),
                 description: uuid(),
             } satisfies components["schemas"]["PlannerMealCreate"]);
@@ -992,7 +1017,7 @@ describe("Add a meal to a planner", () => {
         const meal = {
             dayOfMonth: randomDay(),
             month: randomMonth(),
-            course: "dinner",
+            course: randomCourse(),
             year: randomYear(),
             description: uuid(),
         } satisfies components["schemas"]["PlannerMealCreate"];
@@ -1019,6 +1044,37 @@ describe("Add a meal to a planner", () => {
         expect(plannerMeal?.description).toEqual(meal.description);
     });
 
+    it("should create multiple planner meals", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const meals = [randomMeal(), randomMeal()];
+
+        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/meals`).set(token).send(meals);
+
+        expect(res.statusCode).toEqual(201);
+        const returnedMeals = res.body as components["schemas"]["PlannerMeal"][];
+        expect(returnedMeals).toHaveLength(2);
+    });
+
+    it("should return 400 if the request body is an empty array", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/meals`).set(token).send([]);
+        expect(res.statusCode).toEqual(400);
+    });
+
     it("should fail if the request contains extraneous properties", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const {
@@ -1031,7 +1087,7 @@ describe("Add a meal to a planner", () => {
         const res = await request(app).post(`/v1/planners/${planner!.plannerId}/meals`).set(token).send({
             dayOfMonth: randomDay(),
             month: randomMonth(),
-            course: "dinner",
+            course: randomCourse(),
             year: randomYear(),
             description: uuid(),
             extra: "invalid",
@@ -1095,7 +1151,7 @@ describe("Update a meal in a planner", () => {
                 {
                     dayOfMonth: randomDay(),
                     month: randomMonth(),
-                    course: "dinner",
+                    course: randomCourse(),
                     year: randomYear(),
                 },
             ],
@@ -1145,7 +1201,7 @@ describe("Update a meal in a planner", () => {
                 {
                     dayOfMonth: randomDay(),
                     month: randomMonth(),
-                    course: "dinner",
+                    course: randomCourse(),
                     year: randomYear(),
                     description: uuid(),
                 },
@@ -1185,14 +1241,14 @@ describe("Update a meal in a planner", () => {
                 {
                     dayOfMonth: randomDay(),
                     month: randomMonth(),
-                    course: "dinner",
+                    course: randomCourse(),
                     year: randomYear(),
                     description: uuid(),
                 },
             ],
         });
 
-        const updateData = { description: "Updated Description by Admin" };
+        const updateData = { description: uuid() };
 
         const res = await request(app)
             .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
@@ -1306,7 +1362,7 @@ describe("Update a meal in a planner", () => {
                 {
                     dayOfMonth: 1,
                     month: 1,
-                    course: "breakfast",
+                    course: randomCourse(),
                     year: 2023,
                     description: "Initial Description",
                     recipeId: recipe!.recipeId,
@@ -1341,7 +1397,7 @@ describe("Update a meal in a planner", () => {
             meals: [cookListMeal],
         } = await KnexCookListRepository.createMeals(database, {
             userId: user.userId,
-            meals: [{ description: uuid(), course: "dinner", sequence: 1 }],
+            meals: [{ description: uuid(), course: randomCourse(), sequence: 1 }],
         });
 
         const res = await request(app)
@@ -1371,7 +1427,7 @@ describe("Update a meal in a planner", () => {
                 {
                     dayOfMonth: randomDay(),
                     month: randomMonth(),
-                    course: "dinner",
+                    course: randomCourse(),
                     year: randomYear(),
                 },
             ],
@@ -1403,7 +1459,7 @@ describe("Update a meal in a planner", () => {
                 {
                     dayOfMonth: randomDay(),
                     month: randomMonth(),
-                    course: "dinner",
+                    course: randomCourse(),
                     year: randomYear(),
                 },
             ],
@@ -1413,6 +1469,38 @@ describe("Update a meal in a planner", () => {
             .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
             .set(token)
             .send({ dayOfMonth: 80 });
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should fail if a required field is set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const {
+            meals: [meal],
+        } = await KnexPlannerRepository.createMeals(database, {
+            userId: user.userId,
+            plannerId: planner!.plannerId,
+            meals: [
+                {
+                    dayOfMonth: randomDay(),
+                    month: randomMonth(),
+                    course: randomCourse(),
+                    year: randomYear(),
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
+            .set(token)
+            .send({ course: null });
         expect(res.statusCode).toEqual(400);
     });
 });
@@ -1464,7 +1552,7 @@ describe("Remove a meal from a planner", () => {
                 {
                     dayOfMonth: randomDay(),
                     month: randomMonth(),
-                    course: "dinner",
+                    course: randomCourse(),
                     year: randomYear(),
                 },
             ],
@@ -1508,7 +1596,7 @@ describe("Remove a meal from a planner", () => {
                 {
                     dayOfMonth: randomDay(),
                     month: randomMonth(),
-                    course: "dinner",
+                    course: randomCourse(),
                     year: randomYear(),
                 },
             ],
@@ -1547,7 +1635,7 @@ describe("Remove a meal from a planner", () => {
                 {
                     dayOfMonth: randomDay(),
                     month: randomMonth(),
-                    course: "dinner",
+                    course: randomCourse(),
                     year: randomYear(),
                 },
             ],
@@ -1587,7 +1675,7 @@ describe("Remove a meal from a planner", () => {
                 {
                     dayOfMonth: randomDay(),
                     month: randomMonth(),
-                    course: "dinner",
+                    course: randomCourse(),
                     year: randomYear(),
                 },
             ],
@@ -1622,7 +1710,7 @@ describe("Remove a meal from a planner", () => {
             meals: [cookListMeal],
         } = await KnexCookListRepository.createMeals(database, {
             userId: user.userId,
-            meals: [{ description: uuid(), course: "dinner", sequence: 1 }],
+            meals: [{ description: uuid(), course: randomCourse(), sequence: 1 }],
         });
 
         const res = await request(app)
@@ -2374,6 +2462,27 @@ describe("Update a planner member", () => {
             .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
             .set(token)
             .send({ status: "INVALID" });
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should fail if a required field is set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [member] = await CreateUsers(database);
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+        await KnexPlannerRepository.saveMembers(database, {
+            plannerId: planner!.plannerId,
+            members: [{ userId: member!.userId, status: UserStatus.Member }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+            .set(token)
+            .send({ status: null });
         expect(res.statusCode).toEqual(400);
     });
 });

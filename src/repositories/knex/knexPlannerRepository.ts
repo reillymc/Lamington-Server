@@ -108,7 +108,7 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (db, { planners, use
         )
         .leftJoin(lamington.content, planner.plannerId, content.contentId)
         .leftJoin(lamington.user, content.createdBy, user.userId)
-        .modify(withContentReadPermissions({ userId, idColumn: planner.plannerId }));
+        .modify(withContentReadPermissions({ userId, idColumn: planner.plannerId, allowedStatuses: ["A", "M"] }));
 
     return {
         userId,
@@ -211,6 +211,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
                     userId,
                     idColumn: plannerMeal.plannerId,
                     ownerColumns: `${plannerContentAlias}.createdBy`,
+                    allowedStatuses: ["A", "M"],
                 })
             )
             .where(plannerMeal.plannerId, filter.plannerId)
@@ -340,7 +341,9 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
             )
             .leftJoin(lamington.content, planner.plannerId, content.contentId)
             .leftJoin(lamington.user, content.createdBy, user.userId)
-            .modify(withContentReadPermissions({ userId, idColumn: planner.plannerId }))
+            .modify(
+                withContentReadPermissions({ userId, idColumn: planner.plannerId, allowedStatuses: ["A", "M", "P"] })
+            )
             .modify(qb => {
                 if (filter?.owner) {
                     qb.where({ [content.createdBy]: filter.owner });

@@ -26,7 +26,7 @@ type ReadAllMealsRequest = {
 };
 
 type ReadAllMealsResponse = {
-    meals: Array<CookListMealResponse>;
+    meals: ReadonlyArray<CookListMealResponse>;
 };
 
 type CreateCookListMealPayload = {
@@ -41,11 +41,11 @@ type CreateCookListMealPayload = {
 
 type CreateMealsRequest = {
     userId: User["userId"];
-    meals: Readonly<Array<CreateCookListMealPayload>>;
+    meals: ReadonlyArray<CreateCookListMealPayload>;
 };
 
 type CreateMealsResponse = {
-    meals: Array<CookListMealResponse>;
+    meals: ReadonlyArray<CookListMealResponse>;
 };
 
 type UpdateCookListMealPayload = {
@@ -61,15 +61,15 @@ type UpdateCookListMealPayload = {
 
 type UpdateMealsRequest = {
     // userId: User["userId"];
-    meals: Array<UpdateCookListMealPayload>;
+    meals: ReadonlyArray<UpdateCookListMealPayload>;
 };
 
 type UpdateMealsResponse = {
-    meals: Array<CookListMealResponse>;
+    meals: ReadonlyArray<CookListMealResponse>;
 };
 
 type DeleteMealsRequest = {
-    meals: Array<{
+    meals: ReadonlyArray<{
         mealId: Meal["mealId"];
     }>;
 };
@@ -80,14 +80,14 @@ type DeleteMealsResponse = {
 
 type VerifyMealPermissionsRequest = {
     userId: User["userId"];
-    meals: Array<{
+    meals: ReadonlyArray<{
         mealId: Meal["mealId"];
     }>;
 };
 
 type VerifyMealPermissionsResponse = {
     userId: User["userId"];
-    meals: Array<{
+    meals: ReadonlyArray<{
         mealId: Meal["mealId"];
         hasPermissions: boolean;
     }>;

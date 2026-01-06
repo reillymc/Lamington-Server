@@ -4,7 +4,7 @@ import { CreatedDataFetchError, InvalidOperationError, NotFoundError, UpdatedDat
 import { type CreateService } from "./service.ts";
 
 export interface PlannerService {
-    getAll: (userId: string) => Promise<components["schemas"]["Planner"][]>;
+    getAll: (userId: string) => Promise<ReadonlyArray<components["schemas"]["Planner"]>>;
     get: (userId: string, plannerId: string) => Promise<components["schemas"]["Planner"]>;
     create: (
         userId: string,
@@ -21,12 +21,12 @@ export interface PlannerService {
         plannerId: string,
         year: number,
         month: number
-    ) => Promise<components["schemas"]["PlannerMeal"][]>;
+    ) => Promise<ReadonlyArray<components["schemas"]["PlannerMeal"]>>;
     createMeals: (
         userId: string,
         plannerId: string,
-        meals: components["schemas"]["PlannerMealCreate"][]
-    ) => Promise<components["schemas"]["PlannerMeal"][]>;
+        meals: ReadonlyArray<components["schemas"]["PlannerMealCreate"]>
+    ) => Promise<ReadonlyArray<components["schemas"]["PlannerMeal"]>>;
     updateMeal: (
         userId: string,
         plannerId: string,
@@ -34,7 +34,7 @@ export interface PlannerService {
         meal: components["schemas"]["PlannerMealUpdate"]
     ) => Promise<components["schemas"]["PlannerMeal"]>;
     deleteMeal: (userId: string, plannerId: string, mealId: string) => Promise<void>;
-    getMembers: (userId: string, plannerId: string) => Promise<components["schemas"]["PlannerMember"][]>;
+    getMembers: (userId: string, plannerId: string) => Promise<ReadonlyArray<components["schemas"]["PlannerMember"]>>;
     inviteMember: (userId: string, plannerId: string, targetUserId: string) => Promise<void>;
     updateMember: (
         userId: string,
@@ -128,6 +128,11 @@ export const createPlannerService: CreateService<PlannerService, "plannerReposit
             }
 
             const { meals: createdMeals } = await plannerRepository.createMeals(trx, { plannerId, userId, meals });
+
+            if (createdMeals.length !== meals.length) {
+                throw new CreatedDataFetchError("planner meal");
+            }
+
             return createdMeals;
         }),
     getMeals: async (userId, plannerId, year, month) => {

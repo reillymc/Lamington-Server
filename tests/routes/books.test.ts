@@ -637,7 +637,7 @@ describe("get book", () => {
                 {
                     name: uuid(),
                     description: uuid(),
-                    members: [{ userId: user.userId }],
+                    members: [{ userId: user.userId, status: UserStatus.Member }],
                 },
             ],
         });

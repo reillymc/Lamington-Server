@@ -11,10 +11,10 @@ export interface paths {
             readonly path?: never;
             readonly cookie?: never;
         };
-        /** Get cook list */
+        /** Get cook list meals */
         readonly get: operations["getCookList"];
         readonly put?: never;
-        /** Add to cook list */
+        /** Add meal to cook list */
         readonly post: operations["postCookList"];
         readonly delete?: never;
         readonly options?: never;
@@ -34,11 +34,11 @@ export interface paths {
         readonly get?: never;
         readonly put?: never;
         readonly post?: never;
-        /** Remove from cook list */
+        /** Remove meal from cook list */
         readonly delete: operations["deleteCookList"];
         readonly options?: never;
         readonly head?: never;
-        /** Update cook list meal */
+        /** Update meal in cook list */
         readonly patch: operations["putCookList"];
         readonly trace?: never;
     };
@@ -732,7 +732,7 @@ export interface operations {
         };
         readonly requestBody: {
             readonly content: {
-                readonly "application/json": components["schemas"]["PlannerMealCreate"];
+                readonly "application/json": components["schemas"]["PlannerMealCreate"] | readonly components["schemas"]["PlannerMealCreate"][];
             };
         };
         readonly responses: {
@@ -742,7 +742,7 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["PlannerMeal"];
+                    readonly "application/json": readonly components["schemas"]["PlannerMeal"][];
                 };
             };
             readonly 400: components["responses"]["BadRequest"];
@@ -876,6 +876,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            readonly 400: components["responses"]["BadRequest"];
             readonly 404: components["responses"]["NotFound"];
             readonly 500: components["responses"]["InternalServerError"];
         };
@@ -899,6 +900,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            readonly 400: components["responses"]["BadRequest"];
             readonly 404: components["responses"]["NotFound"];
             readonly 500: components["responses"]["InternalServerError"];
         };

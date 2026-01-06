@@ -13,7 +13,7 @@ import { EnsureArray } from "../../utils/index.ts";
 export type ContentMemberStatus = "O" | "A" | "M" | "P" | "B";
 
 export type SaveContentMemberRequest = Pick<ContentMember, "contentId"> & {
-    members?: Readonly<Array<{ userId: ContentMember["userId"]; status?: ContentMemberStatus }>>;
+    members?: ReadonlyArray<{ userId: ContentMember["userId"]; status?: ContentMemberStatus }>;
 };
 
 export type SaveContentMemberResponse = Pick<ContentMember, "contentId"> & {
@@ -90,7 +90,7 @@ const saveContentMembers = async (
 };
 
 export type DeleteContentMemberParams = Pick<ContentMember, "contentId"> & {
-    members: Array<{ userId: ContentMember["userId"] }>;
+    members: ReadonlyArray<{ userId: ContentMember["userId"] }>;
 };
 
 export type DeleteContentMemberResponse = Pick<ContentMember, "contentId"> & {
