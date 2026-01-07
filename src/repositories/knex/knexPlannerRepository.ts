@@ -72,26 +72,7 @@ const readByIds = async (db: KnexDatabase, plannerId: string, mealIds: string[])
     return result.map(formatPlannerMeal);
 };
 
-const readMembers: PlannerRepository<KnexDatabase>["readMembers"] = async (db, request) => {
-    const requests = EnsureArray(request);
-    const allMembers = await ContentMemberActions.read(
-        db,
-        requests.map(({ plannerId }) => ({ contentId: plannerId }))
-    );
-
-    const membersByPlannerId = allMembers.reduce<Record<string, typeof allMembers>>((acc, member) => {
-        acc[member.contentId] = [...(acc[member.contentId] ?? []), member];
-        return acc;
-    }, {});
-
-    return requests.map(({ plannerId }) => ({
-        plannerId,
-        members: (membersByPlannerId[plannerId] ?? []).map(({ contentId, ...rest }) => rest),
-    }));
-};
-
 const read: PlannerRepository<KnexDatabase>["read"] = async (db, { planners, userId }) => {
-    const members = await readMembers(db, planners);
     const result: any[] = await db(lamington.planner)
         .select(
             planner.plannerId,
@@ -119,7 +100,6 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (db, { planners, use
             color: p.customisations?.color,
             owner: { userId: p.createdBy, firstName: p.firstName },
             status: p.status ?? "O",
-            members: members.find(m => m.plannerId === p.plannerId)?.members ?? [],
         })),
     };
 };
@@ -127,42 +107,25 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (db, { planners, use
 export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
     verifyPermissions: async (db, { userId, status, planners }) => {
         const statuses = EnsureArray(status);
+        const memberStatuses = statuses.filter(s => s !== "O");
 
-        const query = db(lamington.planner)
-            .select("plannerId")
+        const plannerOwners: Array<Pick<Planner, "plannerId">> = await db(lamington.planner)
+            .select(planner.plannerId)
             .leftJoin(lamington.content, content.contentId, planner.plannerId)
             .whereIn(
                 planner.plannerId,
                 planners.map(({ plannerId }) => plannerId)
+            )
+            .modify(
+                withContentReadPermissions({
+                    userId,
+                    idColumn: planner.plannerId,
+                    allowedStatuses: memberStatuses,
+                    ownerColumns: statuses.includes("O") ? undefined : [],
+                })
             );
 
-        query.andWhere(builder => {
-            let hasCheck = false;
-            if (statuses.includes("O")) {
-                builder.orWhere({ [content.createdBy]: userId });
-                hasCheck = true;
-            }
-
-            const memberStatuses = statuses.filter(s => s !== "O");
-            if (memberStatuses.length) {
-                builder.orWhere(b =>
-                    b.where({ [contentMember.userId]: userId }).whereIn(contentMember.status, memberStatuses)
-                );
-                hasCheck = true;
-            }
-
-            if (!hasCheck) {
-                builder.whereRaw("1 = 0");
-            }
-        });
-
-        if (statuses.some(s => s !== "O")) {
-            query.leftJoin(lamington.contentMember, content.contentId, contentMember.contentId);
-        }
-
-        const plannerOwners: Array<Pick<Planner, "plannerId">> = await query;
-
-        const permissionMap = Object.fromEntries(plannerOwners.map(planner => [planner.plannerId, true]));
+        const permissionMap = Object.fromEntries(plannerOwners.map(p => [p.plannerId, true]));
 
         return {
             userId,
@@ -405,14 +368,36 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
             .delete();
         return { count };
     },
-    readMembers,
+    readMembers: async (db, request) => {
+        const requests = EnsureArray(request);
+        const allMembers = await ContentMemberActions.read(
+            db,
+            requests.map(({ plannerId }) => ({ contentId: plannerId }))
+        );
+
+        const membersByPlannerId = allMembers.reduce<Record<string, typeof allMembers>>((acc, member) => {
+            acc[member.contentId] = [...(acc[member.contentId] ?? []), member];
+            return acc;
+        }, {});
+
+        return requests.map(({ plannerId }) => ({
+            plannerId,
+            members: (membersByPlannerId[plannerId] ?? []).map(({ contentId, status, ...rest }) => ({
+                ...rest,
+                status: toUndefined(status),
+            })),
+        }));
+    },
     saveMembers: async (db, request) => {
         try {
             const response = await ContentMemberActions.save(
                 db,
                 EnsureArray(request).map(({ plannerId, members }) => ({ contentId: plannerId, members }))
             );
-            return response.map(({ contentId, members }) => ({ plannerId: contentId, members }));
+            return response.map(({ contentId, members }) => ({
+                plannerId: contentId,
+                members: members.map(({ status, ...rest }) => ({ ...rest, status: toUndefined(status) })),
+            }));
         } catch (error) {
             if (isForeignKeyViolation(error)) {
                 throw new ForeignKeyViolationError(error);
@@ -427,7 +412,12 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
             {
                 trimNotIn: false,
             }
-        ).then(response => response.map(({ contentId, ...rest }) => ({ plannerId: contentId, ...rest }))),
+        ).then(response =>
+            response.map(({ contentId, members }) => ({
+                plannerId: contentId,
+                members: members.map(({ status, ...rest }) => ({ ...rest, status: toUndefined(status) })),
+            }))
+        ),
     removeMembers: (db, request) =>
         ContentMemberActions.delete(
             db,

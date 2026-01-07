@@ -128,7 +128,7 @@ type MemberSaveItem = {
 type MemberResponseItem = {
     userId: ContentMember["userId"];
     firstName: User["firstName"];
-    status?: PlannerUserStatus;
+    status: PlannerUserStatus | null;
 };
 
 type BasePlannerResponse = {
@@ -208,7 +208,6 @@ type ReadMembersResponse = {
     plannerId: Planner["plannerId"];
     members: ReadonlyArray<
         MemberResponseItem & {
-            firstName: User["firstName"];
             lastName: User["lastName"];
         }
     >;

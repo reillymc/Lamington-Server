@@ -1,33 +1,44 @@
-import type { ListItemIngredientAmount } from "../../routes/spec/index.ts";
 import type { Table } from "./index.ts";
 import { lamington } from "./lamington.ts";
+
+export type NumberValue = { representation: "number"; value: string };
+export type RangeValue = { representation: "range"; value: [string, string] };
+export type FractionValue = { representation: "fraction"; value: [string, string, string] };
+
+type ListItemIngredientAmountV1 = RangeValue | NumberValue | FractionValue;
+
+export type ListItemIngredientAmount = ListItemIngredientAmountV1;
 
 /**
  * ListItem
  */
-export type ListItem = {
+export interface ListItem {
     itemId: string;
     listId: string;
     name: string;
     completed: boolean;
-    ingredientId?: string;
-    unit?: string;
+    ingredientId: string | null;
+    unit: string | null;
     /**
      * TODO proper definition required (similar to customisation)
      * JSON stringified object containing the amount of the ingredient, as type number, fraction
      * or range with its representation explicitly denoted.
      */
-    amount?: ListItemIngredientAmount;
-    notes?: string;
-};
+    amount: ListItemIngredientAmount | null;
+    notes: string | null;
+}
 
-export const listItem: Table<ListItem> = {
-    itemId: `${lamington.listItem}.itemId`,
-    listId: `${lamington.listItem}.listId`,
-    name: `${lamington.listItem}.name`,
-    completed: `${lamington.listItem}.completed`,
-    ingredientId: `${lamington.listItem}.ingredientId`,
-    unit: `${lamington.listItem}.unit`,
-    amount: `${lamington.listItem}.amount`,
-    notes: `${lamington.listItem}.notes`,
-} as const;
+export const listItemColumns = [
+    "itemId",
+    "listId",
+    "name",
+    "completed",
+    "ingredientId",
+    "unit",
+    "amount",
+    "notes",
+] as const satisfies (keyof ListItem)[];
+
+export const listItem = Object.fromEntries(
+    listItemColumns.map(column => [column, `${lamington.listItem}.${column}`])
+) as Table<ListItem>;

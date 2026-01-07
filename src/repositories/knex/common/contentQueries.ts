@@ -12,22 +12,29 @@ interface WithContentReadPermissionsParams {
 }
 
 export const withContentReadPermissions =
-    ({ userId, idColumn, ownerColumns = [], allowedStatuses = [] }: WithContentReadPermissionsParams) =>
+    ({ userId, idColumn, ownerColumns, allowedStatuses = [] }: WithContentReadPermissionsParams) =>
     <TRecord extends {}, TResult>(query: Knex.QueryBuilder<TRecord, TResult>) => {
-        const parsedOwnerColumns = EnsureArray(ownerColumns);
-        const owners = parsedOwnerColumns.length ? parsedOwnerColumns : [content.createdBy];
+        const owners = ownerColumns === undefined ? [content.createdBy] : EnsureArray(ownerColumns);
 
         query
             .leftJoin(lamington.contentMember, join =>
                 join.on(idColumn, "=", contentMember.contentId).andOnVal(contentMember.userId, "=", userId)
             )
             .where(b => {
-                b.orWhere(sub =>
-                    sub.whereNotNull(contentMember.userId).whereIn(contentMember.status, EnsureArray(allowedStatuses))
-                );
+                let hasCondition = false;
+                const statuses = EnsureArray(allowedStatuses);
+                if (statuses.length > 0) {
+                    b.orWhere(sub => sub.whereNotNull(contentMember.userId).whereIn(contentMember.status, statuses));
+                    hasCondition = true;
+                }
 
                 for (const col of owners) {
                     b.orWhere(col, userId);
+                    hasCondition = true;
+                }
+
+                if (!hasCondition) {
+                    b.whereRaw("1 = 0");
                 }
             });
     };
