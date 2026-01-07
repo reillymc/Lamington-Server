@@ -8,5 +8,5 @@ type NullToUndefined<T> = T extends object
 export type RepositoryService<Db, Req, Res> = (db: Db, request: Req) => Promise<NullToUndefined<Res>>;
 export type RepositoryBulkService<Db, Req, Res> = (
     db: Db,
-    request: Array<Req> | Req
-) => Promise<Array<NullToUndefined<Res>>>;
+    request: ReadonlyArray<Req> | Req
+) => Promise<ReadonlyArray<NullToUndefined<Res>>>;

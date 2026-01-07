@@ -306,7 +306,7 @@ describe("approve user", () => {
         const listItems = await ListItemActions.Read({ listId: list.listId });
         expect(listItems.length).toEqual(1);
 
-        const { books } = await KnexBookRepository.readAll(db, { userId: user.userId });
+        const { books } = await KnexBookRepository.readAll(db, user);
         expect(books.length).toEqual(1);
 
         const [book] = books;
@@ -320,7 +320,7 @@ describe("approve user", () => {
         if (!recipe) throw new Error("Recipe/BookRecipe not created");
         expect(recipe.owner.userId).toEqual(user.userId);
 
-        const { planners } = await KnexPlannerRepository.readAll(db, { userId: user.userId });
+        const { planners } = await KnexPlannerRepository.readAll(db, user);
         expect(planners.length).toEqual(1);
 
         const [planner] = planners;

@@ -52,7 +52,7 @@ const read: BookRepository<KnexDatabase>["read"] = async (db, { books, userId })
         )
         .leftJoin(lamington.content, book.bookId, content.contentId)
         .leftJoin(lamington.user, content.createdBy, user.userId)
-        .modify(withContentReadPermissions({ userId, idColumn: book.bookId }));
+        .modify(withContentReadPermissions({ userId, idColumn: book.bookId, allowedStatuses: ["A", "M"] }));
 
     return {
         userId,
@@ -155,7 +155,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
             )
             .leftJoin(lamington.content, book.bookId, content.contentId)
             .leftJoin(lamington.user, content.createdBy, user.userId)
-            .modify(withContentReadPermissions({ userId, idColumn: book.bookId }))
+            .modify(withContentReadPermissions({ userId, idColumn: book.bookId, allowedStatuses: ["A", "M", "P"] }))
             .modify(qb => {
                 if (filter?.owner) {
                     qb.where({ [content.createdBy]: filter.owner });

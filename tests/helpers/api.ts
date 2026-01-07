@@ -67,36 +67,6 @@ export const BookEndpoint = {
     getBookRecipes: (bookId: string) => `${ApiUrl}${bookEndpoint}/${bookId}/${recipeSubpath}` as const,
 } as const satisfies Record<keyof BookApi, Endpoint>;
 
-const plannerEndpoint = "/planners";
-const mealSubpath = "/meals";
-const plannerMemberSubpath = "/members";
-export const PlannerEndpoint = {
-    getPlanners: `${ApiUrl}${plannerEndpoint}`,
-    getPlanner: (plannerId: string) => `${ApiUrl}${plannerEndpoint}/${plannerId}` as const,
-    postPlanner: `${ApiUrl}${plannerEndpoint}`,
-    patchPlanner: (plannerId: string) => `${ApiUrl}${plannerEndpoint}/${plannerId}` as const,
-    deletePlanner: (plannerId: string) => `${ApiUrl}${plannerEndpoint}/${plannerId}` as const,
-    getPlannerMeals: (plannerId: string, year: number, month: number) =>
-        `${ApiUrl}${plannerEndpoint}/${plannerId}${mealSubpath}/${year}/${month}` as const,
-    postPlannerMeal: (plannerId: string) => `${ApiUrl}${plannerEndpoint}/${plannerId}/${mealSubpath}` as const,
-    patchPlannerMeal: (plannerId: string, mealId: string) =>
-        `${ApiUrl}${plannerEndpoint}/${plannerId}${mealSubpath}/${mealId}` as const,
-    deletePlannerMeal: (plannerId: string, mealId: string) =>
-        `${ApiUrl}${plannerEndpoint}/${plannerId}${mealSubpath}/${mealId}` as const,
-    postPlannerMember: (plannerId: string) =>
-        `${ApiUrl}${plannerEndpoint}/${plannerId}/${plannerMemberSubpath}` as const,
-    deletePlannerMember: (plannerId: string, memberId: string) =>
-        `${ApiUrl}${plannerEndpoint}/${plannerId}/${plannerMemberSubpath}/${memberId}` as const,
-} as const satisfies Record<string, Endpoint>;
-
-const cookListEndpoint = "/cooklist/meals";
-export const CookListEndpoint = {
-    getMeals: `${ApiUrl}${cookListEndpoint}`,
-    postMeal: `${ApiUrl}${cookListEndpoint}`,
-    patchMeal: (mealId: string) => `${ApiUrl}${cookListEndpoint}/${mealId}` as const,
-    deleteMeal: (mealId: string) => `${ApiUrl}${cookListEndpoint}/${mealId}` as const,
-} as const satisfies Record<string, Endpoint>;
-
 export const IngredientEndpoint = {
     getIngredients: `${ApiUrl}${ingredientEndpoint}`,
     postIngredient: `${ApiUrl}${ingredientEndpoint}`,

@@ -4,14 +4,14 @@ import type { RepositoryService } from "./repository.ts";
 
 type ReadRequest = {
     userId: User["userId"];
-    meals: Array<{
+    meals: ReadonlyArray<{
         mealId: Meal["mealId"];
     }>;
 };
 
 type ReadResponse = {
     userId: User["userId"];
-    meals: Array<{
+    meals: ReadonlyArray<{
         mealId: Meal["mealId"];
         course: "breakfast" | "lunch" | "dinner";
         owner: {

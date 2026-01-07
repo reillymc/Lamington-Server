@@ -74,7 +74,7 @@ export const createPlannerRouter = ({ plannerService }: AppDependencies["service
             paths["/planners/{plannerId}/meals"]["post"]["requestBody"]["content"]["application/json"],
             paths["/planners/{plannerId}/meals"]["post"]["parameters"]["query"]
         >("/planners/:plannerId/meals", async ({ params, body, session }, res) => {
-            const [data] = await plannerService.createMeals(session.userId, params.plannerId, EnsureArray(body));
+            const data = await plannerService.createMeals(session.userId, params.plannerId, EnsureArray(body));
             return res.status(201).json(data);
         })
         .patch<

@@ -48,6 +48,7 @@ paths:
                 - type: array
                   items:
                     $ref: "#/components/schemas/CookListMealCreate"
+                  minItems: 1
       responses:
         201:
           description: Created
@@ -242,14 +243,21 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PlannerMealCreate"
+              oneOf:
+                - $ref: "#/components/schemas/PlannerMealCreate"
+                - type: array
+                  items:
+                    $ref: "#/components/schemas/PlannerMealCreate"
+                  minItems: 1
       responses:
         201:
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PlannerMeal"
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlannerMeal"
         400:
           $ref: "#/components/responses/BadRequest"
         404:

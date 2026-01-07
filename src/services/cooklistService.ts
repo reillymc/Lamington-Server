@@ -1,13 +1,13 @@
 import type { components } from "../routes/spec/index.ts";
-import { NotFoundError, UpdatedDataFetchError } from "./logging.ts";
+import { CreatedDataFetchError, NotFoundError, UpdatedDataFetchError } from "./logging.ts";
 import { type CreateService } from "./service.ts";
 
 export interface CooklistService {
-    getMeals: (userId: string) => Promise<Array<components["schemas"]["CookListMeal"]>>;
+    getMeals: (userId: string) => Promise<ReadonlyArray<components["schemas"]["CookListMeal"]>>;
     createMeals: (
         userId: string,
-        meals: Readonly<Array<components["schemas"]["CookListMealCreate"]>>
-    ) => Promise<Array<components["schemas"]["CookListMeal"]>>;
+        meals: ReadonlyArray<components["schemas"]["CookListMealCreate"]>
+    ) => Promise<ReadonlyArray<components["schemas"]["CookListMeal"]>>;
     updateMeal: (
         userId: string,
         mealId: string,
@@ -27,6 +27,11 @@ export const createCooklistService: CreateService<CooklistService, "cooklistRepo
     createMeals: async (userId, meals) =>
         database.transaction(async trx => {
             const { meals: createdMeals } = await cooklistRepository.createMeals(trx, { userId, meals });
+
+            if (createdMeals.length !== meals.length) {
+                throw new CreatedDataFetchError("planner meal");
+            }
+
             return createdMeals;
         }),
     updateMeal: (userId, mealId, request) =>

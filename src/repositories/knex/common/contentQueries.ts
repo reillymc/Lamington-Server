@@ -12,12 +12,7 @@ interface WithContentReadPermissionsParams {
 }
 
 export const withContentReadPermissions =
-    ({
-        userId,
-        idColumn,
-        ownerColumns = [],
-        allowedStatuses = ["A", "M", "O", "P"],
-    }: WithContentReadPermissionsParams) =>
+    ({ userId, idColumn, ownerColumns = [], allowedStatuses = [] }: WithContentReadPermissionsParams) =>
     <TRecord extends {}, TResult>(query: Knex.QueryBuilder<TRecord, TResult>) => {
         const parsedOwnerColumns = EnsureArray(ownerColumns);
         const owners = parsedOwnerColumns.length ? parsedOwnerColumns : [content.createdBy];

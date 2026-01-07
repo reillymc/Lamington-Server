@@ -1,12 +1,17 @@
 import express from "express";
 
+import type { AppDependencies } from "../appDependencies.ts";
 import { notFoundMiddleware } from "../middleware/index.ts";
+import { validationMiddleware } from "../middleware/validator.ts";
 import { createAttachmentsRouter } from "./attachments.ts";
 import { createAuthRouter } from "./auth.ts";
 import { createBookRouter } from "./books.ts";
+import { createCooklistRouter } from "./cookLists.ts";
 import { default as docsRouter } from "./docs.ts";
+import { createExtractorRouter } from "./extractor.ts";
 import { default as ingredientRouter } from "./ingredient.ts";
 import { default as listsRouter } from "./lists.ts";
+import { createMealRouter } from "./meals.ts";
 import { createPlannerRouter } from "./planners.ts";
 import { createRecipeRouter } from "./recipes.ts";
 import {
@@ -22,11 +27,6 @@ import {
 } from "./spec/index.ts";
 import { default as tagsRouter } from "./tags.ts";
 import { default as usersRouter } from "./users.ts";
-import type { AppDependencies } from "../appDependencies.ts";
-import { createExtractorRouter } from "./extractor.ts";
-import { createMealRouter } from "./meals.ts";
-import { createCooklistRouter } from "./cookLists.ts";
-import { validationMiddleware } from "../middleware/validator.ts";
 
 const appRouter = (appDependencies: AppDependencies) =>
     express
@@ -41,9 +41,9 @@ const appRouter = (appDependencies: AppDependencies) =>
         .use(usersEndpoint, usersRouter)
         .use(validationMiddleware)
         .use(createCooklistRouter(appDependencies.services))
+        .use(createExtractorRouter(appDependencies.services))
         .use(createMealRouter(appDependencies.services))
         .use(createPlannerRouter(appDependencies.services))
-        .use(createExtractorRouter(appDependencies.services))
         .use("/", notFoundMiddleware);
 
 export { appRouter, createAuthRouter, docsRouter };

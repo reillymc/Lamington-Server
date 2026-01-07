@@ -12,16 +12,16 @@ type VerifyPermissionsRequest = {
     /**
      * Will return true of user is a member of a planner with the provided statuses
      */
-    status: PlannerUserStatus | Array<PlannerUserStatus>;
-    planners: Array<{
+    status: PlannerUserStatus | ReadonlyArray<PlannerUserStatus>;
+    planners: ReadonlyArray<{
         plannerId: Planner["plannerId"];
     }>;
 };
 
 type VerifyPermissionsResponse = {
     userId: User["userId"];
-    status: PlannerUserStatus | Array<PlannerUserStatus> | null;
-    planners: Array<{
+    status: PlannerUserStatus | ReadonlyArray<PlannerUserStatus> | null;
+    planners: ReadonlyArray<{
         plannerId: Planner["plannerId"];
         hasPermissions: boolean;
     }>;
@@ -60,7 +60,7 @@ type ReadAllMealsRequest = {
 };
 
 type ReadAllMealsResponse = {
-    meals: Array<PlannerMealResponse>;
+    meals: ReadonlyArray<PlannerMealResponse>;
 };
 
 type CreatePlannerMealPayload = {
@@ -78,11 +78,11 @@ type CreatePlannerMealPayload = {
 type CreateMealsRequest = {
     userId: User["userId"];
     plannerId: Planner["plannerId"];
-    meals: Array<CreatePlannerMealPayload>;
+    meals: ReadonlyArray<CreatePlannerMealPayload>;
 };
 
 type CreateMealsResponse = {
-    meals: Array<PlannerMealResponse>;
+    meals: ReadonlyArray<PlannerMealResponse>;
 };
 
 type UpdatePlannerMealPayload = {
@@ -100,17 +100,17 @@ type UpdatePlannerMealPayload = {
 
 type UpdateMealsRequest = {
     plannerId: Planner["plannerId"];
-    meals: Array<UpdatePlannerMealPayload>;
+    meals: ReadonlyArray<UpdatePlannerMealPayload>;
 };
 
 type UpdateMealsResponse = {
     plannerId: Planner["plannerId"];
-    meals: Array<PlannerMealResponse>;
+    meals: ReadonlyArray<PlannerMealResponse>;
 };
 
 type DeleteMealsRequest = {
     plannerId: Planner["plannerId"];
-    meals: Array<{
+    meals: ReadonlyArray<{
         mealId: Meal["mealId"];
     }>;
 };
@@ -151,37 +151,35 @@ type ReadAllPlannersRequest = {
 
 type ReadAllPlannersResponse = {
     userId: User["userId"];
-    planners: Array<BasePlannerResponse>;
+    planners: ReadonlyArray<BasePlannerResponse>;
 };
 
 type ReadPlannersRequest = {
     userId: User["userId"];
-    planners: Array<{
+    planners: ReadonlyArray<{
         plannerId: Planner["plannerId"];
     }>;
 };
 
 type ReadPlannersResponse = {
     userId: User["userId"];
-    planners: Array<BasePlannerResponse>;
+    planners: ReadonlyArray<BasePlannerResponse>;
 };
 
 type CreatePlannersRequest = {
     userId: User["userId"];
-    planners: Readonly<
-        Array<{
-            name: Planner["name"];
-            description?: Planner["description"];
-            color?: string;
-        }>
-    >;
+    planners: ReadonlyArray<{
+        name: Planner["name"];
+        description?: Planner["description"];
+        color?: string;
+    }>;
 };
 
 type CreatePlannersResponse = ReadPlannersResponse;
 
 type UpdatePlannersRequest = {
     userId: User["userId"];
-    planners: Array<{
+    planners: ReadonlyArray<{
         plannerId: Planner["plannerId"];
         name?: Planner["name"];
         description?: Planner["description"];
@@ -192,7 +190,7 @@ type UpdatePlannersRequest = {
 type UpdatePlannersResponse = ReadPlannersResponse;
 
 type DeletePlannersRequest = {
-    planners: Array<{
+    planners: ReadonlyArray<{
         plannerId: Planner["plannerId"];
     }>;
 };
@@ -207,7 +205,7 @@ type ReadMembersRequest = {
 
 type ReadMembersResponse = {
     plannerId: Planner["plannerId"];
-    members: Array<
+    members: ReadonlyArray<
         MemberResponseItem & {
             firstName: User["firstName"];
             lastName: User["lastName"];
@@ -217,27 +215,27 @@ type ReadMembersResponse = {
 
 type SaveMembersRequest = {
     plannerId: Planner["plannerId"];
-    members?: Readonly<Array<MemberSaveItem>>;
+    members?: ReadonlyArray<MemberSaveItem>;
 };
 
 type SaveMembersResponse = {
     plannerId: Planner["plannerId"];
-    members: Array<MemberResponseItem>;
+    members: ReadonlyArray<MemberResponseItem>;
 };
 
 type UpdateMembersRequest = {
     plannerId: Planner["plannerId"];
-    members?: Readonly<Array<MemberSaveItem>>;
+    members?: ReadonlyArray<MemberSaveItem>;
 };
 
 type UpdateMembersResponse = {
     plannerId: Planner["plannerId"];
-    members: Array<MemberResponseItem>;
+    members: ReadonlyArray<MemberResponseItem>;
 };
 
 type RemoveMembersRequest = {
     plannerId: Planner["plannerId"];
-    members: Array<{
+    members: ReadonlyArray<{
         userId: ContentMember["userId"];
     }>;
 };
@@ -248,20 +246,18 @@ type RemoveMembersResponse = {
 };
 
 export interface PlannerRepository<TDatabase extends Database = Database> {
-    verifyPermissions: RepositoryService<TDatabase, VerifyPermissionsRequest, VerifyPermissionsResponse>;
-    readAllMeals: RepositoryService<TDatabase, ReadAllMealsRequest, ReadAllMealsResponse>;
+    create: RepositoryService<TDatabase, CreatePlannersRequest, CreatePlannersResponse>;
     createMeals: RepositoryService<TDatabase, CreateMealsRequest, CreateMealsResponse>;
-    updateMeals: RepositoryService<TDatabase, UpdateMealsRequest, UpdateMealsResponse>;
+    delete: RepositoryService<TDatabase, DeletePlannersRequest, DeletePlannersResponse>;
     deleteMeals: RepositoryService<TDatabase, DeleteMealsRequest, DeleteMealsResponse>;
-
     read: RepositoryService<TDatabase, ReadPlannersRequest, ReadPlannersResponse>;
     readAll: RepositoryService<TDatabase, ReadAllPlannersRequest, ReadAllPlannersResponse>;
-    create: RepositoryService<TDatabase, CreatePlannersRequest, CreatePlannersResponse>;
-    update: RepositoryService<TDatabase, UpdatePlannersRequest, UpdatePlannersResponse>;
-    delete: RepositoryService<TDatabase, DeletePlannersRequest, DeletePlannersResponse>;
-
+    readAllMeals: RepositoryService<TDatabase, ReadAllMealsRequest, ReadAllMealsResponse>;
     readMembers: RepositoryBulkService<TDatabase, ReadMembersRequest, ReadMembersResponse>;
-    saveMembers: RepositoryBulkService<TDatabase, SaveMembersRequest, SaveMembersResponse>;
-    updateMembers: RepositoryBulkService<TDatabase, UpdateMembersRequest, UpdateMembersResponse>;
     removeMembers: RepositoryBulkService<TDatabase, RemoveMembersRequest, RemoveMembersResponse>;
+    saveMembers: RepositoryBulkService<TDatabase, SaveMembersRequest, SaveMembersResponse>;
+    update: RepositoryService<TDatabase, UpdatePlannersRequest, UpdatePlannersResponse>;
+    updateMeals: RepositoryService<TDatabase, UpdateMealsRequest, UpdateMealsResponse>;
+    updateMembers: RepositoryBulkService<TDatabase, UpdateMembersRequest, UpdateMembersResponse>;
+    verifyPermissions: RepositoryService<TDatabase, VerifyPermissionsRequest, VerifyPermissionsResponse>;
 }

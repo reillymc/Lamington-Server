@@ -18,6 +18,7 @@ import {
     randomNumber,
     randomYear,
 } from "../helpers/index.ts";
+import { randomCourse } from "../helpers/meal.ts";
 
 describe("Add meal to cook list", () => {
     let database: KnexDatabase;
@@ -43,7 +44,7 @@ describe("Add meal to cook list", () => {
 
         const meals = Array.from({ length: randomNumber(5, 1) }).map((_, i) => ({
             description: uuid(),
-            course: "dinner",
+            course: randomCourse(),
             sequence: i + 1,
             source: uuid(),
         })) satisfies components["schemas"]["CookListMealCreate"][];
@@ -51,7 +52,7 @@ describe("Add meal to cook list", () => {
         const res = await request(app).post("/v1/cooklist/meals").set(token).send(meals);
         expect(res.statusCode).toEqual(201);
 
-        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(database, { userId: user.userId });
+        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(database, user);
 
         expect(mealsRead.length).toEqual(meals.length);
 
@@ -78,7 +79,7 @@ describe("Add meal to cook list", () => {
 
         const meal = {
             description: uuid(),
-            course: "dinner",
+            course: randomCourse(),
             sequence: 1,
             source: uuid(),
             recipeId: recipe!.recipeId,
@@ -87,9 +88,34 @@ describe("Add meal to cook list", () => {
         const res = await request(app).post("/v1/cooklist/meals").set(token).send(meal);
         expect(res.statusCode).toEqual(201);
 
-        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(database, { userId: user.userId });
+        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(database, user);
         expect(mealsRead).toHaveLength(1);
         expect(mealsRead[0]!.recipeId).toEqual(recipe!.recipeId);
+    });
+
+    it("should create multiple cooklist meals", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const meals = [
+            {
+                description: uuid(),
+                course: randomCourse(),
+                sequence: 1,
+                source: uuid(),
+            },
+            {
+                description: uuid(),
+                course: "lunch",
+                sequence: 2,
+                source: uuid(),
+            },
+        ] satisfies components["schemas"]["CookListMealCreate"][];
+
+        const res = await request(app).post("/v1/cooklist/meals").set(token).send(meals);
+        expect(res.statusCode).toEqual(201);
+
+        const returnedMeals = res.body as components["schemas"]["CookListMeal"][];
+        expect(returnedMeals).toHaveLength(2);
     });
 
     it("should fail if the request contains extraneous properties", async () => {
@@ -97,7 +123,7 @@ describe("Add meal to cook list", () => {
 
         const res = await request(app).post("/v1/cooklist/meals").set(token).send({
             description: uuid(),
-            course: "dinner",
+            course: randomCourse(),
             extra: "invalid",
         });
         expect(res.statusCode).toEqual(400);
@@ -110,6 +136,14 @@ describe("Add meal to cook list", () => {
             description: uuid(),
             course: "invalid_course",
         });
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should return 400 if the request body is an empty array", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app).post("/v1/cooklist/meals").set(token).send([]);
 
         expect(res.statusCode).toEqual(400);
     });
@@ -150,7 +184,7 @@ describe("Update meal in cook list", () => {
             meals: [
                 {
                     description: uuid(),
-                    course: "dinner",
+                    course: randomCourse(),
                     sequence: randomNumber(),
                     source: uuid(),
                 },
@@ -200,7 +234,7 @@ describe("Update meal in cook list", () => {
             meals: [
                 {
                     description: uuid(),
-                    course: "dinner",
+                    course: randomCourse(),
                     sequence: 1,
                     source: uuid(),
                     recipeId: recipe!.recipeId,
@@ -232,7 +266,7 @@ describe("Update meal in cook list", () => {
             meals: [
                 {
                     description: uuid(),
-                    course: "dinner",
+                    course: randomCourse(),
                     sequence: randomNumber(),
                     source: uuid(),
                 },
@@ -276,7 +310,7 @@ describe("Update meal in cook list", () => {
             plannerId: planner!.plannerId,
             meals: [
                 {
-                    course: "dinner",
+                    course: randomCourse(),
                     description: uuid(),
                     dayOfMonth: randomDay(),
                     month: randomMonth(),
@@ -300,7 +334,7 @@ describe("Update meal in cook list", () => {
             meals: [meal],
         } = await KnexCookListRepository.createMeals(database, {
             userId: user.userId,
-            meals: [{ course: "dinner", description: uuid() }],
+            meals: [{ course: randomCourse(), description: uuid() }],
         });
 
         const res = await request(app).patch(`/v1/cooklist/meals/${meal!.mealId}`).set(token).send({
@@ -317,13 +351,27 @@ describe("Update meal in cook list", () => {
             meals: [meal],
         } = await KnexCookListRepository.createMeals(database, {
             userId: user.userId,
-            meals: [{ course: "dinner", description: uuid() }],
+            meals: [{ course: randomCourse(), description: uuid() }],
         });
 
         const res = await request(app).patch(`/v1/cooklist/meals/${meal!.mealId}`).set(token).send({
             course: "invalid_course",
         });
 
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should fail if a required field is set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            meals: [meal],
+        } = await KnexCookListRepository.createMeals(database, {
+            userId: user.userId,
+            meals: [{ course: randomCourse(), description: uuid() }],
+        });
+
+        const res = await request(app).patch(`/v1/cooklist/meals/${meal!.mealId}`).set(token).send({ course: null });
         expect(res.statusCode).toEqual(400);
     });
 });
@@ -357,7 +405,7 @@ describe("Remove meal from cook list", () => {
             meals: [
                 {
                     description: uuid(),
-                    course: "dinner",
+                    course: randomCourse(),
                     sequence: 0,
                     source: uuid(),
                 },
@@ -385,7 +433,7 @@ describe("Remove meal from cook list", () => {
             meals: [
                 {
                     description: uuid(),
-                    course: "dinner",
+                    course: randomCourse(),
                     sequence: 0,
                     source: uuid(),
                 },
@@ -419,7 +467,7 @@ describe("Remove meal from cook list", () => {
             plannerId: planner!.plannerId,
             meals: [
                 {
-                    course: "dinner",
+                    course: randomCourse(),
                     description: uuid(),
                     dayOfMonth: randomDay(),
                     month: randomMonth(),
@@ -463,7 +511,7 @@ describe("Get cook list meals", () => {
             meals: [
                 {
                     description: uuid(),
-                    course: "dinner",
+                    course: randomCourse(),
                     sequence: randomNumber(),
                     source: uuid(),
                 },
@@ -497,7 +545,7 @@ describe("Get cook list meals", () => {
             meals: [
                 {
                     description: uuid(),
-                    course: "dinner",
+                    course: randomCourse(),
                     sequence: randomNumber(),
                     source: uuid(),
                 },
@@ -528,7 +576,7 @@ describe("Get cook list meals", () => {
             plannerId: planner!.plannerId,
             meals: [
                 {
-                    course: "dinner",
+                    course: randomCourse(),
                     description: uuid(),
                     dayOfMonth: randomDay(),
                     month: randomMonth(),
