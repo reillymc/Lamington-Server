@@ -13,7 +13,8 @@ import { createCooklistService } from "./services/cooklistService.ts";
 import { createMealService } from "./services/mealService.ts";
 import { createPlannerService } from "./services/plannerService.ts";
 import { createRecipeService } from "./services/recipeService.ts";
-import { LocalAttachmentService, type AttachmentService } from "./services/attachment/index.ts";
+import { LocalAttachmentService, S3AttachmentService, type AttachmentService } from "./services/attachment/index.ts";
+import config from "./config.ts";
 
 export const DefaultAppRepositories: AppRepositories<KnexDatabase> = {
     bookRepository: KnexBookRepository,
@@ -47,7 +48,7 @@ export type AppDependencies<T extends Database = Database> = {
 export const DefaultAppDependencies = (database: Database): AppDependencies => ({
     services: DefaultAppServices(database),
     repositories: DefaultAppRepositories as AppRepositories,
-    attachmentService: LocalAttachmentService,
+    attachmentService: config.attachments.storageService === "local" ? LocalAttachmentService : S3AttachmentService,
     attachmentActions: AttachmentActions,
     database,
 });

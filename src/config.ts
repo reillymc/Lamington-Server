@@ -27,6 +27,7 @@ const config: LamingtonConfig = {
         port: parseInt(process.env.PORT ?? "3000", 10),
         logDetail: parseLogLevel(process.env.LOG_LEVEL),
         pageSize: parseInt(process.env.PAGE_SIZE ?? "50", 10),
+        externalHost: process.env.EXTERNAL_HOST,
     },
     authentication: {
         jwtSecret: process.env.JWT_SECRET,
@@ -48,6 +49,7 @@ export interface LamingtonConfig {
         port: number;
         logDetail: "tiny" | "short" | "dev";
         pageSize: number;
+        externalHost: string | undefined;
     };
     authentication: {
         jwtSecret: string | undefined;

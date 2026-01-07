@@ -3,7 +3,7 @@ info:
   title: Lamington API
   version: 1.0.0
 servers:
-  - url: http://localhost:3000/v1/
+  - url: http://localhost:3000/v1
 tags:
   - name: Meals
     description: Meal planning operations
@@ -712,15 +712,15 @@ components:
         description:
           type:
             - string
-            - 'null'
+            - "null"
         source:
           type:
             - string
-            - 'null'
+            - "null"
         recipeId:
           oneOf:
             - $ref: "#/components/schemas/Uuid"
-            - type: 'null'
+            - type: "null"
         heroImage:
           type: string
       required:
@@ -733,19 +733,19 @@ components:
         description:
           type:
             - string
-            - 'null'
+            - "null"
         source:
           type:
             - string
-            - 'null'
+            - "null"
         recipeId:
           oneOf:
             - $ref: "#/components/schemas/Uuid"
-            - type: 'null'
+            - type: "null"
         heroImage:
           type:
             - string
-            - 'null'
+            - "null"
     CookListMeal:
       allOf:
         - $ref: "#/components/schemas/MealBase"
@@ -768,7 +768,7 @@ components:
             sequence:
               type:
                 - integer
-                - 'null'
+                - "null"
       unevaluatedProperties: false
     CookListMealUpdate:
       allOf:
@@ -778,7 +778,7 @@ components:
             sequence:
               type:
                 - integer
-                - 'null'
+                - "null"
       unevaluatedProperties: false
     Planner:
       type: object
@@ -809,7 +809,7 @@ components:
         description:
           type:
             - string
-            - 'null'
+            - "null"
       required:
         - name
       unevaluatedProperties: false
@@ -823,7 +823,7 @@ components:
         description:
           type:
             - string
-            - 'null'
+            - "null"
       unevaluatedProperties: false
     PlannerMember:
       type: object
