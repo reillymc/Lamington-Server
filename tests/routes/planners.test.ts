@@ -23,6 +23,9 @@ const randomMeal = () =>
         description: uuid(),
     } satisfies components["schemas"]["PlannerMealCreate"]);
 
+const randomColor = (): components["schemas"]["PlannerColor"] =>
+    (["variant1", "variant2", "variant3", "variant4", "variant5"] as const)[Math.floor(Math.random() * 5)]!;
+
 describe("Get user planners", () => {
     let database: KnexDatabase;
     let app: Express;
@@ -138,7 +141,7 @@ describe("Get user planners", () => {
         const plannerData: components["schemas"]["PlannerCreate"] = {
             name: uuid(),
             description: uuid(),
-            color: uuid(),
+            color: randomColor(),
         };
 
         const {
@@ -200,7 +203,7 @@ describe("Get a planner", () => {
             planners: [planner],
         } = await KnexPlannerRepository.create(database, {
             userId: plannerOwner!.userId,
-            planners: [{ name: uuid(), description: uuid(), color: uuid() }],
+            planners: [{ name: uuid(), description: uuid(), color: randomColor() }],
         });
 
         const res = await request(app).get(`/v1/planners/${planner!.plannerId}`).set(token);
@@ -215,7 +218,7 @@ describe("Get a planner", () => {
             planners: [planner],
         } = await KnexPlannerRepository.create(database, {
             userId: user.userId,
-            planners: [{ name: uuid(), description: uuid(), color: uuid() }],
+            planners: [{ name: uuid(), description: uuid(), color: randomColor() }],
         });
 
         const res = await request(app).get(`/v1/planners/${planner!.plannerId}`).set(token);
@@ -657,7 +660,7 @@ describe("Create a planner", () => {
         const planner = {
             name: uuid(),
             description: uuid(),
-            color: uuid(),
+            color: randomColor(),
         } satisfies components["schemas"]["PlannerCreate"];
 
         const res = await request(app).post("/v1/planners").set(token).send(planner);
@@ -682,7 +685,7 @@ describe("Create a planner", () => {
         const res = await request(app).post("/v1/planners").set(token).send({
             name: uuid(),
             description: uuid(),
-            color: uuid(),
+            color: randomColor(),
             extra: "invalid",
         });
         expect(res.statusCode).toEqual(400);
@@ -693,7 +696,7 @@ describe("Create a planner", () => {
         const res = await request(app).post("/v1/planners").set(token).send({
             name: 12345,
             description: uuid(),
-            color: uuid(),
+            color: randomColor(),
         });
         expect(res.statusCode).toEqual(400);
     });
@@ -758,13 +761,13 @@ describe("Update a planner", () => {
             planners: [planner],
         } = await KnexPlannerRepository.create(database, {
             userId: user.userId,
-            planners: [{ name: uuid(), description: uuid(), color: uuid() }],
+            planners: [{ name: uuid(), description: uuid(), color: randomColor() }],
         });
 
         const updatedPlanner = {
             name: uuid(),
             description: uuid(),
-            color: uuid(),
+            color: randomColor(),
         } satisfies components["schemas"]["PlannerUpdate"];
 
         const res = await request(app).patch(`/v1/planners/${planner!.plannerId}`).set(token).send(updatedPlanner);
@@ -2337,7 +2340,49 @@ describe("Update a planner member", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should successfully update a member status", async () => {
+    it("should successfully update a member status between Administrator and Member", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [member] = await CreateUsers(database);
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        // Start as Member
+        await KnexPlannerRepository.saveMembers(database, {
+            plannerId: planner!.plannerId,
+            members: [{ userId: member!.userId, status: UserStatus.Member }],
+        });
+
+        // Update M -> A
+        let res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+            .set(token)
+            .send({ status: UserStatus.Administrator });
+
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.status).toEqual(UserStatus.Administrator);
+
+        let [members] = await KnexPlannerRepository.readMembers(database, [{ plannerId: planner!.plannerId }]);
+        expect(members!.members[0]!.status).toEqual(UserStatus.Administrator);
+
+        // Update A -> M
+        res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+            .set(token)
+            .send({ status: UserStatus.Member });
+
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.status).toEqual(UserStatus.Member);
+
+        [members] = await KnexPlannerRepository.readMembers(database, [{ plannerId: planner!.plannerId }]);
+        expect(members!.members[0]!.status).toEqual(UserStatus.Member);
+    });
+
+    it("should fail when trying to update a member to restricted statuses (O, P)", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [member] = await CreateUsers(database);
 
@@ -2353,16 +2398,16 @@ describe("Update a planner member", () => {
             members: [{ userId: member!.userId, status: UserStatus.Member }],
         });
 
-        const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: UserStatus.Administrator });
+        const restrictedStatuses = [UserStatus.Owner, UserStatus.Pending];
 
-        expect(res.statusCode).toEqual(200);
-        expect(res.body.status).toEqual(UserStatus.Administrator);
+        for (const status of restrictedStatuses) {
+            const res = await request(app)
+                .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+                .set(token)
+                .send({ status });
 
-        const [members] = await KnexPlannerRepository.readMembers(database, [{ plannerId: planner!.plannerId }]);
-        expect(members!.members[0]!.status).toEqual(UserStatus.Administrator);
+            expect(res.statusCode).toEqual(400);
+        }
     });
 
     it("should not allow non-owners (A, M, P, B) to update a member status", async () => {

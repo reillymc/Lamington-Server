@@ -6,6 +6,7 @@ import type { Database, Meal, User } from "../database/index.ts";
 import type { RepositoryBulkService, RepositoryService } from "./repository.ts";
 
 type PlannerUserStatus = "O" | "A" | "M" | "P" | "B";
+type PlannerColor = "variant1" | "variant2" | "variant3" | "variant4" | "variant5";
 
 type VerifyPermissionsRequest = {
     userId: User["userId"];
@@ -134,7 +135,7 @@ type BasePlannerResponse = {
     plannerId: Planner["plannerId"];
     name: Planner["name"];
     description: Planner["description"];
-    color: string;
+    color: PlannerColor;
     owner: {
         userId: User["userId"];
         firstName: User["firstName"];

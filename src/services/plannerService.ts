@@ -40,7 +40,7 @@ export interface PlannerService {
         userId: string,
         plannerId: string,
         memberId: string,
-        status: components["schemas"]["UserStatus"]
+        status: components["schemas"]["PlannerMemberUpdateStatus"]
     ) => Promise<components["schemas"]["PlannerMember"]>;
     leaveMembership: (userId: string, plannerId: string, memberId?: string) => Promise<void>;
     acceptInvite: (userId: string, plannerId: string) => Promise<void>;

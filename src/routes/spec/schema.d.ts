@@ -347,14 +347,14 @@ export interface components {
             readonly description?: string | null;
             readonly source?: string | null;
             readonly recipeId?: components["schemas"]["Uuid"] | null;
-            readonly heroImage?: string;
+            readonly heroImage?: components["schemas"]["Uuid"];
         };
         readonly MealUpdateBase: {
             readonly course?: components["schemas"]["Course"];
             readonly description?: string | null;
             readonly source?: string | null;
             readonly recipeId?: components["schemas"]["Uuid"] | null;
-            readonly heroImage?: string | null;
+            readonly heroImage?: components["schemas"]["Uuid"] | null;
         };
         readonly CookListMeal: components["schemas"]["MealBase"] & {
             readonly mealId: components["schemas"]["Uuid"];
@@ -367,22 +367,24 @@ export interface components {
         readonly CookListMealUpdate: components["schemas"]["MealUpdateBase"] & {
             readonly sequence?: number | null;
         };
+        /** @enum {string} */
+        readonly PlannerColor: "variant1" | "variant2" | "variant3" | "variant4" | "variant5";
         readonly Planner: {
             readonly plannerId: components["schemas"]["Uuid"];
             readonly owner: components["schemas"]["Owner"];
             readonly name: string;
-            readonly color?: string;
+            readonly color?: components["schemas"]["PlannerColor"];
             readonly description?: string;
             readonly status?: components["schemas"]["UserStatus"];
         };
         readonly PlannerCreate: {
             readonly name: string;
-            readonly color?: string;
+            readonly color?: components["schemas"]["PlannerColor"];
             readonly description?: string | null;
         };
         readonly PlannerUpdate: {
             readonly name?: string;
-            readonly color?: string;
+            readonly color?: components["schemas"]["PlannerColor"];
             readonly description?: string | null;
         };
         readonly PlannerMember: {
@@ -391,11 +393,16 @@ export interface components {
             readonly lastName?: string;
             readonly status?: components["schemas"]["UserStatus"];
         };
+        /**
+         * @description * `A` - Administrator * `M` - Member
+         * @enum {string}
+         */
+        readonly PlannerMemberUpdateStatus: "A" | "M";
         readonly PlannerMemberUpdate: {
-            readonly status: components["schemas"]["UserStatus"];
+            readonly status: components["schemas"]["PlannerMemberUpdateStatus"];
         };
         readonly PlannerMemberCreate: {
-            readonly userId: string;
+            readonly userId: components["schemas"]["Uuid"];
         };
         readonly PlannerMeal: components["schemas"]["MealBase"] & {
             readonly mealId: components["schemas"]["Uuid"];
