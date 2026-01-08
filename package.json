@@ -17,7 +17,8 @@
         "setup:dev": "npm run rollback:dev && npm run migrate:dev && npm run seed:dev",
         "setup:test": "knex migrate:rollback --knexfile src/database/knexfile.testing.ts && knex migrate:latest --knexfile src/database/knexfile.testing.ts && knex seed:run --knexfile src/database/knexfile.testing.ts",
         "depcruise": "depcruise src --collapse 3 --output-type dot | dot -T svg > module-dependency-graph.svg",
-        "generate:spec": "rm -f ./src/routes/spec/schema.d.ts && npx openapi-typescript ./openapi.yaml --output ./src/routes/spec/schema.d.ts --immutable"
+        "generate:spec": "rm -f ./src/routes/spec/schema.d.ts && npx openapi-typescript ./openapi.yaml --output ./src/routes/spec/schema.d.ts --immutable",
+        "postinstall": "npm run generate:spec"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.879.0",

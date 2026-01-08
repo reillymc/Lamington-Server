@@ -2,33 +2,48 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "watch:tsc",
             "type": "typescript",
             "tsconfig": "tsconfig.json",
             "option": "watch",
-            "isBackground": true,
             "problemMatcher": ["$tsc-watch"],
             "group": "build",
-            "label": "tsc: watch",
             "presentation": {
                 "reveal": "never",
                 "echo": false,
                 "focus": false,
                 "panel": "dedicated"
             },
+            "isBackground": true,
             "runOptions": {
                 "runOn": "folderOpen"
             }
         },
         {
+            "label": "watch:tests",
             "type": "shell",
             "command": "npm run test -- --watch",
             "group": "test",
-            "label": "test: watch",
             "presentation": {
                 "reveal": "never",
                 "echo": false,
                 "focus": false,
                 "panel": "dedicated"
+            },
+            "isBackground": true,
+            "runOptions": {
+                "runOn": "folderOpen"
+            }
+        },
+        {
+            "label": "watch:spec",
+            "type": "shell",
+            "command": "node",
+            "args": ["./tools/Scripts/watch_spec.ts"],
+            "group": "build",
+            "isBackground": true,
+            "runOptions": {
+                "runOn": "folderOpen"
             }
         }
     ]

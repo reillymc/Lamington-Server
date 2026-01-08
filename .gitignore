@@ -114,3 +114,7 @@ dbfiles/lamington.mwb
 
 # Server upload files
 uploads/
+
+
+# Generated types
+*.d.ts
