@@ -638,6 +638,11 @@ components:
         - breakfast
         - lunch
         - dinner
+        - snack
+        - side
+        - component
+        - dessert
+        - drink
     MealProperties:
       type: object
       properties:
