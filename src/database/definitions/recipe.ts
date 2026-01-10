@@ -8,7 +8,7 @@ export type FractionValue = { representation: "fraction"; value: [string, string
 
 type RecipeServingsV1 = {
     unit: string;
-    count: RangeValue | NumberValue;
+    count: RangeValue | NumberValue | FractionValue;
 };
 
 export type RecipeServings = RecipeServingsV1;

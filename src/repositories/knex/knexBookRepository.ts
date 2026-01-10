@@ -4,7 +4,7 @@ import { bookRecipe } from "../../database/definitions/bookRecipe.ts";
 import { content, type Content } from "../../database/definitions/content.ts";
 import { contentMember } from "../../database/definitions/contentMember.ts";
 import { lamington, user, type KnexDatabase } from "../../database/index.ts";
-import { EnsureArray, EnsureDefinedArray } from "../../utils/index.ts";
+import { EnsureArray, EnsureDefinedArray, toUndefined } from "../../utils/index.ts";
 import type { BookRepository } from "../bookRepository.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
 
@@ -32,7 +32,12 @@ const setMembers: BookRepository<KnexDatabase>["saveMembers"] = (db, request) =>
         db,
         EnsureArray(request).map(({ bookId, members }) => ({ contentId: bookId, members })),
         { trimNotIn: true }
-    ).then(response => response.map(({ contentId, members }) => ({ bookId: contentId, members })));
+    ).then(response =>
+        response.map(({ contentId, members }) => ({
+            bookId: contentId,
+            members: members.map(({ status, ...rest }) => ({ ...rest, status: toUndefined(status) })),
+        }))
+    );
 
 const read: BookRepository<KnexDatabase>["read"] = async (db, { books, userId }) => {
     const members = await readMembers(db, books);
@@ -240,7 +245,12 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         ContentMemberActions.save(
             db,
             EnsureArray(request).map(({ bookId, members }) => ({ contentId: bookId, members }))
-        ).then(response => response.map(({ contentId, members }) => ({ bookId: contentId, members }))),
+        ).then(response =>
+            response.map(({ contentId, members }) => ({
+                bookId: contentId,
+                members: members.map(({ status, ...rest }) => ({ ...rest, status: toUndefined(status) })),
+            }))
+        ),
     removeMembers: (db, request) =>
         ContentMemberActions.delete(
             db,

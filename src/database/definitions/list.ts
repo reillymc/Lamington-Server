@@ -13,14 +13,12 @@ export type ListCustomisations = ListCustomisationsV1;
 export type List = {
     listId: string;
     name: string;
-    // TODO proper customisation definition like others
-    customisations?: ListCustomisations;
-    description?: string;
+    customisations: ListCustomisations | null;
+    description: string | null;
 };
 
-export const list: Table<List> = {
-    listId: `${lamington.list}.listId`,
-    name: `${lamington.list}.name`,
-    customisations: `${lamington.list}.customisations`,
-    description: `${lamington.list}.description`,
-} as const;
+export const listColumns = ["listId", "name", "customisations", "description"] as const satisfies (keyof List)[];
+
+export const list = Object.fromEntries(
+    listColumns.map(column => [column, `${lamington.list}.${column}`])
+) as Table<List>;

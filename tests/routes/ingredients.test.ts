@@ -35,7 +35,7 @@ describe("get ingredients", () => {
 
         const ingredientCount = randomNumber();
 
-        const temp = await CreateIngredients({
+        const temp = await CreateIngredients(db, {
             count: ingredientCount,
             createdBy: randomUsers.map(user => user.userId),
         });
@@ -67,8 +67,8 @@ describe("get my ingredients", () => {
         const [token, user] = await PrepareAuthenticatedUser(db);
         const [otherUser] = await CreateUsers(db, { count: 1 });
 
-        const [_, count] = await CreateIngredients({ createdBy: user.userId });
-        await CreateIngredients({ createdBy: otherUser!.userId });
+        const [_, count] = await CreateIngredients(db, { createdBy: user.userId });
+        await CreateIngredients(db, { createdBy: otherUser!.userId });
 
         const res = await request(app).get(IngredientEndpoint.getMyIngredients).set(token);
 

@@ -3,14 +3,7 @@ import { type AttachmentServices, imageSubpath, uploadDirectory } from "./attach
 import { type AuthServices, loginSubpath, registerSubpath } from "./auth.ts";
 import { type BookApi, bookIdParam, bookMemberIdParam, bookMemberSubpath, recipeSubpath } from "./book.ts";
 import type { IngredientServices } from "./ingredient.ts";
-import {
-    type ListServices,
-    itemIdParam,
-    itemSubpath,
-    listIdParam,
-    listMemberIdParam,
-    listMemberSubpath,
-} from "./list.ts";
+
 import { rateSubpath, recipeIdParam, type RecipeApi } from "./recipe.ts";
 import type { TagServices } from "./tag.ts";
 import { type UserServices, approveSubpath, userIdParam } from "./user.ts";
@@ -57,17 +50,6 @@ export const IngredientEndpoint = {
     postIngredient: `/`,
 } as const satisfies Record<keyof IngredientServices, string>;
 
-export const ListEndpoint = {
-    deleteList: `/:${listIdParam}`,
-    deleteListItem: `/:${listIdParam}/${itemSubpath}/:${itemIdParam}`,
-    deleteListMember: `/:${listIdParam}/${listMemberSubpath}/:${listMemberIdParam}`,
-    getList: `/:${listIdParam}`,
-    getLists: `/`,
-    postList: `/`,
-    postListItem: `/:${listIdParam}/${itemSubpath}`,
-    postListMember: `/:${listIdParam}/${listMemberSubpath}`,
-} as const satisfies Record<keyof ListServices, string>;
-
 export const RecipeEndpoint = {
     deleteRecipe: `/:${recipeIdParam}`,
     getRecipe: `/:${recipeIdParam}`,
@@ -96,7 +78,6 @@ export type { BasePaginatedRequestQuery, QueryParam, RequestValidator } from "./
 export * from "./book.ts";
 export * from "./common.ts";
 export * from "./ingredient.ts";
-export * from "./list.ts";
 export * from "./recipe.ts";
 export * from "./tag.ts";
 export * from "./user.ts";

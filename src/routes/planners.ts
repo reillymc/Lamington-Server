@@ -87,6 +87,16 @@ export const createPlannerRouter = ({ plannerService }: AppDependencies["service
             const data = await plannerService.updateMeal(session.userId, params.plannerId, params.mealId, body);
             return res.status(200).json(data);
         })
+        .delete<
+            routes,
+            paths["/planners/{plannerId}/meals/{mealId}"]["delete"]["parameters"]["path"],
+            paths["/planners/{plannerId}/meals/{mealId}"]["delete"]["responses"]["204"]["content"],
+            paths["/planners/{plannerId}/meals/{mealId}"]["delete"]["requestBody"],
+            paths["/planners/{plannerId}/meals/{mealId}"]["delete"]["parameters"]["query"]
+        >("/planners/:plannerId/meals/:mealId", async ({ params, session }, res) => {
+            await plannerService.deleteMeal(session.userId, params.plannerId, params.mealId);
+            return res.status(204).send();
+        })
         .get<
             routes,
             paths["/planners/{plannerId}/members"]["get"]["parameters"]["path"],
@@ -105,6 +115,31 @@ export const createPlannerRouter = ({ plannerService }: AppDependencies["service
             paths["/planners/{plannerId}/members"]["post"]["parameters"]["query"]
         >("/planners/:plannerId/members", async ({ params, body, session }, res) => {
             await plannerService.inviteMember(session.userId, params.plannerId, body.userId);
+            return res.status(204).send();
+        })
+        .patch<
+            routes,
+            paths["/planners/{plannerId}/members/{userId}"]["patch"]["parameters"]["path"],
+            paths["/planners/{plannerId}/members/{userId}"]["patch"]["responses"]["200"]["content"]["application/json"],
+            paths["/planners/{plannerId}/members/{userId}"]["patch"]["requestBody"]["content"]["application/json"],
+            paths["/planners/{plannerId}/members/{userId}"]["patch"]["parameters"]["query"]
+        >("/planners/:plannerId/members/:userId", async ({ params, body, session }, res) => {
+            const data = await plannerService.updateMember(
+                session.userId,
+                params.plannerId,
+                params.userId,
+                body.status
+            );
+            return res.status(200).json(data);
+        })
+        .delete<
+            routes,
+            paths["/planners/{plannerId}/members/{userId}"]["delete"]["parameters"]["path"],
+            paths["/planners/{plannerId}/members/{userId}"]["delete"]["responses"]["204"]["content"],
+            paths["/planners/{plannerId}/members/{userId}"]["delete"]["requestBody"],
+            paths["/planners/{plannerId}/members/{userId}"]["delete"]["parameters"]["query"]
+        >("/planners/:plannerId/members/:userId", async ({ params, session }, res) => {
+            await plannerService.removeMember(session.userId, params.plannerId, params.userId);
             return res.status(204).send();
         })
         .post<
@@ -134,41 +169,6 @@ export const createPlannerRouter = ({ plannerService }: AppDependencies["service
             paths["/planners/{plannerId}/leave"]["post"]["requestBody"],
             paths["/planners/{plannerId}/leave"]["post"]["parameters"]["query"]
         >("/planners/:plannerId/leave", async ({ params, session }, res) => {
-            await plannerService.leaveMembership(session.userId, params.plannerId);
+            await plannerService.leavePlanner(session.userId, params.plannerId);
             return res.status(204).send();
-        })
-        .delete<
-            routes,
-            paths["/planners/{plannerId}/meals/{mealId}"]["delete"]["parameters"]["path"],
-            paths["/planners/{plannerId}/meals/{mealId}"]["delete"]["responses"]["204"]["content"],
-            paths["/planners/{plannerId}/meals/{mealId}"]["delete"]["requestBody"],
-            paths["/planners/{plannerId}/meals/{mealId}"]["delete"]["parameters"]["query"]
-        >("/planners/:plannerId/meals/:mealId", async ({ params, session }, res) => {
-            await plannerService.deleteMeal(session.userId, params.plannerId, params.mealId);
-            return res.status(204).send();
-        })
-        .delete<
-            routes,
-            paths["/planners/{plannerId}/members/{userId}"]["delete"]["parameters"]["path"],
-            paths["/planners/{plannerId}/members/{userId}"]["delete"]["responses"]["204"]["content"],
-            paths["/planners/{plannerId}/members/{userId}"]["delete"]["requestBody"],
-            paths["/planners/{plannerId}/members/{userId}"]["delete"]["parameters"]["query"]
-        >("/planners/:plannerId/members/:userId", async ({ params, session }, res) => {
-            await plannerService.leaveMembership(session.userId, params.plannerId, params.userId);
-            return res.status(204).send();
-        })
-        .patch<
-            routes,
-            paths["/planners/{plannerId}/members/{userId}"]["patch"]["parameters"]["path"],
-            paths["/planners/{plannerId}/members/{userId}"]["patch"]["responses"]["200"]["content"]["application/json"],
-            paths["/planners/{plannerId}/members/{userId}"]["patch"]["requestBody"]["content"]["application/json"],
-            paths["/planners/{plannerId}/members/{userId}"]["patch"]["parameters"]["query"]
-        >("/planners/:plannerId/members/:userId", async ({ params, body, session }, res) => {
-            const data = await plannerService.updateMember(
-                session.userId,
-                params.plannerId,
-                params.userId,
-                body.status
-            );
-            return res.status(200).json(data);
         });

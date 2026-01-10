@@ -1,6 +1,11 @@
 import { content, type Content } from "../../src/database/definitions/content.ts";
-import db, { type List, type ReadResponse, lamington, list } from "../../src/database/index.ts";
-import { type ListItemIngredientAmount } from "../../src/routes/spec/index.ts";
+import db, {
+    type List,
+    type ListItemIngredientAmount,
+    type ReadResponse,
+    lamington,
+    list,
+} from "../../src/database/index.ts";
 import { randomNumber } from "./data.ts";
 
 export const readAllLists = async (): ReadResponse<List & { createdBy: Content["createdBy"] }> => {

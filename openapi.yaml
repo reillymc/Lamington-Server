@@ -13,6 +13,8 @@ tags:
     description: Planner operations
   - name: CookList
     description: Cook list operations
+  - name: Lists
+    description: List operations
 security:
   - bearerAuth: []
 paths:
@@ -371,7 +373,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/PlannerMember"
+                  $ref: "#/components/schemas/Member"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -386,7 +388,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PlannerMemberCreate"
+              $ref: "#/components/schemas/MemberCreate"
       responses:
         204:
           description: No Content
@@ -432,14 +434,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PlannerMemberUpdate"
+              $ref: "#/components/schemas/MemberUpdate"
       responses:
         200:
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PlannerMember"
+                $ref: "#/components/schemas/Member"
         400:
           $ref: "#/components/responses/BadRequest"
         404:
@@ -505,6 +507,405 @@ paths:
           description: No Content
         400:
           $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /lists:
+    get:
+      tags:
+        - Lists
+      summary: Get user lists
+      operationId: getLists
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ListSummary"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Lists
+      summary: Create a list
+      operationId: postList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListCreate"
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/List"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /lists/{listId}:
+    parameters:
+      - name: listId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    get:
+      tags:
+        - Lists
+      summary: Get a list
+      operationId: getList
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/List"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Lists
+      summary: Update a list
+      operationId: patchList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListUpdate"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/List"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - Lists
+      summary: Delete a list
+      operationId: deleteList
+      responses:
+        204:
+          description: No Content
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /lists/{listId}/items:
+    parameters:
+      - name: listId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    get:
+      tags:
+        - Lists
+      summary: Get list items
+      operationId: getListItems
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ListItem"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Lists
+      summary: Add item to list
+      operationId: postListItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/ListItemCreate"
+                - type: array
+                  items:
+                    $ref: "#/components/schemas/ListItemCreate"
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ListItem"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /lists/{listId}/items/{itemId}:
+    parameters:
+      - name: listId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    patch:
+      tags:
+        - Lists
+      summary: Update list item
+      operationId: patchListItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListItemUpdate"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListItem"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - Lists
+      summary: Delete list item
+      operationId: deleteListItem
+      responses:
+        204:
+          description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /lists/{listId}/items/move:
+    parameters:
+      - name: listId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Lists
+      summary: Move list items to another list
+      operationId: moveListItems
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                destinationListId:
+                  $ref: "#/components/schemas/Uuid"
+                itemIds:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Uuid"
+                  minItems: 1
+              required:
+                - destinationListId
+                - itemIds
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ListItem"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /lists/{listId}/members:
+    parameters:
+      - name: listId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    get:
+      tags:
+        - Lists
+      summary: Get list members
+      operationId: getListMembers
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Member"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Lists
+      summary: Invite member to list
+      operationId: postListMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberCreate"
+      responses:
+        204:
+          description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /lists/{listId}/members/{userId}:
+    parameters:
+      - name: listId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    patch:
+      tags:
+        - Lists
+      summary: Update list member
+      operationId: patchListMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberUpdate"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - Lists
+      summary: Remove member from list
+      operationId: deleteListMember
+      responses:
+        204:
+          description: No Content
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /lists/{listId}/invite/accept:
+    parameters:
+      - name: listId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Lists
+      summary: Accept list invitation
+      operationId: acceptListInvite
+      responses:
+        204:
+          description: No Content
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /lists/{listId}/invite/decline:
+    parameters:
+      - name: listId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Lists
+      summary: Decline list invitation
+      operationId: declineListInvite
+      responses:
+        204:
+          description: No Content
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /lists/{listId}/leave:
+    parameters:
+      - name: listId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Lists
+      summary: Leave list
+      operationId: leaveList
+      responses:
+        204:
+          description: No Content
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -862,7 +1263,7 @@ components:
           minLength: 1
           maxLength: 255
       unevaluatedProperties: false
-    PlannerMember:
+    Member:
       type: object
       properties:
         userId:
@@ -876,7 +1277,7 @@ components:
       required:
         - userId
         - firstName
-    PlannerMemberUpdateStatus:
+    MemberUpdateStatus:
       type: string
       description: >
         * `A` - Administrator
@@ -884,21 +1285,209 @@ components:
       enum:
         - A
         - M
-    PlannerMemberUpdate:
+    MemberUpdate:
       type: object
       properties:
         status:
-          $ref: "#/components/schemas/PlannerMemberUpdateStatus"
+          $ref: "#/components/schemas/MemberUpdateStatus"
       required:
         - status
       unevaluatedProperties: false
-    PlannerMemberCreate:
+    MemberCreate:
       type: object
       properties:
         userId:
           $ref: "#/components/schemas/Uuid"
       required:
         - userId
+      unevaluatedProperties: false
+    ListIcon:
+      type: string
+      enum:
+        - variant1
+        - variant2
+        - variant3
+        - variant4
+        - variant5
+        - variant6
+        - variant7
+        - variant8
+        - variant9
+        - variant10
+        - variant11
+        - variant12
+        - variant13
+        - variant14
+        - variant15
+        - variant16
+        - variant17
+    ListItemAmount:
+      oneOf:
+        - $ref: "#/components/schemas/AmountFraction"
+        - $ref: "#/components/schemas/AmountRange"
+        - $ref: "#/components/schemas/AmountNumber"
+    AmountFraction:
+      type: object
+      properties:
+        representation:
+          type: string
+          enum: [fraction]
+        value:
+          type: array
+          items:
+            type: string
+          minItems: 3
+          maxItems: 3
+      required:
+        - representation
+        - value
+    AmountRange:
+      type: object
+      properties:
+        representation:
+          type: string
+          enum: [range]
+        value:
+          type: array
+          items:
+            type: string
+          minItems: 2
+          maxItems: 2
+      required:
+        - representation
+        - value
+    AmountNumber:
+      type: object
+      properties:
+        representation:
+          type: string
+          enum: [number]
+        value:
+          type: string
+      required:
+        - representation
+        - value
+    ListItem:
+      type: object
+      properties:
+        itemId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        completed:
+          type: boolean
+        ingredientId:
+          type: string
+        unit:
+          type: string
+        amount:
+          $ref: "#/components/schemas/ListItemAmount"
+        notes:
+          type: string
+      required:
+        - itemId
+        - name
+        - updatedAt
+        - completed
+    ListItemCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        completed:
+          type: boolean
+        ingredientId:
+          type: string
+        unit:
+          type: string
+        amount:
+          $ref: "#/components/schemas/ListItemAmount"
+        notes:
+          type: string
+      required:
+        - name
+      unevaluatedProperties: false
+    ListItemUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        completed:
+          type: boolean
+        ingredientId:
+          type:
+            - string
+            - "null"
+        unit:
+          type:
+            - string
+            - "null"
+        amount:
+          oneOf:
+            - $ref: "#/components/schemas/ListItemAmount"
+            - type: "null"
+        notes:
+          type:
+            - string
+            - "null"
+      unevaluatedProperties: false
+    List:
+      type: object
+      properties:
+        listId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        owner:
+          $ref: "#/components/schemas/Owner"
+        description:
+          type: string
+        icon:
+          $ref: "#/components/schemas/ListIcon"
+        status:
+          $ref: "#/components/schemas/UserStatus"
+      required:
+        - listId
+        - name
+        - owner
+    ListSummary:
+      allOf:
+        - $ref: "#/components/schemas/List"
+        - type: object
+          properties:
+            outstandingItemCount:
+              type: integer
+            lastUpdated:
+              type: string
+              format: date-time
+    ListCreate:
+      type: object
+      properties:
+        listId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        description:
+          type: string
+        icon:
+          $ref: "#/components/schemas/ListIcon"
+      required:
+        - name
+      unevaluatedProperties: false
+    ListUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - "null"
+        icon:
+          $ref: "#/components/schemas/ListIcon"
       unevaluatedProperties: false
     PlannerMeal:
       allOf:

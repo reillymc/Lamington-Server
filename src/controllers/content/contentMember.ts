@@ -19,7 +19,7 @@ export type SaveContentMemberRequest = Pick<ContentMember, "contentId"> & {
 export type SaveContentMemberResponse = Pick<ContentMember, "contentId"> & {
     members: Array<{
         userId: ContentMember["userId"];
-        status?: ContentMemberStatus;
+        status: ContentMemberStatus | null;
         firstName: string;
     }>;
 };
