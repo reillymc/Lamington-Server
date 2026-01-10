@@ -157,7 +157,7 @@ type ListItemResponse = {
     itemId: ListItem["itemId"];
     listId: ListItem["listId"];
     name: ListItem["name"];
-    completed: boolean;
+    completed: ListItem["completed"];
     updatedAt: Content["updatedAt"];
     ingredientId: ListItem["ingredientId"] | null;
     unit: ListItem["unit"] | null;
@@ -195,7 +195,7 @@ type ReadItemsResponse = {
 
 type CreateListItemPayload = {
     name: ListItem["name"];
-    completed?: boolean;
+    completed?: ListItem["completed"];
     ingredientId?: ListItem["ingredientId"];
     unit?: ListItem["unit"];
     amount?: ListItem["amount"];
@@ -216,7 +216,7 @@ type CreateItemsResponse = {
 type UpdateListItemPayload = {
     itemId: ListItem["itemId"];
     name?: ListItem["name"];
-    completed?: boolean;
+    completed?: ListItem["completed"];
     ingredientId?: ListItem["ingredientId"];
     unit?: ListItem["unit"];
     amount?: ListItem["amount"];

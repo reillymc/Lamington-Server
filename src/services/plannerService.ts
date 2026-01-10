@@ -296,7 +296,7 @@ export const createPlannerService: CreateService<PlannerService, "plannerReposit
             }
 
             if (memberId === userId) {
-                throw new InvalidOperationError("planner member", "Cannot remove self via this endpoint");
+                throw new InvalidOperationError("planner member", "Cannot remove self from planner");
             }
 
             await plannerRepository.removeMembers(trx, { plannerId, members: [{ userId: memberId }] });

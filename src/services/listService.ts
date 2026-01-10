@@ -344,7 +344,7 @@ export const createListService: CreateService<ListService, "listRepository"> = (
             }
 
             if (memberId === userId) {
-                throw new InvalidOperationError("list member", "Cannot remove self via this endpoint");
+                throw new InvalidOperationError("list member", "Cannot remove self from list");
             }
 
             await listRepository.removeMembers(trx, { listId, members: [{ userId: memberId }] });
