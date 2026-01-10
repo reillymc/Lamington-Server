@@ -34,17 +34,18 @@ export interface PlannerService {
         meal: components["schemas"]["PlannerMealUpdate"]
     ) => Promise<components["schemas"]["PlannerMeal"]>;
     deleteMeal: (userId: string, plannerId: string, mealId: string) => Promise<void>;
-    getMembers: (userId: string, plannerId: string) => Promise<ReadonlyArray<components["schemas"]["PlannerMember"]>>;
+    getMembers: (userId: string, plannerId: string) => Promise<ReadonlyArray<components["schemas"]["Member"]>>;
     inviteMember: (userId: string, plannerId: string, targetUserId: string) => Promise<void>;
     updateMember: (
         userId: string,
         plannerId: string,
         memberId: string,
-        status: components["schemas"]["PlannerMemberUpdateStatus"]
-    ) => Promise<components["schemas"]["PlannerMember"]>;
-    leaveMembership: (userId: string, plannerId: string, memberId?: string) => Promise<void>;
+        status: components["schemas"]["MemberUpdateStatus"]
+    ) => Promise<components["schemas"]["Member"]>;
+    removeMember: (userId: string, plannerId: string, memberId: string) => Promise<void>;
     acceptInvite: (userId: string, plannerId: string) => Promise<void>;
     declineInvite: (userId: string, plannerId: string) => Promise<void>;
+    leavePlanner: (userId: string, plannerId: string) => Promise<void>;
 }
 
 export const createPlannerService: CreateService<PlannerService, "plannerRepository"> = (
@@ -282,32 +283,23 @@ export const createPlannerService: CreateService<PlannerService, "plannerReposit
 
             return member;
         }),
-    leaveMembership: (userId, plannerId, memberId) =>
+    removeMember: (userId, plannerId, memberId) =>
         database.transaction(async trx => {
-            const targetId = memberId || userId;
-            const removingSelf = targetId === userId;
+            const permissions = await plannerRepository.verifyPermissions(trx, {
+                userId,
+                planners: [{ plannerId }],
+                status: "O",
+            });
 
-            if (removingSelf) {
-                const permissions = await plannerRepository.verifyPermissions(trx, {
-                    userId,
-                    planners: [{ plannerId }],
-                    status: ["A", "M"],
-                });
-                if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
-                    throw new NotFoundError("planner", plannerId);
-                }
-            } else {
-                const permissions = await plannerRepository.verifyPermissions(trx, {
-                    userId,
-                    planners: [{ plannerId }],
-                    status: "O",
-                });
-                if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
-                    throw new NotFoundError("planner", plannerId);
-                }
+            if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
+                throw new NotFoundError("planner", plannerId);
             }
 
-            await plannerRepository.removeMembers(trx, { plannerId, members: [{ userId: targetId }] });
+            if (memberId === userId) {
+                throw new InvalidOperationError("planner member", "Cannot remove self via this endpoint");
+            }
+
+            await plannerRepository.removeMembers(trx, { plannerId, members: [{ userId: memberId }] });
         }),
     acceptInvite: (userId, plannerId) =>
         database.transaction(async trx => {
@@ -332,6 +324,20 @@ export const createPlannerService: CreateService<PlannerService, "plannerReposit
                 userId,
                 planners: [{ plannerId }],
                 status: "P",
+            });
+
+            if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {
+                throw new NotFoundError("planner", plannerId);
+            }
+
+            await plannerRepository.removeMembers(trx, { plannerId, members: [{ userId }] });
+        }),
+    leavePlanner: (userId, plannerId) =>
+        database.transaction(async trx => {
+            const permissions = await plannerRepository.verifyPermissions(trx, {
+                userId,
+                planners: [{ plannerId }],
+                status: ["A", "M"],
             });
 
             if (permissions.planners.some(({ hasPermissions }) => !hasPermissions)) {

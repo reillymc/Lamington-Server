@@ -22,7 +22,7 @@ export type RecipeIngredientAmount = FractionValue | RangeValue | NumberValue;
 
 export type RecipeServings = {
     unit: string;
-    count: RangeValue | NumberValue;
+    count: RangeValue | NumberValue | FractionValue;
 };
 
 /**

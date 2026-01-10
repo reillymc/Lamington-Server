@@ -10,7 +10,7 @@ import { createCooklistRouter } from "./cookLists.ts";
 import { default as docsRouter } from "./docs.ts";
 import { createExtractorRouter } from "./extractor.ts";
 import { default as ingredientRouter } from "./ingredient.ts";
-import { default as listsRouter } from "./lists.ts";
+import { createListRouter } from "./lists.ts";
 import { createMealRouter } from "./meals.ts";
 import { createPlannerRouter } from "./planners.ts";
 import { createRecipeRouter } from "./recipes.ts";
@@ -20,7 +20,6 @@ import {
     attachmentEndpoint,
     bookEndpoint,
     ingredientEndpoint,
-    listEndpoint,
     recipeEndpoint,
     tagEndpoint,
     usersEndpoint,
@@ -35,13 +34,13 @@ const appRouter = (appDependencies: AppDependencies) =>
         .use(attachmentEndpoint, createAttachmentsRouter(appDependencies))
         .use(bookEndpoint, createBookRouter(appDependencies.services))
         .use(ingredientEndpoint, ingredientRouter)
-        .use(listEndpoint, listsRouter)
         .use(recipeEndpoint, createRecipeRouter(appDependencies.services))
         .use(tagEndpoint, tagsRouter)
         .use(usersEndpoint, usersRouter)
         .use(validationMiddleware)
         .use(createCooklistRouter(appDependencies.services))
         .use(createExtractorRouter(appDependencies.services))
+        .use(createListRouter(appDependencies.services))
         .use(createMealRouter(appDependencies.services))
         .use(createPlannerRouter(appDependencies.services))
         .use("/", notFoundMiddleware);

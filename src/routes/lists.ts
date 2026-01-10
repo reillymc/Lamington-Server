@@ -1,378 +1,184 @@
 import express from "express";
 
-import { ListActions, ListItemActions, ListMemberActions } from "../controllers/index.ts";
-import {
-    AppError,
-    InsufficientDataError,
-    MessageAction,
-    NotFoundError,
-    PermissionError,
-    userMessage,
-} from "../services/index.ts";
-import { prepareGetListResponseBody, validatePostListBody, validatePostListItemBody } from "./helpers/index.ts";
-import { validateListPermissions } from "./helpers/list.ts";
-import {
-    type DeleteListItemRequestBody,
-    type DeleteListItemRequestParams,
-    type DeleteListItemResponse,
-    type DeleteListMemberRequestBody,
-    type DeleteListMemberRequestParams,
-    type DeleteListMemberResponse,
-    type DeleteListRequestBody,
-    type DeleteListRequestParams,
-    type DeleteListResponse,
-    type GetListRequestBody,
-    type GetListRequestParams,
-    type GetListResponse,
-    type GetListsRequestBody,
-    type GetListsRequestParams,
-    type GetListsResponse,
-    ListEndpoint,
-    type Lists,
-    type PostListItemRequestBody,
-    type PostListItemRequestParams,
-    type PostListItemResponse,
-    type PostListMemberRequestBody,
-    type PostListMemberRequestParams,
-    type PostListMemberResponse,
-    type PostListRequestBody,
-    type PostListRequestParams,
-    type PostListResponse,
-    UserStatus,
-} from "./spec/index.ts";
+import type { AppDependencies } from "../appDependencies.ts";
+import { EnsureArray } from "../utils/index.ts";
+import type { paths, routes } from "./spec/index.ts";
 
-const router = express.Router();
-
-/**
- * GET request to fetch all lists for a user
- */
-router.get<GetListsRequestParams, GetListsResponse, GetListsRequestBody>(
-    ListEndpoint.getLists,
-    async ({ session }, res, next) => {
-        const { userId } = session;
-
-        // Fetch and return result
-        try {
-            const results = await ListActions.ReadByUser({ userId });
-            const outstandingItemCounts = await ListItemActions.CountOutstandingItems(results);
-            const datesUpdated = await ListItemActions.ReadLatestUpdatedTimestamp(results);
-
-            const outstandingItemsDict = Object.fromEntries(
-                outstandingItemCounts.map(({ listId, count }) => [listId, count])
+export const createListRouter = ({ listService }: AppDependencies["services"]) =>
+    express
+        .Router()
+        .get<
+            routes,
+            paths["/lists"]["get"]["parameters"]["path"],
+            paths["/lists"]["get"]["responses"]["200"]["content"]["application/json"],
+            paths["/lists"]["get"]["requestBody"],
+            paths["/lists"]["get"]["parameters"]["query"]
+        >("/lists", async ({ session }, res) => {
+            const data = await listService.getAll(session.userId);
+            return res.status(200).json(data);
+        })
+        .get<
+            routes,
+            paths["/lists/{listId}"]["get"]["parameters"]["path"],
+            paths["/lists/{listId}"]["get"]["responses"]["200"]["content"]["application/json"],
+            paths["/lists/{listId}"]["get"]["requestBody"],
+            paths["/lists/{listId}"]["get"]["parameters"]["query"]
+        >("/lists/:listId", async ({ params, session }, res) => {
+            const data = await listService.get(session.userId, params.listId);
+            return res.status(200).json(data);
+        })
+        .post<
+            routes,
+            paths["/lists"]["post"]["parameters"]["path"],
+            paths["/lists"]["post"]["responses"]["201"]["content"]["application/json"],
+            paths["/lists"]["post"]["requestBody"]["content"]["application/json"],
+            paths["/lists"]["post"]["parameters"]["query"]
+        >("/lists", async ({ body, session }, res) => {
+            const data = await listService.create(session.userId, body);
+            return res.status(201).json(data);
+        })
+        .patch<
+            routes,
+            paths["/lists/{listId}"]["patch"]["parameters"]["path"],
+            paths["/lists/{listId}"]["patch"]["responses"]["200"]["content"]["application/json"],
+            paths["/lists/{listId}"]["patch"]["requestBody"]["content"]["application/json"],
+            paths["/lists/{listId}"]["patch"]["parameters"]["query"]
+        >("/lists/:listId", async ({ params, body, session }, res) => {
+            const data = await listService.update(session.userId, params.listId, body);
+            return res.status(200).json(data);
+        })
+        .delete<
+            routes,
+            paths["/lists/{listId}"]["delete"]["parameters"]["path"],
+            paths["/lists/{listId}"]["delete"]["responses"]["204"]["content"],
+            paths["/lists/{listId}"]["delete"]["requestBody"],
+            paths["/lists/{listId}"]["delete"]["parameters"]["query"]
+        >("/lists/:listId", async ({ params, session }, res) => {
+            await listService.delete(session.userId, params.listId);
+            return res.status(204).send();
+        })
+        .get<
+            routes,
+            paths["/lists/{listId}/items"]["get"]["parameters"]["path"],
+            paths["/lists/{listId}/items"]["get"]["responses"]["200"]["content"]["application/json"],
+            paths["/lists/{listId}/items"]["get"]["requestBody"],
+            paths["/lists/{listId}/items"]["get"]["parameters"]["query"]
+        >("/lists/:listId/items", async ({ params, session }, res) => {
+            const data = await listService.getItems(session.userId, params.listId);
+            return res.status(200).json(data);
+        })
+        .post<
+            routes,
+            paths["/lists/{listId}/items"]["post"]["parameters"]["path"],
+            paths["/lists/{listId}/items"]["post"]["responses"]["201"]["content"]["application/json"],
+            paths["/lists/{listId}/items"]["post"]["requestBody"]["content"]["application/json"],
+            paths["/lists/{listId}/items"]["post"]["parameters"]["query"]
+        >("/lists/:listId/items", async ({ params, body, session }, res) => {
+            const data = await listService.createItems(session.userId, params.listId, EnsureArray(body));
+            return res.status(201).json(data);
+        })
+        .patch<
+            routes,
+            paths["/lists/{listId}/items/{itemId}"]["patch"]["parameters"]["path"],
+            paths["/lists/{listId}/items/{itemId}"]["patch"]["responses"]["200"]["content"]["application/json"],
+            paths["/lists/{listId}/items/{itemId}"]["patch"]["requestBody"]["content"]["application/json"],
+            paths["/lists/{listId}/items/{itemId}"]["patch"]["parameters"]["query"]
+        >("/lists/:listId/items/:itemId", async ({ params, body, session }, res) => {
+            const data = await listService.updateItem(session.userId, params.listId, params.itemId, body);
+            return res.status(200).json(data);
+        })
+        .delete<
+            routes,
+            paths["/lists/{listId}/items/{itemId}"]["delete"]["parameters"]["path"],
+            paths["/lists/{listId}/items/{itemId}"]["delete"]["responses"]["204"]["content"],
+            paths["/lists/{listId}/items/{itemId}"]["delete"]["requestBody"],
+            paths["/lists/{listId}/items/{itemId}"]["delete"]["parameters"]["query"]
+        >("/lists/:listId/items/:itemId", async ({ params, session }, res) => {
+            await listService.deleteItem(session.userId, params.listId, params.itemId);
+            return res.status(204).send();
+        })
+        .post<
+            routes,
+            paths["/lists/{listId}/items/move"]["post"]["parameters"]["path"],
+            paths["/lists/{listId}/items/move"]["post"]["responses"]["200"]["content"]["application/json"],
+            paths["/lists/{listId}/items/move"]["post"]["requestBody"]["content"]["application/json"],
+            paths["/lists/{listId}/items/move"]["post"]["parameters"]["query"]
+        >("/lists/:listId/items/move", async ({ params, body, session }, res) => {
+            const data = await listService.moveItems(
+                session.userId,
+                params.listId,
+                body.itemIds,
+                body.destinationListId
             );
-
-            const datesUpdatedDict = Object.fromEntries(
-                datesUpdated.map(({ listId, updatedAt }) => [listId, updatedAt])
-            );
-
-            const data: Lists = Object.fromEntries(
-                results.map(list => [
-                    list.listId,
-                    prepareGetListResponseBody({
-                        list,
-                        userId,
-                        outstandingItemCount: outstandingItemsDict[list.listId],
-                        lastUpdated: datesUpdatedDict[list.listId],
-                    }),
-                ])
-            );
-
-            return res.status(200).json({ error: false, data });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({ action: MessageAction.Read, entity: "lists" }),
-                })
-            );
-        }
-    }
-);
-
-/**
- * GET request to fetch list
- */
-router.get<GetListRequestParams, GetListResponse, GetListRequestBody>(
-    ListEndpoint.getList,
-    async ({ params, session }, res, next) => {
-        // Extract request fields
-        const { listId } = params;
-        const { userId } = session;
-
-        if (!listId) return next(new InsufficientDataError("list"));
-
-        // Fetch and return result
-        try {
-            const [list] = await ListActions.Read({ listId, userId });
-            if (!list) return next(new NotFoundError("list", listId));
-
-            const listItemsResponse = await ListItemActions.Read({ listId });
-            const listMembersResponse = await ListMemberActions.read({ listId });
-
-            const data = prepareGetListResponseBody({
-                list,
-                userId,
-                listItems: listItemsResponse,
-                members: listMembersResponse,
-            });
-
-            return res.status(200).json({ error: false, data });
-        } catch (e: unknown) {
-            next(new AppError({ innerError: e, message: userMessage({ action: MessageAction.Read, entity: "list" }) }));
-        }
-    }
-);
-
-/**
- * POST request to create a list.
- */
-router.post<PostListRequestParams, PostListResponse, PostListRequestBody>(
-    ListEndpoint.postList,
-    async ({ body, session }, res, next) => {
-        // Extract request fields
-        const { userId } = session;
-        const [validLists, invalidLists] = validatePostListBody(body, userId);
-
-        // Check all required fields are present
-        if (!validLists.length || invalidLists.length) {
-            return next(new InsufficientDataError("list"));
-        }
-
-        // Update database and return status
-        try {
-            const { permissionsValid } = await validateListPermissions(
-                validLists.map(({ listId }) => listId),
-                userId,
-                UserStatus.Owner
-            );
-
-            if (!permissionsValid) return next(new PermissionError("list"));
-
-            await ListActions.Save(validLists);
-
-            return res.status(201).json({ error: false, message: `List saved` });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({
-                        action: MessageAction.Save,
-                        entity: "list",
-                    }),
-                })
-            );
-        }
-    }
-);
-
-/**
- * POST request to create a list item.
- */
-router.post<PostListItemRequestParams, PostListItemResponse, PostListItemRequestBody>(
-    ListEndpoint.postListItem,
-    async ({ body, params, session }, res, next) => {
-        // Extract request fields
-        const { listId } = params;
-        const { userId } = session;
-        const { validListItems, invalidListItems, movedItems } = validatePostListItemBody(body, userId, listId);
-
-        // Check all required fields are present
-        if (!validListItems.length || invalidListItems.length) {
-            return next(new InsufficientDataError("list item"));
-        }
-
-        // Update database and return status
-        try {
-            const { permissionsValid, missingLists } = await validateListPermissions(
-                [listId, ...movedItems.map(({ listId }) => listId)],
-                userId,
-                UserStatus.Administrator
-            );
-
-            if (missingLists.length) return next(new NotFoundError("list", missingLists));
-
-            if (!permissionsValid) return next(new PermissionError("list item"));
-
-            await ListItemActions.Save(validListItems);
-
-            return res.status(201).json({ error: false, message: "List item added." });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({
-                        action: listId ? MessageAction.Update : MessageAction.Create,
-                        entity: "list item",
-                    }),
-                })
-            );
-        }
-    }
-);
-
-/**
- * POST request to update a list member. Currently only used to accept self into a list.
- */
-router.post<PostListMemberRequestParams, PostListMemberResponse, PostListMemberRequestBody>(
-    ListEndpoint.postListMember,
-    async ({ params, session }, res, next) => {
-        // Extract request fields
-        const { listId } = params;
-        const { userId } = session;
-
-        // Check all required fields are present
-        if (!listId) return next(new InsufficientDataError("list member"));
-
-        // Update database and return status
-        try {
-            const { permissionsValid, missingLists } = await validateListPermissions(
-                listId,
-                userId,
-                UserStatus.Pending
-            );
-
-            if (missingLists.length) return next(new NotFoundError("list", missingLists));
-
-            if (!permissionsValid) return next(new PermissionError("list member"));
-
-            await ListMemberActions.save({ listId, members: [{ userId, status: UserStatus.Member }] });
-
-            return res.status(201).json({ error: false, message: "List member removed." });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({
-                        action: MessageAction.Delete,
-                        entity: "list member",
-                    }),
-                })
-            );
-        }
-    }
-);
-
-/**
- * DELETE request to delete a list.
- */
-router.delete<DeleteListRequestParams, DeleteListResponse, DeleteListRequestBody>(
-    ListEndpoint.deleteList,
-    async ({ params, session }, res, next) => {
-        // Extract request fields
-        const { listId } = params;
-        const { userId } = session;
-
-        // Check all required fields are present
-        if (!listId) return next(new InsufficientDataError("list"));
-
-        // Update database and return status
-        try {
-            const { permissionsValid, missingLists } = await validateListPermissions(listId, userId, UserStatus.Owner);
-
-            if (missingLists.length) return next(new NotFoundError("list", missingLists));
-
-            if (!permissionsValid) return next(new PermissionError("list"));
-
-            await ListActions.Delete({ listId });
-            return res.status(201).json({ error: false, message: "List deleted." });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({ action: MessageAction.Delete, entity: "list item" }),
-                })
-            );
-        }
-    }
-);
-
-/**
- * DELETE request to delete a list item.
- */
-router.delete<DeleteListItemRequestParams, DeleteListItemResponse, DeleteListItemRequestBody>(
-    ListEndpoint.deleteListItem,
-    async ({ params, session }, res, next) => {
-        // Extract request fields
-        const { listId, itemId } = params;
-        const { userId } = session;
-
-        // Check all required fields are present
-        if (!listId || !itemId) return next(new InsufficientDataError("list item"));
-
-        // Update database and return status
-        try {
-            const { permissionsValid, missingLists } = await validateListPermissions(
-                listId,
-                userId,
-                UserStatus.Administrator
-            );
-
-            if (missingLists.length) return next(new NotFoundError("list", missingLists));
-
-            if (!permissionsValid) return next(new PermissionError("list item"));
-
-            await ListItemActions.Delete({ listId, itemId });
-
-            return res.status(201).json({ error: false, message: "List item deleted." });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({ action: MessageAction.Delete, entity: "list item" }),
-                })
-            );
-        }
-    }
-);
-
-/**
- * DELETE request to delete a list member.
- */
-router.delete<DeleteListMemberRequestParams, DeleteListMemberResponse, DeleteListMemberRequestBody>(
-    ListEndpoint.deleteListMember,
-    async ({ params, session }, res, next) => {
-        // Extract request fields
-        const { listId, userId: userIdReq } = params;
-        const { userId } = session;
-
-        const userToDelete = userIdReq || userId;
-
-        // Check all required fields are present
-        if (!userToDelete || !listId) return next(new InsufficientDataError("list member"));
-
-        // Update database and return status
-        try {
-            const [existingList] = await ListActions.ReadPermissions([{ listId, userId }]);
-            if (!existingList) return next(new NotFoundError("list", listId));
-
-            if (userIdReq && userId !== userIdReq && existingList.createdBy !== userId) {
-                return next(new PermissionError("list member"));
-            }
-
-            if (existingList.createdBy === userToDelete) {
-                return next(
-                    new AppError({
-                        status: 400,
-                        code: "OWNER",
-                        message: "Cannot remove list owner from list.",
-                    })
-                );
-            }
-
-            await ListMemberActions.delete({ listId, userId: userToDelete });
-            return res.status(201).json({ error: false, message: "List member removed." });
-        } catch (e: unknown) {
-            next(
-                new AppError({
-                    innerError: e,
-                    message: userMessage({
-                        action: MessageAction.Delete,
-                        entity: "list member",
-                    }),
-                })
-            );
-        }
-    }
-);
-
-export default router;
+            return res.status(200).json(data);
+        })
+        .get<
+            routes,
+            paths["/lists/{listId}/members"]["get"]["parameters"]["path"],
+            paths["/lists/{listId}/members"]["get"]["responses"]["200"]["content"]["application/json"],
+            paths["/lists/{listId}/members"]["get"]["requestBody"],
+            paths["/lists/{listId}/members"]["get"]["parameters"]["query"]
+        >("/lists/:listId/members", async ({ params, session }, res) => {
+            const data = await listService.getMembers(session.userId, params.listId);
+            return res.status(200).json(data);
+        })
+        .post<
+            routes,
+            paths["/lists/{listId}/members"]["post"]["parameters"]["path"],
+            paths["/lists/{listId}/members"]["post"]["responses"]["204"]["content"],
+            paths["/lists/{listId}/members"]["post"]["requestBody"]["content"]["application/json"],
+            paths["/lists/{listId}/members"]["post"]["parameters"]["query"]
+        >("/lists/:listId/members", async ({ params, body, session }, res) => {
+            await listService.inviteMember(session.userId, params.listId, body.userId);
+            return res.status(204).send();
+        })
+        .patch<
+            routes,
+            paths["/lists/{listId}/members/{userId}"]["patch"]["parameters"]["path"],
+            paths["/lists/{listId}/members/{userId}"]["patch"]["responses"]["200"]["content"]["application/json"],
+            paths["/lists/{listId}/members/{userId}"]["patch"]["requestBody"]["content"]["application/json"],
+            paths["/lists/{listId}/members/{userId}"]["patch"]["parameters"]["query"]
+        >("/lists/:listId/members/:userId", async ({ params, body, session }, res) => {
+            const data = await listService.updateMember(session.userId, params.listId, params.userId, body.status);
+            return res.status(200).json(data);
+        })
+        .delete<
+            routes,
+            paths["/lists/{listId}/members/{userId}"]["delete"]["parameters"]["path"],
+            paths["/lists/{listId}/members/{userId}"]["delete"]["responses"]["204"]["content"],
+            paths["/lists/{listId}/members/{userId}"]["delete"]["requestBody"],
+            paths["/lists/{listId}/members/{userId}"]["delete"]["parameters"]["query"]
+        >("/lists/:listId/members/:userId", async ({ params, session }, res) => {
+            await listService.removeMember(session.userId, params.listId, params.userId);
+            return res.status(204).send();
+        })
+        .post<
+            routes,
+            paths["/lists/{listId}/invite/accept"]["post"]["parameters"]["path"],
+            paths["/lists/{listId}/invite/accept"]["post"]["responses"]["204"]["content"],
+            paths["/lists/{listId}/invite/accept"]["post"]["requestBody"],
+            paths["/lists/{listId}/invite/accept"]["post"]["parameters"]["query"]
+        >("/lists/:listId/invite/accept", async ({ params, session }, res) => {
+            await listService.acceptInvite(session.userId, params.listId);
+            return res.status(204).send();
+        })
+        .post<
+            routes,
+            paths["/lists/{listId}/invite/decline"]["post"]["parameters"]["path"],
+            paths["/lists/{listId}/invite/decline"]["post"]["responses"]["204"]["content"],
+            paths["/lists/{listId}/invite/decline"]["post"]["requestBody"],
+            paths["/lists/{listId}/invite/decline"]["post"]["parameters"]["query"]
+        >("/lists/:listId/invite/decline", async ({ params, session }, res) => {
+            await listService.declineInvite(session.userId, params.listId);
+            return res.status(204).send();
+        })
+        .post<
+            routes,
+            paths["/lists/{listId}/leave"]["post"]["parameters"]["path"],
+            paths["/lists/{listId}/leave"]["post"]["responses"]["204"]["content"],
+            paths["/lists/{listId}/leave"]["post"]["requestBody"],
+            paths["/lists/{listId}/leave"]["post"]["parameters"]["query"]
+        >("/lists/:listId/leave", async ({ params, session }, res) => {
+            await listService.leaveList(session.userId, params.listId);
+            return res.status(204).send();
+        });

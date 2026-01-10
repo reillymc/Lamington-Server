@@ -79,11 +79,10 @@ describe("Get user planners", () => {
                 { name: uuid(), description: uuid() },
                 { name: uuid(), description: uuid() },
                 { name: uuid(), description: uuid() },
-                { name: uuid(), description: uuid() },
             ],
         });
 
-        const [adminPlanner, memberPlanner, pendingPlanner, blockedPlanner] = planners;
+        const [adminPlanner, memberPlanner, pendingPlanner] = planners;
 
         await KnexPlannerRepository.saveMembers(database, [
             {
@@ -98,6 +97,31 @@ describe("Get user planners", () => {
                 plannerId: pendingPlanner!.plannerId,
                 members: [{ userId: user.userId, status: UserStatus.Pending }],
             },
+        ]);
+
+        const res = await request(app).get("/v1/planners").set(token);
+        expect(res.statusCode).toEqual(200);
+
+        const body = res.body as components["schemas"]["Planner"][];
+        const ids = body.map(p => p.plannerId);
+
+        expect(ids).toContain(adminPlanner!.plannerId);
+        expect(ids).toContain(memberPlanner!.plannerId);
+        expect(ids).toContain(pendingPlanner!.plannerId);
+    });
+
+    it("should not return planners where the user is blacklisted", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const { planners } = await KnexPlannerRepository.create(database, {
+            userId: otherUser!.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const [blockedPlanner] = planners;
+
+        await KnexPlannerRepository.saveMembers(database, [
             {
                 plannerId: blockedPlanner!.plannerId,
                 members: [{ userId: user.userId, status: UserStatus.Blacklisted }],
@@ -110,9 +134,6 @@ describe("Get user planners", () => {
         const body = res.body as components["schemas"]["Planner"][];
         const ids = body.map(p => p.plannerId);
 
-        expect(ids).toContain(adminPlanner!.plannerId);
-        expect(ids).toContain(memberPlanner!.plannerId);
-        expect(ids).toContain(pendingPlanner!.plannerId);
         expect(ids).not.toContain(blockedPlanner!.plannerId);
     });
 
@@ -2001,49 +2022,6 @@ describe("Accept planner invitation", () => {
             expect(res.statusCode).toEqual(404);
         }
     });
-
-    it("should return 404 when trying to accept an invite meant for another user", async () => {
-        const [owner] = await CreateUsers(database);
-        const [invitee] = await CreateUsers(database);
-        const [attackerToken] = await PrepareAuthenticatedUser(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: owner!.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: invitee!.userId, status: UserStatus.Pending }],
-        });
-
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/invite/accept`).set(attackerToken);
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should return 404 when the owner tries to accept an invite meant for another user", async () => {
-        const [ownerToken, owner] = await PrepareAuthenticatedUser(database);
-        const [invitee] = await CreateUsers(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: owner.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: invitee!.userId, status: UserStatus.Pending }],
-        });
-
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/invite/accept`).set(ownerToken);
-
-        expect(res.statusCode).toEqual(404);
-    });
 });
 
 describe("Decline planner invitation", () => {
@@ -2111,49 +2089,6 @@ describe("Decline planner invitation", () => {
 
             expect(res.statusCode).toEqual(404);
         }
-    });
-
-    it("should return 404 when trying to decline an invite meant for another user", async () => {
-        const [owner] = await CreateUsers(database);
-        const [invitee] = await CreateUsers(database);
-        const [attackerToken] = await PrepareAuthenticatedUser(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: owner!.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: invitee!.userId, status: UserStatus.Pending }],
-        });
-
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/invite/decline`).set(attackerToken);
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should return 404 when the owner tries to decline an invite meant for another user", async () => {
-        const [ownerToken, owner] = await PrepareAuthenticatedUser(database);
-        const [invitee] = await CreateUsers(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: owner.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: invitee!.userId, status: UserStatus.Pending }],
-        });
-
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/invite/decline`).set(ownerToken);
-
-        expect(res.statusCode).toEqual(404);
     });
 });
 

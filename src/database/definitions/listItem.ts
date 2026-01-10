@@ -19,11 +19,6 @@ export interface ListItem {
     completed: boolean;
     ingredientId: string | null;
     unit: string | null;
-    /**
-     * TODO proper definition required (similar to customisation)
-     * JSON stringified object containing the amount of the ingredient, as type number, fraction
-     * or range with its representation explicitly denoted.
-     */
     amount: ListItemIngredientAmount | null;
     notes: string | null;
 }

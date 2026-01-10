@@ -6,6 +6,7 @@ import type { Database, User } from "../database/index.ts";
 import type { RepositoryBulkService, RepositoryService } from "./repository.ts";
 
 type ListUserStatus = "O" | "A" | "M" | "P" | "B";
+type ListIcon = `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17}`;
 
 type VerifyPermissionsRequest = {
     userId: User["userId"];
@@ -40,7 +41,7 @@ type BaseListResponse = {
     name: List["name"];
     description: List["description"];
     color: string | null;
-    icon: string | null;
+    icon: ListIcon | null;
     owner: {
         userId: User["userId"];
         firstName: User["firstName"];
@@ -78,7 +79,7 @@ type CreateListsRequest = {
         name: List["name"];
         description?: List["description"];
         color?: string;
-        icon?: string;
+        icon?: ListIcon;
     }>;
 };
 
@@ -89,9 +90,9 @@ type UpdateListsRequest = {
     lists: ReadonlyArray<{
         listId: List["listId"];
         name?: List["name"];
-        description?: List["description"];
+        description?: List["description"] | null;
         color?: string;
-        icon?: string;
+        icon?: ListIcon;
     }>;
 };
 
@@ -179,6 +180,19 @@ type ReadAllItemsResponse = {
     items: ReadonlyArray<ListItemResponse>;
 };
 
+type ReadItemsRequest = {
+    userId: User["userId"];
+    listId: List["listId"];
+    items: ReadonlyArray<{
+        itemId: ListItem["itemId"];
+    }>;
+};
+
+type ReadItemsResponse = {
+    listId: List["listId"];
+    items: ReadonlyArray<ListItemResponse>;
+};
+
 type CreateListItemPayload = {
     name: ListItem["name"];
     completed?: boolean;
@@ -211,10 +225,24 @@ type UpdateListItemPayload = {
 
 type UpdateItemsRequest = {
     listId: List["listId"];
+    userId: User["userId"];
     items: ReadonlyArray<UpdateListItemPayload>;
 };
 
 type UpdateItemsResponse = {
+    listId: List["listId"];
+    items: ReadonlyArray<ListItemResponse>;
+};
+
+type MoveItemsRequest = {
+    userId: User["userId"];
+    listId: ListItem["listId"];
+    items: ReadonlyArray<{
+        itemId: ListItem["itemId"];
+    }>;
+};
+
+type MoveItemsResponse = {
     listId: List["listId"];
     items: ReadonlyArray<ListItemResponse>;
 };
@@ -264,9 +292,11 @@ export interface ListRepository<TDatabase extends Database = Database> {
         GetLatestUpdatedTimestampRequest,
         GetLatestUpdatedTimestampResponse
     >;
+    moveItems: RepositoryService<TDatabase, MoveItemsRequest, MoveItemsResponse>;
     read: RepositoryService<TDatabase, ReadListsRequest, ReadListsResponse>;
     readAll: RepositoryService<TDatabase, ReadAllListsRequest, ReadAllListsResponse>;
     readAllItems: RepositoryService<TDatabase, ReadAllItemsRequest, ReadAllItemsResponse>;
+    readItems: RepositoryService<TDatabase, ReadItemsRequest, ReadItemsResponse>;
     readMembers: RepositoryBulkService<TDatabase, ReadMembersRequest, ReadMembersResponse>;
     removeMembers: RepositoryBulkService<TDatabase, RemoveMembersRequest, RemoveMembersResponse>;
     saveMembers: RepositoryBulkService<TDatabase, SaveMembersRequest, SaveMembersResponse>;

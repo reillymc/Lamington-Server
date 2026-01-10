@@ -23,7 +23,6 @@ import { UserStatus } from "../../src/routes/spec/user.ts";
 import type { EntityMember } from "../../src/routes/spec/common.ts";
 import {
     BookEndpoint,
-    CreateBooks,
     CreateUsers,
     PrepareAuthenticatedUser,
     randomBoolean,
@@ -54,8 +53,16 @@ describe("get all books", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [otherUser] = await CreateUsers(database, { count: 1 });
 
-        const [_, count] = await CreateBooks(database, user);
-        await CreateBooks(database, otherUser!);
+        const length = randomNumber();
+        await KnexBookRepository.create(database, {
+            userId: user.userId,
+            books: Array.from({ length }, () => ({ name: uuid(), description: uuid() })),
+        });
+
+        await KnexBookRepository.create(database, {
+            userId: otherUser!.userId,
+            books: Array.from({ length: randomNumber() }, () => ({ name: uuid(), description: uuid() })),
+        });
 
         const res = await request(app).get(BookEndpoint.getBooks).set(token);
 
@@ -63,16 +70,25 @@ describe("get all books", () => {
 
         const { data } = res.body as GetBooksResponse;
 
-        expect(Object.keys(data ?? {}).length).toEqual(count);
+        expect(Object.keys(data ?? {}).length).toEqual(length);
     });
 
     it("should return correct book membership details for user", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [otherUser] = await CreateUsers(database, { count: 1 });
 
-        const [editableBooks] = await CreateBooks(database, otherUser!);
-        const [acceptedBooks] = await CreateBooks(database, otherUser!);
-        const [nonAcceptedBooks] = await CreateBooks(database, otherUser!);
+        const { books: editableBooks } = await KnexBookRepository.create(database, {
+            userId: otherUser!.userId,
+            books: Array.from({ length: randomNumber() }, () => ({ name: uuid(), description: uuid() })),
+        });
+        const { books: acceptedBooks } = await KnexBookRepository.create(database, {
+            userId: otherUser!.userId,
+            books: Array.from({ length: randomNumber() }, () => ({ name: uuid(), description: uuid() })),
+        });
+        const { books: nonAcceptedBooks } = await KnexBookRepository.create(database, {
+            userId: otherUser!.userId,
+            books: Array.from({ length: randomNumber() }, () => ({ name: uuid(), description: uuid() })),
+        });
 
         await KnexBookRepository.saveMembers(database, [
             ...editableBooks.map(({ bookId }) => ({

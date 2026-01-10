@@ -1,10 +1,11 @@
 import express from "express";
 import { v4 as Uuid } from "uuid";
 
-import { ListActions, ListItemActions, UserActions } from "../controllers/index.ts";
+import { UserActions } from "../controllers/index.ts";
 import { AppError, MessageAction, userMessage } from "../services/index.ts";
 import db, { type KnexDatabase } from "../database/index.ts";
 import { KnexBookRepository } from "../repositories/knex/knexBookRepository.ts";
+import { KnexListRepository } from "../repositories/knex/knexListRepository.ts";
 import { KnexPlannerRepository } from "../repositories/knex/knexPlannerRepository.ts";
 import { KnexRecipeRepository } from "../repositories/knex/knexRecipeRepository.ts";
 import { getStatus } from "./helpers/index.ts";
@@ -164,24 +165,31 @@ router.delete<DeleteUserRequestParams, DeleteUserResponse>(
 export default router;
 
 const createDefaultUserData = async (userId: string) => {
-    const listId = Uuid();
-    const listItemId = Uuid();
-
-    await ListActions.Save({
-        listId,
-        createdBy: userId,
-        name: "My Shopping List",
-        description: "A list of all the items I need to buy",
+    const {
+        lists: [list],
+    } = await KnexListRepository.create(db as KnexDatabase, {
+        userId,
+        lists: [
+            {
+                name: "My Shopping List",
+                description: "A list of all the items I need to buy",
+            },
+        ],
     });
 
-    await ListItemActions.Save({
-        listId,
-        itemId: listItemId,
-        createdBy: userId,
-        name: "Example item",
-        completed: false,
-        notes: "You can edit or delete this item by swiping left on it",
-    });
+    if (list) {
+        await KnexListRepository.createItems(db as KnexDatabase, {
+            userId,
+            listId: list.listId,
+            items: [
+                {
+                    name: "Example item",
+                    completed: false,
+                    notes: "You can edit or delete this item by swiping left on it",
+                },
+            ],
+        });
+    }
 
     const {
         books: [book],

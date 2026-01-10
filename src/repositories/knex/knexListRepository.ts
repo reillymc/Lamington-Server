@@ -19,7 +19,7 @@ const formatListItem = (item: any): Awaited<ReturnType<ListRepository["readAllIt
     completed: !!item.completed,
     ingredientId: toUndefined(item.ingredientId),
     unit: toUndefined(item.unit),
-    amount: item.amount,
+    amount: toUndefined(item.amount),
     updatedAt: item.updatedAt,
     notes: toUndefined(item.notes),
     owner: {
@@ -28,7 +28,7 @@ const formatListItem = (item: any): Awaited<ReturnType<ListRepository["readAllIt
     },
 });
 
-const readItemsByIds = async (db: KnexDatabase, listId: string, itemIds: string[]) => {
+const readItemsByIds = async (db: KnexDatabase, userId: string, listId: string, itemIds: string[]) => {
     const result = await db(lamington.listItem)
         .select(
             listItem.itemId,
@@ -48,7 +48,8 @@ const readItemsByIds = async (db: KnexDatabase, listId: string, itemIds: string[
         .whereIn(listItem.itemId, itemIds)
         .modify(qb => {
             if (listId) qb.where(listItem.listId, listId);
-        });
+        })
+        .modify(withContentReadPermissions({ userId, idColumn: listItem.itemId }));
 
     return result.map(formatListItem);
 };
@@ -119,6 +120,16 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
         };
     },
     read,
+    readItems: async (db, { userId, listId, items }) => {
+        const result = await readItemsByIds(
+            db,
+            userId,
+            listId,
+            items.map(i => i.itemId)
+        );
+
+        return { items: result, listId };
+    },
     readAll: async (db, { userId, filter }) => {
         const listItems: any[] = await db(lamington.list)
             .select(
@@ -252,13 +263,14 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
 
         const updatedItems = await readItemsByIds(
             db,
+            userId,
             listId,
             itemsToCreate.map(i => i.itemId)
         );
 
         return { listId, items: updatedItems };
     },
-    updateItems: async (db, { listId, items }) => {
+    updateItems: async (db, { userId, listId, items }) => {
         for (const item of items) {
             const updateData = buildUpdateRecord(item, listItemColumns);
             if (updateData) {
@@ -271,6 +283,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
 
         const updatedItems = await readItemsByIds(
             db,
+            userId,
             listId,
             items.map(i => i.itemId)
         );
@@ -290,6 +303,27 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
             })
             .delete();
         return { listId, count };
+    },
+    moveItems: async (db, { userId, listId, items }) => {
+        if (items.length === 0) {
+            return { listId, items: [] };
+        }
+
+        await db(lamington.listItem)
+            .whereIn(
+                listItem.itemId,
+                items.map(i => i.itemId)
+            )
+            .update({ listId });
+
+        const updatedItems = await readItemsByIds(
+            db,
+            userId,
+            listId,
+            items.map(i => i.itemId)
+        );
+
+        return { listId, items: updatedItems };
     },
     countOutstandingItems: async (db, request) => {
         const listIds = EnsureArray(request).map(({ listId }) => listId);

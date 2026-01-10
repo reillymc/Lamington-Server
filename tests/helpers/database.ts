@@ -1,17 +1,10 @@
 import { v4 as uuid } from "uuid";
 
-import { IngredientActions, ListActions, UserActions } from "../../src/controllers/index.ts";
-import { type ListService } from "../../src/controllers/spec/index.ts";
-import db, {
-    type KnexDatabase,
-    type ServiceParams,
-    type ServiceParamsDi,
-    lamington,
-} from "../../src/database/index.ts";
+import { IngredientActions, UserActions } from "../../src/controllers/index.ts";
+import db, { type KnexDatabase, type ServiceParamsDi, lamington } from "../../src/database/index.ts";
 import { UserStatus } from "../../src/routes/spec/index.ts";
 import { hashPassword } from "../../src/services/index.ts";
 import { randomCount } from "./data.ts";
-import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 
 export const CreateUsers = async (
     database: KnexDatabase,
@@ -69,49 +62,16 @@ export const CleanTables = async (...tables: Table[]) => {
     if (tables.includes(lamington.content)) await db.table(lamington.content).del();
 };
 
-export const CreateBooks = async (
+export const CreateIngredients = async (
     database: KnexDatabase,
-    { count = randomCount, userId }: { count?: number; userId: string }
-) => {
-    const { books } = await KnexBookRepository.create(database, {
-        userId: userId,
-        books: Array.from({ length: count }, () => ({
-            bookId: uuid(),
-            description: uuid(),
-            name: uuid(),
-        })),
-    });
-
-    return [books, count] as const;
-};
-
-export const CreateLists = async ({
-    count = randomCount,
-    createdBy,
-}: {
-    count?: number;
-    createdBy: string;
-}): Promise<[ServiceParams<ListService, "Save">[], number]> => {
-    const lists = Array.from({ length: count }, () => ({
-        listId: uuid(),
+    {
+        count = randomCount,
         createdBy,
-        description: uuid(),
-        name: uuid(),
-        members: [],
-    })) satisfies ServiceParams<ListService, "Save">[];
-
-    await ListActions.Save(lists);
-
-    return [lists, count];
-};
-
-export const CreateIngredients = async ({
-    count = randomCount,
-    createdBy,
-}: {
-    count?: number;
-    createdBy: string | string[];
-}) => {
+    }: {
+        count?: number;
+        createdBy: string | string[];
+    }
+) => {
     const ingredients = Array.from({ length: count }, () => ({
         ingredientId: uuid(),
         name: uuid(),
@@ -119,7 +79,7 @@ export const CreateIngredients = async ({
         createdBy: Array.isArray(createdBy) ? createdBy[Math.floor(Math.random() * createdBy.length)] : createdBy,
     })) satisfies ServiceParamsDi<IngredientActions, "save">[];
 
-    await IngredientActions.save(db as KnexDatabase, ingredients);
+    await IngredientActions.save(database, ingredients);
 
     return [ingredients, count] as const;
 };

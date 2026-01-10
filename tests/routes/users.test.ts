@@ -2,9 +2,9 @@ import { expect } from "expect";
 import type { Express } from "express";
 import { before, describe, it } from "node:test";
 import request from "supertest";
+import { v4 } from "uuid";
 
 import { setupApp } from "../../src/app.ts";
-import { ListItemActions } from "../../src/controllers/listItem.ts";
 import { UserActions } from "../../src/controllers/user.ts";
 import {
     type GetPendingUsersResponse,
@@ -13,9 +13,7 @@ import {
     UserStatus,
 } from "../../src/routes/spec/index.ts";
 import {
-    CreateBooks,
     CreateIngredients,
-    CreateLists,
     CreateUsers,
     PrepareAuthenticatedUser,
     UserEndpoint,
@@ -26,6 +24,7 @@ import { default as knexDb, type KnexDatabase } from "../../src/database/index.t
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
+import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
 
 const db = knexDb as KnexDatabase;
 
@@ -176,9 +175,15 @@ describe("delete users", () => {
     it("should delete user and accommodate foreign keys", async () => {
         const [token, { userId }] = await PrepareAuthenticatedUser(db, UserStatus.Member);
 
-        await CreateBooks(db, { userId });
-        await CreateLists({ createdBy: userId });
-        await CreateIngredients({ createdBy: userId });
+        await KnexBookRepository.create(db, {
+            userId,
+            books: [{ name: v4() }],
+        });
+        await KnexListRepository.create(db, {
+            userId,
+            lists: [{ name: v4() }],
+        });
+        await CreateIngredients(db, { createdBy: userId });
 
         const response = await request(app).delete(UserEndpoint.deleteUsers(userId)).set(token);
 
@@ -303,8 +308,11 @@ describe("approve user", () => {
         if (!list) throw new Error("List not created");
         expect(list.createdBy).toEqual(user.userId);
 
-        const listItems = await ListItemActions.Read({ listId: list.listId });
-        expect(listItems.length).toEqual(1);
+        const { items } = await KnexListRepository.readAllItems(db, {
+            userId: user.userId,
+            filter: { listId: list.listId },
+        });
+        expect(items.length).toEqual(1);
 
         const { books } = await KnexBookRepository.readAll(db, user);
         expect(books.length).toEqual(1);

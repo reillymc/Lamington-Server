@@ -6,7 +6,6 @@ import {
     type GetAllRecipesRequestQuery,
     type GetMyRecipesRequestQuery,
     type IngredientServices,
-    type ListServices,
     type TagServices,
     type UserServices,
     approveSubpath,
@@ -16,9 +15,6 @@ import {
     bookMemberSubpath,
     imageSubpath,
     ingredientEndpoint,
-    itemSubpath,
-    listEndpoint,
-    listMemberSubpath,
     loginSubpath,
     rateSubpath,
     recipeEndpoint,
@@ -72,19 +68,6 @@ export const IngredientEndpoint = {
     postIngredient: `${ApiUrl}${ingredientEndpoint}`,
     getMyIngredients: `${ApiUrl}${ingredientEndpoint}/my`,
 } as const satisfies Record<keyof IngredientServices, Endpoint>;
-
-export const ListEndpoint = {
-    deleteList: (listId: string) => `${ApiUrl}${listEndpoint}/${listId}` as const,
-    deleteListItem: (listId: string, itemId: string) =>
-        `${ApiUrl}${listEndpoint}/${listId}/${itemSubpath}/${itemId}` as const,
-    deleteListMember: (listId: string, memberId: string) =>
-        `${ApiUrl}${listEndpoint}/${listId}/${listMemberSubpath}/${memberId}` as const,
-    getList: (listId: string) => `${ApiUrl}${listEndpoint}/${listId}` as const,
-    getLists: `${ApiUrl}${listEndpoint}`,
-    postList: `${ApiUrl}${listEndpoint}`,
-    postListItem: (listId: string) => `${ApiUrl}${listEndpoint}/${listId}/${itemSubpath}` as const,
-    postListMember: (listId: string) => `${ApiUrl}${listEndpoint}/${listId}/${listMemberSubpath}` as const,
-} as const satisfies Record<keyof ListServices, Endpoint>;
 
 export const RecipeEndpoint = {
     deleteRecipe: (recipeId: string) => `${ApiUrl}${recipeEndpoint}/${recipeId}` as const,
