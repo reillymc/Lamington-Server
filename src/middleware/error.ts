@@ -1,7 +1,6 @@
 import type { ErrorRequestHandler } from "express";
 
-import { authEndpoint } from "../routes/spec/index.ts";
-import { AppError, logger, ValidationError } from "../services/index.ts";
+import { AppError, logger, UnauthorizedError, ValidationError } from "../services/index.ts";
 
 export const errorMiddleware: ErrorRequestHandler = (error: unknown, request, response, _next) => {
     let status = 500;
@@ -20,13 +19,19 @@ export const errorMiddleware: ErrorRequestHandler = (error: unknown, request, re
         innerError = error.innerError;
     }
 
+    if (error instanceof UnauthorizedError) {
+        status = error.status;
+        message = error.message;
+        innerError = error.innerError;
+    }
+
     logger.log({
         level: "error",
         message: (error as Error)?.message || "Unknown Error",
         request: {
             params: request.params,
             query: request.query,
-            body: request.originalUrl.includes(authEndpoint) ? "REDACTED" : request.body,
+            body: request.originalUrl.includes("/auth") ? "REDACTED" : request.body, // TODO more robust solution
             route: request.originalUrl,
             method: request.method,
         },
@@ -36,6 +41,5 @@ export const errorMiddleware: ErrorRequestHandler = (error: unknown, request, re
         },
     });
 
-    response.status(status);
-    return response.json({ error: true, message });
+    return response.status(status).json({ error: true, message });
 };

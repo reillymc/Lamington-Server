@@ -3,5 +3,5 @@ import type { AppRepositories } from "../repositories/index.ts";
 
 export type CreateService<T, KRepositories extends keyof AppRepositories> = (
     database: Database,
-    {}: Pick<AppRepositories, KRepositories>
+    repositories: Pick<AppRepositories, KRepositories>
 ) => T;

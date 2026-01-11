@@ -7,3 +7,13 @@ export class ForeignKeyViolationError extends Error {
         this.originalError = originalError;
     }
 }
+
+export class UniqueViolationError extends Error {
+    public originalError: unknown;
+
+    constructor(originalError: unknown) {
+        super("Unique constraint violation");
+        this.name = "UniqueViolationError";
+        this.originalError = originalError;
+    }
+}

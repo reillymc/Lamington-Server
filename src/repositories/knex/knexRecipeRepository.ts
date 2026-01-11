@@ -1,4 +1,3 @@
-import { ContentTagsRequestToRows } from "../../controllers/helpers/contentTag.ts";
 import { content, type Content } from "../../database/definitions/content.ts";
 import {
     contentTag,
@@ -8,15 +7,15 @@ import {
     user,
     type ContentTag,
     type CreateQuery,
+    type CreateResponse,
     type Ingredient,
     type KnexDatabase,
     type User,
 } from "../../database/index.ts";
 import { EnsureArray, ObjectFromEntries, Undefined } from "../../utils/index.ts";
 import type { RecipeRepository } from "../recipeRepository.ts";
-import { contentAttachment } from "../../database/definitions/contentAttachment.ts";
-import { attachment } from "../../database/definitions/attachment.ts";
-import { RecipeAttachmentActions } from "../../controllers/recipeAttachment.ts";
+import { contentAttachment, type ContentAttachment } from "../../database/definitions/contentAttachment.ts";
+import { attachment, type Attachment } from "../../database/definitions/attachment.ts";
 import { recipeRating, type RecipeRating } from "../../database/definitions/recipeRating.ts";
 import { recipe, type Recipe } from "../../database/definitions/recipe.ts";
 import { recipeIngredient, type RecipeIngredient } from "../../database/definitions/recipeIngredient.ts";
@@ -25,6 +24,53 @@ import { DefaultSection, type RecipeSection } from "../../database/definitions/r
 import { recipeStep, type RecipeStep } from "../../database/definitions/recipeStep.ts";
 import { ContentTagActions } from "../../controllers/content/contentTag.ts";
 import type { RecipeMethod } from "../../routes/spec/recipe.ts";
+import {
+    ContentAttachmentActions,
+    type CreateContentAttachmentOptions,
+} from "../../controllers/content/contentAttachment.ts";
+
+type SaveRecipeAttachmentRequest = CreateQuery<{
+    recipeId: Recipe["recipeId"];
+    attachments: Array<{
+        attachmentId: Attachment["attachmentId"];
+        displayType: ContentAttachment["displayType"];
+        displayId?: ContentAttachment["displayId"];
+        displayOrder?: ContentAttachment["displayOrder"];
+    }>;
+}>;
+
+type ReadRecipeAttachmentsRequest = CreateQuery<{
+    recipeId: Recipe["recipeId"];
+}>;
+
+type ReadRecipeAttachmentsResponse = {
+    attachmentId: Attachment["attachmentId"];
+    uri: Attachment["uri"];
+    displayType: ContentAttachment["displayType"];
+    displayId?: ContentAttachment["displayId"];
+    displayOrder: ContentAttachment["displayOrder"];
+    createdBy: Attachment["createdBy"];
+    recipeId: Recipe["recipeId"];
+};
+
+export const RecipeAttachmentActions = {
+    read: (db: KnexDatabase, request: ReadRecipeAttachmentsRequest): CreateResponse<ReadRecipeAttachmentsResponse> =>
+        ContentAttachmentActions.read(
+            db,
+            EnsureArray(request).map(({ recipeId }) => ({ contentId: recipeId }))
+        ).then(response => response.map(({ contentId, ...rest }) => ({ recipeId: contentId, ...rest }))),
+    save: (db: KnexDatabase, request: SaveRecipeAttachmentRequest, options?: CreateContentAttachmentOptions) =>
+        ContentAttachmentActions.save(
+            db,
+            EnsureArray(request).map(({ recipeId, attachments }) => ({
+                contentId: recipeId,
+                attachments,
+            })),
+            options
+        ),
+};
+const ContentTagsRequestToRows = (contentId: string, tags: Array<{ tagId: string }>): ContentTag[] =>
+    tags.map(({ tagId }) => ({ contentId, tagId }));
 
 const readTags = (
     db: KnexDatabase,

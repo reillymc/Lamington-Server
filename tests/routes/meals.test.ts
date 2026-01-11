@@ -1,6 +1,6 @@
 import { expect } from "expect";
 import type { Express } from "express";
-import { afterEach, beforeEach, describe, it } from "node:test";
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 
@@ -10,6 +10,10 @@ import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklist
 import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
 import { UserStatus, type components } from "../../src/routes/spec/index.ts";
 import { CreateUsers, PrepareAuthenticatedUser, randomDay, randomMonth, randomYear } from "../helpers/index.ts";
+
+after(async () => {
+    await db.destroy();
+});
 
 describe("Get a meal by ID", () => {
     let database: KnexDatabase;
@@ -21,7 +25,7 @@ describe("Get a meal by ID", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {

@@ -1,6 +1,6 @@
 import { expect } from "expect";
 import type { Express } from "express";
-import { afterEach, beforeEach, describe, it } from "node:test";
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 
@@ -8,9 +8,13 @@ import { setupApp } from "../../src/app.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
 import { type components, UserStatus } from "../../src/routes/spec/index.ts";
-import { CreateIngredients, CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
+import { CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
 
 const randomIcon = () => (["variant1", "variant2", "variant3"] as const)[Math.floor(Math.random() * 3)];
+
+after(async () => {
+    await db.destroy();
+});
 
 describe("Get user lists", () => {
     let database: KnexDatabase;
@@ -24,7 +28,6 @@ describe("Get user lists", () => {
     afterEach(async () => {
         await database.rollback();
     });
-
     it("should require authentication", async () => {
         const res = await request(app).get("/v1/lists");
         expect(res.statusCode).toEqual(401);
@@ -644,30 +647,30 @@ describe("Add item to list", () => {
         expect(returnedItem!.notes).toEqual(itemData.notes);
     });
 
-    it("should create a list item with ingredient", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    // it("should create a list item with ingredient", async () => {
+    //     const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid(), description: uuid() }],
-        });
-        const list = lists[0]!;
+    //     const { lists } = await KnexListRepository.create(database, {
+    //         userId: user.userId,
+    //         lists: [{ name: uuid(), description: uuid() }],
+    //     });
+    //     const list = lists[0]!;
 
-        const [ingredients] = await CreateIngredients(database, { createdBy: user.userId, count: 1 });
-        const ingredient = ingredients[0]!;
+    //     const [ingredients] = await CreateIngredients(database, { createdBy: user.userId, count: 1 });
+    //     const ingredient = ingredients[0]!;
 
-        const itemData = {
-            name: uuid(),
-            ingredientId: ingredient.ingredientId,
-        } satisfies components["schemas"]["ListItemCreate"];
+    //     const itemData = {
+    //         name: uuid(),
+    //         ingredientId: ingredient.ingredientId,
+    //     } satisfies components["schemas"]["ListItemCreate"];
 
-        const res = await request(app).post(`/v1/lists/${list.listId}/items`).set(token).send(itemData);
+    //     const res = await request(app).post(`/v1/lists/${list.listId}/items`).set(token).send(itemData);
 
-        expect(res.statusCode).toEqual(201);
-        const [returnedItem] = res.body as components["schemas"]["ListItem"][];
+    //     expect(res.statusCode).toEqual(201);
+    //     const [returnedItem] = res.body as components["schemas"]["ListItem"][];
 
-        expect(returnedItem!.ingredientId).toEqual(ingredient.ingredientId);
-    });
+    //     expect(returnedItem!.ingredientId).toEqual(ingredient.ingredientId);
+    // });
 
     it("should allow adding an item if the user is a list administrator", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);

@@ -48,7 +48,7 @@
     "nodejs-testing.extensions": [
         {
             "extensions": ["ts"],
-            "parameters": ["--import", "./tests/globalHooks.ts", "--test-global-setup", "./tests/setupModule.ts"]
+            "parameters": []
         }
     ],
     "nodejs-testing.env": { "NODE_ENV": "test" },

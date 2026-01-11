@@ -15,9 +15,63 @@ tags:
     description: Cook list operations
   - name: Lists
     description: List operations
+  - name: Users
+    description: User management operations
+  - name: Profile
+    description: User profile operations
+  - name: Auth
+    description: Authentication operations
 security:
   - bearerAuth: []
 paths:
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register a new user
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRegister"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthRegisterResponse"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login a user
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLogin"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
   /cooklist/meals:
     get:
       tags:
@@ -33,6 +87,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CookListMeal"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -63,6 +119,8 @@ paths:
                   $ref: "#/components/schemas/CookListMeal"
         400:
           $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /cooklist/meals/{mealId}:
@@ -82,6 +140,8 @@ paths:
           description: Deleted
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     patch:
@@ -106,6 +166,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /meals/{mealId}:
@@ -129,6 +191,8 @@ paths:
                 $ref: "#/components/schemas/Meal"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners:
@@ -146,6 +210,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Planner"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -168,6 +234,8 @@ paths:
                 $ref: "#/components/schemas/Planner"
         400:
           $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}:
@@ -193,6 +261,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     patch:
@@ -215,6 +285,8 @@ paths:
                 $ref: "#/components/schemas/Planner"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -227,6 +299,8 @@ paths:
           description: No Content
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/meals:
@@ -266,6 +340,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/meals/{year}/{month}:
@@ -301,6 +377,8 @@ paths:
                   $ref: "#/components/schemas/PlannerMeal"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/meals/{mealId}:
@@ -337,6 +415,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -351,6 +431,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/members:
@@ -376,6 +458,8 @@ paths:
                   $ref: "#/components/schemas/Member"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -396,6 +480,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/members/{userId}:
@@ -422,6 +508,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     patch:
@@ -446,6 +534,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/invite/accept:
@@ -467,6 +557,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/invite/decline:
@@ -488,6 +580,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/leave:
@@ -509,6 +603,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists:
@@ -526,6 +622,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ListSummary"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -548,6 +646,8 @@ paths:
                 $ref: "#/components/schemas/List"
         400:
           $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}:
@@ -571,6 +671,8 @@ paths:
                 $ref: "#/components/schemas/List"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     patch:
@@ -593,6 +695,8 @@ paths:
                 $ref: "#/components/schemas/List"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -605,6 +709,8 @@ paths:
           description: No Content
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/items:
@@ -630,6 +736,8 @@ paths:
                   $ref: "#/components/schemas/ListItem"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -660,6 +768,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/items/{itemId}:
@@ -694,6 +804,8 @@ paths:
                 $ref: "#/components/schemas/ListItem"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -708,6 +820,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/items/move:
@@ -750,12 +864,10 @@ paths:
                   $ref: "#/components/schemas/ListItem"
         400:
           $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+          $ref: "#/components/responses/Forbidden"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -783,6 +895,8 @@ paths:
                   $ref: "#/components/schemas/Member"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -801,6 +915,8 @@ paths:
           description: No Content
         400:
           $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         404:
           $ref: "#/components/responses/NotFound"
         500:
@@ -839,6 +955,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -851,6 +969,8 @@ paths:
           description: No Content
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/invite/accept:
@@ -870,6 +990,8 @@ paths:
           description: No Content
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/invite/decline:
@@ -889,6 +1011,8 @@ paths:
           description: No Content
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/leave:
@@ -908,6 +1032,8 @@ paths:
           description: No Content
         404:
           $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /extractor/recipeMetadata:
@@ -932,6 +1058,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExtractedRecipeMetadata"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         500:
           $ref: "#/components/responses/InternalServerError"
   /extractor/recipe:
@@ -956,6 +1084,146 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExtractedRecipe"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /profile:
+    get:
+      tags:
+        - Profile
+      summary: Get current user profile
+      operationId: getProfile
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - Profile
+      summary: Delete current user profile
+      operationId: deleteProfile
+      responses:
+        204:
+          description: No Content
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /users:
+    get:
+      tags:
+        - Users
+      summary: Get all users
+      operationId: getUsers
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /users/pending:
+    get:
+      tags:
+        - Users
+      summary: Get pending users
+      operationId: getPendingUsers
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /users/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    delete:
+      tags:
+        - Users
+      summary: Delete user
+      operationId: deleteUser
+      responses:
+        204:
+          description: No Content
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /users/{userId}/approve:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Users
+      summary: Approve user
+      operationId: approveUser
+      responses:
+        204:
+          description: No Content
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /users/{userId}/blacklist:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Users
+      summary: Blacklist user
+      operationId: blacklistUser
+      responses:
+        204:
+          description: No Content
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          $ref: "#/components/responses/NotFound"
         500:
           $ref: "#/components/responses/InternalServerError"
 components:
@@ -977,6 +1245,18 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
     InternalServerError:
       description: Internal Server Error
       content:
@@ -994,6 +1274,26 @@ components:
           type: string
       required:
         - error
+    User:
+      type: object
+      properties:
+        userId:
+          $ref: "#/components/schemas/Uuid"
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        status:
+          $ref: "#/components/schemas/UserStatus"
+      required:
+        - userId
+        - email
+        - firstName
+        - lastName
+        - status
     Owner:
       type: object
       properties:
@@ -1601,3 +1901,81 @@ components:
       required:
         - attachmentId
         - uri
+    AuthRegister:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        password:
+          type: string
+      required:
+        - email
+        - firstName
+        - lastName
+        - password
+    AuthLogin:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+    AuthResponse:
+      type: object
+      properties:
+        authorization:
+          type: object
+          properties:
+            token:
+              type: string
+            tokenType:
+              type: string
+          required:
+            - token
+            - tokenType
+        user:
+          type: object
+          properties:
+            userId:
+              $ref: "#/components/schemas/Uuid"
+            email:
+              type: string
+              format: email
+            status:
+              $ref: "#/components/schemas/UserStatus"
+          required:
+            - userId
+            - email
+            - status
+        message:
+          type: string
+      required:
+        - user
+    AuthRegisterResponse:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            userId:
+              $ref: "#/components/schemas/Uuid"
+            email:
+              type: string
+              format: email
+            status:
+              $ref: "#/components/schemas/UserStatus"
+          required:
+            - userId
+            - email
+            - status
+      required:
+        - user

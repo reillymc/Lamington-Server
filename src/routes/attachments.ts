@@ -2,14 +2,13 @@ import express from "express";
 import { v4 } from "uuid";
 
 import { uploadImageMiddleware } from "../middleware/index.ts";
-import { AppError } from "../services/index.ts";
+import { InsufficientDataError, UnknownError } from "../services/index.ts";
 import {
     AttachmentEndpoint,
     type PostImageAttachmentRequestParams,
     type PostImageAttachmentResponse,
 } from "./spec/index.ts";
 import { compressImage, constructAttachmentPath } from "../services/attachment/helper.ts";
-import config from "../config.ts";
 import type { AppDependencies } from "../appDependencies.ts";
 import type { KnexDatabase } from "../database/index.ts";
 
@@ -24,21 +23,11 @@ export const createAttachmentsRouter = ({ attachmentService, attachmentActions, 
             const { userId } = session;
 
             if (!file || !userId) {
-                return next(
-                    new AppError({
-                        status: 400,
-                        code: "INSUFFICIENT_DATA",
-                        message: "No file was uploaded.",
-                    })
-                );
+                return next(new InsufficientDataError("attachment"));
             }
 
             try {
                 const attachmentId = v4();
-
-                if (!["local", "s3"].includes(config.attachments.storageService)) {
-                    throw new Error("Invalid storage service");
-                }
 
                 const compressedImage = await compressImage(file.buffer);
                 const { uri, uploadPath } = constructAttachmentPath(userId, attachmentId, "jpg");
@@ -64,7 +53,7 @@ export const createAttachmentsRouter = ({ attachmentService, attachmentActions, 
                     });
                 });
             } catch (e: unknown) {
-                next(new AppError({ innerError: e, message: "An error occurred when uploading image" }));
+                next(new UnknownError(e));
             }
         }
     );

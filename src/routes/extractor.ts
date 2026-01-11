@@ -1,9 +1,9 @@
 import express from "express";
 
-import type { AppDependencies } from "../appDependencies.ts";
 import type { paths, routes } from "./spec/index.ts";
+import type { CreateRoute } from "./route.ts";
 
-export const createExtractorRouter = ({ contentExtractionService }: AppDependencies["services"]) =>
+export const createExtractorRouter: CreateRoute<"contentExtractionService"> = ({ contentExtractionService }) =>
     express
         .Router()
         .get<

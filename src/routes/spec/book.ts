@@ -7,9 +7,8 @@ import type {
     BaseResponse,
     BaseSimpleRequestBody,
 } from "./base.ts";
-import type { EntityMember, EntityMembers } from "./common.ts";
+import type { EntityMember } from "./common.ts";
 import { type Recipe, recipeIdParam } from "./recipe.ts";
-import type { User } from "./user.ts";
 
 export const bookEndpoint = "/books" as const;
 
@@ -25,7 +24,10 @@ export const bookMemberIdParam = "userId" as const;
 export type Book = {
     bookId: string;
     name: string;
-    owner: Pick<User, "userId" | "firstName">;
+    owner: {
+        userId: string;
+        firstName: string;
+    };
     description?: string;
     color?: string;
     icon?: string;
@@ -35,7 +37,7 @@ export type Book = {
 
 // Get books
 export type GetBooksRequestParams = BaseRequestParams<{
-    owner?: User["userId"];
+    owner?: string;
 }>;
 export type GetBooksRequestBody = BaseRequestBody;
 
@@ -130,7 +132,7 @@ export type PostBookMemberRequestBody = BaseSimpleRequestBody;
 
 export type PostBookMemberRequest = BaseRequest<PostBookMemberRequestParams & PostBookMemberRequestBody>;
 export type PostBookMemberResponse = BaseResponse<{
-    userId: User["userId"];
+    userId: string;
     status?: string;
 }>;
 export type PostBookMemberService = (request: PostBookMemberRequest) => PostBookMemberResponse;
@@ -138,7 +140,7 @@ export type PostBookMemberService = (request: PostBookMemberRequest) => PostBook
 // Delete book member
 export type DeleteBookMemberRequestParams = BaseRequestParams<{
     [bookIdParam]: Book["bookId"];
-    [bookMemberIdParam]: User["userId"];
+    [bookMemberIdParam]: string;
 }>;
 export type DeleteBookMemberRequestBody = BaseSimpleRequestBody;
 

@@ -3,9 +3,11 @@ import type { Meal } from "../database/definitions/meal.ts";
 import type { Database, User } from "../database/index.ts";
 import type { RepositoryService } from "./repository.ts";
 
+type CookListMealCourse = "breakfast" | "lunch" | "dinner" | "snack" | "dessert" | "drink" | "component" | "side";
+
 type CookListMealResponse = {
     mealId: Meal["mealId"];
-    course: "breakfast" | "lunch" | "dinner";
+    course: CookListMealCourse;
     owner: {
         userId: User["userId"];
         firstName: User["firstName"];
@@ -30,7 +32,7 @@ type ReadAllMealsResponse = {
 };
 
 type CreateCookListMealPayload = {
-    course: "breakfast" | "lunch" | "dinner";
+    course: CookListMealCourse;
     sequence?: Meal["sequence"];
     description?: Meal["description"];
     source?: Meal["source"];
@@ -49,7 +51,7 @@ type CreateMealsResponse = {
 };
 
 type UpdateCookListMealPayload = {
-    course?: "breakfast" | "lunch" | "dinner" | null;
+    course?: CookListMealCourse | null;
     sequence?: Meal["sequence"];
     description?: Meal["description"];
     source?: Meal["source"];

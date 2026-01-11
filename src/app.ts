@@ -3,14 +3,9 @@ import express from "express";
 import helmet from "helmet";
 
 import config from "./config.ts";
-import {
-    createAuthenticationMiddleware,
-    errorMiddleware,
-    loggerMiddleware,
-    notFoundMiddleware,
-} from "./middleware/index.ts";
-import { appRouter, createAuthRouter, docsRouter } from "./routes/index.ts";
-import { attachmentEndpoint, authEndpoint, uploadDirectory } from "./routes/spec/index.ts";
+import { errorMiddleware, loggerMiddleware, notFoundMiddleware } from "./middleware/index.ts";
+import { createAppRouter, docsRouter } from "./routes/index.ts";
+import { attachmentEndpoint, uploadDirectory } from "./routes/spec/index.ts";
 import { DefaultAppDependencies, MergeAppDependencies, type PartialAppDependencies } from "./appDependencies.ts";
 import db from "./database/index.ts";
 
@@ -34,8 +29,7 @@ export const setupApp = (dependencies?: PartialAppDependencies) => {
     if (config.attachments.storageService === "local" || process.env.NODE_ENV !== "production") {
         app.use(`/v1${attachmentEndpoint}/${uploadDirectory}`, express.static(uploadDirectory));
     }
-    app.use(`/v1${authEndpoint}`, createAuthRouter(appDependencies));
-    app.use("/v1/", createAuthenticationMiddleware(appDependencies.database), appRouter(appDependencies));
+    app.use("/v1/", createAppRouter(appDependencies));
     app.use("/", docsRouter);
 
     // Catch 404 and forward to error handler

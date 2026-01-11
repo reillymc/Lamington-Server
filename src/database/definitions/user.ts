@@ -13,7 +13,7 @@ export type User = {
     createdAt: string;
     updatedAt: string;
     status: string;
-    preferences: string;
+    preferences: string | null;
 };
 
 export const user: Table<User> = {

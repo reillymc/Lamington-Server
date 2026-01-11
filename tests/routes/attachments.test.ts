@@ -1,14 +1,12 @@
 import { expect } from "expect";
 import type { Express } from "express";
-import { afterEach, beforeEach, describe, it, mock, skip } from "node:test";
+import { after, afterEach, beforeEach, describe, it, mock, skip } from "node:test";
 import request from "supertest";
-import { rm } from "node:fs/promises";
-import type { Knex } from "knex";
 
 import { setupApp } from "../../src/app.ts";
 import { type PostImageAttachmentResponse } from "../../src/routes/spec/index.ts";
 import { AttachmentEndpoint, PrepareAuthenticatedUser } from "../helpers/index.ts";
-import db from "../../src/database/index.ts";
+import db, { type KnexDatabase } from "../../src/database/index.ts";
 import type { AttachmentService } from "../../src/services/attachment/attachmentService.ts";
 import { AttachmentActions } from "../../src/controllers/attachment.ts";
 import { readAllAttachments } from "../helpers/attachment.ts";
@@ -32,8 +30,12 @@ const MockFailingAttachmentActions: AttachmentActions = {
     },
 };
 
+after(async () => {
+    await db.destroy();
+});
+
 describe("post", () => {
-    let database: Knex.Transaction;
+    let database: KnexDatabase;
     let app: Express;
 
     beforeEach(async () => {
@@ -42,7 +44,7 @@ describe("post", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
         mock.reset();
     });
 

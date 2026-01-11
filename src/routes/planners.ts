@@ -1,10 +1,10 @@
 import express from "express";
 
-import type { AppDependencies } from "../appDependencies.ts";
 import { EnsureArray } from "../utils/index.ts";
 import type { paths, routes } from "./spec/index.ts";
+import type { CreateRoute } from "./route.ts";
 
-export const createPlannerRouter = ({ plannerService }: AppDependencies["services"]) =>
+export const createPlannerRouter: CreateRoute<"plannerService"> = ({ plannerService }) =>
     express
         .Router()
         .get<

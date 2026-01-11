@@ -1,11 +1,11 @@
 import { expect } from "expect";
 import type { Express } from "express";
-import { afterEach, beforeEach, describe, it } from "node:test";
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import { setupApp } from "../../src/app.ts";
-import { IngredientActions, TagActions } from "../../src/controllers/index.ts";
+import { TagActions } from "../../src/controllers/index.ts";
 import db, { type KnexDatabase, type ServiceParamsDi } from "../../src/database/index.ts";
 import type {
     GetAllRecipesResponse,
@@ -22,7 +22,6 @@ import {
     assertRecipeServingsAreEqual,
     assertRecipeTagsAreEqual,
     createRandomRecipeTags,
-    generateRandomAmount,
     generateRandomPostRecipeIngredientSections,
     generateRandomRecipeIngredientSections,
     generateRandomRecipeMethodSections,
@@ -31,6 +30,10 @@ import {
     randomNumber,
 } from "../helpers/index.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
+
+after(async () => {
+    await db.destroy();
+});
 
 describe("get all recipes", () => {
     let database: KnexDatabase;
@@ -42,7 +45,7 @@ describe("get all recipes", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -605,7 +608,7 @@ describe("get my recipes", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -1133,7 +1136,7 @@ describe("post recipe", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {

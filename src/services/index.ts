@@ -5,10 +5,10 @@ import type { CooklistService } from "./cooklistService.ts";
 import type { RecipeService } from "./recipeService.ts";
 import type { PlannerService } from "./plannerService.ts";
 import type { ListService } from "./listService.ts";
+import type { UserService } from "./userService.ts";
 
 export { printConfig } from "./console.ts";
 export * from "./logging.ts";
-export * from "./password.ts";
 export * from "./token.ts";
 
 export type AppServices = {
@@ -19,4 +19,5 @@ export type AppServices = {
     mealService: MealService;
     plannerService: PlannerService;
     recipeService: RecipeService;
+    userService: UserService;
 };

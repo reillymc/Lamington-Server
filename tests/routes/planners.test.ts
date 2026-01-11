@@ -1,6 +1,6 @@
 import { expect } from "expect";
 import type { Express } from "express";
-import { afterEach, beforeEach, describe, it } from "node:test";
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 
@@ -8,9 +8,8 @@ import { setupApp } from "../../src/app.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
 import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
-import type { KnexDatabase } from "../../src/database/index.ts";
 import { type components, UserStatus } from "../../src/routes/spec/index.ts";
-import db from "../../src/database/index.ts";
+import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { CreateUsers, PrepareAuthenticatedUser, randomDay, randomMonth, randomYear } from "../helpers/index.ts";
 import { randomCourse } from "../helpers/meal.ts";
 
@@ -26,6 +25,10 @@ const randomMeal = () =>
 const randomColor = (): components["schemas"]["PlannerColor"] =>
     (["variant1", "variant2", "variant3", "variant4", "variant5"] as const)[Math.floor(Math.random() * 5)]!;
 
+after(async () => {
+    await db.destroy();
+});
+
 describe("Get user planners", () => {
     let database: KnexDatabase;
     let app: Express;
@@ -36,7 +39,7 @@ describe("Get user planners", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -199,7 +202,7 @@ describe("Get a planner", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -322,7 +325,7 @@ describe("Delete a planner", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -411,7 +414,7 @@ describe("Get planner meals", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -666,7 +669,7 @@ describe("Create a planner", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -733,7 +736,7 @@ describe("Update a planner", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -862,7 +865,7 @@ describe("Add a meal to a planner", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -1148,7 +1151,7 @@ describe("Update a meal in a planner", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -1539,7 +1542,7 @@ describe("Remove a meal from a planner", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -1756,7 +1759,7 @@ describe("Get planner members", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -1822,7 +1825,7 @@ describe("Invite a member to a planner", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -1966,7 +1969,7 @@ describe("Accept planner invitation", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -2034,7 +2037,7 @@ describe("Decline planner invitation", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -2102,7 +2105,7 @@ describe("Leave a planner", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -2189,7 +2192,7 @@ describe("Remove a member from a planner", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -2267,7 +2270,7 @@ describe("Update a planner member", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {

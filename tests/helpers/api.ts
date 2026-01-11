@@ -1,28 +1,19 @@
 import {
     type AttachmentServices,
-    type AuthServices,
     type BookApi,
     type RecipeApi,
     type GetAllRecipesRequestQuery,
     type GetMyRecipesRequestQuery,
-    type IngredientServices,
     type TagServices,
-    type UserServices,
-    approveSubpath,
     attachmentEndpoint,
-    authEndpoint,
     bookEndpoint,
     bookMemberSubpath,
     imageSubpath,
-    ingredientEndpoint,
-    loginSubpath,
     rateSubpath,
     recipeEndpoint,
     recipeSubpath,
-    registerSubpath,
     tagEndpoint,
     uploadDirectory,
-    usersEndpoint,
 } from "../../src/routes/spec/index.ts";
 
 const ServerURL = "";
@@ -43,11 +34,6 @@ export const AttachmentEndpoint = {
     downloadImage: `${ApiUrl}${attachmentEndpoint}/${uploadDirectory}/` as const,
 } as const satisfies Record<keyof AttachmentServices, Endpoint>;
 
-export const AuthEndpoint = {
-    login: `${ApiUrl}${authEndpoint}/${loginSubpath}` as const,
-    register: `${ApiUrl}${authEndpoint}/${registerSubpath}` as const,
-} as const satisfies Record<keyof AuthServices, Endpoint>;
-
 export const BookEndpoint = {
     deleteBook: (bookId: string) => `${ApiUrl}${bookEndpoint}/${bookId}` as const,
     deleteBookRecipe: (bookId: string, recipeId: string) =>
@@ -62,12 +48,6 @@ export const BookEndpoint = {
     postBookMember: (bookId: string) => `${ApiUrl}${bookEndpoint}/${bookId}/${bookMemberSubpath}` as const,
     getBookRecipes: (bookId: string) => `${ApiUrl}${bookEndpoint}/${bookId}/${recipeSubpath}` as const,
 } as const satisfies Record<keyof BookApi, Endpoint>;
-
-export const IngredientEndpoint = {
-    getIngredients: `${ApiUrl}${ingredientEndpoint}`,
-    postIngredient: `${ApiUrl}${ingredientEndpoint}`,
-    getMyIngredients: `${ApiUrl}${ingredientEndpoint}/my`,
-} as const satisfies Record<keyof IngredientServices, Endpoint>;
 
 export const RecipeEndpoint = {
     deleteRecipe: (recipeId: string) => `${ApiUrl}${recipeEndpoint}/${recipeId}` as const,
@@ -84,13 +64,6 @@ export const RecipeEndpoint = {
 export const TagEndpoint = {
     getTags: `${ApiUrl}${tagEndpoint}`,
 } as const satisfies Record<keyof TagServices, Endpoint>;
-
-export const UserEndpoint = {
-    approveUser: (userId: string) => `${ApiUrl}${usersEndpoint}/${userId}/${approveSubpath}` as const,
-    getPendingUsers: `${ApiUrl}${usersEndpoint}/pending`,
-    getUsers: `${ApiUrl}${usersEndpoint}`,
-    deleteUsers: (userId: string) => `${ApiUrl}${usersEndpoint}/${userId}`,
-} as const satisfies Record<keyof UserServices, Endpoint>;
 
 const appendQuery = <T extends Record<string, unknown> | undefined>(query: T) => {
     if (!query) return "";

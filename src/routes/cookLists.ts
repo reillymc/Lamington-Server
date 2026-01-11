@@ -1,10 +1,10 @@
 import express from "express";
 
-import type { AppDependencies } from "../appDependencies.ts";
 import { EnsureArray } from "../utils/index.ts";
 import type { paths, routes } from "./spec/index.ts";
+import type { CreateRoute } from "./route.ts";
 
-export const createCooklistRouter = ({ cooklistService }: AppDependencies["services"]) =>
+export const createCooklistRouter: CreateRoute<"cooklistService"> = ({ cooklistService }) =>
     express
         .Router()
         .get<

@@ -1,12 +1,9 @@
 import { type AssetServices, ingredientsSubpath } from "./asset.ts";
 import { type AttachmentServices, imageSubpath, uploadDirectory } from "./attachment.ts";
-import { type AuthServices, loginSubpath, registerSubpath } from "./auth.ts";
 import { type BookApi, bookIdParam, bookMemberIdParam, bookMemberSubpath, recipeSubpath } from "./book.ts";
-import type { IngredientServices } from "./ingredient.ts";
 
 import { rateSubpath, recipeIdParam, type RecipeApi } from "./recipe.ts";
 import type { TagServices } from "./tag.ts";
-import { type UserServices, approveSubpath, userIdParam } from "./user.ts";
 import type { paths, components } from "./schema.d.ts";
 
 type ToRoutes<T extends string> = T extends `${infer Head}{${infer Param}}${infer Tail}`
@@ -26,11 +23,6 @@ export const AttachmentEndpoint = {
     downloadImage: `/${uploadDirectory}`,
 } as const satisfies Record<keyof AttachmentServices, string>;
 
-export const AuthEndpoint = {
-    login: `/${loginSubpath}`,
-    register: `/${registerSubpath}`,
-} as const satisfies Record<keyof AuthServices, string>;
-
 export const BookEndpoint = {
     deleteBook: `/:${bookIdParam}`,
     deleteBookMember: `/:${bookIdParam}/${bookMemberSubpath}/:${bookMemberIdParam}`,
@@ -43,12 +35,6 @@ export const BookEndpoint = {
     postBookMember: `/:${bookIdParam}/${bookMemberSubpath}`,
     postBookRecipe: `/:${bookIdParam}/${recipeSubpath}`,
 } as const satisfies Record<keyof BookApi, string>;
-
-export const IngredientEndpoint = {
-    getIngredients: `/`,
-    getMyIngredients: `/my`,
-    postIngredient: `/`,
-} as const satisfies Record<keyof IngredientServices, string>;
 
 export const RecipeEndpoint = {
     deleteRecipe: `/:${recipeIdParam}`,
@@ -64,20 +50,11 @@ export const TagEndpoint = {
     getTags: `/`,
 } as const satisfies Record<keyof TagServices, string>;
 
-export const UserEndpoint = {
-    approveUser: `/:${userIdParam}/${approveSubpath}`,
-    getPendingUsers: `/pending`,
-    getUsers: `/`,
-    deleteUsers: `/:${userIdParam}`,
-} as const satisfies Record<keyof UserServices, string>;
-
 export * from "./asset.ts";
 export * from "./attachment.ts";
-export * from "./auth.ts";
 export type { BasePaginatedRequestQuery, QueryParam, RequestValidator } from "./base.ts";
 export * from "./book.ts";
 export * from "./common.ts";
-export * from "./ingredient.ts";
 export * from "./recipe.ts";
 export * from "./tag.ts";
 export * from "./user.ts";

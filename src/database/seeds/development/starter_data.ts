@@ -1,5 +1,4 @@
 import { type Knex } from "knex";
-import { hashPassword } from "../../../services/password.ts";
 import {
     type Ingredient,
     type List,
@@ -24,37 +23,6 @@ import type { RecipeStep } from "../../definitions/recipeStep.ts";
 export const seed = async (knex: Knex): Promise<void> => {
     // Delete ALL existing entries
     await clearDatabase(knex);
-
-    // Inserts seed entries
-    await knex<User>(lamington.user).insert([
-        {
-            userId: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
-            email: "test",
-            firstName: "Alice",
-            lastName: "Lamington",
-            password: await hashPassword("test"),
-            status: "M",
-            preferences: "{}",
-        },
-        {
-            userId: "3812f892-31d7-4ac8-bca0-5f5819b100cc",
-            email: "example",
-            firstName: "Tim",
-            lastName: "Lamington",
-            password: await hashPassword("example"),
-            status: "M",
-            preferences: "{}",
-        },
-        {
-            userId: "4df86d9d-e2a4-4ca3-b895-6f325451b33c",
-            email: "sample",
-            firstName: "Brian",
-            lastName: "Lamington",
-            password: await hashPassword("sample"),
-            status: "A",
-            preferences: "{}",
-        },
-    ]);
 
     await knex<Tag>(lamington.tag).insert([
         {
