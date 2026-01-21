@@ -41,6 +41,12 @@
             "command": "node",
             "args": ["./tools/Scripts/watch_spec.ts"],
             "group": "build",
+            "presentation": {
+                "reveal": "never",
+                "echo": false,
+                "focus": false,
+                "panel": "dedicated"
+            },
             "isBackground": true,
             "runOptions": {
                 "runOn": "folderOpen"

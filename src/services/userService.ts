@@ -231,7 +231,7 @@ export const createUserService: CreateService<
             throw e;
         }
 
-        const createdUser = users[0];
+        const [createdUser] = users;
 
         if (!createdUser) {
             throw new CreatedDataFetchError("user");

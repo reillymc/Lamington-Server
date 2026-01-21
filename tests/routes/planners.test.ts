@@ -20,7 +20,7 @@ const randomMeal = () =>
         course: randomCourse(),
         year: randomYear(),
         description: uuid(),
-    } satisfies components["schemas"]["PlannerMealCreate"]);
+    }) satisfies components["schemas"]["PlannerMealCreate"];
 
 const randomColor = (): components["schemas"]["PlannerColor"] =>
     (["variant1", "variant2", "variant3", "variant4", "variant5"] as const)[Math.floor(Math.random() * 5)]!;
@@ -927,7 +927,7 @@ describe("Add a meal to a planner", () => {
         });
 
         expect(savedMeals).toHaveLength(1);
-        const savedMeal = savedMeals[0];
+        const [savedMeal] = savedMeals;
 
         expect(savedMeal!.mealId).toEqual(returnedMeal!.mealId);
         expect(savedMeal!.description).toEqual(mealData.description);
@@ -1353,7 +1353,7 @@ describe("Update a meal in a planner", () => {
         });
 
         expect(plannerMeals.length).toEqual(1);
-        const savedMeal = plannerMeals[0];
+        const [savedMeal] = plannerMeals;
 
         expect(savedMeal!.description).toEqual(updateData.description);
         expect(savedMeal!.course).toEqual(updateData.course);

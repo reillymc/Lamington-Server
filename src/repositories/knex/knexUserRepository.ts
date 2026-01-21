@@ -1,10 +1,11 @@
-import { user } from "../../database/definitions/user.ts";
+import { user, userColumns } from "../../database/definitions/user.ts";
 import { lamington, type KnexDatabase } from "../../database/index.ts";
 import { EnsureArray, Undefined } from "../../utils/index.ts";
 import type { UserRepository } from "../userRepository.ts";
 import { UserStatus } from "../../routes/spec/index.ts";
 import { isUniqueViolation } from "./common/postgresErrors.ts";
 import { UniqueViolationError } from "../common/errors.ts";
+import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
 
 export const KnexUserRepository: UserRepository<KnexDatabase> = {
     read: async (db, { users }) => {
@@ -116,20 +117,15 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
     },
     update: async (db, { users }) => {
         for (const u of users) {
-            const updateData: any = {};
-            if (u.email !== undefined) updateData.email = u.email;
-            if (u.firstName !== undefined) updateData.firstName = u.firstName;
-            if (u.lastName !== undefined) updateData.lastName = u.lastName;
-            if (u.password !== undefined) updateData.password = u.password;
-            if (u.status !== undefined) updateData.status = u.status;
+            const updateData = buildUpdateRecord(u, userColumns);
 
-            if (Object.keys(updateData).length > 0) {
+            if (updateData) {
                 await db(lamington.user).where(user.userId, u.userId).update(updateData);
             }
         }
 
         const userIds = users.map(u => u.userId);
-        const updatedUsers = await db(lamington.user).select("*").whereIn(user.userId, userIds);
+        const updatedUsers = await db(lamington.user).select([user.userId, user.status]).whereIn(user.userId, userIds);
 
         return {
             users: updatedUsers,
