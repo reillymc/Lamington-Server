@@ -12,18 +12,8 @@ export const createUserRouter: CreateRoute<"userService"> = ({ userService }) =>
             paths["/users"]["get"]["responses"]["200"]["content"]["application/json"],
             paths["/users"]["get"]["requestBody"],
             paths["/users"]["get"]["parameters"]["query"]
-        >("/users", async ({ session }, res) => {
-            const data = await userService.getAll(session.userId);
-            return res.status(200).json(data);
-        })
-        .get<
-            routes,
-            paths["/users/pending"]["get"]["parameters"]["path"],
-            paths["/users/pending"]["get"]["responses"]["200"]["content"]["application/json"],
-            paths["/users/pending"]["get"]["requestBody"],
-            paths["/users/pending"]["get"]["parameters"]["query"]
-        >("/users/pending", async ({ session }, res) => {
-            const data = await userService.getPending(session.userId);
+        >("/users", async ({ session, query }, res) => {
+            const data = await userService.getAll(session.userId, query?.status);
             return res.status(200).json(data);
         })
         .post<

@@ -37,8 +37,7 @@ export interface UserService {
     delete(userId: string, userToDeleteId: string): Promise<void>;
     deleteProfile(userId: string): Promise<void>;
 
-    getAll(userId: string): Promise<ReadonlyArray<UserDirectoryEntry>>;
-    getPending(userId: string): Promise<ReadonlyArray<UserDirectoryEntry>>;
+    getAll(userId: string, status?: UserStatus): Promise<ReadonlyArray<UserDirectoryEntry>>;
     getProfile(userId: string): Promise<UserProfile>;
     readCredentials(filter: { email: string } | { userId: string }): Promise<ReadonlyArray<UserCredentials>>;
 
@@ -50,7 +49,7 @@ export const createUserService: CreateService<
     UserService,
     "userRepository" | "listRepository" | "bookRepository" | "recipeRepository" | "plannerRepository"
 > = (database, { userRepository, bookRepository, listRepository, plannerRepository, recipeRepository }) => ({
-    getAll: async userId => {
+    getAll: async (userId, status) => {
         const { hasPermissions } = await userRepository.verifyPermissions(database, {
             userId,
             status: [UserStatus.Administrator, UserStatus.Owner],
@@ -58,19 +57,8 @@ export const createUserService: CreateService<
         if (!hasPermissions) {
             throw new PermissionError("user");
         }
-        const { users } = await userRepository.readAll(database, {});
+        const { users } = await userRepository.readAll(database, { filter: { status } });
         return users.filter(u => u.userId !== userId);
-    },
-    getPending: async userId => {
-        const { hasPermissions } = await userRepository.verifyPermissions(database, {
-            userId,
-            status: [UserStatus.Administrator, UserStatus.Owner],
-        });
-        if (!hasPermissions) {
-            throw new PermissionError("user");
-        }
-        const { users } = await userRepository.readAll(database, { filter: { status: UserStatus.Pending } });
-        return users;
     },
     approve: async (userId, userToApproveId) => {
         const { hasPermissions } = await userRepository.verifyPermissions(database, {

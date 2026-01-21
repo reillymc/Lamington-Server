@@ -91,41 +91,8 @@ describe("Get all users", () => {
 
         expect(data.length).toEqual(0);
     });
-});
 
-describe("Get pending users", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
-    it("route should require authentication", async () => {
-        const res = await request(app).get("/v1/users/pending");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
-    it("route should require administrator privileges", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
-        const [registeredToken] = await PrepareAuthenticatedUser(database, UserStatus.Member);
-
-        const registeredRes = await request(app).get("/v1/users/pending").set(registeredToken);
-
-        expect(registeredRes.statusCode).toEqual(403);
-
-        const adminRes = await request(app).get("/v1/users/pending").set(adminToken);
-
-        expect(adminRes.statusCode).toEqual(200);
-    });
-
-    it("should return correct number of pending users", async () => {
+    it("should return correct number of pending users when filtered", async () => {
         const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
 
         const users = await CreateUsers(database, {
@@ -133,13 +100,19 @@ describe("Get pending users", () => {
             status: UserStatus.Pending,
         });
 
-        const res = await request(app).get("/v1/users/pending").set(adminToken);
+        await CreateUsers(database, {
+            count: Math.floor(Math.random() * 10) + 1,
+            status: UserStatus.Member,
+        });
+
+        const res = await request(app).get("/v1/users").query({ status: UserStatus.Pending }).set(adminToken);
 
         expect(res.statusCode).toEqual(200);
 
         const data = res.body as components["schemas"]["User"][];
 
         expect(data.length).toEqual(users.length);
+        expect(data.every(u => u.status === UserStatus.Pending)).toBe(true);
     });
 });
 
