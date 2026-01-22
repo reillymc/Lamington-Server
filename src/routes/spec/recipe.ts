@@ -10,7 +10,6 @@ import type {
 } from "./base.ts";
 import type { FractionValue, NumberValue, RangeValue } from "./common.ts";
 import type { Tag } from "./tag.ts";
-import type { User } from "./user.ts";
 
 export const recipeEndpoint = "/recipes" as const;
 
@@ -39,7 +38,10 @@ export interface Recipe {
     ratingAverage?: number;
     ratingPersonal?: number;
     tags?: ContentTags;
-    owner: Pick<User, "userId" | "firstName">;
+    owner: {
+        userId: string;
+        firstName: string;
+    };
     cookTime?: number;
     prepTime?: number;
     servings?: RecipeServings;

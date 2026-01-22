@@ -1,6 +1,6 @@
 import { expect } from "expect";
 import type { Express } from "express";
-import { afterEach, beforeEach, describe, it } from "node:test";
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 import type { Knex } from "knex";
@@ -30,6 +30,10 @@ import {
     randomNumber,
 } from "../helpers/index.ts";
 
+after(async () => {
+    await db.destroy();
+});
+
 describe("get all books", () => {
     let database: KnexDatabase;
     let app: Express;
@@ -40,7 +44,7 @@ describe("get all books", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("route should require authentication", async () => {
@@ -151,7 +155,7 @@ describe("delete book", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("route should require authentication", async () => {
@@ -249,7 +253,7 @@ describe("delete book member", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("route should require authentication", async () => {
@@ -361,7 +365,7 @@ describe("delete book recipe", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("route should require authentication", async () => {
@@ -576,7 +580,7 @@ describe("get book", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("route should require authentication", async () => {
@@ -711,7 +715,7 @@ describe("post book", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("route should require authentication", async () => {
@@ -773,7 +777,7 @@ describe("put book", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("route should require authentication", async () => {
@@ -991,7 +995,7 @@ describe("post book member", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("route should require authentication", async () => {
@@ -1066,7 +1070,7 @@ describe("post book recipe", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("route should require authentication", async () => {
@@ -1240,7 +1244,7 @@ describe("get book recipes", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("route should require authentication", async () => {

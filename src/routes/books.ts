@@ -1,7 +1,5 @@
 import express from "express";
 
-import type { AppDependencies } from "../appDependencies.ts";
-
 import { BookEndpoint } from "./spec/index.ts";
 import {
     type DeleteBookMemberRequestBody,
@@ -36,8 +34,9 @@ import {
     type PutBookRequestParams,
 } from "./spec/book.ts";
 import { parseBaseQuery } from "./helpers/queryParams.ts";
+import type { CreateRoute } from "./route.ts";
 
-export const createBookRouter = ({ bookService }: AppDependencies["services"]) => {
+export const createBookRouter: CreateRoute<"bookService"> = ({ bookService }) => {
     const router = express.Router();
 
     /**

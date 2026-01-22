@@ -1,5 +1,5 @@
 import { expect } from "expect";
-import { afterEach, beforeEach, describe, it, mock } from "node:test";
+import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
 import request from "supertest";
 
 import { setupApp } from "../../src/app.ts";
@@ -7,6 +7,10 @@ import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { PrepareAuthenticatedUser, randomNumber } from "../helpers/index.ts";
 import type { ContentExtractionService } from "../../src/services/contentExtractionService.ts";
 import { v4 } from "uuid";
+
+after(async () => {
+    await db.destroy();
+});
 
 describe("Extract recipe metadata", () => {
     let database: KnexDatabase;
@@ -16,7 +20,7 @@ describe("Extract recipe metadata", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -90,7 +94,7 @@ describe("Extract full recipe", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {

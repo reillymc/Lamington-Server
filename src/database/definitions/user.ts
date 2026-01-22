@@ -13,17 +13,21 @@ export type User = {
     createdAt: string;
     updatedAt: string;
     status: string;
-    preferences: string;
+    preferences: string | null;
 };
 
-export const user: Table<User> = {
-    userId: `${lamington.user}.userId`,
-    email: `${lamington.user}.email`,
-    firstName: `${lamington.user}.firstName`,
-    lastName: `${lamington.user}.lastName`,
-    password: `${lamington.user}.password`,
-    createdAt: `${lamington.user}.createdAt`,
-    updatedAt: `${lamington.user}.updatedAt`,
-    status: `${lamington.user}.status`,
-    preferences: `${lamington.user}.preferences`,
-} as const;
+export const userColumns = [
+    "userId",
+    "email",
+    "firstName",
+    "lastName",
+    "password",
+    "createdAt",
+    "updatedAt",
+    "status",
+    "preferences",
+] as const satisfies (keyof User)[];
+
+export const user = Object.fromEntries(
+    userColumns.map(column => [column, `${lamington.user}.${column}`])
+) as Table<User>;

@@ -1,5 +1,4 @@
 import { type Knex } from "knex";
-import { hashPassword } from "../../../services/password.ts";
 import {
     type Ingredient,
     type List,
@@ -20,6 +19,7 @@ import type { RecipeRating } from "../../definitions/recipeRating.ts";
 import type { RecipeIngredient } from "../../definitions/recipeIngredient.ts";
 import type { RecipeSection } from "../../definitions/recipeSection.ts";
 import type { RecipeStep } from "../../definitions/recipeStep.ts";
+import { hashPassword } from "../../../services/password.ts";
 
 export const seed = async (knex: Knex): Promise<void> => {
     // Delete ALL existing entries

@@ -1,14 +1,14 @@
-import { type User, UserStatus } from "./user.ts";
+import { UserStatus } from "./user.ts";
 
 export type EntityMember = {
-    userId: User["userId"];
-    firstName?: User["firstName"];
-    lastName?: User["lastName"];
-    status?: "O" | "A" | "M" | "P" | "B";
+    userId: string;
+    firstName?: string;
+    lastName?: string;
+    status?: UserStatus;
 };
 
 export type EntityMembers = {
-    [userId: User["userId"]]: EntityMember;
+    [userId: string]: EntityMember;
 };
 
 export type NumberValue = { representation: "number"; value: string };

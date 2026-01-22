@@ -12,6 +12,39 @@ import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
 import { isForeignKeyViolation } from "./common/postgresErrors.ts";
 import { ForeignKeyViolationError } from "../common/errors.ts";
 
+// export type SaveListMemberRequest = CreateQuery<{
+//     listId: List["listId"];
+//     members?: Array<{ userId: ContentMember["userId"]; status?: ContentMemberStatus }>;
+// }>;
+
+// type DeleteListMemberRequest = CreateQuery<{
+//     listId: List["listId"];
+//     userId: ContentMember["userId"];
+// }>;
+
+// type ReadListMembersRequest = CreateQuery<{
+//     listId: List["listId"];
+// }>;
+
+// export const ListMemberActions = {
+//     delete: (request: DeleteListMemberRequest) =>
+//         ContentMemberActions.delete(
+//             db as KnexDatabase,
+//             EnsureArray(request).map(({ listId, userId }) => ({ contentId: listId, members: [{ userId }] }))
+//         ),
+//     read: (request: ReadListMembersRequest) =>
+//         ContentMemberActions.read(
+//             db as KnexDatabase,
+//             EnsureArray(request).map(({ listId }) => ({ contentId: listId }))
+//         ).then(response => response.map(({ contentId, ...rest }) => ({ listId: contentId, ...rest }))),
+//     save: (request: SaveListMemberRequest, options?: CreateContentMemberOptions) =>
+//         ContentMemberActions.save(
+//             db as KnexDatabase,
+//             EnsureArray(request).map(({ listId, members }) => ({ contentId: listId, members })),
+//             options
+//         ),
+// };
+
 const formatListItem = (item: any): Awaited<ReturnType<ListRepository["readAllItems"]>>["items"][number] => ({
     itemId: item.itemId,
     listId: item.listId,
@@ -29,6 +62,7 @@ const formatListItem = (item: any): Awaited<ReturnType<ListRepository["readAllIt
 });
 
 const readItemsByIds = async (db: KnexDatabase, userId: string, listId: string, itemIds: string[]) => {
+    const listContentAlias = "listContent";
     const result = await db(lamington.listItem)
         .select(
             listItem.itemId,
@@ -45,11 +79,19 @@ const readItemsByIds = async (db: KnexDatabase, userId: string, listId: string, 
         )
         .leftJoin(lamington.content, listItem.itemId, content.contentId)
         .leftJoin(lamington.user, content.createdBy, user.userId)
+        .leftJoin(`${lamington.content} as ${listContentAlias}`, listItem.listId, `${listContentAlias}.contentId`)
         .whereIn(listItem.itemId, itemIds)
         .modify(qb => {
             if (listId) qb.where(listItem.listId, listId);
         })
-        .modify(withContentReadPermissions({ userId, idColumn: listItem.itemId }));
+        .modify(
+            withContentReadPermissions({
+                userId,
+                idColumn: listItem.listId,
+                ownerColumns: `${listContentAlias}.createdBy`,
+                allowedStatuses: ["A", "M"],
+            })
+        );
 
     return result.map(formatListItem);
 };

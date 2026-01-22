@@ -1,9 +1,9 @@
 import express from "express";
 
 import type { paths, routes } from "./spec/index.ts";
-import type { AppDependencies } from "../appDependencies.ts";
+import type { CreateRoute } from "./route.ts";
 
-export const createMealRouter = ({ mealService }: AppDependencies["services"]) =>
+export const createMealRouter: CreateRoute<"mealService"> = ({ mealService }) =>
     express
         .Router()
         .get<

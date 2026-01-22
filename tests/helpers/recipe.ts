@@ -4,6 +4,7 @@ import { TagActions } from "../../src/controllers/index.ts";
 import type { KnexDatabase, ServiceResponse } from "../../src/database/index.ts";
 import type {
     ContentTags,
+    RecipeIngredientAmount,
     RecipeIngredientItem,
     RecipeIngredients,
     RecipeMethod,
@@ -11,9 +12,26 @@ import type {
     RecipeServings,
 } from "../../src/routes/spec/index.ts";
 import { randomBoolean, randomNumber } from "./data.ts";
-import { generateRandomAmount } from "./list.ts";
 import type { RecipeService } from "../../src/services/recipeService.ts";
 import { Undefined } from "../../src/utils/index.ts";
+
+const generateRandomAmount = [
+    () =>
+        ({
+            representation: "number",
+            value: randomNumber(1, 100).toString(),
+        } satisfies RecipeIngredientAmount),
+    () =>
+        ({
+            representation: "range",
+            value: [randomNumber(1, 100).toString(), randomNumber(1, 100).toString()],
+        } satisfies RecipeIngredientAmount),
+    () =>
+        ({
+            representation: "fraction",
+            value: [randomNumber(1, 100).toString(), randomNumber(1, 100).toString(), randomNumber(1, 100).toString()],
+        } satisfies RecipeIngredientAmount),
+][randomNumber(0, 2)]!;
 
 export const generateRandomRecipeIngredientSections = (): ServiceResponse<RecipeService, "create">["ingredients"] =>
     Array.from({ length: randomNumber() }).map(() => ({

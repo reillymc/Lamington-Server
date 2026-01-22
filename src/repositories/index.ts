@@ -5,6 +5,7 @@ import type { ListRepository } from "./listRepository.ts";
 import type { MealRepository } from "./mealRepository.ts";
 import type { PlannerRepository } from "./plannerRepository.ts";
 import type { RecipeRepository } from "./recipeRepository.ts";
+import type { UserRepository } from "./userRepository.ts";
 
 export type AppRepositories<T extends Database = Database> = {
     bookRepository: BookRepository<T>;
@@ -13,4 +14,5 @@ export type AppRepositories<T extends Database = Database> = {
     plannerRepository: PlannerRepository<T>;
     recipeRepository: RecipeRepository<T>;
     listRepository: ListRepository<T>;
+    userRepository: UserRepository<T>;
 };

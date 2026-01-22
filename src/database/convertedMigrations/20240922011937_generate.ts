@@ -1,7 +1,7 @@
 import type { Knex } from "knex";
 import { v4 } from "uuid";
-import { hashPassword } from "../../services/password.ts";
 import { type User, lamington } from "../definitions/index.ts";
+import { hashPassword } from "../../services/userService.ts";
 
 export async function up(knex: Knex): Promise<void> {
     const password = process.env.ADMIN_ACCOUNT_PASSWORD;

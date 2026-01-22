@@ -2,11 +2,10 @@ import type { RequestHandler } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 
 import config from "../config.ts";
-import { UserActions } from "../controllers/index.ts";
 import { getStatus } from "../routes/helpers/index.ts";
 import { UserStatus } from "../routes/spec/index.ts";
-import { AppError } from "../services/index.ts";
-import type { Database, KnexDatabase } from "../database/index.ts";
+import { UnauthorizedError, UnknownError } from "../services/index.ts";
+import type { CreateMiddleware } from "./middleware.ts";
 
 const { jwtSecret } = config.authentication;
 
@@ -15,14 +14,21 @@ export interface AuthData {
     status?: UserStatus;
 }
 
-export const createAuthenticationMiddleware =
-    (conn: Database): RequestHandler =>
-    (req, res, next) => {
-        if (!jwtSecret) return;
+export const createAuthenticationMiddleware: CreateMiddleware<"userService"> =
+    ({ userService }): RequestHandler =>
+    (req, _res, next) => {
+        if (!jwtSecret) {
+            return next(new UnknownError("No authentication secret found"));
+        }
+
+        // TODO remove route check when rest of routes are converted adn can be properly sequenced
+        if (req.url.startsWith("/auth")) {
+            return next();
+        }
 
         var token = req.headers["authorization"];
         if (!token) {
-            return next(new AppError({ status: 401, message: "Authentication required to access this service." }));
+            return next(new UnauthorizedError());
         }
 
         if (token.startsWith("Bearer ")) {
@@ -31,27 +37,27 @@ export const createAuthenticationMiddleware =
 
         jwt.verify(token, jwtSecret, async (err, decoded) => {
             if (err) {
-                return next(new AppError({ status: 401, message: "Failed to authenticate user.", innerError: err }));
+                return next(new UnauthorizedError("Failed to decode authentication token"));
             }
 
             if (!isUserToken(decoded)) {
-                return next(new AppError({ status: 401, message: "Invalid token." }));
+                return next(new UnauthorizedError("Invalid token"));
             }
 
-            const [user] = await UserActions.read(conn as KnexDatabase, { userId: decoded.userId });
+            const [user] = await userService.readCredentials(decoded);
 
             if (!user) {
-                return next(new AppError({ status: 401, message: "User not found." }));
+                return next(new UnauthorizedError("User not found"));
             }
 
             const userStatus = getStatus(user.status);
 
             if (userStatus === UserStatus.Pending) {
-                return next(new AppError({ status: 401, message: "User account is pending approval." }));
+                return next(new UnauthorizedError("User account is pending approval"));
             }
 
             if (userStatus === UserStatus.Blacklisted) {
-                return next(new AppError({ status: 401, message: "User account access denied." }));
+                return next(new UnauthorizedError("User account access denied"));
             }
 
             req.session = { userId: decoded.userId, status: userStatus };

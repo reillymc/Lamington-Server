@@ -1,19 +1,21 @@
 import { expect } from "expect";
 import type { Express } from "express";
-import assert from "node:assert";
-import { afterEach, beforeEach, describe, it } from "node:test";
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
-import type { Knex } from "knex";
 
 import { setupApp } from "../../src/app.ts";
-import { InternalUserActions, UserActions } from "../../src/controllers/user.ts";
-import { type LoginResponse, type RegisterRequestBody, UserStatus } from "../../src/routes/spec/index.ts";
+import { type components, UserStatus } from "../../src/routes/spec/index.ts";
+import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import { comparePassword } from "../../src/services/password.ts";
-import { AuthEndpoint, CreateUsers } from "../helpers/index.ts";
-import db from "../../src/database/index.ts";
+import { CreateUsers } from "../helpers/index.ts";
+import db, { type KnexDatabase } from "../../src/database/index.ts";
 
-describe("login", () => {
-    let database: Knex.Transaction;
+after(async () => {
+    await db.destroy();
+});
+
+describe("Login a user", () => {
+    let database: KnexDatabase;
     let app: Express;
 
     beforeEach(async () => {
@@ -22,7 +24,7 @@ describe("login", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should fail login with invalid email", async () => {
@@ -30,14 +32,14 @@ describe("login", () => {
 
         if (!user) throw new Error("User not created");
 
-        const requestBody = {
-            email: "invalid",
+        const requestBody: components["schemas"]["AuthLogin"] = {
+            email: "email@test.email",
             password: user.password,
         };
 
-        const res = await request(app).post(AuthEndpoint.login).send(requestBody);
+        const res = await request(app).post("/v1/auth/login").send(requestBody);
 
-        assert.strictEqual(res.statusCode, 401);
+        expect(res.statusCode).toEqual(401);
     });
 
     it("should fail login with invalid password", async () => {
@@ -45,12 +47,12 @@ describe("login", () => {
 
         if (!user) throw new Error("User not created");
 
-        const requestBody = {
+        const requestBody: components["schemas"]["AuthLogin"] = {
             email: user.email,
             password: "invalid",
         };
 
-        const res = await request(app).post(AuthEndpoint.login).send(requestBody);
+        const res = await request(app).post("/v1/auth/login").send(requestBody);
 
         expect(res.statusCode).toEqual(401);
     });
@@ -60,16 +62,16 @@ describe("login", () => {
 
         if (!user) throw new Error("User not created");
 
-        const requestBody = {
+        const requestBody: components["schemas"]["AuthLogin"] = {
             email: user.email,
             password: user.password,
         };
 
-        const res = await request(app).post(AuthEndpoint.login).send(requestBody);
+        const res = await request(app).post("/v1/auth/login").send(requestBody);
 
         expect(res.statusCode).toEqual(200);
 
-        const { data } = res.body as LoginResponse;
+        const data = res.body as components["schemas"]["AuthResponse"];
 
         if (!data) throw new Error("No data returned");
 
@@ -84,23 +86,40 @@ describe("login", () => {
 
         if (!user) throw new Error("User not created");
 
-        const requestBody = {
+        const requestBody: components["schemas"]["AuthLogin"] = {
             email: user.email,
             password: user.password,
         };
 
-        const res = await request(app).post(AuthEndpoint.login).send(requestBody);
+        const res = await request(app).post("/v1/auth/login").send(requestBody);
 
         expect(res.statusCode).toEqual(200);
 
-        const { message } = res.body as LoginResponse;
+        const { message } = res.body as components["schemas"]["AuthResponse"];
 
         expect(message).toEqual("Account is pending approval");
     });
+
+    it("should login successfully but return Blacklisted status for blacklisted user", async () => {
+        const [user] = await CreateUsers(database, { status: UserStatus.Blacklisted });
+        if (!user) throw new Error("User not created");
+
+        const requestBody: components["schemas"]["AuthLogin"] = {
+            email: user.email,
+            password: user.password,
+        };
+
+        const res = await request(app).post("/v1/auth/login").send(requestBody);
+
+        expect(res.statusCode).toEqual(200);
+        const data = res.body as components["schemas"]["AuthResponse"];
+        expect(data.user.status).toEqual(UserStatus.Blacklisted);
+        expect(data.authorization?.token).toBeDefined();
+    });
 });
 
-describe("register", () => {
-    let database: Knex.Transaction;
+describe("Register a new user", () => {
+    let database: KnexDatabase;
     let app: Express;
 
     beforeEach(async () => {
@@ -109,46 +128,48 @@ describe("register", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should fail register missing password", async () => {
-        const requestBody: Partial<RegisterRequestBody> = {
+        const requestBody: Partial<components["schemas"]["AuthRegister"]> = {
             email: "user@email.com",
             firstName: "John",
             lastName: "Doe",
         };
 
-        const res = await request(app).post(AuthEndpoint.register).send(requestBody);
+        const res = await request(app).post("/v1/auth/register").send(requestBody);
 
         expect(res.statusCode).toEqual(400);
     });
 
     it("should fail register missing email", async () => {
-        const requestBody: Partial<RegisterRequestBody> = {
+        const requestBody: Partial<components["schemas"]["AuthRegister"]> = {
             firstName: "John",
             lastName: "Doe",
             password: "password",
         };
 
-        const res = await request(app).post(AuthEndpoint.register).send(requestBody);
+        const res = await request(app).post("/v1/auth/register").send(requestBody);
 
         expect(res.statusCode).toEqual(400);
     });
 
     it("should register new user with valid request and set to pending", async () => {
-        const requestBody: Partial<RegisterRequestBody> = {
+        const requestBody: components["schemas"]["AuthRegister"] = {
             email: "user@email.com",
             firstName: "John",
             lastName: "Doe",
             password: "password",
         };
 
-        const res = await request(app).post(AuthEndpoint.register).send(requestBody);
+        const res = await request(app).post("/v1/auth/register").send(requestBody);
 
         expect(res.statusCode).toEqual(200);
 
-        const pendingUsers = await UserActions.readPending(database);
+        const { users: pendingUsers } = await KnexUserRepository.readAll(database, {
+            filter: { status: UserStatus.Pending },
+        });
 
         expect(pendingUsers.length).toEqual(1);
 
@@ -161,18 +182,20 @@ describe("register", () => {
     });
 
     it("should convert email to lower case", async () => {
-        const requestBody: RegisterRequestBody = {
+        const requestBody: components["schemas"]["AuthRegister"] = {
             email: "Email_Address@hosT.CoM",
             firstName: "John",
             lastName: "Doe",
             password: "password",
         };
 
-        const res = await request(app).post(AuthEndpoint.register).send(requestBody);
+        const res = await request(app).post("/v1/auth/register").send(requestBody);
 
         expect(res.statusCode).toEqual(200);
 
-        const pendingUsers = await UserActions.readPending(database);
+        const { users: pendingUsers } = await KnexUserRepository.readAll(database, {
+            filter: { status: UserStatus.Pending },
+        });
 
         expect(pendingUsers.length).toEqual(1);
 
@@ -187,13 +210,15 @@ describe("register", () => {
             firstName: "John",
             lastName: "Doe",
             password: "password",
-        } satisfies RegisterRequestBody;
+        } satisfies components["schemas"]["AuthRegister"];
 
-        const res = await request(app).post(AuthEndpoint.register).send(requestBody);
+        const res = await request(app).post("/v1/auth/register").send(requestBody);
 
         expect(res.statusCode).toEqual(200);
 
-        const [user] = await InternalUserActions.read(database, { email: requestBody.email });
+        const {
+            users: [user],
+        } = await KnexUserRepository.readCredentials(database, { users: [{ email: requestBody.email }] });
 
         if (!user) throw new Error("User not created");
 
@@ -204,5 +229,18 @@ describe("register", () => {
         expect(passwordCorrect).toBeTruthy();
     });
 
-    // TODO: tests for default user data
+    it("should fail to register with existing email", async () => {
+        const user = {
+            email: "duplicate@example.com",
+            firstName: "John",
+            lastName: "Doe",
+            password: "password",
+        } satisfies components["schemas"]["AuthRegister"];
+
+        await request(app).post("/v1/auth/register").send(user).expect(200);
+
+        const res = await request(app).post("/v1/auth/register").send(user);
+
+        expect(res.statusCode).toEqual(400);
+    });
 });

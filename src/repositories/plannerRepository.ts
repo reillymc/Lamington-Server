@@ -7,6 +7,7 @@ import type { RepositoryBulkService, RepositoryService } from "./repository.ts";
 
 type PlannerUserStatus = "O" | "A" | "M" | "P" | "B";
 type PlannerColor = `variant${1 | 2 | 3 | 4 | 5}`;
+type PlannerMealCourse = "breakfast" | "lunch" | "dinner" | "snack" | "dessert" | "drink" | "component" | "side";
 
 type VerifyPermissionsRequest = {
     userId: User["userId"];
@@ -30,7 +31,7 @@ type VerifyPermissionsResponse = {
 
 type PlannerMealResponse = {
     mealId: Meal["mealId"];
-    course: "breakfast" | "lunch" | "dinner";
+    course: PlannerMealCourse;
     owner: {
         userId: User["userId"];
         firstName: User["firstName"];
@@ -68,7 +69,7 @@ type CreatePlannerMealPayload = {
     year: Meal["year"];
     month: Meal["month"];
     dayOfMonth: Meal["dayOfMonth"];
-    course: "breakfast" | "lunch" | "dinner";
+    course: PlannerMealCourse;
     description?: Meal["description"];
     source?: Meal["source"];
     recipeId?: Meal["recipeId"];
@@ -90,7 +91,7 @@ type UpdatePlannerMealPayload = {
     year?: Meal["year"];
     month?: Meal["month"];
     dayOfMonth?: Meal["dayOfMonth"];
-    course?: "breakfast" | "lunch" | "dinner";
+    course?: PlannerMealCourse;
     description?: Meal["description"];
     source?: Meal["source"];
     recipeId?: Meal["recipeId"];

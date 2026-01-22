@@ -6,13 +6,46 @@ import { contentMember } from "../../database/definitions/contentMember.ts";
 import { user } from "../../database/definitions/user.ts";
 import { contentAttachment } from "../../database/definitions/contentAttachment.ts";
 import { attachment } from "../../database/definitions/attachment.ts";
-import { lamington, type KnexDatabase } from "../../database/index.ts";
+import { lamington, type CreateQuery, type KnexDatabase } from "../../database/index.ts";
 import { EnsureArray, toUndefined, Undefined } from "../../utils/index.ts";
 import type { PlannerRepository } from "../plannerRepository.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
 import { isForeignKeyViolation } from "./common/postgresErrors.ts";
 import { ForeignKeyViolationError } from "../common/errors.ts";
+
+// type SavePlannerMemberRequest = CreateQuery<{
+//     plannerId: Planner["plannerId"];
+//     members?: Array<{ userId: ContentMember["userId"]; status?: ContentMemberStatus }>;
+// }>;
+
+// type DeletePlannerMemberRequest = CreateQuery<{
+//     plannerId: Planner["plannerId"];
+//     userId: ContentMember["userId"];
+// }>;
+
+// type ReadPlannerMembersRequest = CreateQuery<{
+//     plannerId: Planner["plannerId"];
+// }>;
+
+// export const PlannerMemberActions = {
+//     delete: (request: DeletePlannerMemberRequest) =>
+//         ContentMemberActions.delete(
+//             db as KnexDatabase,
+//             EnsureArray(request).map(({ plannerId, userId }) => ({ contentId: plannerId, members: [{ userId }] }))
+//         ),
+//     read: (request: ReadPlannerMembersRequest) =>
+//         ContentMemberActions.read(
+//             db as KnexDatabase,
+//             EnsureArray(request).map(({ plannerId }) => ({ contentId: plannerId }))
+//         ).then(response => response.map(({ contentId, ...rest }) => ({ plannerId: contentId, ...rest }))),
+//     save: (request: SavePlannerMemberRequest, options?: CreateContentMemberOptions) =>
+//         ContentMemberActions.save(
+//             db as KnexDatabase,
+//             EnsureArray(request).map(({ plannerId, members }) => ({ contentId: plannerId, members })),
+//             options
+//         ),
+// };
 
 const formatPlannerMeal = (meal: any): Awaited<ReturnType<PlannerRepository["readAllMeals"]>>["meals"][number] => ({
     mealId: meal.mealId,

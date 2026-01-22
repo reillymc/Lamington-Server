@@ -30,6 +30,7 @@ export class AppError {
 }
 
 type KnownEntities =
+    | "attachment"
     | "cooklist meal"
     | "list item"
     | "list member"
@@ -38,6 +39,7 @@ type KnownEntities =
     | "planner meal"
     | "planner member"
     | "planner"
+    | "resource"
     | "user";
 
 export class PermissionError extends AppError {
@@ -51,12 +53,12 @@ export class PermissionError extends AppError {
 }
 
 export class NotFoundError extends AppError {
-    constructor(entity: KnownEntities, entityIds: string | string[]) {
+    constructor(entity: KnownEntities, entityIds?: string | string[]) {
         super({
             status: 404,
             code: "NOT_FOUND",
             message: `The requested ${entity} entries were not found: ${
-                entityIds.length ? `Ids: ${EnsureArray(entityIds).join(", ")}` : ""
+                entityIds?.length ? `Ids: ${EnsureArray(entityIds).join(", ")}` : ""
             }`,
         });
     }
@@ -103,11 +105,30 @@ export class InvalidOperationError extends AppError {
     }
 }
 
+export class UnauthorizedError extends AppError {
+    constructor(reason?: string) {
+        super({
+            status: 401,
+            code: "UNAUTHORIZED",
+            message: reason,
+        });
+    }
+}
+
 export class ValidationError extends AppError {
     constructor(innerError: any) {
         super({
             status: innerError.status,
             message: innerError.message,
+            innerError,
+        });
+    }
+}
+
+export class UnknownError extends AppError {
+    constructor(innerError: unknown) {
+        super({
+            status: 500,
             innerError,
         });
     }

@@ -1,6 +1,6 @@
 import { expect } from "expect";
 import type { Express } from "express";
-import { afterEach, beforeEach, describe, it } from "node:test";
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 
@@ -20,6 +20,10 @@ import {
 } from "../helpers/index.ts";
 import { randomCourse } from "../helpers/meal.ts";
 
+after(async () => {
+    await db.destroy();
+});
+
 describe("Add meal to cook list", () => {
     let database: KnexDatabase;
     let app: Express;
@@ -30,7 +34,7 @@ describe("Add meal to cook list", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -159,7 +163,7 @@ describe("Update meal in cook list", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -386,7 +390,7 @@ describe("Remove meal from cook list", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {
@@ -492,7 +496,7 @@ describe("Get cook list meals", () => {
     });
 
     afterEach(async () => {
-        database.rollback();
+        await database.rollback();
     });
 
     it("should require authentication", async () => {

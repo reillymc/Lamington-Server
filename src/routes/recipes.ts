@@ -1,7 +1,5 @@
 import express from "express";
 
-import type { AppDependencies } from "../appDependencies.ts";
-
 import { RecipeEndpoint } from "./spec/index.ts";
 import {
     type DeleteRecipeRequestBody,
@@ -32,6 +30,7 @@ import type { QueryParam } from "./spec/base.ts";
 import type { ReadAllRequest } from "../repositories/recipeRepository.ts";
 import { parseBaseQuery } from "./helpers/queryParams.ts";
 import { Undefined } from "../utils/index.ts";
+import type { CreateRoute } from "./route.ts";
 
 const parseRecipesQuerySort = (sort: QueryParam) => {
     if (Array.isArray(sort)) return;
@@ -69,7 +68,7 @@ export const parseRecipeQuery = ({
     return { page, sort, order, filter: { name: search, tags, ingredients } };
 };
 
-export const createRecipeRouter = ({ recipeService }: AppDependencies["services"]) => {
+export const createRecipeRouter: CreateRoute<"recipeService"> = ({ recipeService }) => {
     const router = express.Router();
 
     /**
