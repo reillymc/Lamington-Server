@@ -1,6 +1,6 @@
-import { exec } from "child_process";
-import fs from "fs";
-import path from "path";
+import { exec } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
 const target = path.resolve(process.cwd(), "openapi.yaml");
 const dir = path.dirname(target);
@@ -39,7 +39,7 @@ if (fs.existsSync(target)) {
 }
 
 try {
-    fs.watch(dir, (evt, filename) => {
+    fs.watch(dir, (_evt, filename) => {
         if (!filename) return;
         if (filename === base) scheduleRun();
     });

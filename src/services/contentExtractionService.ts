@@ -37,7 +37,7 @@ export const createContentExtractionService = (): ContentExtractionService => ({
             }
 
             return { name, imageUrl };
-        } catch (error) {
+        } catch (_error) {
             throw new AppError({
                 message:
                     "Failed to fetch or parse content from the provided URL.",
@@ -75,7 +75,7 @@ export const createContentExtractionService = (): ContentExtractionService => ({
                     recipeData = recipeNode;
                     return false; // Exit the loop
                 }
-            } catch (e) {
+            } catch (_e) {
                 // Ignore parsing errors for invalid JSON
             }
         });

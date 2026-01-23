@@ -300,7 +300,7 @@ describe("Update meal in cook list", () => {
     });
 
     it("should fail to update a meal belonging to another user", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [token] = await PrepareAuthenticatedUser(database);
         const [otherUser] = await CreateUsers(database);
 
         const {

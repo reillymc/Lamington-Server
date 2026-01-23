@@ -1,4 +1,4 @@
-import { type Knex } from "knex";
+import type { Knex } from "knex";
 import { UserStatus } from "../../routes/spec/index.ts";
 
 export const tables = {

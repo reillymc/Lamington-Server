@@ -1,4 +1,4 @@
-import { UserStatus } from "./user.ts";
+import type { UserStatus } from "./user.ts";
 
 export type EntityMember = {
     userId: string;

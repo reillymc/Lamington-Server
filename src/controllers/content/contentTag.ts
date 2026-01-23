@@ -16,7 +16,7 @@ import { EnsureArray } from "../../utils/index.ts";
  * @param tagIds to delete
  * @returns count of rows affected/tags deleted?
  */
-const deleteContentTags = async (
+const _deleteContentTags = async (
     db: KnexDatabase,
     contentId: string,
     tagIds: string[],

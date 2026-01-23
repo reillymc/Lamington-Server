@@ -27,7 +27,7 @@ interface GetCategoryParams {
  * Get tags by id or ids
  * @returns an array of tags matching given ids
  */
-const readTags = async (
+const _readTags = async (
     db: KnexDatabase,
     params: ReadQuery<GetCategoryParams>,
 ): ReadResponse<Tag> => {

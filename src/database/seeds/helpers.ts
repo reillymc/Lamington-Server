@@ -1,4 +1,4 @@
-import { type Knex } from "knex";
+import type { Knex } from "knex";
 import { lamington } from "../definitions/index.ts";
 
 export const clearDatabase = async (knex: Knex): Promise<void> => {

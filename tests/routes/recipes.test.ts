@@ -81,7 +81,7 @@ describe("get all recipes", () => {
             ],
         });
 
-        const nonAssociatedTags = await createRandomRecipeTags(database);
+        const _nonAssociatedTags = await createRandomRecipeTags(database);
 
         const res = await request(app)
             .get(RecipeEndpoint.getAllRecipes())

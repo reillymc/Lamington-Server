@@ -831,7 +831,7 @@ describe("post book", () => {
         const users = await CreateUsers(database);
 
         const books = {
-            data: Array.from({ length: randomNumber() }).map((_, i) => ({
+            data: Array.from({ length: randomNumber() }).map(() => ({
                 name: uuid(),
                 description: uuid(),
                 color: uuid(),

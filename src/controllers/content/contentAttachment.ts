@@ -48,7 +48,9 @@ const saveContentAttachments = async (
         );
 
         if (options?.trimNotIn) {
-            const res = await db<ContentAttachment>(lamington.contentAttachment)
+            const _res = await db<ContentAttachment>(
+                lamington.contentAttachment,
+            )
                 .where({ contentId })
                 .whereNotIn(
                     contentAttachment.attachmentId,

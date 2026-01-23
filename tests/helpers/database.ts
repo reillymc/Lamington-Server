@@ -1,6 +1,6 @@
 import { v4 as uuid } from "uuid";
 
-import { type KnexDatabase } from "../../src/database/index.ts";
+import type { KnexDatabase } from "../../src/database/index.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import { UserStatus } from "../../src/routes/spec/index.ts";
 import { hashPassword } from "../../src/services/userService.ts";

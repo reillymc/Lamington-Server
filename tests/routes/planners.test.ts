@@ -2158,7 +2158,7 @@ describe("Accept planner invitation", () => {
     });
 
     it("should successfully accept an invite", async () => {
-        const [ownerToken, owner] = await PrepareAuthenticatedUser(database);
+        const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
         const [inviteeToken, invitee] =
             await PrepareAuthenticatedUser(database);
 
@@ -2240,7 +2240,7 @@ describe("Decline planner invitation", () => {
     });
 
     it("should successfully decline an invite", async () => {
-        const [ownerToken, owner] = await PrepareAuthenticatedUser(database);
+        const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
         const [inviteeToken, invitee] =
             await PrepareAuthenticatedUser(database);
 
@@ -2322,7 +2322,7 @@ describe("Leave a planner", () => {
     });
 
     it("should allow an Administrator and Member to leave the planner", async () => {
-        const [ownerToken, owner] = await PrepareAuthenticatedUser(database);
+        const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
         const [userToken, user] = await PrepareAuthenticatedUser(database);
 
         const statuses = [UserStatus.Administrator, UserStatus.Member];
@@ -2372,7 +2372,7 @@ describe("Leave a planner", () => {
     });
 
     it("should return 404 if a pending or blacklisted user tries to leave the planner", async () => {
-        const [ownerToken, owner] = await PrepareAuthenticatedUser(database);
+        const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
         const [userToken, user] = await PrepareAuthenticatedUser(database);
 
         const statuses = [UserStatus.Pending, UserStatus.Blacklisted];

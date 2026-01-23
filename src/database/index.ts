@@ -24,6 +24,6 @@ export type KnexDatabase = Knex.Transaction;
 
 export interface Database {
     transaction<T>(
-        transactionScope: (trx: Database) => Promise<T> | void,
+        transactionScope: (trx: Database) => Promise<T> | undefined,
     ): Promise<T>;
 }

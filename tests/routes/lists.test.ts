@@ -1956,7 +1956,7 @@ describe("Leave list", () => {
     });
 
     it("should return 404 if a pending or blacklisted user tries to leave the list", async () => {
-        const [ownerToken, owner] = await PrepareAuthenticatedUser(database);
+        const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
         const [userToken, user] = await PrepareAuthenticatedUser(database);
 
         const statuses = [UserStatus.Pending, UserStatus.Blacklisted];

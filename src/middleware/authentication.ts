@@ -26,7 +26,7 @@ export const createAuthenticationMiddleware: CreateMiddleware<"userService"> =
             return next();
         }
 
-        var token = req.headers["authorization"];
+        var token = req.headers.authorization;
         if (!token) {
             return next(new UnauthorizedError());
         }

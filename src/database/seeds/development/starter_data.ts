@@ -1,4 +1,4 @@
-import { type Knex } from "knex";
+import type { Knex } from "knex";
 import { hashPassword } from "../../../services/password.ts";
 import type { Book } from "../../definitions/book.ts";
 import type { BookRecipe } from "../../definitions/bookRecipe.ts";

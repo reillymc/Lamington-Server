@@ -223,9 +223,9 @@ export const up = async (knex: Knex): Promise<void> => {
     for (const { name, id } of migratingTables) {
         const columns = await knex(name).columnInfo();
 
-        const hasCreatedBy = !!columns["createdBy"];
-        const hasCreatedAt = !!columns["createdAt"];
-        const hasUpdatedAt = !!columns["updatedAt"];
+        const hasCreatedBy = !!columns.createdBy;
+        const hasCreatedAt = !!columns.createdAt;
+        const hasUpdatedAt = !!columns.updatedAt;
 
         const createdByCol = hasCreatedBy ? `"createdBy"` : "NULL";
         const createdAtCol = hasCreatedAt ? `"createdAt"` : "NOW()";
@@ -270,8 +270,8 @@ export const up = async (knex: Knex): Promise<void> => {
         const columns = await knex(name).columnInfo();
         if (!columns[photoColumn]) continue;
 
-        const createdAtCol = !!columns["createdAt"] ? `"createdAt"` : "NOW()";
-        const updatedAtCol = !!columns["updatedAt"] ? `"updatedAt"` : "NOW()";
+        const createdAtCol = columns.createdAt ? `"createdAt"` : "NOW()";
+        const updatedAtCol = columns.updatedAt ? `"updatedAt"` : "NOW()";
 
         await knex.raw(`
             INSERT INTO ${newTables.attachment} ("uri", "createdBy", "createdAt", "updatedAt")

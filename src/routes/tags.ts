@@ -17,7 +17,7 @@ const router = express.Router();
  */
 router.get<GetTagsRequestParams, GetTagsResponse, GetTagsRequestBody>(
     "/",
-    async (req, res, next) => {
+    async (_req, res, next) => {
         try {
             const result = await TagActions.readAll(db as KnexDatabase);
 

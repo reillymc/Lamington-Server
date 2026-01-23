@@ -1,4 +1,4 @@
-import { type Knex } from "knex";
+import type { Knex } from "knex";
 import { lamington, type Tag } from "../../definitions/index.ts";
 
 // Default tags
