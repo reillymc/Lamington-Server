@@ -4,6 +4,10 @@ import { type User, lamington } from "../definitions/index.ts";
 import { hashPassword } from "../../services/userService.ts";
 
 export async function up(knex: Knex): Promise<void> {
+    if (process.env.NODE_ENV !== "production") {
+        return;
+    }
+
     const password = process.env.ADMIN_ACCOUNT_PASSWORD;
     const email = process.env.ADMIN_ACCOUNT_NAME;
 

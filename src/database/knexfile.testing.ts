@@ -14,9 +14,6 @@ const config: Knex.Config = {
         min: 0,
         max: 1,
     },
-    seeds: {
-        directory: "./seeds/testing",
-    },
 };
 
 export default config;
