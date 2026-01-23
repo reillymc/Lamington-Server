@@ -1,49 +1,177 @@
 name: Build
 
 on:
-    push:
-        branches:
-            - "master"
+  push:
+    branches:
+      - "master"
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            packages: write
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-            # https://github.com/docker/setup-qemu-action
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v1
-            # https://github.com/docker/setup-buildx-action
-            - name: Set up Docker Buildx
-              id: buildx
-              uses: docker/setup-buildx-action@v1
-            - name: Login to GHCR
-              uses: docker/login-action@v1
-              with:
-                  registry: ghcr.io
-                  username: ${{ github.repository_owner }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
-            - name: Extract version and set it to TAG env var
-              run: |
-                  echo "TAG=$(jq -r '.version' package.json)" >> $GITHUB_ENV
-            - name: Extract metadata (tags, labels) for Docker
-              id: meta
-              uses: docker/metadata-action@v3
-              with:
-                  images: ghcr.io/${{ github.repository }}
-                  tags: |
-                      type=semver,pattern={{version}},value=v${{ env.TAG }}
-                      type=semver,pattern={{major}}.{{minor}},value=v${{ env.TAG }}
-                      type=semver,pattern=v{{major}},value=v${{ env.TAG }}
-            - name: Build and push
-              uses: docker/build-push-action@v2
-              with:
-                  context: .
-                  platforms: linux/arm64,linux/amd64
-                  push: true
-                  tags: ${{ steps.meta.outputs.tags }}
-                  labels: ${{ steps.meta.outputs.labels }}
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - run: npm ci
+      - run: npm run lint
+
+  test:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      DB_TEST_HOST: localhost
+      DB_TEST_USER: postgres
+      DB_TEST_PASSWORD: password
+      DB_TEST_NAME: lamingtondb
+      DB_PORT: 5432
+      JWT_SECRET: test-secret-key
+      JWT_EXPIRATION: 365d
+    services:
+      postgres:
+        image: postgres:16.4
+        env:
+          POSTGRES_DB: lamingtondb
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - run: npm ci
+      - run: npm run setup:test
+      - run: npm run test:coverage
+
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16.4
+        env:
+          POSTGRES_DB: lamingtondb
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        run: |
+          echo "TAG=$(jq -r '.version' package.json)" >> $GITHUB_ENV
+
+      - uses: docker/setup-qemu-action@v1
+      - uses: docker/setup-buildx-action@v1
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+          tags: |
+            type=semver,pattern={{version}},value=v${{ env.TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=v${{ env.TAG }}
+            type=semver,pattern=v{{major}},value=v${{ env.TAG }}
+
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          load: true
+          platforms: linux/amd64
+          tags: lamington:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run app container
+        run: |
+          docker run -d \
+            --name app \
+            --network host \
+            -e NODE_ENV=production \
+            -e PORT=3000 \
+            -e PGHOST=localhost \
+            -e PGPORT=5432 \
+            -e PGUSER=postgres \
+            -e PGPASSWORD=password \
+            -e PGDATABASE=lamingtondb \
+            -e ADMIN_ACCOUNT_NAME=admin@lamington.example \
+            -e ADMIN_ACCOUNT_PASSWORD=password \
+            -e JWT_SECRET=test-secret-key \
+            lamington:ci
+
+      - name: Verify healthcheck
+        run: |
+          for i in {1..30}; do
+            status=$(docker inspect --format='{{.State.Health.Status}}' app)
+            if [ "$status" = "healthy" ]; then
+              echo "Container is healthy"
+              exit 0
+            fi
+            if [ "$status" = "unhealthy" ]; then
+              echo "Container failed healthcheck"
+              docker logs app
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "Healthcheck timed out"
+          docker logs app
+          exit 1
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f app || true
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [lint, test, build]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v1
+      - uses: docker/setup-buildx-action@v1
+
+      - name: Login to GHCR
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (multi-arch, cached)
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ needs.build.outputs.tags }}
+          labels: ${{ needs.build.outputs.labels }}
+          cache-from: type=gha

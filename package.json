@@ -8,6 +8,7 @@
         "start": "NODE_ENV=development node --watch --env-file=./.devcontainer/.env --watch-path=openapi.yaml --watch-path=src src/index.ts",
         "prod": "npm run migrate:prod && npm run seed:prod && NODE_ENV=production node src/index.ts",
         "test": "NODE_ENV=test node --test",
+        "lint": "",
         "test:coverage": "NODE_ENV=test node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=85",
         "migrate:dev": "knex migrate:latest --knexfile src/database/knexfile.development.ts",
         "migrate:prod": "knex migrate:latest --knexfile src/database/knexfile.production.ts",
@@ -15,7 +16,7 @@
         "seed:prod": "knex seed:run --knexfile src/database/knexfile.production.ts",
         "rollback:dev": "knex migrate:rollback --knexfile src/database/knexfile.development.ts",
         "setup:dev": "npm run rollback:dev && npm run migrate:dev && npm run seed:dev",
-        "setup:test": "knex migrate:rollback --knexfile src/database/knexfile.testing.ts && knex migrate:latest --knexfile src/database/knexfile.testing.ts && knex seed:run --knexfile src/database/knexfile.testing.ts",
+        "setup:test": "knex migrate:rollback --knexfile src/database/knexfile.testing.ts && knex migrate:latest --knexfile src/database/knexfile.testing.ts",
         "depcruise": "depcruise src --collapse 3 --output-type dot | dot -T svg > module-dependency-graph.svg",
         "generate:spec": "rm -f ./src/routes/spec/schema.d.ts && npx openapi-typescript ./openapi.yaml --output ./src/routes/spec/schema.d.ts --immutable --array-length",
         "postinstall": "npm run generate:spec"
