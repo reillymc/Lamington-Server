@@ -29,5 +29,5 @@ export const userColumns = [
 ] as const satisfies (keyof User)[];
 
 export const user = Object.fromEntries(
-    userColumns.map(column => [column, `${lamington.user}.${column}`])
+    userColumns.map((column) => [column, `${lamington.user}.${column}`]),
 ) as Table<User>;

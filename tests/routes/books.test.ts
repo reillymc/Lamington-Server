@@ -1,26 +1,26 @@
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
-import { after, afterEach, beforeEach, describe, it } from "node:test";
+import type { Knex } from "knex";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
-import type { Knex } from "knex";
 
 import { setupApp } from "../../src/app.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
-import {
-    type DeleteBookRequestParams,
-    type GetBookResponse,
-    type GetBooksResponse,
-    type PostBookRecipeRequestBody,
-    type PostBookRequestBody,
-    type PutBookRequestBody,
-    type PostBookResponse,
-    type GetBookRecipesResponse,
+import type {
+    DeleteBookRequestParams,
+    GetBookRecipesResponse,
+    GetBookResponse,
+    GetBooksResponse,
+    PostBookRecipeRequestBody,
+    PostBookRequestBody,
+    PostBookResponse,
+    PutBookRequestBody,
 } from "../../src/routes/spec/book.ts";
-import { UserStatus } from "../../src/routes/spec/user.ts";
 import type { EntityMember } from "../../src/routes/spec/common.ts";
+import { UserStatus } from "../../src/routes/spec/user.ts";
 import {
     BookEndpoint,
     CreateUsers,
@@ -60,12 +60,18 @@ describe("get all books", () => {
         const length = randomNumber();
         await KnexBookRepository.create(database, {
             userId: user.userId,
-            books: Array.from({ length }, () => ({ name: uuid(), description: uuid() })),
+            books: Array.from({ length }, () => ({
+                name: uuid(),
+                description: uuid(),
+            })),
         });
 
         await KnexBookRepository.create(database, {
             userId: otherUser!.userId,
-            books: Array.from({ length: randomNumber() }, () => ({ name: uuid(), description: uuid() })),
+            books: Array.from({ length: randomNumber() }, () => ({
+                name: uuid(),
+                description: uuid(),
+            })),
         });
 
         const res = await request(app).get(BookEndpoint.getBooks).set(token);
@@ -81,18 +87,36 @@ describe("get all books", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [otherUser] = await CreateUsers(database, { count: 1 });
 
-        const { books: editableBooks } = await KnexBookRepository.create(database, {
-            userId: otherUser!.userId,
-            books: Array.from({ length: randomNumber() }, () => ({ name: uuid(), description: uuid() })),
-        });
-        const { books: acceptedBooks } = await KnexBookRepository.create(database, {
-            userId: otherUser!.userId,
-            books: Array.from({ length: randomNumber() }, () => ({ name: uuid(), description: uuid() })),
-        });
-        const { books: nonAcceptedBooks } = await KnexBookRepository.create(database, {
-            userId: otherUser!.userId,
-            books: Array.from({ length: randomNumber() }, () => ({ name: uuid(), description: uuid() })),
-        });
+        const { books: editableBooks } = await KnexBookRepository.create(
+            database,
+            {
+                userId: otherUser!.userId,
+                books: Array.from({ length: randomNumber() }, () => ({
+                    name: uuid(),
+                    description: uuid(),
+                })),
+            },
+        );
+        const { books: acceptedBooks } = await KnexBookRepository.create(
+            database,
+            {
+                userId: otherUser!.userId,
+                books: Array.from({ length: randomNumber() }, () => ({
+                    name: uuid(),
+                    description: uuid(),
+                })),
+            },
+        );
+        const { books: nonAcceptedBooks } = await KnexBookRepository.create(
+            database,
+            {
+                userId: otherUser!.userId,
+                books: Array.from({ length: randomNumber() }, () => ({
+                    name: uuid(),
+                    description: uuid(),
+                })),
+            },
+        );
 
         await KnexBookRepository.saveMembers(database, [
             ...editableBooks.map(({ bookId }) => ({
@@ -126,7 +150,9 @@ describe("get all books", () => {
         const { data } = res.body as GetBooksResponse;
 
         expect(Object.keys(data ?? {}).length).toEqual(
-            editableBooks.length + acceptedBooks.length + nonAcceptedBooks.length
+            editableBooks.length +
+                acceptedBooks.length +
+                nonAcceptedBooks.length,
         );
 
         const editableBookIds = editableBooks.map(({ bookId }) => bookId);
@@ -233,11 +259,17 @@ describe("delete book", () => {
             books: [{ name: uuid(), description: uuid() }],
         });
 
-        const res = await request(app).delete(BookEndpoint.deleteBook(book!.bookId)).set(token).send(book);
+        const res = await request(app)
+            .delete(BookEndpoint.deleteBook(book!.bookId))
+            .set(token)
+            .send(book);
 
         expect(res.statusCode).toEqual(204);
 
-        const { books } = await KnexBookRepository.read(database, { userId: user.userId, books: [book!] });
+        const { books } = await KnexBookRepository.read(database, {
+            userId: user.userId,
+            books: [book!],
+        });
 
         expect(books.length).toEqual(0);
     });
@@ -257,7 +289,9 @@ describe("delete book member", () => {
     });
 
     it("route should require authentication", async () => {
-        const res = await request(app).delete(BookEndpoint.deleteBookMember(uuid(), uuid()));
+        const res = await request(app).delete(
+            BookEndpoint.deleteBookMember(uuid(), uuid()),
+        );
 
         expect(res.statusCode).toEqual(401);
     });
@@ -265,7 +299,10 @@ describe("delete book member", () => {
     it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app).delete(BookEndpoint.deleteBookMember(uuid(), uuid())).set(token).send();
+        const res = await request(app)
+            .delete(BookEndpoint.deleteBookMember(uuid(), uuid()))
+            .set(token)
+            .send();
 
         expect(res.statusCode).toEqual(404);
     });
@@ -305,7 +342,9 @@ describe("delete book member", () => {
 
     it("should not allow removing other member if book member with edit permission", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
-        const [bookOwner, otherMember] = await CreateUsers(database, { count: 2 });
+        const [bookOwner, otherMember] = await CreateUsers(database, {
+            count: 2,
+        });
 
         const {
             books: [book],
@@ -318,12 +357,22 @@ describe("delete book member", () => {
             bookId: book!.bookId,
             members: [
                 { userId: user!.userId, status: UserStatus.Administrator },
-                { userId: otherMember!.userId, status: randomBoolean() ? UserStatus.Administrator : UserStatus.Member },
+                {
+                    userId: otherMember!.userId,
+                    status: randomBoolean()
+                        ? UserStatus.Administrator
+                        : UserStatus.Member,
+                },
             ],
         });
 
         const res = await request(app)
-            .delete(BookEndpoint.deleteBookMember(book!.bookId, otherMember!.userId))
+            .delete(
+                BookEndpoint.deleteBookMember(
+                    book!.bookId,
+                    otherMember!.userId,
+                ),
+            )
             .set(token)
             .send();
 
@@ -343,7 +392,9 @@ describe("delete book member", () => {
 
         await KnexBookRepository.saveMembers(database, {
             bookId: book!.bookId,
-            members: [{ userId: user!.userId, status: UserStatus.Administrator }],
+            members: [
+                { userId: user!.userId, status: UserStatus.Administrator },
+            ],
         });
 
         const res = await request(app)
@@ -369,7 +420,9 @@ describe("delete book recipe", () => {
     });
 
     it("route should require authentication", async () => {
-        const res = await request(app).delete(BookEndpoint.deleteBookRecipe(uuid(), uuid()));
+        const res = await request(app).delete(
+            BookEndpoint.deleteBookRecipe(uuid(), uuid()),
+        );
 
         expect(res.statusCode).toEqual(401);
     });
@@ -377,7 +430,10 @@ describe("delete book recipe", () => {
     it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app).delete(BookEndpoint.deleteBookRecipe(uuid(), uuid())).set(token).send();
+        const res = await request(app)
+            .delete(BookEndpoint.deleteBookRecipe(uuid(), uuid()))
+            .set(token)
+            .send();
 
         expect(res.statusCode).toEqual(404);
     });
@@ -400,10 +456,15 @@ describe("delete book recipe", () => {
             recipes: [{ name: uuid(), public: randomBoolean() }],
         });
 
-        await KnexBookRepository.saveRecipes(database, { bookId: book!.bookId, recipes: [recipe!] });
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [recipe!],
+        });
 
         const res = await request(app)
-            .delete(BookEndpoint.deleteBookRecipe(book!.bookId, recipe!.recipeId))
+            .delete(
+                BookEndpoint.deleteBookRecipe(book!.bookId, recipe!.recipeId),
+            )
             .set(token)
             .send();
 
@@ -428,7 +489,10 @@ describe("delete book recipe", () => {
             recipes: [{ name: uuid(), public: randomBoolean() }],
         });
 
-        await KnexBookRepository.saveRecipes(database, { bookId: book!.bookId, recipes: [recipe!] });
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [recipe!],
+        });
 
         await KnexBookRepository.saveMembers(database, {
             bookId: book!.bookId,
@@ -441,7 +505,9 @@ describe("delete book recipe", () => {
         });
 
         const res = await request(app)
-            .delete(BookEndpoint.deleteBookRecipe(book!.bookId, recipe!.recipeId))
+            .delete(
+                BookEndpoint.deleteBookRecipe(book!.bookId, recipe!.recipeId),
+            )
             .set(token)
             .send();
 
@@ -466,7 +532,10 @@ describe("delete book recipe", () => {
             recipes: [{ name: uuid(), public: randomBoolean() }],
         });
 
-        await KnexBookRepository.saveRecipes(database, { bookId: book!.bookId, recipes: [recipe!] });
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [recipe!],
+        });
 
         await KnexBookRepository.saveMembers(database, {
             bookId: book!.bookId,
@@ -479,16 +548,21 @@ describe("delete book recipe", () => {
         });
 
         const res = await request(app)
-            .delete(BookEndpoint.deleteBookRecipe(book!.bookId, recipe!.recipeId))
+            .delete(
+                BookEndpoint.deleteBookRecipe(book!.bookId, recipe!.recipeId),
+            )
             .set(token)
             .send();
 
         expect(res.statusCode).toEqual(204);
 
-        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(database, {
-            userId: user.userId,
-            filter: { books: [book!] },
-        });
+        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(
+            database,
+            {
+                userId: user.userId,
+                filter: { books: [book!] },
+            },
+        );
 
         expect(bookRecipes.length).toEqual(0);
     });
@@ -510,19 +584,27 @@ describe("delete book recipe", () => {
             recipes: [{ name: uuid(), public: randomBoolean() }],
         });
 
-        await KnexBookRepository.saveRecipes(database, { bookId: book!.bookId, recipes: [recipe!] });
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [recipe!],
+        });
 
         const res = await request(app)
-            .delete(BookEndpoint.deleteBookRecipe(book!.bookId, recipe!.recipeId))
+            .delete(
+                BookEndpoint.deleteBookRecipe(book!.bookId, recipe!.recipeId),
+            )
             .set(token)
             .send();
 
         expect(res.statusCode).toEqual(204);
 
-        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(database, {
-            userId: user.userId,
-            filter: { books: [book!] },
-        });
+        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(
+            database,
+            {
+                userId: user.userId,
+                filter: { books: [book!] },
+            },
+        );
         expect(bookRecipes.length).toEqual(0);
     });
 
@@ -549,22 +631,30 @@ describe("delete book recipe", () => {
         ]);
 
         const res = await request(app)
-            .delete(BookEndpoint.deleteBookRecipe(book1!.bookId, recipe!.recipeId))
+            .delete(
+                BookEndpoint.deleteBookRecipe(book1!.bookId, recipe!.recipeId),
+            )
             .set(token)
             .send();
 
         expect(res.statusCode).toEqual(204);
 
-        const { recipes: book1Recipes } = await KnexRecipeRepository.readAll(database, {
-            userId: user.userId,
-            filter: { books: [book1!] },
-        });
+        const { recipes: book1Recipes } = await KnexRecipeRepository.readAll(
+            database,
+            {
+                userId: user.userId,
+                filter: { books: [book1!] },
+            },
+        );
         expect(book1Recipes.length).toEqual(0);
 
-        const { recipes: book2Recipes } = await KnexRecipeRepository.readAll(database, {
-            userId: user.userId,
-            filter: { books: [book2!] },
-        });
+        const { recipes: book2Recipes } = await KnexRecipeRepository.readAll(
+            database,
+            {
+                userId: user.userId,
+                filter: { books: [book2!] },
+            },
+        );
 
         expect(book2Recipes.length).toEqual(1);
     });
@@ -592,7 +682,9 @@ describe("get book", () => {
     it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app).get(BookEndpoint.getBook(uuid())).set(token);
+        const res = await request(app)
+            .get(BookEndpoint.getBook(uuid()))
+            .set(token);
 
         expect(res.statusCode).toEqual(404);
     });
@@ -608,7 +700,9 @@ describe("get book", () => {
             books: [{ name: uuid(), description: uuid() }],
         });
 
-        const res = await request(app).get(BookEndpoint.getBook(book!.bookId)).set(token);
+        const res = await request(app)
+            .get(BookEndpoint.getBook(book!.bookId))
+            .set(token);
 
         expect(res.statusCode).toEqual(404);
     });
@@ -630,7 +724,9 @@ describe("get book", () => {
             ],
         });
 
-        const res = await request(app).get(BookEndpoint.getBook(book!.bookId)).set(token);
+        const res = await request(app)
+            .get(BookEndpoint.getBook(book!.bookId))
+            .set(token);
 
         expect(res.statusCode).toEqual(200);
 
@@ -657,12 +753,16 @@ describe("get book", () => {
                 {
                     name: uuid(),
                     description: uuid(),
-                    members: [{ userId: user.userId, status: UserStatus.Member }],
+                    members: [
+                        { userId: user.userId, status: UserStatus.Member },
+                    ],
                 },
             ],
         });
 
-        const res = await request(app).get(BookEndpoint.getBook(book!.bookId)).set(token);
+        const res = await request(app)
+            .get(BookEndpoint.getBook(book!.bookId))
+            .set(token);
 
         expect(res.statusCode).toEqual(200);
 
@@ -692,7 +792,9 @@ describe("get book", () => {
             ],
         });
 
-        const res = await request(app).get(BookEndpoint.getBook(book!.bookId)).set(token);
+        const res = await request(app)
+            .get(BookEndpoint.getBook(book!.bookId))
+            .set(token);
 
         expect(res.statusCode).toEqual(200);
 
@@ -736,12 +838,17 @@ describe("post book", () => {
                 icon: uuid(),
                 members: users!.map(({ userId }) => ({
                     userId,
-                    status: randomBoolean() ? UserStatus.Administrator : UserStatus.Member,
+                    status: randomBoolean()
+                        ? UserStatus.Administrator
+                        : UserStatus.Member,
                 })),
             })),
         } satisfies PostBookRequestBody;
 
-        const res = await request(app).post(BookEndpoint.postBook).set(token).send(books);
+        const res = await request(app)
+            .post(BookEndpoint.postBook)
+            .set(token)
+            .send(books);
 
         expect(res.statusCode).toEqual(201);
         const { data } = res.body as PostBookResponse;
@@ -749,7 +856,9 @@ describe("post book", () => {
         expect(data!.length).toEqual(books.data.length);
 
         for (const book of data!) {
-            const expectedBook = books.data.find(({ name }) => name === book.name)!;
+            const expectedBook = books.data.find(
+                ({ name }) => name === book.name,
+            )!;
 
             expect(book.name).toEqual(expectedBook.name);
             expect(book.description).toEqual(expectedBook.description);
@@ -759,7 +868,9 @@ describe("post book", () => {
             expect(book.members!.length).toEqual(expectedBook.members.length);
 
             for (const { userId, status } of expectedBook.members) {
-                const savedBookMember = book.members!.find(({ userId: savedUserId }) => savedUserId === userId);
+                const savedBookMember = book.members!.find(
+                    ({ userId: savedUserId }) => savedUserId === userId,
+                );
 
                 expect(savedBookMember!.status).toEqual(status);
             }
@@ -800,7 +911,9 @@ describe("put book", () => {
         const res = await request(app)
             .put(BookEndpoint.postBook)
             .set(token)
-            .send({ data: [{ bookId: book!.bookId, name: "book" }] } satisfies PutBookRequestBody);
+            .send({
+                data: [{ bookId: book!.bookId, name: "book" }],
+            } satisfies PutBookRequestBody);
 
         expect(res.statusCode).toEqual(403);
     });
@@ -828,7 +941,9 @@ describe("put book", () => {
         const res = await request(app)
             .put(BookEndpoint.putBook)
             .set(token)
-            .send({ data: [{ bookId: book!.bookId, name: uuid() }] } satisfies PutBookRequestBody);
+            .send({
+                data: [{ bookId: book!.bookId, name: uuid() }],
+            } satisfies PutBookRequestBody);
 
         expect(res.statusCode).toEqual(403);
     });
@@ -852,7 +967,10 @@ describe("put book", () => {
             data: { bookId: book!.bookId, name: uuid(), description: uuid() },
         } satisfies PutBookRequestBody;
 
-        const res = await request(app).put(BookEndpoint.putBook).set(token).send(updatedBook);
+        const res = await request(app)
+            .put(BookEndpoint.putBook)
+            .set(token)
+            .send(updatedBook);
 
         expect(res.statusCode).toEqual(200);
 
@@ -867,11 +985,19 @@ describe("put book", () => {
 
     it("should save additional book members", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
-        const initialUsers = await CreateUsers(database, { count: randomCount });
-        const additionalUsers = await CreateUsers(database, { count: randomCount });
+        const initialUsers = await CreateUsers(database, {
+            count: randomCount,
+        });
+        const additionalUsers = await CreateUsers(database, {
+            count: randomCount,
+        });
 
-        const initialMembers: EntityMember[] = initialUsers.map(({ userId }) => ({ userId }));
-        const additionalMembers: EntityMember[] = additionalUsers.map(({ userId }) => ({ userId }));
+        const initialMembers: EntityMember[] = initialUsers.map(
+            ({ userId }) => ({ userId }),
+        );
+        const additionalMembers: EntityMember[] = additionalUsers.map(
+            ({ userId }) => ({ userId }),
+        );
         const allMembers = [...initialMembers, ...additionalMembers];
 
         const {
@@ -892,7 +1018,9 @@ describe("put book", () => {
         const res = await request(app)
             .put(BookEndpoint.putBook)
             .set(token)
-            .send({ data: [{ ...book!, members: allMembers }] } satisfies PutBookRequestBody);
+            .send({
+                data: [{ ...book!, members: allMembers }],
+            } satisfies PutBookRequestBody);
 
         expect(res.statusCode).toEqual(200);
 
@@ -902,7 +1030,9 @@ describe("put book", () => {
         expect(savedBook!.members!.length).toEqual(allMembers.length);
 
         savedBook!.members!.forEach(({ userId }) => {
-            const savedBookMember = allMembers.find(({ userId: savedUserId }) => savedUserId === userId);
+            const savedBookMember = allMembers.find(
+                ({ userId: savedUserId }) => savedUserId === userId,
+            );
 
             expect(savedBookMember).toBeTruthy();
         });
@@ -910,12 +1040,22 @@ describe("put book", () => {
 
     it("should remove some book members", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
-        const initialMembers = await CreateUsers(database, { count: randomCount });
+        const initialMembers = await CreateUsers(database, {
+            count: randomCount,
+        });
 
-        const members: EntityMember[] = initialMembers.map(({ userId }) => ({ userId }));
-        const reducedMembers: EntityMember[] = members.slice(0, Math.max((members.length - 1) / 2));
+        const members: EntityMember[] = initialMembers.map(({ userId }) => ({
+            userId,
+        }));
+        const reducedMembers: EntityMember[] = members.slice(
+            0,
+            Math.max((members.length - 1) / 2),
+        );
         const excludedMembers: EntityMember[] = members.filter(
-            ({ userId }) => !reducedMembers.find(({ userId: savedUserId }) => savedUserId === userId)
+            ({ userId }) =>
+                !reducedMembers.find(
+                    ({ userId: savedUserId }) => savedUserId === userId,
+                ),
         );
 
         const {
@@ -935,7 +1075,9 @@ describe("put book", () => {
         const res = await request(app)
             .put(BookEndpoint.putBook)
             .set(token)
-            .send({ data: [{ ...book, members: reducedMembers }] } satisfies PutBookRequestBody);
+            .send({
+                data: [{ ...book, members: reducedMembers }],
+            } satisfies PutBookRequestBody);
         expect(res.statusCode).toEqual(200);
 
         const { data } = res.body as PostBookResponse;
@@ -944,8 +1086,12 @@ describe("put book", () => {
         expect(updatedBook!.members!.length).toEqual(reducedMembers.length);
 
         updatedBook!.members!.forEach(({ userId }) => {
-            const savedBookMember = reducedMembers.find(({ userId: savedUserId }) => savedUserId === userId);
-            const illegalMember = excludedMembers.some(({ userId: savedUserId }) => savedUserId === userId);
+            const savedBookMember = reducedMembers.find(
+                ({ userId: savedUserId }) => savedUserId === userId,
+            );
+            const illegalMember = excludedMembers.some(
+                ({ userId: savedUserId }) => savedUserId === userId,
+            );
 
             expect(savedBookMember).toBeTruthy();
             expect(illegalMember).toBeFalsy();
@@ -974,7 +1120,9 @@ describe("put book", () => {
         const res = await request(app)
             .put(BookEndpoint.putBook)
             .set(token)
-            .send({ data: [{ ...book, members: [] }] } satisfies PutBookRequestBody);
+            .send({
+                data: [{ ...book, members: [] }],
+            } satisfies PutBookRequestBody);
 
         expect(res.statusCode).toEqual(200);
 
@@ -999,7 +1147,9 @@ describe("post book member", () => {
     });
 
     it("route should require authentication", async () => {
-        const res = await request(app).post(BookEndpoint.postBookMember(uuid()));
+        const res = await request(app).post(
+            BookEndpoint.postBookMember(uuid()),
+        );
 
         expect(res.statusCode).toEqual(401);
     });
@@ -1007,7 +1157,10 @@ describe("post book member", () => {
     it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app).post(BookEndpoint.postBookMember(uuid())).set(token).send();
+        const res = await request(app)
+            .post(BookEndpoint.postBookMember(uuid()))
+            .set(token)
+            .send();
 
         expect(res.statusCode).toEqual(404);
     });
@@ -1023,7 +1176,10 @@ describe("post book member", () => {
             books: [{ name: uuid(), description: uuid() }],
         });
 
-        const res = await request(app).post(BookEndpoint.postBookMember(book!.bookId)).set(token).send();
+        const res = await request(app)
+            .post(BookEndpoint.postBookMember(book!.bookId))
+            .set(token)
+            .send();
 
         expect(res.statusCode).toEqual(404);
     });
@@ -1040,16 +1196,24 @@ describe("post book member", () => {
                 {
                     name: uuid(),
                     description: uuid(),
-                    members: [{ userId: user!.userId, status: UserStatus.Pending }],
+                    members: [
+                        { userId: user!.userId, status: UserStatus.Pending },
+                    ],
                 },
             ],
         });
 
-        const res = await request(app).post(BookEndpoint.postBookMember(book!.bookId)).set(token).send();
+        const res = await request(app)
+            .post(BookEndpoint.postBookMember(book!.bookId))
+            .set(token)
+            .send();
 
         expect(res.statusCode).toEqual(201);
 
-        const [bookMembers] = await KnexBookRepository.readMembers(database, book!);
+        const [bookMembers] = await KnexBookRepository.readMembers(
+            database,
+            book!,
+        );
 
         expect(bookMembers!.members.length).toEqual(1);
 
@@ -1074,7 +1238,9 @@ describe("post book recipe", () => {
     });
 
     it("route should require authentication", async () => {
-        const res = await request(app).post(BookEndpoint.postBookRecipe(uuid()));
+        const res = await request(app).post(
+            BookEndpoint.postBookRecipe(uuid()),
+        );
 
         expect(res.statusCode).toEqual(401);
     });
@@ -1085,7 +1251,9 @@ describe("post book recipe", () => {
         const res = await request(app)
             .post(BookEndpoint.postBookRecipe(uuid()))
             .set(token)
-            .send({ data: { recipeId: uuid() } } satisfies PostBookRecipeRequestBody);
+            .send({
+                data: { recipeId: uuid() },
+            } satisfies PostBookRecipeRequestBody);
 
         expect(res.statusCode).toEqual(404);
     });
@@ -1104,14 +1272,19 @@ describe("post book recipe", () => {
         const res = await request(app)
             .post(BookEndpoint.postBookRecipe(book!.bookId))
             .set(token)
-            .send({ data: { recipeId: uuid() } } satisfies PostBookRecipeRequestBody);
+            .send({
+                data: { recipeId: uuid() },
+            } satisfies PostBookRecipeRequestBody);
 
         expect(res.statusCode).toEqual(404);
 
-        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(database, {
-            userId: bookOwner!.userId,
-            filter: { books: [book!] },
-        });
+        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(
+            database,
+            {
+                userId: bookOwner!.userId,
+                filter: { books: [book!] },
+            },
+        );
         expect(bookRecipes.length).toEqual(0);
     });
 
@@ -1146,7 +1319,9 @@ describe("post book recipe", () => {
         const res = await request(app)
             .post(BookEndpoint.postBookRecipe(book!.bookId))
             .set(token)
-            .send({ data: { recipeId: recipe!.recipeId } } satisfies PostBookRecipeRequestBody);
+            .send({
+                data: { recipeId: recipe!.recipeId },
+            } satisfies PostBookRecipeRequestBody);
 
         expect(res.statusCode).toEqual(404);
     });
@@ -1182,14 +1357,19 @@ describe("post book recipe", () => {
         const res = await request(app)
             .post(BookEndpoint.postBookRecipe(book!.bookId))
             .set(token)
-            .send({ data: { recipeId: recipe!.recipeId } } satisfies PostBookRecipeRequestBody);
+            .send({
+                data: { recipeId: recipe!.recipeId },
+            } satisfies PostBookRecipeRequestBody);
 
         expect(res.statusCode).toEqual(201);
 
-        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(database, {
-            userId: user.userId,
-            filter: { books: [book!] },
-        });
+        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(
+            database,
+            {
+                userId: user.userId,
+                filter: { books: [book!] },
+            },
+        );
 
         expect(bookRecipes.length).toEqual(1);
 
@@ -1218,14 +1398,19 @@ describe("post book recipe", () => {
         const res = await request(app)
             .post(BookEndpoint.postBookRecipe(book!.bookId))
             .set(token)
-            .send({ data: { recipeId: recipe!.recipeId } } satisfies PostBookRecipeRequestBody);
+            .send({
+                data: { recipeId: recipe!.recipeId },
+            } satisfies PostBookRecipeRequestBody);
 
         expect(res.statusCode).toEqual(201);
 
-        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(database, {
-            userId: user.userId,
-            filter: { books: [book!] },
-        });
+        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(
+            database,
+            {
+                userId: user.userId,
+                filter: { books: [book!] },
+            },
+        );
         expect(bookRecipes.length).toEqual(1);
 
         const [bookRecipe] = bookRecipes;
@@ -1263,7 +1448,9 @@ describe("get book recipes", () => {
             books: [{ name: uuid() }],
         });
 
-        const res = await request(app).get(BookEndpoint.getBookRecipes(book!.bookId)).set(token);
+        const res = await request(app)
+            .get(BookEndpoint.getBookRecipes(book!.bookId))
+            .set(token);
         expect(res.statusCode).toEqual(404);
     });
 
@@ -1277,30 +1464,53 @@ describe("get book recipes", () => {
             books: [{ name: uuid() }],
         });
 
-        const { recipes: recipesInBook } = await KnexRecipeRepository.create(database, {
-            userId: user.userId,
-            recipes: Array.from({ length: randomNumber() }).map(() => ({ name: uuid(), public: randomBoolean() })),
+        const { recipes: recipesInBook } = await KnexRecipeRepository.create(
+            database,
+            {
+                userId: user.userId,
+                recipes: Array.from({ length: randomNumber() }).map(() => ({
+                    name: uuid(),
+                    public: randomBoolean(),
+                })),
+            },
+        );
+
+        const { recipes: recipesNotInBook } = await KnexRecipeRepository.create(
+            database,
+            {
+                userId: user.userId,
+                recipes: Array.from({ length: randomNumber() }).map(() => ({
+                    name: uuid(),
+                    public: randomBoolean(),
+                })),
+            },
+        );
+
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: recipesInBook,
         });
 
-        const { recipes: recipesNotInBook } = await KnexRecipeRepository.create(database, {
-            userId: user.userId,
-            recipes: Array.from({ length: randomNumber() }).map(() => ({ name: uuid(), public: randomBoolean() })),
-        });
-
-        await KnexBookRepository.saveRecipes(database, { bookId: book!.bookId, recipes: recipesInBook });
-
-        const res = await request(app).get(BookEndpoint.getBookRecipes(book!.bookId)).set(token);
+        const res = await request(app)
+            .get(BookEndpoint.getBookRecipes(book!.bookId))
+            .set(token);
 
         expect(res.statusCode).toEqual(200);
 
         const { data } = res.body as GetBookRecipesResponse;
 
-        const recipeIdsInBook = recipesInBook.map(r => r.recipeId);
-        const recipeIdsNotInBook = recipesNotInBook.map(r => r.recipeId);
+        const recipeIdsInBook = recipesInBook.map((r) => r.recipeId);
+        const recipeIdsNotInBook = recipesNotInBook.map((r) => r.recipeId);
 
         expect(data).toBeDefined();
         expect(data!.length).toEqual(recipesInBook.length);
-        expect(data!.every(({ recipeId }) => recipeIdsInBook.includes(recipeId))).toBe(true);
-        expect(data!.every(({ recipeId }) => !recipeIdsNotInBook.includes(recipeId))).toBe(true);
+        expect(
+            data!.every(({ recipeId }) => recipeIdsInBook.includes(recipeId)),
+        ).toBe(true);
+        expect(
+            data!.every(
+                ({ recipeId }) => !recipeIdsNotInBook.includes(recipeId),
+            ),
+        ).toBe(true);
     });
 });

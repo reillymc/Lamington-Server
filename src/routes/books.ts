@@ -1,42 +1,43 @@
 import express from "express";
-
-import { BookEndpoint } from "./spec/index.ts";
-import {
-    type DeleteBookMemberRequestBody,
-    type DeleteBookMemberRequestParams,
-    type DeleteBookMemberResponse,
-    type DeleteBookRecipeRequestBody,
-    type DeleteBookRecipeRequestParams,
-    type DeleteBookRecipeResponse,
-    type DeleteBookRequestBody,
-    type DeleteBookRequestParams,
-    type DeleteBookResponse,
-    type GetBookRecipesRequestBody,
-    type GetBookRecipesRequestParams,
-    type GetBookRecipesRequestQuery,
-    type GetBookRecipesResponse,
-    type GetBookRequestBody,
-    type GetBookRequestParams,
-    type GetBookResponse,
-    type GetBooksRequestBody,
-    type GetBooksRequestParams,
-    type GetBooksResponse,
-    type PostBookMemberRequestBody,
-    type PostBookMemberRequestParams,
-    type PostBookMemberResponse,
-    type PostBookRecipeRequestBody,
-    type PostBookRecipeRequestParams,
-    type PostBookRecipeResponse,
-    type PostBookRequestBody,
-    type PostBookRequestParams,
-    type PostBookResponse,
-    type PutBookRequestBody,
-    type PutBookRequestParams,
-} from "./spec/book.ts";
 import { parseBaseQuery } from "./helpers/queryParams.ts";
 import type { CreateRoute } from "./route.ts";
+import type {
+    DeleteBookMemberRequestBody,
+    DeleteBookMemberRequestParams,
+    DeleteBookMemberResponse,
+    DeleteBookRecipeRequestBody,
+    DeleteBookRecipeRequestParams,
+    DeleteBookRecipeResponse,
+    DeleteBookRequestBody,
+    DeleteBookRequestParams,
+    DeleteBookResponse,
+    GetBookRecipesRequestBody,
+    GetBookRecipesRequestParams,
+    GetBookRecipesRequestQuery,
+    GetBookRecipesResponse,
+    GetBookRequestBody,
+    GetBookRequestParams,
+    GetBookResponse,
+    GetBooksRequestBody,
+    GetBooksRequestParams,
+    GetBooksResponse,
+    PostBookMemberRequestBody,
+    PostBookMemberRequestParams,
+    PostBookMemberResponse,
+    PostBookRecipeRequestBody,
+    PostBookRecipeRequestParams,
+    PostBookRecipeResponse,
+    PostBookRequestBody,
+    PostBookRequestParams,
+    PostBookResponse,
+    PutBookRequestBody,
+    PutBookRequestParams,
+} from "./spec/book.ts";
+import { BookEndpoint } from "./spec/index.ts";
 
-export const createBookRouter: CreateRoute<"bookService"> = ({ bookService }) => {
+export const createBookRouter: CreateRoute<"bookService"> = ({
+    bookService,
+}) => {
     const router = express.Router();
 
     /**
@@ -47,7 +48,7 @@ export const createBookRouter: CreateRoute<"bookService"> = ({ bookService }) =>
         async ({ session }, res) => {
             const result = await bookService.getAll(session.userId);
             return res.status(200).json({ error: false, data: result });
-        }
+        },
     );
 
     /**
@@ -58,7 +59,7 @@ export const createBookRouter: CreateRoute<"bookService"> = ({ bookService }) =>
         async ({ params, session }, res) => {
             const result = await bookService.get(session.userId, params);
             return res.status(200).json({ error: false, data: result });
-        }
+        },
     );
 
     /**
@@ -69,7 +70,7 @@ export const createBookRouter: CreateRoute<"bookService"> = ({ bookService }) =>
         async ({ body, session }, res) => {
             const result = await bookService.create(session.userId, body.data);
             return res.status(201).json({ error: false, data: result });
-        }
+        },
     );
 
     /**
@@ -80,19 +81,20 @@ export const createBookRouter: CreateRoute<"bookService"> = ({ bookService }) =>
         async ({ body, session }, res) => {
             const result = await bookService.update(session.userId, body.data);
             return res.status(200).json({ error: false, data: result });
-        }
+        },
     );
 
     /**
      * DELETE request to delete a book.
      */
-    router.delete<DeleteBookRequestParams, DeleteBookResponse, DeleteBookRequestBody>(
-        BookEndpoint.deleteBook,
-        async ({ params, session }, res) => {
-            await bookService.delete(session.userId, params);
-            return res.status(204).send();
-        }
-    );
+    router.delete<
+        DeleteBookRequestParams,
+        DeleteBookResponse,
+        DeleteBookRequestBody
+    >(BookEndpoint.deleteBook, async ({ params, session }, res) => {
+        await bookService.delete(session.userId, params);
+        return res.status(204).send();
+    });
 
     /**
      * GET request to fetch all recipes for a book
@@ -110,52 +112,63 @@ export const createBookRouter: CreateRoute<"bookService"> = ({ bookService }) =>
             page: parsedQuery.page,
             order: parsedQuery.order,
         });
-        return res.status(200).json({ error: false, data: result.recipes, nextPage: result.nextPage });
+        return res.status(200).json({
+            error: false,
+            data: result.recipes,
+            nextPage: result.nextPage,
+        });
     });
 
     /**
      * POST request to save a book recipe.
      */
-    router.post<PostBookRecipeRequestParams, PostBookRecipeResponse, PostBookRecipeRequestBody>(
-        BookEndpoint.postBookRecipe,
-        async ({ body, params, session }, res) => {
-            const result = await bookService.addRecipe(session.userId, { ...params, ...body });
-            return res.status(201).json({ error: false, data: result });
-        }
-    );
+    router.post<
+        PostBookRecipeRequestParams,
+        PostBookRecipeResponse,
+        PostBookRecipeRequestBody
+    >(BookEndpoint.postBookRecipe, async ({ body, params, session }, res) => {
+        const result = await bookService.addRecipe(session.userId, {
+            ...params,
+            ...body,
+        });
+        return res.status(201).json({ error: false, data: result });
+    });
 
     /**
      * POST request to update a book member.
      */
-    router.post<PostBookMemberRequestParams, PostBookMemberResponse, PostBookMemberRequestBody>(
-        BookEndpoint.postBookMember,
-        async ({ params, session }, res) => {
-            const result = await bookService.joinMembership(session.userId, params);
-            return res.status(201).json({ error: false, data: result });
-        }
-    );
+    router.post<
+        PostBookMemberRequestParams,
+        PostBookMemberResponse,
+        PostBookMemberRequestBody
+    >(BookEndpoint.postBookMember, async ({ params, session }, res) => {
+        const result = await bookService.joinMembership(session.userId, params);
+        return res.status(201).json({ error: false, data: result });
+    });
 
     /**
      * DELETE request to delete a book recipe.
      */
-    router.delete<DeleteBookRecipeRequestParams, DeleteBookRecipeResponse, DeleteBookRecipeRequestBody>(
-        BookEndpoint.deleteBookRecipe,
-        async ({ params, session }, res) => {
-            await bookService.removeRecipe(session.userId, params);
-            return res.status(204).send();
-        }
-    );
+    router.delete<
+        DeleteBookRecipeRequestParams,
+        DeleteBookRecipeResponse,
+        DeleteBookRecipeRequestBody
+    >(BookEndpoint.deleteBookRecipe, async ({ params, session }, res) => {
+        await bookService.removeRecipe(session.userId, params);
+        return res.status(204).send();
+    });
 
     /**
      * DELETE request to delete a book member.
      */
-    router.delete<DeleteBookMemberRequestParams, DeleteBookMemberResponse, DeleteBookMemberRequestBody>(
-        BookEndpoint.deleteBookMember,
-        async ({ params, session }, res) => {
-            await bookService.leaveMembership(session.userId, params);
-            return res.status(204).send();
-        }
-    );
+    router.delete<
+        DeleteBookMemberRequestParams,
+        DeleteBookMemberResponse,
+        DeleteBookMemberRequestBody
+    >(BookEndpoint.deleteBookMember, async ({ params, session }, res) => {
+        await bookService.leaveMembership(session.userId, params);
+        return res.status(204).send();
+    });
 
     return router;
 };

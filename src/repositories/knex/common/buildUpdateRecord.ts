@@ -3,8 +3,9 @@ export const buildUpdateRecord = <Definition extends ReadonlyArray<string>>(
     definition: Definition,
     mapping: Record<
         string,
-        Definition[number] | { target: Definition[number]; transform: (val: unknown) => unknown }
-    > = {}
+        | Definition[number]
+        | { target: Definition[number]; transform: (val: unknown) => unknown }
+    > = {},
 ) => {
     const update: Record<string, unknown> = {};
 

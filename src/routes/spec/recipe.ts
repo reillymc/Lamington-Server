@@ -80,7 +80,9 @@ export interface RecipeMethodStep {
 
 export type RecipeMethod = Array<Section<RecipeMethodStep>>;
 
-export type ContentTags = { [tagGroup: string]: Partial<Tag> & { tags?: Array<Tag> } };
+export type ContentTags = {
+    [tagGroup: string]: Partial<Tag> & { tags?: Array<Tag> };
+};
 
 export type RecipeAttachments = {
     hero?: ImageAttachment;
@@ -90,35 +92,53 @@ export type RecipeAttachments = {
  * Get all recipes
  * Query params also support ...{ [parentCategoryId: string]: string[] }[]
  */
-export type GetAllRecipesRequestQuery = BasePaginatedRequestQuery<{ ingredients?: string[]; tags?: string[] }>;
+export type GetAllRecipesRequestQuery = BasePaginatedRequestQuery<{
+    ingredients?: string[];
+    tags?: string[];
+}>;
 export type GetAllRecipesRequestParams = BaseRequestParams;
 export type GetAllRecipesRequestBody = BaseRequestBody;
 
 export type GetAllRecipesRequest = BaseRequest<
-    GetAllRecipesRequestBody & GetAllRecipesRequestParams & GetAllRecipesRequestQuery
+    GetAllRecipesRequestBody &
+        GetAllRecipesRequestParams &
+        GetAllRecipesRequestQuery
 >;
 export type GetAllRecipesResponse = BasePaginatedResponse<Array<Recipe>>;
-export type GetAllRecipesService = (request: GetAllRecipesRequest) => GetAllRecipesResponse;
+export type GetAllRecipesService = (
+    request: GetAllRecipesRequest,
+) => GetAllRecipesResponse;
 
 /**
  * Get all recipes for user
  * Query params also support ...{ [parentCategoryId: string]: string[] }[]
  */
-export type GetMyRecipesRequestQuery = BasePaginatedRequestQuery<{ ingredients?: string[]; tags?: string[] }>;
+export type GetMyRecipesRequestQuery = BasePaginatedRequestQuery<{
+    ingredients?: string[];
+    tags?: string[];
+}>;
 export type GetMyRecipesRequestParams = BaseRequestParams;
 export type GetMyRecipesRequestBody = BaseRequestBody;
 
 export type GetMyRecipesRequest = BaseRequest<
-    GetMyRecipesRequestBody & GetMyRecipesRequestParams & GetMyRecipesRequestQuery
+    GetMyRecipesRequestBody &
+        GetMyRecipesRequestParams &
+        GetMyRecipesRequestQuery
 >;
 export type GetMyRecipesResponse = BasePaginatedResponse<Array<Recipe>>;
-export type GetMyRecipesService = (request: GetMyRecipesRequest) => GetMyRecipesResponse;
+export type GetMyRecipesService = (
+    request: GetMyRecipesRequest,
+) => GetMyRecipesResponse;
 
 // Get recipe
-export type GetRecipeRequestParams = BaseRequestParams<{ [recipeIdParam]: Recipe["recipeId"] }>;
+export type GetRecipeRequestParams = BaseRequestParams<{
+    [recipeIdParam]: Recipe["recipeId"];
+}>;
 export type GetRecipeRequestBody = BaseRequestBody;
 
-export type GetRecipeRequest = BaseRequest<GetRecipeRequestParams & GetRecipeRequestBody>;
+export type GetRecipeRequest = BaseRequest<
+    GetRecipeRequestParams & GetRecipeRequestBody
+>;
 export type GetRecipeResponse = BaseResponse<Recipe>;
 export type GetRecipeService = (request: GetRecipeRequest) => GetRecipeResponse;
 
@@ -141,9 +161,13 @@ export type PostRecipeRequestBody = BaseRequestBody<{
     attachments?: RecipeAttachments;
 }>;
 
-export type PostRecipeRequest = BaseRequest<PostRecipeRequestBody & PostRecipeRequestParams>;
+export type PostRecipeRequest = BaseRequest<
+    PostRecipeRequestBody & PostRecipeRequestParams
+>;
 export type PostRecipeResponse = BaseResponse<Array<Recipe>>;
-export type PostRecipeService = (request: PostRecipeRequest) => PostRecipeResponse;
+export type PostRecipeService = (
+    request: PostRecipeRequest,
+) => PostRecipeResponse;
 
 // Put recipe
 export type PutRecipeRequestParams = BaseRequestParams;
@@ -165,17 +189,25 @@ export type PutRecipeRequestBody = BaseRequestBody<{
     attachments?: RecipeAttachments;
 }>;
 
-export type PutRecipeRequest = BaseRequest<PutRecipeRequestBody & PutRecipeRequestParams>;
+export type PutRecipeRequest = BaseRequest<
+    PutRecipeRequestBody & PutRecipeRequestParams
+>;
 export type PutRecipeResponse = BaseResponse<Array<Recipe>>;
 export type PutRecipeService = (request: PutRecipeRequest) => PutRecipeResponse;
 
 // Delete recipe
-export type DeleteRecipeRequestParams = BaseRequestParams<{ [recipeIdParam]: Recipe["recipeId"] }>;
+export type DeleteRecipeRequestParams = BaseRequestParams<{
+    [recipeIdParam]: Recipe["recipeId"];
+}>;
 export type DeleteRecipeRequestBody = BaseRequestBody;
 
-export type DeleteRecipeRequest = BaseRequest<DeleteRecipeRequestParams & DeleteRecipeRequestBody>;
+export type DeleteRecipeRequest = BaseRequest<
+    DeleteRecipeRequestParams & DeleteRecipeRequestBody
+>;
 export type DeleteRecipeResponse = BaseResponse;
-export type DeleteRecipeService = (request: DeleteRecipeRequest) => DeleteRecipeResponse;
+export type DeleteRecipeService = (
+    request: DeleteRecipeRequest,
+) => DeleteRecipeResponse;
 
 // Delete recipe item
 export type PostRecipeRatingRequestParams = BaseRequestParams<{
@@ -185,11 +217,15 @@ export type PostRecipeRatingRequestBody = BaseSimpleRequestBody<{
     rating: Recipe["ratingPersonal"];
 }>;
 
-export type PostRecipeRatingRequest = BaseRequest<PostRecipeRatingRequestParams & PostRecipeRatingRequestBody>;
+export type PostRecipeRatingRequest = BaseRequest<
+    PostRecipeRatingRequestParams & PostRecipeRatingRequestBody
+>;
 export type PostRecipeRatingResponse = BaseResponse<{
     rating: Recipe["ratingPersonal"];
 }>;
-export type PostRecipeRatingService = (request: PostRecipeRatingRequest) => PostRecipeRatingResponse;
+export type PostRecipeRatingService = (
+    request: PostRecipeRatingRequest,
+) => PostRecipeRatingResponse;
 
 export interface RecipeApi {
     getAllRecipes: GetAllRecipesService;

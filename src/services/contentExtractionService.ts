@@ -5,8 +5,12 @@ import type { components } from "../routes/spec/index.ts";
 import { AppError } from "./logging.ts";
 
 export interface ContentExtractionService {
-    extractRecipeMetadata: (url: string) => Promise<components["schemas"]["ExtractedRecipeMetadata"]>;
-    extractRecipe: (url: string) => Promise<components["schemas"]["ExtractedRecipe"]>;
+    extractRecipeMetadata: (
+        url: string,
+    ) => Promise<components["schemas"]["ExtractedRecipeMetadata"]>;
+    extractRecipe: (
+        url: string,
+    ) => Promise<components["schemas"]["ExtractedRecipe"]>;
 }
 
 export const createContentExtractionService = (): ContentExtractionService => ({
@@ -14,27 +18,38 @@ export const createContentExtractionService = (): ContentExtractionService => ({
         try {
             const response = await fetch(url);
             if (!response.ok) {
-                throw new AppError({ message: `Request failed with status ${response.status}` });
+                throw new AppError({
+                    message: `Request failed with status ${response.status}`,
+                });
             }
             const html = await response.text();
             const page = load(html);
 
-            const name = page('meta[property="og:title"]').attr("content") ?? page("title").text();
+            const name =
+                page('meta[property="og:title"]').attr("content") ??
+                page("title").text();
             const imageUrl = page('meta[property="og:image"]').attr("content");
 
             if (!name) {
-                throw new AppError({ message: "Could not extract a name from the URL." });
+                throw new AppError({
+                    message: "Could not extract a name from the URL.",
+                });
             }
 
             return { name, imageUrl };
         } catch (error) {
-            throw new AppError({ message: "Failed to fetch or parse content from the provided URL." });
+            throw new AppError({
+                message:
+                    "Failed to fetch or parse content from the provided URL.",
+            });
         }
     },
     extractRecipe: async (url: string) => {
         const response = await fetch(url);
         if (!response.ok) {
-            throw new AppError({ message: `Request failed with status ${response.status}` });
+            throw new AppError({
+                message: `Request failed with status ${response.status}`,
+            });
         }
         const html = await response.text();
         const page = load(html);
@@ -51,7 +66,9 @@ export const createContentExtractionService = (): ContentExtractionService => ({
                 const graph = json["@graph"] || [json];
                 const recipeNode = graph.find(
                     (node: any) =>
-                        node["@type"] === "Recipe" || (Array.isArray(node["@type"]) && node["@type"].includes("Recipe"))
+                        node["@type"] === "Recipe" ||
+                        (Array.isArray(node["@type"]) &&
+                            node["@type"].includes("Recipe")),
                 );
 
                 if (recipeNode) {
@@ -64,7 +81,9 @@ export const createContentExtractionService = (): ContentExtractionService => ({
         });
 
         if (!recipeData) {
-            throw new AppError({ message: "No recipe JSON-LD data found on the page." });
+            throw new AppError({
+                message: "No recipe JSON-LD data found on the page.",
+            });
         }
 
         const prepTime = moment.duration(recipeData.prepTime || 0).asMinutes();
@@ -77,7 +96,9 @@ export const createContentExtractionService = (): ContentExtractionService => ({
             summary: recipeData.description,
             prepTime,
             cookTime,
-            imageUrl: Array.isArray(recipeData.image) ? recipeData.image[0] : recipeData.image?.url ?? recipeData.image,
+            imageUrl: Array.isArray(recipeData.image)
+                ? recipeData.image[0]
+                : (recipeData.image?.url ?? recipeData.image),
         };
     },
 });

@@ -33,7 +33,9 @@ function scheduleRun(): void {
 if (fs.existsSync(target)) {
     scheduleRun();
 } else {
-    console.warn(`[watch-spec] warning: ${target} not found yet — will watch for creation.`);
+    console.warn(
+        `[watch-spec] warning: ${target} not found yet — will watch for creation.`,
+    );
 }
 
 try {

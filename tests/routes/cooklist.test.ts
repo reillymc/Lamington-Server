@@ -1,6 +1,6 @@
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
-import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 
@@ -46,22 +46,32 @@ describe("Add meal to cook list", () => {
     it("should create a new meal", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const meals = Array.from({ length: randomNumber(5, 1) }).map((_, i) => ({
-            description: uuid(),
-            course: randomCourse(),
-            sequence: i + 1,
-            source: uuid(),
-        })) satisfies components["schemas"]["CookListMealCreate"][];
+        const meals = Array.from({ length: randomNumber(5, 1) }).map(
+            (_, i) => ({
+                description: uuid(),
+                course: randomCourse(),
+                sequence: i + 1,
+                source: uuid(),
+            }),
+        ) satisfies components["schemas"]["CookListMealCreate"][];
 
-        const res = await request(app).post("/v1/cooklist/meals").set(token).send(meals);
+        const res = await request(app)
+            .post("/v1/cooklist/meals")
+            .set(token)
+            .send(meals);
         expect(res.statusCode).toEqual(201);
 
-        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(database, user);
+        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(
+            database,
+            user,
+        );
 
         expect(mealsRead.length).toEqual(meals.length);
 
-        mealsRead.forEach(meal => {
-            const expectedMeal = meals.find(m => m.description === meal.description);
+        mealsRead.forEach((meal) => {
+            const expectedMeal = meals.find(
+                (m) => m.description === meal.description,
+            );
 
             expect(meal.description).toEqual(expectedMeal!.description);
             expect(meal.sequence).toEqual(expectedMeal!.sequence);
@@ -89,10 +99,16 @@ describe("Add meal to cook list", () => {
             recipeId: recipe!.recipeId,
         } satisfies components["schemas"]["CookListMealCreate"];
 
-        const res = await request(app).post("/v1/cooklist/meals").set(token).send(meal);
+        const res = await request(app)
+            .post("/v1/cooklist/meals")
+            .set(token)
+            .send(meal);
         expect(res.statusCode).toEqual(201);
 
-        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(database, user);
+        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(
+            database,
+            user,
+        );
         expect(mealsRead).toHaveLength(1);
         expect(mealsRead[0]!.recipeId).toEqual(recipe!.recipeId);
     });
@@ -115,31 +131,41 @@ describe("Add meal to cook list", () => {
             },
         ] satisfies components["schemas"]["CookListMealCreate"][];
 
-        const res = await request(app).post("/v1/cooklist/meals").set(token).send(meals);
+        const res = await request(app)
+            .post("/v1/cooklist/meals")
+            .set(token)
+            .send(meals);
         expect(res.statusCode).toEqual(201);
 
-        const returnedMeals = res.body as components["schemas"]["CookListMeal"][];
+        const returnedMeals =
+            res.body as components["schemas"]["CookListMeal"][];
         expect(returnedMeals).toHaveLength(2);
     });
 
     it("should fail if the request contains extraneous properties", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app).post("/v1/cooklist/meals").set(token).send({
-            description: uuid(),
-            course: randomCourse(),
-            extra: "invalid",
-        });
+        const res = await request(app)
+            .post("/v1/cooklist/meals")
+            .set(token)
+            .send({
+                description: uuid(),
+                course: randomCourse(),
+                extra: "invalid",
+            });
         expect(res.statusCode).toEqual(400);
     });
 
     it("should fail if the request contains invalid properties", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app).post("/v1/cooklist/meals").set(token).send({
-            description: uuid(),
-            course: "invalid_course",
-        });
+        const res = await request(app)
+            .post("/v1/cooklist/meals")
+            .set(token)
+            .send({
+                description: uuid(),
+                course: "invalid_course",
+            });
 
         expect(res.statusCode).toEqual(400);
     });
@@ -147,7 +173,10 @@ describe("Add meal to cook list", () => {
     it("should return 400 if the request body is an empty array", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app).post("/v1/cooklist/meals").set(token).send([]);
+        const res = await request(app)
+            .post("/v1/cooklist/meals")
+            .set(token)
+            .send([]);
 
         expect(res.statusCode).toEqual(400);
     });
@@ -202,12 +231,18 @@ describe("Update meal in cook list", () => {
             source: uuid(),
         } satisfies components["schemas"]["CookListMealUpdate"];
 
-        const res = await request(app).patch(`/v1/cooklist/meals/${createdMeal!.mealId}`).set(token).send(mealUpdate);
+        const res = await request(app)
+            .patch(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send(mealUpdate);
         expect(res.statusCode).toEqual(200);
 
-        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(database, {
-            userId: user.userId,
-        });
+        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(
+            database,
+            {
+                userId: user.userId,
+            },
+        );
 
         expect(mealsRead.length).toEqual(1);
 
@@ -249,7 +284,12 @@ describe("Update meal in cook list", () => {
         const res = await request(app)
             .patch(`/v1/cooklist/meals/${createdMeal!.mealId}`)
             .set(token)
-            .send({ description: null, sequence: null, source: null, recipeId: null });
+            .send({
+                description: null,
+                sequence: null,
+                source: null,
+                recipeId: null,
+            });
 
         expect(res.statusCode).toEqual(200);
         const updatedMeal = res.body as components["schemas"]["CookListMeal"];
@@ -283,12 +323,18 @@ describe("Update meal in cook list", () => {
             source: uuid(),
         } satisfies components["schemas"]["CookListMealUpdate"];
 
-        const res = await request(app).patch(`/v1/cooklist/meals/${createdMeal!.mealId}`).set(token).send(mealUpdate);
+        const res = await request(app)
+            .patch(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send(mealUpdate);
         expect(res.statusCode).toEqual(404);
 
-        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(database, {
-            userId: otherUser!.userId,
-        });
+        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(
+            database,
+            {
+                userId: otherUser!.userId,
+            },
+        );
 
         expect(mealsRead.length).toEqual(1);
 
@@ -341,10 +387,13 @@ describe("Update meal in cook list", () => {
             meals: [{ course: randomCourse(), description: uuid() }],
         });
 
-        const res = await request(app).patch(`/v1/cooklist/meals/${meal!.mealId}`).set(token).send({
-            description: uuid(),
-            extra: "invalid",
-        });
+        const res = await request(app)
+            .patch(`/v1/cooklist/meals/${meal!.mealId}`)
+            .set(token)
+            .send({
+                description: uuid(),
+                extra: "invalid",
+            });
         expect(res.statusCode).toEqual(400);
     });
 
@@ -358,9 +407,12 @@ describe("Update meal in cook list", () => {
             meals: [{ course: randomCourse(), description: uuid() }],
         });
 
-        const res = await request(app).patch(`/v1/cooklist/meals/${meal!.mealId}`).set(token).send({
-            course: "invalid_course",
-        });
+        const res = await request(app)
+            .patch(`/v1/cooklist/meals/${meal!.mealId}`)
+            .set(token)
+            .send({
+                course: "invalid_course",
+            });
 
         expect(res.statusCode).toEqual(400);
     });
@@ -375,7 +427,10 @@ describe("Update meal in cook list", () => {
             meals: [{ course: randomCourse(), description: uuid() }],
         });
 
-        const res = await request(app).patch(`/v1/cooklist/meals/${meal!.mealId}`).set(token).send({ course: null });
+        const res = await request(app)
+            .patch(`/v1/cooklist/meals/${meal!.mealId}`)
+            .set(token)
+            .send({ course: null });
         expect(res.statusCode).toEqual(400);
     });
 });
@@ -416,12 +471,16 @@ describe("Remove meal from cook list", () => {
             ],
         });
 
-        const res = await request(app).delete(`/v1/cooklist/meals/${createdMeal!.mealId}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send();
         expect(res.statusCode).toEqual(204);
 
-        const { meals: mealsAfterDeletion } = await KnexCookListRepository.readAllMeals(database, {
-            userId: user.userId,
-        });
+        const { meals: mealsAfterDeletion } =
+            await KnexCookListRepository.readAllMeals(database, {
+                userId: user.userId,
+            });
 
         expect(mealsAfterDeletion.length).toEqual(0);
     });
@@ -444,12 +503,16 @@ describe("Remove meal from cook list", () => {
             ],
         });
 
-        const res = await request(app).delete(`/v1/cooklist/meals/${createdMeal!.mealId}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send();
         expect(res.statusCode).toEqual(404);
 
-        const { meals: mealsAfterDeletion } = await KnexCookListRepository.readAllMeals(database, {
-            userId: otherUser!.userId,
-        });
+        const { meals: mealsAfterDeletion } =
+            await KnexCookListRepository.readAllMeals(database, {
+                userId: otherUser!.userId,
+            });
 
         expect(mealsAfterDeletion.length).toEqual(1);
     });
@@ -480,7 +543,10 @@ describe("Remove meal from cook list", () => {
             ],
         });
 
-        const res = await request(app).delete(`/v1/cooklist/meals/${plannerMeal!.mealId}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/cooklist/meals/${plannerMeal!.mealId}`)
+            .set(token)
+            .send();
 
         expect(res.statusCode).toEqual(404);
     });
@@ -526,7 +592,8 @@ describe("Get cook list meals", () => {
 
         expect(res.statusCode).toEqual(200);
 
-        const cookListMealData = res.body as components["schemas"]["CookListMeal"][];
+        const cookListMealData =
+            res.body as components["schemas"]["CookListMeal"][];
 
         expect(cookListMealData.length).toEqual(1);
 
@@ -556,11 +623,14 @@ describe("Get cook list meals", () => {
             ],
         });
 
-        const res = await request(app).get("/v1/cooklist/meals").set(otherUserToken);
+        const res = await request(app)
+            .get("/v1/cooklist/meals")
+            .set(otherUserToken);
 
         expect(res.statusCode).toEqual(200);
 
-        const cookListMealData = res.body as components["schemas"]["CookListMeal"][];
+        const cookListMealData =
+            res.body as components["schemas"]["CookListMeal"][];
 
         expect(cookListMealData.length).toEqual(0);
     });

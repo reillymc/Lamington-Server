@@ -1,6 +1,6 @@
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
-import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 
@@ -10,7 +10,10 @@ import { KnexListRepository } from "../../src/repositories/knex/knexListReposito
 import { type components, UserStatus } from "../../src/routes/spec/index.ts";
 import { CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
 
-const randomIcon = () => (["variant1", "variant2", "variant3"] as const)[Math.floor(Math.random() * 3)];
+const randomIcon = () =>
+    (["variant1", "variant2", "variant3"] as const)[
+        Math.floor(Math.random() * 3)
+    ];
 
 after(async () => {
     await db.destroy();
@@ -47,7 +50,7 @@ describe("Get user lists", () => {
         const body = res.body as components["schemas"]["ListSummary"][];
         expect(body).toHaveLength(3);
 
-        const ids = body.map(l => l.listId);
+        const ids = body.map((l) => l.listId);
         expect(ids).toContain(lists[0]!.listId);
         expect(ids).toContain(lists[1]!.listId);
         expect(ids).toContain(lists[2]!.listId);
@@ -66,7 +69,9 @@ describe("Get user lists", () => {
         await KnexListRepository.saveMembers(database, [
             {
                 listId: adminList!.listId,
-                members: [{ userId: user.userId, status: UserStatus.Administrator }],
+                members: [
+                    { userId: user.userId, status: UserStatus.Administrator },
+                ],
             },
             {
                 listId: memberList!.listId,
@@ -82,7 +87,7 @@ describe("Get user lists", () => {
         expect(res.statusCode).toEqual(200);
 
         const body = res.body as components["schemas"]["ListSummary"][];
-        const ids = body.map(l => l.listId);
+        const ids = body.map((l) => l.listId);
 
         expect(ids).toContain(adminList!.listId);
         expect(ids).toContain(memberList!.listId);
@@ -102,7 +107,9 @@ describe("Get user lists", () => {
         await KnexListRepository.saveMembers(database, [
             {
                 listId: blockedList!.listId,
-                members: [{ userId: user.userId, status: UserStatus.Blacklisted }],
+                members: [
+                    { userId: user.userId, status: UserStatus.Blacklisted },
+                ],
             },
         ]);
 
@@ -110,7 +117,7 @@ describe("Get user lists", () => {
         expect(res.statusCode).toEqual(200);
 
         const body = res.body as components["schemas"]["ListSummary"][];
-        const ids = body.map(l => l.listId);
+        const ids = body.map((l) => l.listId);
 
         expect(ids).not.toContain(blockedList!.listId);
     });
@@ -128,7 +135,7 @@ describe("Get user lists", () => {
         expect(res.statusCode).toEqual(200);
 
         const body = res.body as components["schemas"]["ListSummary"][];
-        const found = body.find(l => l.listId === lists[0]!.listId);
+        const found = body.find((l) => l.listId === lists[0]!.listId);
         expect(found).toBeUndefined();
     });
 });
@@ -160,11 +167,17 @@ describe("Create a list", () => {
             icon: randomIcon(),
         } satisfies components["schemas"]["ListCreate"];
 
-        const res = await request(app).post("/v1/lists").set(token).send(listData);
+        const res = await request(app)
+            .post("/v1/lists")
+            .set(token)
+            .send(listData);
 
         expect(res.statusCode).toEqual(201);
 
-        const { lists: savedLists } = await KnexListRepository.readAll(database, { userId: user.userId });
+        const { lists: savedLists } = await KnexListRepository.readAll(
+            database,
+            { userId: user.userId },
+        );
         expect(savedLists.length).toEqual(1);
 
         const [savedList] = savedLists;
@@ -226,7 +239,9 @@ describe("Get a list", () => {
             lists: [{ name: uuid(), description: uuid() }],
         });
 
-        const res = await request(app).get(`/v1/lists/${lists[0]!.listId}`).set(token);
+        const res = await request(app)
+            .get(`/v1/lists/${lists[0]!.listId}`)
+            .set(token);
 
         expect(res.statusCode).toEqual(404);
     });
@@ -240,7 +255,9 @@ describe("Get a list", () => {
         });
         const list = lists[0]!;
 
-        const res = await request(app).get(`/v1/lists/${list.listId}`).set(token);
+        const res = await request(app)
+            .get(`/v1/lists/${list.listId}`)
+            .set(token);
 
         expect(res.statusCode).toEqual(200);
 
@@ -272,7 +289,9 @@ describe("Get a list", () => {
                 members: [{ userId: user.userId, status }],
             });
 
-            const res = await request(app).get(`/v1/lists/${list!.listId}`).set(token);
+            const res = await request(app)
+                .get(`/v1/lists/${list!.listId}`)
+                .set(token);
 
             expect(res.statusCode).toEqual(200);
 
@@ -301,7 +320,9 @@ describe("Get a list", () => {
                 members: [{ userId: user.userId, status }],
             });
 
-            const res = await request(app).get(`/v1/lists/${list!.listId}`).set(token);
+            const res = await request(app)
+                .get(`/v1/lists/${list!.listId}`)
+                .set(token);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -328,7 +349,10 @@ describe("Update a list", () => {
 
     it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app).patch(`/v1/lists/${uuid()}`).set(token).send({ name: uuid() });
+        const res = await request(app)
+            .patch(`/v1/lists/${uuid()}`)
+            .set(token)
+            .send({ name: uuid() });
         expect(res.statusCode).toEqual(404);
     });
 
@@ -336,7 +360,12 @@ describe("Update a list", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Administrator,
+            UserStatus.Member,
+            UserStatus.Pending,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -350,7 +379,10 @@ describe("Update a list", () => {
                 members: [{ userId: user.userId, status }],
             });
 
-            const res = await request(app).patch(`/v1/lists/${list.listId}`).set(token).send({ name: uuid() });
+            const res = await request(app)
+                .patch(`/v1/lists/${list.listId}`)
+                .set(token)
+                .send({ name: uuid() });
             expect(res.statusCode).toEqual(404);
         }
     });
@@ -370,13 +402,19 @@ describe("Update a list", () => {
             icon: randomIcon(),
         } satisfies components["schemas"]["ListUpdate"];
 
-        const res = await request(app).patch(`/v1/lists/${list.listId}`).set(token).send(updatedList);
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send(updatedList);
 
         expect(res.statusCode).toEqual(200);
 
         const {
             lists: [savedList],
-        } = await KnexListRepository.read(database, { lists: [list], userId: user.userId });
+        } = await KnexListRepository.read(database, {
+            lists: [list],
+            userId: user.userId,
+        });
 
         expect(savedList?.name).toEqual(updatedList.name);
         expect(savedList?.description).toEqual(updatedList.description);
@@ -392,10 +430,13 @@ describe("Update a list", () => {
         });
         const list = lists[0]!;
 
-        const res = await request(app).patch(`/v1/lists/${list.listId}`).set(token).send({
-            name: uuid(),
-            extra: "invalid",
-        });
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send({
+                name: uuid(),
+                extra: "invalid",
+            });
         expect(res.statusCode).toEqual(400);
     });
 
@@ -408,7 +449,10 @@ describe("Update a list", () => {
         });
         const list = lists[0]!;
 
-        const res = await request(app).patch(`/v1/lists/${list.listId}`).set(token).send({ name: 12345 });
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send({ name: 12345 });
         expect(res.statusCode).toEqual(400);
     });
 
@@ -419,7 +463,10 @@ describe("Update a list", () => {
             lists: [{ name: uuid() }],
         });
         const list = lists[0]!;
-        const res = await request(app).patch(`/v1/lists/${list.listId}`).set(token).send({ name: null });
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send({ name: null });
         expect(res.statusCode).toEqual(400);
     });
 });
@@ -444,7 +491,10 @@ describe("Delete a list", () => {
 
     it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app).delete(`/v1/lists/${uuid()}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/lists/${uuid()}`)
+            .set(token)
+            .send();
         expect(res.statusCode).toEqual(404);
     });
 
@@ -458,7 +508,10 @@ describe("Delete a list", () => {
         });
         const list = lists[0]!;
 
-        const res = await request(app).delete(`/v1/lists/${list.listId}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send();
         expect(res.statusCode).toEqual(404);
     });
 
@@ -474,10 +527,15 @@ describe("Delete a list", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: user.userId, status: UserStatus.Administrator }],
+            members: [
+                { userId: user.userId, status: UserStatus.Administrator },
+            ],
         });
 
-        const res = await request(app).delete(`/v1/lists/${list.listId}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send();
         expect(res.statusCode).toEqual(404);
     });
 
@@ -490,7 +548,10 @@ describe("Delete a list", () => {
         });
         const list = lists[0]!;
 
-        const res = await request(app).delete(`/v1/lists/${list.listId}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send();
         expect(res.statusCode).toEqual(204);
 
         const { lists: savedLists } = await KnexListRepository.read(database, {
@@ -534,15 +595,17 @@ describe("Get list items", () => {
             items: [{ name: uuid() }, { name: uuid() }],
         });
 
-        const res = await request(app).get(`/v1/lists/${list.listId}/items`).set(token);
+        const res = await request(app)
+            .get(`/v1/lists/${list.listId}/items`)
+            .set(token);
 
         expect(res.statusCode).toEqual(200);
 
         const listItemData = res.body as components["schemas"]["ListItem"][];
 
         expect(listItemData.length).toEqual(2);
-        expect(listItemData.map(i => i.itemId)).toContain(items[0]!.itemId);
-        expect(listItemData.map(i => i.itemId)).toContain(items[1]!.itemId);
+        expect(listItemData.map((i) => i.itemId)).toContain(items[0]!.itemId);
+        expect(listItemData.map((i) => i.itemId)).toContain(items[1]!.itemId);
     });
 
     it("should return list items for allowed member statuses (A, M)", async () => {
@@ -570,10 +633,13 @@ describe("Get list items", () => {
                 items: [{ name: uuid() }],
             });
 
-            const res = await request(app).get(`/v1/lists/${list!.listId}/items`).set(token);
+            const res = await request(app)
+                .get(`/v1/lists/${list!.listId}/items`)
+                .set(token);
 
             expect(res.statusCode).toEqual(200);
-            const listItemData = res.body as components["schemas"]["ListItem"][];
+            const listItemData =
+                res.body as components["schemas"]["ListItem"][];
             expect(listItemData).toHaveLength(1);
             expect(listItemData[0]!.itemId).toEqual(items[0]!.itemId);
         }
@@ -598,7 +664,9 @@ describe("Get list items", () => {
                 members: [{ userId: user.userId, status }],
             });
 
-            const res = await request(app).get(`/v1/lists/${list!.listId}/items`).set(token);
+            const res = await request(app)
+                .get(`/v1/lists/${list!.listId}/items`)
+                .set(token);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -638,7 +706,10 @@ describe("Add item to list", () => {
             notes: uuid(),
         } satisfies components["schemas"]["ListItemCreate"];
 
-        const res = await request(app).post(`/v1/lists/${list.listId}/items`).set(token).send(itemData);
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/items`)
+            .set(token)
+            .send(itemData);
 
         expect(res.statusCode).toEqual(201);
         const [returnedItem] = res.body as components["schemas"]["ListItem"][];
@@ -684,14 +755,19 @@ describe("Add item to list", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: user.userId, status: UserStatus.Administrator }],
+            members: [
+                { userId: user.userId, status: UserStatus.Administrator },
+            ],
         });
 
         const itemData = {
             name: uuid(),
         } satisfies components["schemas"]["ListItemCreate"];
 
-        const res = await request(app).post(`/v1/lists/${list.listId}/items`).set(token).send(itemData);
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/items`)
+            .set(token)
+            .send(itemData);
 
         expect(res.statusCode).toEqual(201);
         const [returnedItem] = res.body as components["schemas"]["ListItem"][];
@@ -703,7 +779,11 @@ describe("Add item to list", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [listOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Member, UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Member,
+            UserStatus.Pending,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -721,7 +801,10 @@ describe("Add item to list", () => {
                 name: uuid(),
             } satisfies components["schemas"]["ListItemCreate"];
 
-            const res = await request(app).post(`/v1/lists/${list.listId}/items`).set(token).send(itemData);
+            const res = await request(app)
+                .post(`/v1/lists/${list.listId}/items`)
+                .set(token)
+                .send(itemData);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -735,10 +818,13 @@ describe("Add item to list", () => {
         });
         const list = lists[0]!;
 
-        const res = await request(app).post(`/v1/lists/${list.listId}/items`).set(token).send({
-            name: uuid(),
-            extra: "invalid",
-        });
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/items`)
+            .set(token)
+            .send({
+                name: uuid(),
+                extra: "invalid",
+            });
         expect(res.statusCode).toEqual(400);
     });
 
@@ -750,9 +836,12 @@ describe("Add item to list", () => {
         });
         const list = lists[0]!;
 
-        const res = await request(app).post(`/v1/lists/${list.listId}/items`).set(token).send({
-            name: 12345,
-        });
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/items`)
+            .set(token)
+            .send({
+                name: 12345,
+            });
         expect(res.statusCode).toEqual(400);
     });
 });
@@ -771,7 +860,9 @@ describe("Update list item", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).patch(`/v1/lists/${uuid()}/items/${uuid()}`);
+        const res = await request(app).patch(
+            `/v1/lists/${uuid()}/items/${uuid()}`,
+        );
         expect(res.statusCode).toEqual(401);
     });
 
@@ -820,7 +911,9 @@ describe("Update list item", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: user.userId, status: UserStatus.Administrator }],
+            members: [
+                { userId: user.userId, status: UserStatus.Administrator },
+            ],
         });
 
         const { items } = await KnexListRepository.createItems(database, {
@@ -849,7 +942,11 @@ describe("Update list item", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [listOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Member, UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Member,
+            UserStatus.Pending,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -926,10 +1023,13 @@ describe("Update list item", () => {
         });
         const item = items[0]!;
 
-        const res = await request(app).patch(`/v1/lists/${list.listId}/items/${item.itemId}`).set(token).send({
-            name: uuid(),
-            extra: "invalid",
-        });
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send({
+                name: uuid(),
+                extra: "invalid",
+            });
         expect(res.statusCode).toEqual(400);
     });
 
@@ -948,9 +1048,12 @@ describe("Update list item", () => {
         });
         const item = items[0]!;
 
-        const res = await request(app).patch(`/v1/lists/${list.listId}/items/${item.itemId}`).set(token).send({
-            name: 12345,
-        });
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send({
+                name: 12345,
+            });
         expect(res.statusCode).toEqual(400);
     });
 
@@ -968,9 +1071,12 @@ describe("Update list item", () => {
         });
         const item = items[0]!;
 
-        const res = await request(app).patch(`/v1/lists/${list.listId}/items/${item.itemId}`).set(token).send({
-            name: null,
-        });
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send({
+                name: null,
+            });
         expect(res.statusCode).toEqual(400);
     });
 });
@@ -989,7 +1095,9 @@ describe("Delete list item", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).delete(`/v1/lists/${uuid()}/items/${uuid()}`);
+        const res = await request(app).delete(
+            `/v1/lists/${uuid()}/items/${uuid()}`,
+        );
         expect(res.statusCode).toEqual(401);
     });
 
@@ -1009,14 +1117,20 @@ describe("Delete list item", () => {
         });
         const item = items[0]!;
 
-        const res = await request(app).delete(`/v1/lists/${list.listId}/items/${item.itemId}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send();
 
         expect(res.statusCode).toEqual(204);
 
-        const { items: remainingItems } = await KnexListRepository.readAllItems(database, {
-            userId: user.userId,
-            filter: { listId: list.listId },
-        });
+        const { items: remainingItems } = await KnexListRepository.readAllItems(
+            database,
+            {
+                userId: user.userId,
+                filter: { listId: list.listId },
+            },
+        );
         expect(remainingItems.length).toEqual(0);
     });
 
@@ -1032,7 +1146,9 @@ describe("Delete list item", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: user.userId, status: UserStatus.Administrator }],
+            members: [
+                { userId: user.userId, status: UserStatus.Administrator },
+            ],
         });
 
         const { items } = await KnexListRepository.createItems(database, {
@@ -1042,14 +1158,20 @@ describe("Delete list item", () => {
         });
         const item = items[0]!;
 
-        const res = await request(app).delete(`/v1/lists/${list.listId}/items/${item.itemId}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send();
 
         expect(res.statusCode).toEqual(204);
 
-        const { items: remainingItems } = await KnexListRepository.readAllItems(database, {
-            userId: listOwner!.userId,
-            filter: { listId: list.listId },
-        });
+        const { items: remainingItems } = await KnexListRepository.readAllItems(
+            database,
+            {
+                userId: listOwner!.userId,
+                filter: { listId: list.listId },
+            },
+        );
         expect(remainingItems.length).toEqual(0);
     });
 
@@ -1057,7 +1179,11 @@ describe("Delete list item", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [listOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Member, UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Member,
+            UserStatus.Pending,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1078,7 +1204,10 @@ describe("Delete list item", () => {
             });
             const item = items[0]!;
 
-            const res = await request(app).delete(`/v1/lists/${list.listId}/items/${item.itemId}`).set(token).send();
+            const res = await request(app)
+                .delete(`/v1/lists/${list.listId}/items/${item.itemId}`)
+                .set(token)
+                .send();
 
             expect(res.statusCode).toEqual(404);
         }
@@ -1142,7 +1271,9 @@ describe("Get list members", () => {
             members: [{ userId: member!.userId, status: UserStatus.Member }],
         });
 
-        const res = await request(app).get(`/v1/lists/${list.listId}/members`).set(token);
+        const res = await request(app)
+            .get(`/v1/lists/${list.listId}/members`)
+            .set(token);
 
         expect(res.statusCode).toEqual(200);
         const members = res.body as components["schemas"]["Member"][];
@@ -1154,7 +1285,12 @@ describe("Get list members", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [listOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Administrator,
+            UserStatus.Member,
+            UserStatus.Pending,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1168,7 +1304,9 @@ describe("Get list members", () => {
                 members: [{ userId: user.userId, status }],
             });
 
-            const res = await request(app).get(`/v1/lists/${list.listId}/members`).set(token);
+            const res = await request(app)
+                .get(`/v1/lists/${list.listId}/members`)
+                .set(token);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -1210,7 +1348,9 @@ describe("Invite member to list", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexListRepository.readMembers(database, { listId: list.listId });
+        const [members] = await KnexListRepository.readMembers(database, {
+            listId: list.listId,
+        });
         expect(members!.members).toHaveLength(1);
         expect(members!.members[0]!.status).toEqual("P");
     });
@@ -1243,7 +1383,12 @@ describe("Invite member to list", () => {
         const [listOwner] = await CreateUsers(database);
         const [invitee] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Administrator,
+            UserStatus.Member,
+            UserStatus.Pending,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1274,7 +1419,10 @@ describe("Invite member to list", () => {
         });
         const list = lists[0]!;
 
-        const res = await request(app).post(`/v1/lists/${list.listId}/members`).set(token).send({ userId: uuid() });
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/members`)
+            .set(token)
+            .send({ userId: uuid() });
         expect(res.statusCode).toEqual(404);
     });
 
@@ -1301,7 +1449,10 @@ describe("Invite member to list", () => {
         });
         const list = lists[0]!;
 
-        const res = await request(app).post(`/v1/lists/${list.listId}/members`).set(token).send({ userId: 12345 });
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/members`)
+            .set(token)
+            .send({ userId: 12345 });
         expect(res.statusCode).toEqual(400);
     });
 });
@@ -1320,7 +1471,9 @@ describe("Update list member", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).patch(`/v1/lists/${uuid()}/members/${uuid()}`);
+        const res = await request(app).patch(
+            `/v1/lists/${uuid()}/members/${uuid()}`,
+        );
         expect(res.statusCode).toEqual(401);
     });
 
@@ -1354,7 +1507,12 @@ describe("Update list member", () => {
         const [owner] = await CreateUsers(database);
         const [member] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Administrator,
+            UserStatus.Member,
+            UserStatus.Pending,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1507,7 +1665,9 @@ describe("Remove member from list", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).delete(`/v1/lists/${uuid()}/members/${uuid()}`);
+        const res = await request(app).delete(
+            `/v1/lists/${uuid()}/members/${uuid()}`,
+        );
         expect(res.statusCode).toEqual(401);
     });
 
@@ -1526,11 +1686,15 @@ describe("Remove member from list", () => {
             members: [{ userId: member!.userId, status: UserStatus.Member }],
         });
 
-        const res = await request(app).delete(`/v1/lists/${list.listId}/members/${member!.userId}`).set(token);
+        const res = await request(app)
+            .delete(`/v1/lists/${list.listId}/members/${member!.userId}`)
+            .set(token);
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexListRepository.readMembers(database, { listId: list.listId });
+        const [members] = await KnexListRepository.readMembers(database, {
+            listId: list.listId,
+        });
         expect(members!.members).toHaveLength(0);
     });
 
@@ -1539,7 +1703,12 @@ describe("Remove member from list", () => {
         const [owner] = await CreateUsers(database);
         const [member] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Administrator,
+            UserStatus.Member,
+            UserStatus.Pending,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1558,7 +1727,9 @@ describe("Remove member from list", () => {
                 },
             ]);
 
-            const res = await request(app).delete(`/v1/lists/${list.listId}/members/${member!.userId}`).set(token);
+            const res = await request(app)
+                .delete(`/v1/lists/${list.listId}/members/${member!.userId}`)
+                .set(token);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -1579,7 +1750,9 @@ describe("Accept list invitation", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/lists/${uuid()}/invite/accept`);
+        const res = await request(app).post(
+            `/v1/lists/${uuid()}/invite/accept`,
+        );
         expect(res.statusCode).toEqual(401);
     });
 
@@ -1598,19 +1771,28 @@ describe("Accept list invitation", () => {
             members: [{ userId: invitee.userId, status: "P" as any }],
         });
 
-        const res = await request(app).post(`/v1/lists/${list.listId}/invite/accept`).set(token);
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/invite/accept`)
+            .set(token);
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexListRepository.readMembers(database, { listId: list.listId });
+        const [members] = await KnexListRepository.readMembers(database, {
+            listId: list.listId,
+        });
         expect(members!.members[0]!.status).toEqual("M");
     });
 
     it("should return 404 when accepting an invite if the user is already a member (A, M) or blacklisted (B)", async () => {
-        const [inviteeToken, invitee] = await PrepareAuthenticatedUser(database);
+        const [inviteeToken, invitee] =
+            await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Administrator,
+            UserStatus.Member,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1624,7 +1806,9 @@ describe("Accept list invitation", () => {
                 members: [{ userId: invitee.userId, status }],
             });
 
-            const res = await request(app).post(`/v1/lists/${list.listId}/invite/accept`).set(inviteeToken);
+            const res = await request(app)
+                .post(`/v1/lists/${list.listId}/invite/accept`)
+                .set(inviteeToken);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -1645,7 +1829,9 @@ describe("Decline list invitation", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/lists/${uuid()}/invite/decline`);
+        const res = await request(app).post(
+            `/v1/lists/${uuid()}/invite/decline`,
+        );
         expect(res.statusCode).toEqual(401);
     });
 
@@ -1664,19 +1850,28 @@ describe("Decline list invitation", () => {
             members: [{ userId: invitee.userId, status: "P" as any }],
         });
 
-        const res = await request(app).post(`/v1/lists/${list.listId}/invite/decline`).set(token);
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/invite/decline`)
+            .set(token);
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexListRepository.readMembers(database, { listId: list.listId });
+        const [members] = await KnexListRepository.readMembers(database, {
+            listId: list.listId,
+        });
         expect(members!.members).toHaveLength(0);
     });
 
     it("should return 404 when declining an invite if the user is already a member (A, M) or blacklisted (B)", async () => {
-        const [inviteeToken, invitee] = await PrepareAuthenticatedUser(database);
+        const [inviteeToken, invitee] =
+            await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Administrator,
+            UserStatus.Member,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1690,7 +1885,9 @@ describe("Decline list invitation", () => {
                 members: [{ userId: invitee.userId, status }],
             });
 
-            const res = await request(app).post(`/v1/lists/${list.listId}/invite/decline`).set(inviteeToken);
+            const res = await request(app)
+                .post(`/v1/lists/${list.listId}/invite/decline`)
+                .set(inviteeToken);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -1730,11 +1927,15 @@ describe("Leave list", () => {
             members: [{ userId: member.userId, status: UserStatus.Member }],
         });
 
-        const res = await request(app).post(`/v1/lists/${list.listId}/leave`).set(token);
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/leave`)
+            .set(token);
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexListRepository.readMembers(database, { listId: list.listId });
+        const [members] = await KnexListRepository.readMembers(database, {
+            listId: list.listId,
+        });
         expect(members!.members).toHaveLength(0);
     });
 
@@ -1747,7 +1948,9 @@ describe("Leave list", () => {
         });
         const list = lists[0]!;
 
-        const res = await request(app).post(`/v1/lists/${list.listId}/leave`).set(ownerToken);
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/leave`)
+            .set(ownerToken);
 
         expect(res.statusCode).toEqual(404);
     });
@@ -1770,7 +1973,9 @@ describe("Leave list", () => {
                 members: [{ userId: user.userId, status }],
             });
 
-            const res = await request(app).post(`/v1/lists/${list.listId}/leave`).set(userToken);
+            const res = await request(app)
+                .post(`/v1/lists/${list.listId}/leave`)
+                .set(userToken);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -1814,7 +2019,10 @@ describe("Move list items to another list", () => {
         const res = await request(app)
             .post(`/v1/lists/${sourceList!.listId}/items/move`)
             .set(token)
-            .send({ destinationListId: destList!.listId, itemIds: [item.itemId] });
+            .send({
+                destinationListId: destList!.listId,
+                itemIds: [item.itemId],
+            });
 
         expect(res.statusCode).toEqual(200);
         const [movedItem] = res.body as components["schemas"]["ListItem"][];
@@ -1824,17 +2032,23 @@ describe("Move list items to another list", () => {
         expect(movedItem!.notes).toEqual("test notes");
 
         // Verify removed from source
-        const { items: sourceItems } = await KnexListRepository.readAllItems(database, {
-            userId: user.userId,
-            filter: { listId: sourceList!.listId },
-        });
+        const { items: sourceItems } = await KnexListRepository.readAllItems(
+            database,
+            {
+                userId: user.userId,
+                filter: { listId: sourceList!.listId },
+            },
+        );
         expect(sourceItems).toHaveLength(0);
 
         // Verify added to destination
-        const { items: destItems } = await KnexListRepository.readAllItems(database, {
-            userId: user.userId,
-            filter: { listId: destList!.listId },
-        });
+        const { items: destItems } = await KnexListRepository.readAllItems(
+            database,
+            {
+                userId: user.userId,
+                filter: { listId: destList!.listId },
+            },
+        );
         expect(destItems).toHaveLength(1);
         expect(destItems[0]!.itemId).toEqual(item.itemId);
         expect(destItems[0]!.listId).toEqual(destList!.listId);
@@ -1866,10 +2080,13 @@ describe("Move list items to another list", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [otherUser] = await CreateUsers(database);
 
-        const { lists: sourceLists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
+        const { lists: sourceLists } = await KnexListRepository.create(
+            database,
+            {
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            },
+        );
         const { lists: destLists } = await KnexListRepository.create(database, {
             userId: otherUser!.userId,
             lists: [{ name: uuid() }],
@@ -1888,7 +2105,10 @@ describe("Move list items to another list", () => {
         const res = await request(app)
             .post(`/v1/lists/${sourceList.listId}/items/move`)
             .set(token)
-            .send({ destinationListId: destList.listId, itemIds: [item.itemId] });
+            .send({
+                destinationListId: destList.listId,
+                itemIds: [item.itemId],
+            });
 
         expect(res.statusCode).toEqual(404);
     });

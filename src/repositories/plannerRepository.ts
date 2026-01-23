@@ -7,7 +7,15 @@ import type { RepositoryBulkService, RepositoryService } from "./repository.ts";
 
 type PlannerUserStatus = "O" | "A" | "M" | "P" | "B";
 type PlannerColor = `variant${1 | 2 | 3 | 4 | 5}`;
-type PlannerMealCourse = "breakfast" | "lunch" | "dinner" | "snack" | "dessert" | "drink" | "component" | "side";
+type PlannerMealCourse =
+    | "breakfast"
+    | "lunch"
+    | "dinner"
+    | "snack"
+    | "dessert"
+    | "drink"
+    | "component"
+    | "side";
 
 type VerifyPermissionsRequest = {
     userId: User["userId"];
@@ -247,18 +255,74 @@ type RemoveMembersResponse = {
 };
 
 export interface PlannerRepository<TDatabase extends Database = Database> {
-    create: RepositoryService<TDatabase, CreatePlannersRequest, CreatePlannersResponse>;
-    createMeals: RepositoryService<TDatabase, CreateMealsRequest, CreateMealsResponse>;
-    delete: RepositoryService<TDatabase, DeletePlannersRequest, DeletePlannersResponse>;
-    deleteMeals: RepositoryService<TDatabase, DeleteMealsRequest, DeleteMealsResponse>;
-    read: RepositoryService<TDatabase, ReadPlannersRequest, ReadPlannersResponse>;
-    readAll: RepositoryService<TDatabase, ReadAllPlannersRequest, ReadAllPlannersResponse>;
-    readAllMeals: RepositoryService<TDatabase, ReadAllMealsRequest, ReadAllMealsResponse>;
-    readMembers: RepositoryBulkService<TDatabase, ReadMembersRequest, ReadMembersResponse>;
-    removeMembers: RepositoryBulkService<TDatabase, RemoveMembersRequest, RemoveMembersResponse>;
-    saveMembers: RepositoryBulkService<TDatabase, SaveMembersRequest, SaveMembersResponse>;
-    update: RepositoryService<TDatabase, UpdatePlannersRequest, UpdatePlannersResponse>;
-    updateMeals: RepositoryService<TDatabase, UpdateMealsRequest, UpdateMealsResponse>;
-    updateMembers: RepositoryBulkService<TDatabase, UpdateMembersRequest, UpdateMembersResponse>;
-    verifyPermissions: RepositoryService<TDatabase, VerifyPermissionsRequest, VerifyPermissionsResponse>;
+    create: RepositoryService<
+        TDatabase,
+        CreatePlannersRequest,
+        CreatePlannersResponse
+    >;
+    createMeals: RepositoryService<
+        TDatabase,
+        CreateMealsRequest,
+        CreateMealsResponse
+    >;
+    delete: RepositoryService<
+        TDatabase,
+        DeletePlannersRequest,
+        DeletePlannersResponse
+    >;
+    deleteMeals: RepositoryService<
+        TDatabase,
+        DeleteMealsRequest,
+        DeleteMealsResponse
+    >;
+    read: RepositoryService<
+        TDatabase,
+        ReadPlannersRequest,
+        ReadPlannersResponse
+    >;
+    readAll: RepositoryService<
+        TDatabase,
+        ReadAllPlannersRequest,
+        ReadAllPlannersResponse
+    >;
+    readAllMeals: RepositoryService<
+        TDatabase,
+        ReadAllMealsRequest,
+        ReadAllMealsResponse
+    >;
+    readMembers: RepositoryBulkService<
+        TDatabase,
+        ReadMembersRequest,
+        ReadMembersResponse
+    >;
+    removeMembers: RepositoryBulkService<
+        TDatabase,
+        RemoveMembersRequest,
+        RemoveMembersResponse
+    >;
+    saveMembers: RepositoryBulkService<
+        TDatabase,
+        SaveMembersRequest,
+        SaveMembersResponse
+    >;
+    update: RepositoryService<
+        TDatabase,
+        UpdatePlannersRequest,
+        UpdatePlannersResponse
+    >;
+    updateMeals: RepositoryService<
+        TDatabase,
+        UpdateMealsRequest,
+        UpdateMealsResponse
+    >;
+    updateMembers: RepositoryBulkService<
+        TDatabase,
+        UpdateMembersRequest,
+        UpdateMembersResponse
+    >;
+    verifyPermissions: RepositoryService<
+        TDatabase,
+        VerifyPermissionsRequest,
+        VerifyPermissionsResponse
+    >;
 }

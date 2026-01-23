@@ -1,15 +1,18 @@
 import { v4 as uuid } from "uuid";
 
 import { type KnexDatabase } from "../../src/database/index.ts";
-import { UserStatus } from "../../src/routes/spec/index.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
+import { UserStatus } from "../../src/routes/spec/index.ts";
 import { hashPassword } from "../../src/services/userService.ts";
 
 const randomEmail = () => `${uuid()}@${uuid()}.${uuid()}`;
 
 export const CreateUsers = async (
     database: KnexDatabase,
-    { count = 1, status = UserStatus.Member }: { count?: number; status?: UserStatus } = {}
+    {
+        count = 1,
+        status = UserStatus.Member,
+    }: { count?: number; status?: UserStatus } = {},
 ) => {
     const seedUsers = Array.from({ length: count }, () => ({
         email: randomEmail(),
@@ -23,16 +26,18 @@ export const CreateUsers = async (
         seedUsers.map(async ({ password, ...user }) => ({
             ...user,
             password: await hashPassword(password),
-        }))
+        })),
     );
 
-    const passwordByEmail = new Map(seedUsers.map(user => [user.email, user.password]));
+    const passwordByEmail = new Map(
+        seedUsers.map((user) => [user.email, user.password]),
+    );
 
     const { users: createdUsers } = await KnexUserRepository.create(database, {
         users: usersToInsert,
     });
 
-    return createdUsers.map(user => ({
+    return createdUsers.map((user) => ({
         ...user,
         password: passwordByEmail.get(user.email)!,
     }));

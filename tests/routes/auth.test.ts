@@ -1,14 +1,14 @@
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
-import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 
 import { setupApp } from "../../src/app.ts";
-import { type components, UserStatus } from "../../src/routes/spec/index.ts";
+import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
+import { type components, UserStatus } from "../../src/routes/spec/index.ts";
 import { comparePassword } from "../../src/services/password.ts";
 import { CreateUsers } from "../helpers/index.ts";
-import db, { type KnexDatabase } from "../../src/database/index.ts";
 
 after(async () => {
     await db.destroy();
@@ -82,7 +82,9 @@ describe("Login a user", () => {
     });
 
     it("should return pending error message when logging in with pending account", async () => {
-        const [user] = await CreateUsers(database, { status: UserStatus.Pending });
+        const [user] = await CreateUsers(database, {
+            status: UserStatus.Pending,
+        });
 
         if (!user) throw new Error("User not created");
 
@@ -101,7 +103,9 @@ describe("Login a user", () => {
     });
 
     it("should login successfully but return Blacklisted status for blacklisted user", async () => {
-        const [user] = await CreateUsers(database, { status: UserStatus.Blacklisted });
+        const [user] = await CreateUsers(database, {
+            status: UserStatus.Blacklisted,
+        });
         if (!user) throw new Error("User not created");
 
         const requestBody: components["schemas"]["AuthLogin"] = {
@@ -138,7 +142,9 @@ describe("Register a new user", () => {
             lastName: "Doe",
         };
 
-        const res = await request(app).post("/v1/auth/register").send(requestBody);
+        const res = await request(app)
+            .post("/v1/auth/register")
+            .send(requestBody);
 
         expect(res.statusCode).toEqual(400);
     });
@@ -150,7 +156,9 @@ describe("Register a new user", () => {
             password: "password",
         };
 
-        const res = await request(app).post("/v1/auth/register").send(requestBody);
+        const res = await request(app)
+            .post("/v1/auth/register")
+            .send(requestBody);
 
         expect(res.statusCode).toEqual(400);
     });
@@ -163,13 +171,18 @@ describe("Register a new user", () => {
             password: "password",
         };
 
-        const res = await request(app).post("/v1/auth/register").send(requestBody);
+        const res = await request(app)
+            .post("/v1/auth/register")
+            .send(requestBody);
 
         expect(res.statusCode).toEqual(200);
 
-        const { users: pendingUsers } = await KnexUserRepository.readAll(database, {
-            filter: { status: UserStatus.Pending },
-        });
+        const { users: pendingUsers } = await KnexUserRepository.readAll(
+            database,
+            {
+                filter: { status: UserStatus.Pending },
+            },
+        );
 
         expect(pendingUsers.length).toEqual(1);
 
@@ -189,13 +202,18 @@ describe("Register a new user", () => {
             password: "password",
         };
 
-        const res = await request(app).post("/v1/auth/register").send(requestBody);
+        const res = await request(app)
+            .post("/v1/auth/register")
+            .send(requestBody);
 
         expect(res.statusCode).toEqual(200);
 
-        const { users: pendingUsers } = await KnexUserRepository.readAll(database, {
-            filter: { status: UserStatus.Pending },
-        });
+        const { users: pendingUsers } = await KnexUserRepository.readAll(
+            database,
+            {
+                filter: { status: UserStatus.Pending },
+            },
+        );
 
         expect(pendingUsers.length).toEqual(1);
 
@@ -212,19 +230,26 @@ describe("Register a new user", () => {
             password: "password",
         } satisfies components["schemas"]["AuthRegister"];
 
-        const res = await request(app).post("/v1/auth/register").send(requestBody);
+        const res = await request(app)
+            .post("/v1/auth/register")
+            .send(requestBody);
 
         expect(res.statusCode).toEqual(200);
 
         const {
             users: [user],
-        } = await KnexUserRepository.readCredentials(database, { users: [{ email: requestBody.email }] });
+        } = await KnexUserRepository.readCredentials(database, {
+            users: [{ email: requestBody.email }],
+        });
 
         if (!user) throw new Error("User not created");
 
         expect(user.password).not.toEqual("password");
 
-        const passwordCorrect = await comparePassword(requestBody.password, user.password);
+        const passwordCorrect = await comparePassword(
+            requestBody.password,
+            user.password,
+        );
 
         expect(passwordCorrect).toBeTruthy();
     });

@@ -1,8 +1,8 @@
 import express from "express";
 
 import { EnsureArray } from "../utils/index.ts";
-import type { paths, routes } from "./spec/index.ts";
 import type { CreateRoute } from "./route.ts";
+import type { paths, routes } from "./spec/index.ts";
 
 export const createListRouter: CreateRoute<"listService"> = ({ listService }) =>
     express
@@ -44,7 +44,11 @@ export const createListRouter: CreateRoute<"listService"> = ({ listService }) =>
             paths["/lists/{listId}"]["patch"]["requestBody"]["content"]["application/json"],
             paths["/lists/{listId}"]["patch"]["parameters"]["query"]
         >("/lists/:listId", async ({ params, body, session }, res) => {
-            const data = await listService.update(session.userId, params.listId, body);
+            const data = await listService.update(
+                session.userId,
+                params.listId,
+                body,
+            );
             return res.status(200).json(data);
         })
         .delete<
@@ -64,7 +68,10 @@ export const createListRouter: CreateRoute<"listService"> = ({ listService }) =>
             paths["/lists/{listId}/items"]["get"]["requestBody"],
             paths["/lists/{listId}/items"]["get"]["parameters"]["query"]
         >("/lists/:listId/items", async ({ params, session }, res) => {
-            const data = await listService.getItems(session.userId, params.listId);
+            const data = await listService.getItems(
+                session.userId,
+                params.listId,
+            );
             return res.status(200).json(data);
         })
         .post<
@@ -74,7 +81,11 @@ export const createListRouter: CreateRoute<"listService"> = ({ listService }) =>
             paths["/lists/{listId}/items"]["post"]["requestBody"]["content"]["application/json"],
             paths["/lists/{listId}/items"]["post"]["parameters"]["query"]
         >("/lists/:listId/items", async ({ params, body, session }, res) => {
-            const data = await listService.createItems(session.userId, params.listId, EnsureArray(body));
+            const data = await listService.createItems(
+                session.userId,
+                params.listId,
+                EnsureArray(body),
+            );
             return res.status(201).json(data);
         })
         .patch<
@@ -83,10 +94,18 @@ export const createListRouter: CreateRoute<"listService"> = ({ listService }) =>
             paths["/lists/{listId}/items/{itemId}"]["patch"]["responses"]["200"]["content"]["application/json"],
             paths["/lists/{listId}/items/{itemId}"]["patch"]["requestBody"]["content"]["application/json"],
             paths["/lists/{listId}/items/{itemId}"]["patch"]["parameters"]["query"]
-        >("/lists/:listId/items/:itemId", async ({ params, body, session }, res) => {
-            const data = await listService.updateItem(session.userId, params.listId, params.itemId, body);
-            return res.status(200).json(data);
-        })
+        >(
+            "/lists/:listId/items/:itemId",
+            async ({ params, body, session }, res) => {
+                const data = await listService.updateItem(
+                    session.userId,
+                    params.listId,
+                    params.itemId,
+                    body,
+                );
+                return res.status(200).json(data);
+            },
+        )
         .delete<
             routes,
             paths["/lists/{listId}/items/{itemId}"]["delete"]["parameters"]["path"],
@@ -94,7 +113,11 @@ export const createListRouter: CreateRoute<"listService"> = ({ listService }) =>
             paths["/lists/{listId}/items/{itemId}"]["delete"]["requestBody"],
             paths["/lists/{listId}/items/{itemId}"]["delete"]["parameters"]["query"]
         >("/lists/:listId/items/:itemId", async ({ params, session }, res) => {
-            await listService.deleteItem(session.userId, params.listId, params.itemId);
+            await listService.deleteItem(
+                session.userId,
+                params.listId,
+                params.itemId,
+            );
             return res.status(204).send();
         })
         .post<
@@ -103,15 +126,18 @@ export const createListRouter: CreateRoute<"listService"> = ({ listService }) =>
             paths["/lists/{listId}/items/move"]["post"]["responses"]["200"]["content"]["application/json"],
             paths["/lists/{listId}/items/move"]["post"]["requestBody"]["content"]["application/json"],
             paths["/lists/{listId}/items/move"]["post"]["parameters"]["query"]
-        >("/lists/:listId/items/move", async ({ params, body, session }, res) => {
-            const data = await listService.moveItems(
-                session.userId,
-                params.listId,
-                body.itemIds,
-                body.destinationListId
-            );
-            return res.status(200).json(data);
-        })
+        >(
+            "/lists/:listId/items/move",
+            async ({ params, body, session }, res) => {
+                const data = await listService.moveItems(
+                    session.userId,
+                    params.listId,
+                    body.itemIds,
+                    body.destinationListId,
+                );
+                return res.status(200).json(data);
+            },
+        )
         .get<
             routes,
             paths["/lists/{listId}/members"]["get"]["parameters"]["path"],
@@ -119,7 +145,10 @@ export const createListRouter: CreateRoute<"listService"> = ({ listService }) =>
             paths["/lists/{listId}/members"]["get"]["requestBody"],
             paths["/lists/{listId}/members"]["get"]["parameters"]["query"]
         >("/lists/:listId/members", async ({ params, session }, res) => {
-            const data = await listService.getMembers(session.userId, params.listId);
+            const data = await listService.getMembers(
+                session.userId,
+                params.listId,
+            );
             return res.status(200).json(data);
         })
         .post<
@@ -129,7 +158,11 @@ export const createListRouter: CreateRoute<"listService"> = ({ listService }) =>
             paths["/lists/{listId}/members"]["post"]["requestBody"]["content"]["application/json"],
             paths["/lists/{listId}/members"]["post"]["parameters"]["query"]
         >("/lists/:listId/members", async ({ params, body, session }, res) => {
-            await listService.inviteMember(session.userId, params.listId, body.userId);
+            await listService.inviteMember(
+                session.userId,
+                params.listId,
+                body.userId,
+            );
             return res.status(204).send();
         })
         .patch<
@@ -138,20 +171,35 @@ export const createListRouter: CreateRoute<"listService"> = ({ listService }) =>
             paths["/lists/{listId}/members/{userId}"]["patch"]["responses"]["200"]["content"]["application/json"],
             paths["/lists/{listId}/members/{userId}"]["patch"]["requestBody"]["content"]["application/json"],
             paths["/lists/{listId}/members/{userId}"]["patch"]["parameters"]["query"]
-        >("/lists/:listId/members/:userId", async ({ params, body, session }, res) => {
-            const data = await listService.updateMember(session.userId, params.listId, params.userId, body.status);
-            return res.status(200).json(data);
-        })
+        >(
+            "/lists/:listId/members/:userId",
+            async ({ params, body, session }, res) => {
+                const data = await listService.updateMember(
+                    session.userId,
+                    params.listId,
+                    params.userId,
+                    body.status,
+                );
+                return res.status(200).json(data);
+            },
+        )
         .delete<
             routes,
             paths["/lists/{listId}/members/{userId}"]["delete"]["parameters"]["path"],
             paths["/lists/{listId}/members/{userId}"]["delete"]["responses"]["204"]["content"],
             paths["/lists/{listId}/members/{userId}"]["delete"]["requestBody"],
             paths["/lists/{listId}/members/{userId}"]["delete"]["parameters"]["query"]
-        >("/lists/:listId/members/:userId", async ({ params, session }, res) => {
-            await listService.removeMember(session.userId, params.listId, params.userId);
-            return res.status(204).send();
-        })
+        >(
+            "/lists/:listId/members/:userId",
+            async ({ params, session }, res) => {
+                await listService.removeMember(
+                    session.userId,
+                    params.listId,
+                    params.userId,
+                );
+                return res.status(204).send();
+            },
+        )
         .post<
             routes,
             paths["/lists/{listId}/invite/accept"]["post"]["parameters"]["path"],

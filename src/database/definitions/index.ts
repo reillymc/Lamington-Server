@@ -1,5 +1,5 @@
 import config from "../../config.ts";
-
+import type { KnexDatabase } from "../index.ts";
 import { attachment } from "./attachment.ts";
 import { book } from "./book.ts";
 import { bookRecipe } from "./bookRecipe.ts";
@@ -12,8 +12,8 @@ import { ingredient } from "./ingredient.ts";
 import { lamington } from "./lamington.ts";
 import { list } from "./list.ts";
 import { listItem } from "./listItem.ts";
-import { planner } from "./planner.ts";
 import { plannerMeal } from "./meal.ts";
+import { planner } from "./planner.ts";
 import { recipe } from "./recipe.ts";
 import { recipeIngredient } from "./recipeIngredient.ts";
 import { recipeRating } from "./recipeRating.ts";
@@ -21,7 +21,6 @@ import { recipeSection } from "./recipeSection.ts";
 import { recipeStep } from "./recipeStep.ts";
 import { tag } from "./tag.ts";
 import { type User, user } from "./user.ts";
-import type { KnexDatabase } from "../index.ts";
 
 export const Lamington = {
     [lamington.attachment]: attachment,
@@ -44,7 +43,10 @@ export const Lamington = {
     [lamington.recipeStep]: recipeStep,
     [lamington.tag]: tag,
     [lamington.user]: user,
-} satisfies Record<(typeof lamington)[keyof lamington], Record<string, unknown>>;
+} satisfies Record<
+    (typeof lamington)[keyof lamington],
+    Record<string, unknown>
+>;
 
 export type Table<T> = Required<{ [key in keyof T]: string }>;
 
@@ -52,13 +54,17 @@ export type Table<T> = Required<{ [key in keyof T]: string }>;
 export type ReadQuery<T> = T | Array<T>;
 
 export type ReadResponse<T> = Promise<Array<T>>;
-export type ReadRequest<T extends {}, K extends keyof T = never, C extends Record<string, unknown> = {}> =
-    | ({ [P in K]: T[P] } & C)
-    | Array<{ [P in K]: T[P] } & C>;
+export type ReadRequest<
+    T extends {},
+    K extends keyof T = never,
+    C extends Record<string, unknown> = {},
+> = ({ [P in K]: T[P] } & C) | Array<{ [P in K]: T[P] } & C>;
 
-export type ReadService<T extends {}, K extends keyof T = never, C extends Record<string, unknown> = {}> = (
-    params: ReadRequest<T, K, C>
-) => ReadResponse<T>;
+export type ReadService<
+    T extends {},
+    K extends keyof T = never,
+    C extends Record<string, unknown> = {},
+> = (params: ReadRequest<T, K, C>) => ReadResponse<T>;
 
 // QUERY
 export type DefaultSortOptions = "name" | "date";
@@ -69,15 +75,26 @@ export type QueryMetadata<TSort extends string = DefaultSortOptions> = {
     order?: "asc" | "desc";
 };
 
-export type QueryRequest<R extends {}, TSort extends string = DefaultSortOptions> = R & QueryMetadata<TSort>;
+export type QueryRequest<
+    R extends {},
+    TSort extends string = DefaultSortOptions,
+> = R & QueryMetadata<TSort>;
 
-export type QueryService<T extends {}, R extends {} = {}, TSort extends string = DefaultSortOptions> = (
-    params: QueryRequest<R, TSort>
+export type QueryService<
+    T extends {},
+    R extends {} = {},
+    TSort extends string = DefaultSortOptions,
+> = (
+    params: QueryRequest<R, TSort>,
 ) => Promise<{ result: Array<T>; nextPage?: number }>;
 
-export type QueryServiceDi<T extends {}, R extends {} = {}, TSort extends string = DefaultSortOptions> = (
+export type QueryServiceDi<
+    T extends {},
+    R extends {} = {},
+    TSort extends string = DefaultSortOptions,
+> = (
     db: KnexDatabase,
-    params: QueryRequest<R, TSort>
+    params: QueryRequest<R, TSort>,
 ) => Promise<{ result: Array<T>; nextPage?: number }>;
 
 // READ MY
@@ -85,7 +102,9 @@ export type ReadMyRequest<T extends {}, K extends keyof T = never> =
     | (Record<K, T[K]> & Pick<User, "userId">)
     | (Record<K, Array<T[K]>> & Pick<User, "userId">);
 
-export type ReadMyService<T extends {}, K extends keyof T = never> = (params: ReadMyRequest<T, K>) => ReadResponse<T>;
+export type ReadMyService<T extends {}, K extends keyof T = never> = (
+    params: ReadMyRequest<T, K>,
+) => ReadResponse<T>;
 
 // SAVE
 export type SaveRequest<T> = T | Array<T>;
@@ -98,15 +117,28 @@ export type CreateQuery<T> = T | Array<T>;
 export type CreateResponse<T> = Promise<Array<T>>;
 
 // DELETE
-export type DeleteRequest<T extends {}, K extends keyof T> = { [k in K]: T[k] } | Array<{ [k in K]: T[k] }>;
+export type DeleteRequest<T extends {}, K extends keyof T> =
+    | { [k in K]: T[k] }
+    | Array<{ [k in K]: T[k] }>;
 export type DeleteResponse = Promise<number>;
 
-export type DeleteService<T extends {}, K extends keyof T> = (params: DeleteRequest<T, K>) => DeleteResponse;
+export type DeleteService<T extends {}, K extends keyof T> = (
+    params: DeleteRequest<T, K>,
+) => DeleteResponse;
 
 // Helpers
-export type ServiceParams<T extends Record<string, any>, K extends keyof T> = Exclude<Parameters<T[K]>[0], any[]>;
-export type ServiceParamsDi<T extends Record<string, any>, K extends keyof T> = Exclude<Parameters<T[K]>[1], any[]>;
-export type ServiceResponse<T extends Record<string, any>, K extends keyof T> = Awaited<ReturnType<T[K]>> extends {
+export type ServiceParams<
+    T extends Record<string, any>,
+    K extends keyof T,
+> = Exclude<Parameters<T[K]>[0], any[]>;
+export type ServiceParamsDi<
+    T extends Record<string, any>,
+    K extends keyof T,
+> = Exclude<Parameters<T[K]>[1], any[]>;
+export type ServiceResponse<
+    T extends Record<string, any>,
+    K extends keyof T,
+> = Awaited<ReturnType<T[K]>> extends {
     result: Array<any>;
 }
     ? Awaited<ReturnType<T[K]>>["result"][number]

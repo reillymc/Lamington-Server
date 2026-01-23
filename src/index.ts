@@ -6,5 +6,7 @@ const app = setupApp();
 
 app.listen(config.app.port, () => {
     printConfig(config);
-    logger.info(`Lamington Server Started: http://localhost:${config.app.port}`);
+    logger.info(
+        `Lamington Server Started: http://localhost:${config.app.port}`,
+    );
 });

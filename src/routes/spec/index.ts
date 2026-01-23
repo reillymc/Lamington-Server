@@ -1,14 +1,25 @@
 import { type AssetServices, ingredientsSubpath } from "./asset.ts";
-import { type AttachmentServices, imageSubpath, uploadDirectory } from "./attachment.ts";
-import { type BookApi, bookIdParam, bookMemberIdParam, bookMemberSubpath, recipeSubpath } from "./book.ts";
+import {
+    type AttachmentServices,
+    imageSubpath,
+    uploadDirectory,
+} from "./attachment.ts";
+import {
+    type BookApi,
+    bookIdParam,
+    bookMemberIdParam,
+    bookMemberSubpath,
+    recipeSubpath,
+} from "./book.ts";
 
-import { rateSubpath, recipeIdParam, type RecipeApi } from "./recipe.ts";
+import { type RecipeApi, rateSubpath, recipeIdParam } from "./recipe.ts";
+import type { components, paths } from "./schema.d.ts";
 import type { TagServices } from "./tag.ts";
-import type { paths, components } from "./schema.d.ts";
 
-type ToRoutes<T extends string> = T extends `${infer Head}{${infer Param}}${infer Tail}`
-    ? `${Head}:${Param}${ToRoutes<Tail>}`
-    : T;
+type ToRoutes<T extends string> =
+    T extends `${infer Head}{${infer Param}}${infer Tail}`
+        ? `${Head}:${Param}${ToRoutes<Tail>}`
+        : T;
 
 type routes = ToRoutes<keyof paths>;
 
@@ -52,7 +63,11 @@ export const TagEndpoint = {
 
 export * from "./asset.ts";
 export * from "./attachment.ts";
-export type { BasePaginatedRequestQuery, QueryParam, RequestValidator } from "./base.ts";
+export type {
+    BasePaginatedRequestQuery,
+    QueryParam,
+    RequestValidator,
+} from "./base.ts";
 export * from "./book.ts";
 export * from "./common.ts";
 export * from "./recipe.ts";

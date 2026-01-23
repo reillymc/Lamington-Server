@@ -7,13 +7,13 @@ import { parse } from "yaml";
 import packageJson from "../../package.json" with { type: "json" };
 import config from "../config.ts";
 
-const file = readFileSync('./openapi.yaml', 'utf8')
-const swaggerDocument = parse(file)
+const file = readFileSync("./openapi.yaml", "utf8");
+const swaggerDocument = parse(file);
 
 swaggerDocument.info.version = packageJson.version;
 
 if (config.app.externalHost) {
-  swaggerDocument.servers = [{ url: `${config.app.externalHost}/v1` }];
+    swaggerDocument.servers = [{ url: `${config.app.externalHost}/v1` }];
 }
 
 const router = express.Router();

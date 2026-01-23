@@ -17,8 +17,13 @@ export type List = {
     description: string | null;
 };
 
-export const listColumns = ["listId", "name", "customisations", "description"] as const satisfies (keyof List)[];
+export const listColumns = [
+    "listId",
+    "name",
+    "customisations",
+    "description",
+] as const satisfies (keyof List)[];
 
 export const list = Object.fromEntries(
-    listColumns.map(column => [column, `${lamington.list}.${column}`])
+    listColumns.map((column) => [column, `${lamington.list}.${column}`]),
 ) as Table<List>;

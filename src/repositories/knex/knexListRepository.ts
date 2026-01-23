@@ -1,16 +1,23 @@
 import { ContentMemberActions } from "../../controllers/index.ts";
-import { list, listColumns, type List } from "../../database/definitions/list.ts";
-import { listItem, listItemColumns } from "../../database/definitions/listItem.ts";
 import { content } from "../../database/definitions/content.ts";
 import { contentMember } from "../../database/definitions/contentMember.ts";
+import {
+    type List,
+    list,
+    listColumns,
+} from "../../database/definitions/list.ts";
+import {
+    listItem,
+    listItemColumns,
+} from "../../database/definitions/listItem.ts";
 import { user } from "../../database/definitions/user.ts";
-import { lamington, type KnexDatabase } from "../../database/index.ts";
+import { type KnexDatabase, lamington } from "../../database/index.ts";
 import { EnsureArray, toUndefined } from "../../utils/index.ts";
-import type { ListRepository } from "../listRepository.ts";
-import { withContentReadPermissions } from "./common/contentQueries.ts";
-import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
-import { isForeignKeyViolation } from "./common/postgresErrors.ts";
 import { ForeignKeyViolationError } from "../common/errors.ts";
+import type { ListRepository } from "../listRepository.ts";
+import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
+import { withContentReadPermissions } from "./common/contentQueries.ts";
+import { isForeignKeyViolation } from "./common/postgresErrors.ts";
 
 // export type SaveListMemberRequest = CreateQuery<{
 //     listId: List["listId"];
@@ -45,7 +52,9 @@ import { ForeignKeyViolationError } from "../common/errors.ts";
 //         ),
 // };
 
-const formatListItem = (item: any): Awaited<ReturnType<ListRepository["readAllItems"]>>["items"][number] => ({
+const formatListItem = (
+    item: any,
+): Awaited<ReturnType<ListRepository["readAllItems"]>>["items"][number] => ({
     itemId: item.itemId,
     listId: item.listId,
     name: item.name,
@@ -61,7 +70,12 @@ const formatListItem = (item: any): Awaited<ReturnType<ListRepository["readAllIt
     },
 });
 
-const readItemsByIds = async (db: KnexDatabase, userId: string, listId: string, itemIds: string[]) => {
+const readItemsByIds = async (
+    db: KnexDatabase,
+    userId: string,
+    listId: string,
+    itemIds: string[],
+) => {
     const listContentAlias = "listContent";
     const result = await db(lamington.listItem)
         .select(
@@ -75,13 +89,17 @@ const readItemsByIds = async (db: KnexDatabase, userId: string, listId: string, 
             listItem.notes,
             content.createdBy,
             content.updatedAt,
-            user.firstName
+            user.firstName,
         )
         .leftJoin(lamington.content, listItem.itemId, content.contentId)
         .leftJoin(lamington.user, content.createdBy, user.userId)
-        .leftJoin(`${lamington.content} as ${listContentAlias}`, listItem.listId, `${listContentAlias}.contentId`)
+        .leftJoin(
+            `${lamington.content} as ${listContentAlias}`,
+            listItem.listId,
+            `${listContentAlias}.contentId`,
+        )
         .whereIn(listItem.itemId, itemIds)
-        .modify(qb => {
+        .modify((qb) => {
             if (listId) qb.where(listItem.listId, listId);
         })
         .modify(
@@ -90,13 +108,16 @@ const readItemsByIds = async (db: KnexDatabase, userId: string, listId: string, 
                 idColumn: listItem.listId,
                 ownerColumns: `${listContentAlias}.createdBy`,
                 allowedStatuses: ["A", "M"],
-            })
+            }),
         );
 
     return result.map(formatListItem);
 };
 
-const read: ListRepository<KnexDatabase>["read"] = async (db, { lists, userId }) => {
+const read: ListRepository<KnexDatabase>["read"] = async (
+    db,
+    { lists, userId },
+) => {
     const result: any[] = await db(lamington.list)
         .select(
             list.listId,
@@ -105,19 +126,25 @@ const read: ListRepository<KnexDatabase>["read"] = async (db, { lists, userId })
             list.customisations,
             content.createdBy,
             user.firstName,
-            contentMember.status
+            contentMember.status,
         )
         .whereIn(
             list.listId,
-            lists.map(({ listId }) => listId)
+            lists.map(({ listId }) => listId),
         )
         .leftJoin(lamington.content, list.listId, content.contentId)
         .leftJoin(lamington.user, content.createdBy, user.userId)
-        .modify(withContentReadPermissions({ userId, idColumn: list.listId, allowedStatuses: ["A", "M"] }));
+        .modify(
+            withContentReadPermissions({
+                userId,
+                idColumn: list.listId,
+                allowedStatuses: ["A", "M"],
+            }),
+        );
 
     return {
         userId,
-        lists: result.map(l => ({
+        lists: result.map((l) => ({
             listId: l.listId,
             name: l.name,
             description: toUndefined(l.description),
@@ -132,14 +159,14 @@ const read: ListRepository<KnexDatabase>["read"] = async (db, { lists, userId })
 export const KnexListRepository: ListRepository<KnexDatabase> = {
     verifyPermissions: async (db, { userId, status, lists }) => {
         const statuses = EnsureArray(status);
-        const memberStatuses = statuses.filter(s => s !== "O");
+        const memberStatuses = statuses.filter((s) => s !== "O");
 
         const listOwners: Array<Pick<List, "listId">> = await db(lamington.list)
             .select(list.listId)
             .leftJoin(lamington.content, content.contentId, list.listId)
             .whereIn(
                 list.listId,
-                lists.map(({ listId }) => listId)
+                lists.map(({ listId }) => listId),
             )
             .modify(
                 withContentReadPermissions({
@@ -147,10 +174,12 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
                     idColumn: list.listId,
                     allowedStatuses: memberStatuses,
                     ownerColumns: statuses.includes("O") ? undefined : [],
-                })
+                }),
             );
 
-        const permissionMap = Object.fromEntries(listOwners.map(l => [l.listId, true]));
+        const permissionMap = Object.fromEntries(
+            listOwners.map((l) => [l.listId, true]),
+        );
 
         return {
             userId,
@@ -167,7 +196,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
             db,
             userId,
             listId,
-            items.map(i => i.itemId)
+            items.map((i) => i.itemId),
         );
 
         return { items: result, listId };
@@ -181,12 +210,18 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
                 list.customisations,
                 content.createdBy,
                 user.firstName,
-                contentMember.status
+                contentMember.status,
             )
             .leftJoin(lamington.content, list.listId, content.contentId)
             .leftJoin(lamington.user, content.createdBy, user.userId)
-            .modify(withContentReadPermissions({ userId, idColumn: list.listId, allowedStatuses: ["A", "M", "P"] }))
-            .modify(qb => {
+            .modify(
+                withContentReadPermissions({
+                    userId,
+                    idColumn: list.listId,
+                    allowedStatuses: ["A", "M", "P"],
+                }),
+            )
+            .modify((qb) => {
                 if (filter?.owner) {
                     qb.where({ [content.createdBy]: filter.owner });
                 }
@@ -194,7 +229,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
 
         return {
             userId,
-            lists: listItems.map(l => ({
+            lists: listItems.map((l) => ({
                 listId: l.listId,
                 name: l.name,
                 description: toUndefined(l.description),
@@ -221,7 +256,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
                 listId,
                 customisations: { color, icon },
                 description,
-            }))
+            })),
         );
 
         return read(db, { userId, lists: listsToCreate });
@@ -229,12 +264,20 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
     update: async (db, { userId, lists }) => {
         for (const l of lists) {
             const updateData = buildUpdateRecord(l, listColumns, {
-                color: { target: "customisations", transform: color => ({ color }) },
-                icon: { target: "customisations", transform: icon => ({ icon }) },
+                color: {
+                    target: "customisations",
+                    transform: (color) => ({ color }),
+                },
+                icon: {
+                    target: "customisations",
+                    transform: (icon) => ({ icon }),
+                },
             });
 
             if (updateData) {
-                await db(lamington.list).where(list.listId, l.listId).update(updateData);
+                await db(lamington.list)
+                    .where(list.listId, l.listId)
+                    .update(updateData);
             }
         }
 
@@ -244,7 +287,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
         const count = await db(lamington.content)
             .whereIn(
                 content.contentId,
-                params.lists.map(({ listId }) => listId)
+                params.lists.map(({ listId }) => listId),
             )
             .delete();
         return { count };
@@ -263,18 +306,22 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
                 listItem.notes,
                 content.createdBy,
                 content.updatedAt,
-                user.firstName
+                user.firstName,
             )
             .leftJoin(lamington.content, listItem.itemId, content.contentId)
             .leftJoin(lamington.user, content.createdBy, user.userId)
-            .leftJoin(`${lamington.content} as ${listContentAlias}`, listItem.listId, `${listContentAlias}.contentId`)
+            .leftJoin(
+                `${lamington.content} as ${listContentAlias}`,
+                listItem.listId,
+                `${listContentAlias}.contentId`,
+            )
             .modify(
                 withContentReadPermissions({
                     userId,
                     idColumn: listItem.listId,
                     ownerColumns: `${listContentAlias}.createdBy`,
                     allowedStatuses: ["A", "M"],
-                })
+                }),
             )
             .where(listItem.listId, filter.listId);
 
@@ -291,7 +338,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
         }));
 
         await db(lamington.listItem).insert(
-            itemsToCreate.map(item => ({
+            itemsToCreate.map((item) => ({
                 listId,
                 itemId: item.itemId,
                 name: item.name,
@@ -300,14 +347,14 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
                 unit: item.unit,
                 amount: item.amount,
                 notes: item.notes,
-            }))
+            })),
         );
 
         const updatedItems = await readItemsByIds(
             db,
             userId,
             listId,
-            itemsToCreate.map(i => i.itemId)
+            itemsToCreate.map((i) => i.itemId),
         );
 
         return { listId, items: updatedItems };
@@ -327,20 +374,20 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
             db,
             userId,
             listId,
-            items.map(i => i.itemId)
+            items.map((i) => i.itemId),
         );
 
         return { listId, items: updatedItems };
     },
     deleteItems: async (db, { listId, items }) => {
         const count = await db(lamington.content)
-            .whereIn(content.contentId, qb => {
+            .whereIn(content.contentId, (qb) => {
                 qb.select(listItem.itemId)
                     .from(lamington.listItem)
                     .where(listItem.listId, listId)
                     .whereIn(
                         listItem.itemId,
-                        items.map(i => i.itemId)
+                        items.map((i) => i.itemId),
                     );
             })
             .delete();
@@ -354,7 +401,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
         await db(lamington.listItem)
             .whereIn(
                 listItem.itemId,
-                items.map(i => i.itemId)
+                items.map((i) => i.itemId),
             )
             .update({ listId });
 
@@ -362,7 +409,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
             db,
             userId,
             listId,
-            items.map(i => i.itemId)
+            items.map((i) => i.itemId),
         );
 
         return { listId, items: updatedItems };
@@ -377,9 +424,11 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
             .where(listItem.completed, false)
             .groupBy(listItem.listId);
 
-        const countMap = new Map(results.map((r: any) => [r.listId, Number(r.count)]));
+        const countMap = new Map(
+            results.map((r: any) => [r.listId, Number(r.count)]),
+        );
 
-        return listIds.map(listId => ({
+        return listIds.map((listId) => ({
             listId,
             count: countMap.get(listId) ?? 0,
         }));
@@ -394,9 +443,11 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
             .whereIn(listItem.listId, listIds)
             .groupBy(listItem.listId);
 
-        const resultMap = new Map(results.map((r: any) => [r.listId, r.updatedAt]));
+        const resultMap = new Map(
+            results.map((r: any) => [r.listId, r.updatedAt]),
+        );
 
-        return listIds.map(listId => ({
+        return listIds.map((listId) => ({
             listId,
             updatedAt: toUndefined(resultMap.get(listId)),
         }));
@@ -405,31 +456,41 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
         const requests = EnsureArray(request);
         const allMembers = await ContentMemberActions.read(
             db,
-            requests.map(({ listId }) => ({ contentId: listId }))
+            requests.map(({ listId }) => ({ contentId: listId })),
         );
 
-        const membersByListId = allMembers.reduce<Record<string, typeof allMembers>>((acc, member) => {
+        const membersByListId = allMembers.reduce<
+            Record<string, typeof allMembers>
+        >((acc, member) => {
             acc[member.contentId] = [...(acc[member.contentId] ?? []), member];
             return acc;
         }, {});
 
         return requests.map(({ listId }) => ({
             listId,
-            members: (membersByListId[listId] ?? []).map(({ contentId, status, ...rest }) => ({
-                ...rest,
-                status: toUndefined(status),
-            })),
+            members: (membersByListId[listId] ?? []).map(
+                ({ contentId, status, ...rest }) => ({
+                    ...rest,
+                    status: toUndefined(status),
+                }),
+            ),
         }));
     },
     saveMembers: async (db, request) => {
         try {
             const response = await ContentMemberActions.save(
                 db,
-                EnsureArray(request).map(({ listId, members }) => ({ contentId: listId, members }))
+                EnsureArray(request).map(({ listId, members }) => ({
+                    contentId: listId,
+                    members,
+                })),
             );
             return response.map(({ contentId, members }) => ({
                 listId: contentId,
-                members: members.map(({ status, ...rest }) => ({ ...rest, status: toUndefined(status) })),
+                members: members.map(({ status, ...rest }) => ({
+                    ...rest,
+                    status: toUndefined(status),
+                })),
             }));
         } catch (error) {
             if (isForeignKeyViolation(error)) {
@@ -441,19 +502,33 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
     updateMembers: (db, params) =>
         ContentMemberActions.save(
             db,
-            EnsureArray(params).map(({ listId, members }) => ({ contentId: listId, members })),
+            EnsureArray(params).map(({ listId, members }) => ({
+                contentId: listId,
+                members,
+            })),
             {
                 trimNotIn: false,
-            }
-        ).then(response =>
+            },
+        ).then((response) =>
             response.map(({ contentId, members }) => ({
                 listId: contentId,
-                members: members.map(({ status, ...rest }) => ({ ...rest, status: toUndefined(status) })),
-            }))
+                members: members.map(({ status, ...rest }) => ({
+                    ...rest,
+                    status: toUndefined(status),
+                })),
+            })),
         ),
     removeMembers: (db, request) =>
         ContentMemberActions.delete(
             db,
-            EnsureArray(request).map(({ listId, members }) => ({ contentId: listId, members }))
-        ).then(response => response.map(({ contentId, ...rest }) => ({ listId: contentId, ...rest }))),
+            EnsureArray(request).map(({ listId, members }) => ({
+                contentId: listId,
+                members,
+            })),
+        ).then((response) =>
+            response.map(({ contentId, ...rest }) => ({
+                listId: contentId,
+                ...rest,
+            })),
+        ),
 };

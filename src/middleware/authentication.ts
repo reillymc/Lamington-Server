@@ -37,7 +37,11 @@ export const createAuthenticationMiddleware: CreateMiddleware<"userService"> =
 
         jwt.verify(token, jwtSecret, async (err, decoded) => {
             if (err) {
-                return next(new UnauthorizedError("Failed to decode authentication token"));
+                return next(
+                    new UnauthorizedError(
+                        "Failed to decode authentication token",
+                    ),
+                );
             }
 
             if (!isUserToken(decoded)) {
@@ -53,11 +57,15 @@ export const createAuthenticationMiddleware: CreateMiddleware<"userService"> =
             const userStatus = getStatus(user.status);
 
             if (userStatus === UserStatus.Pending) {
-                return next(new UnauthorizedError("User account is pending approval"));
+                return next(
+                    new UnauthorizedError("User account is pending approval"),
+                );
             }
 
             if (userStatus === UserStatus.Blacklisted) {
-                return next(new UnauthorizedError("User account access denied"));
+                return next(
+                    new UnauthorizedError("User account access denied"),
+                );
             }
 
             req.session = { userId: decoded.userId, status: userStatus };
@@ -66,7 +74,9 @@ export const createAuthenticationMiddleware: CreateMiddleware<"userService"> =
         });
     };
 
-const isUserToken = (decoded: string | undefined | JwtPayload): decoded is Pick<AuthData, "userId"> => {
+const isUserToken = (
+    decoded: string | undefined | JwtPayload,
+): decoded is Pick<AuthData, "userId"> => {
     if (decoded === undefined || typeof decoded === "string") return false;
 
     if ("userId" in decoded) return true;

@@ -10,6 +10,8 @@ const ON_UPDATE_TIMESTAMP_FUNCTION = `
 $$ language 'plpgsql';
 `;
 
-export const up = (knex: Knex): Promise<void> => knex.raw(ON_UPDATE_TIMESTAMP_FUNCTION);
+export const up = (knex: Knex): Promise<void> =>
+    knex.raw(ON_UPDATE_TIMESTAMP_FUNCTION);
 
-export const down = (knex: Knex): Promise<void> => knex.raw("DROP FUNCTION on_update_timestamp;");
+export const down = (knex: Knex): Promise<void> =>
+    knex.raw("DROP FUNCTION on_update_timestamp;");

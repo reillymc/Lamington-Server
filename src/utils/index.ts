@@ -1,10 +1,15 @@
 type Undefined = <T>(x?: T) => x is NonNullable<typeof x>;
 
-export const Undefined: Undefined = (x): x is NonNullable<typeof x> => x !== null && x !== undefined;
+export const Undefined: Undefined = (x): x is NonNullable<typeof x> =>
+    x !== null && x !== undefined;
 
-export const ObjectFromEntries = <T extends object, K extends symbol | string | number, S>(
+export const ObjectFromEntries = <
+    T extends object,
+    K extends symbol | string | number,
+    S,
+>(
     obj: T,
-    cast: (entries: Array<[keyof T, T[keyof T]]>) => Array<[K, S]>
+    cast: (entries: Array<[keyof T, T[keyof T]]>) => Array<[K, S]>,
 ): { [k in K]: S } => {
     const entries = Object.entries(obj) as Array<[keyof T, T[keyof T]]>;
     return Object.fromEntries(cast(entries)) as any;
@@ -16,18 +21,21 @@ export function EnsureArray<T>(x: T | readonly T[]): readonly T[];
 export function EnsureArray<T>(x: T | T[] | readonly T[]): T[] | readonly T[] {
     return Array.isArray(x) ? x : [x as T];
 }
-export const EnsureDefinedArray = <T>(x: T | T[]): NonNullable<T>[] => (Array.isArray(x) ? x : [x]).filter(Undefined);
+export const EnsureDefinedArray = <T>(x: T | T[]): NonNullable<T>[] =>
+    (Array.isArray(x) ? x : [x]).filter(Undefined);
 
 export const BisectOnValidPartialItems = <T>(
     arr: T[],
-    predicate: (item: T) => (T extends Partial<infer R> ? R : never) | undefined
+    predicate: (
+        item: T,
+    ) => (T extends Partial<infer R> ? R : never) | undefined,
 ) => {
     type Y = (typeof arr)[number];
     type X = Y extends Partial<infer R> ? R : never;
     const trueArr: X[] = [];
     const falseArr: unknown[] = [];
 
-    arr.forEach(item => {
+    arr.forEach((item) => {
         const validated = predicate(item);
         if (validated) {
             trueArr.push(validated);
@@ -39,11 +47,14 @@ export const BisectOnValidPartialItems = <T>(
     return [trueArr, falseArr] as const;
 };
 
-export const BisectOnValidItems = <R, T = any>(arr: T[], predicate: (item: T) => R | undefined) => {
+export const BisectOnValidItems = <R, T = any>(
+    arr: T[],
+    predicate: (item: T) => R | undefined,
+) => {
     const trueArr: R[] = [];
     const falseArr: unknown[] = [];
 
-    arr.forEach(item => {
+    arr.forEach((item) => {
         const validated = predicate(item);
         if (validated) {
             trueArr.push(validated);
@@ -55,11 +66,14 @@ export const BisectOnValidItems = <R, T = any>(arr: T[], predicate: (item: T) =>
     return [trueArr, falseArr] as const;
 };
 
-export const BisectOnPredicate = <T>(arr: T[], predicate: (item: T) => boolean) => {
+export const BisectOnPredicate = <T>(
+    arr: T[],
+    predicate: (item: T) => boolean,
+) => {
     const trueArr: T[] = [];
     const falseArr: T[] = [];
 
-    arr.forEach(item => {
+    arr.forEach((item) => {
         if (predicate(item)) {
             trueArr.push(item);
         } else {
@@ -70,6 +84,8 @@ export const BisectOnPredicate = <T>(arr: T[], predicate: (item: T) => boolean) 
     return [trueArr, falseArr] as const;
 };
 
-export const randomElement = <T>(array: T[]): T | undefined => array[Math.floor(Math.random() * array.length)];
+export const randomElement = <T>(array: T[]): T | undefined =>
+    array[Math.floor(Math.random() * array.length)];
 
-export const toUndefined = <T>(value: T | null): T | undefined => (value === null ? undefined : value);
+export const toUndefined = <T>(value: T | null): T | undefined =>
+    value === null ? undefined : value;

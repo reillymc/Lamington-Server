@@ -3,7 +3,15 @@ import type { Meal } from "../database/definitions/meal.ts";
 import type { Database, User } from "../database/index.ts";
 import type { RepositoryService } from "./repository.ts";
 
-type CookListMealCourse = "breakfast" | "lunch" | "dinner" | "snack" | "dessert" | "drink" | "component" | "side";
+type CookListMealCourse =
+    | "breakfast"
+    | "lunch"
+    | "dinner"
+    | "snack"
+    | "dessert"
+    | "drink"
+    | "component"
+    | "side";
 
 type CookListMealResponse = {
     mealId: Meal["mealId"];
@@ -96,9 +104,29 @@ type VerifyMealPermissionsResponse = {
 };
 
 export interface CookListRepository<TDatabase extends Database = Database> {
-    createMeals: RepositoryService<TDatabase, CreateMealsRequest, CreateMealsResponse>;
-    deleteMeals: RepositoryService<TDatabase, DeleteMealsRequest, DeleteMealsResponse>;
-    readAllMeals: RepositoryService<TDatabase, ReadAllMealsRequest, ReadAllMealsResponse>;
-    updateMeals: RepositoryService<TDatabase, UpdateMealsRequest, UpdateMealsResponse>;
-    verifyMealPermissions: RepositoryService<TDatabase, VerifyMealPermissionsRequest, VerifyMealPermissionsResponse>;
+    createMeals: RepositoryService<
+        TDatabase,
+        CreateMealsRequest,
+        CreateMealsResponse
+    >;
+    deleteMeals: RepositoryService<
+        TDatabase,
+        DeleteMealsRequest,
+        DeleteMealsResponse
+    >;
+    readAllMeals: RepositoryService<
+        TDatabase,
+        ReadAllMealsRequest,
+        ReadAllMealsResponse
+    >;
+    updateMeals: RepositoryService<
+        TDatabase,
+        UpdateMealsRequest,
+        UpdateMealsResponse
+    >;
+    verifyMealPermissions: RepositoryService<
+        TDatabase,
+        VerifyMealPermissionsRequest,
+        VerifyMealPermissionsResponse
+    >;
 }

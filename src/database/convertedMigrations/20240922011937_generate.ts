@@ -1,7 +1,7 @@
 import type { Knex } from "knex";
 import { v4 } from "uuid";
-import { type User, lamington } from "../definitions/index.ts";
 import { hashPassword } from "../../services/userService.ts";
+import { lamington, type User } from "../definitions/index.ts";
 
 export async function up(knex: Knex): Promise<void> {
     if (process.env.NODE_ENV !== "production") {

@@ -1,15 +1,24 @@
-import { attachment, type Attachment } from "../../database/definitions/attachment.ts";
-import { contentAttachment, type ContentAttachment } from "../../database/definitions/contentAttachment.ts";
+import {
+    type Attachment,
+    attachment,
+} from "../../database/definitions/attachment.ts";
+import {
+    type ContentAttachment,
+    contentAttachment,
+} from "../../database/definitions/contentAttachment.ts";
 import {
     type CreateQuery,
     type KnexDatabase,
+    lamington,
     type ReadQuery,
     type ReadResponse,
-    lamington,
 } from "../../database/index.ts";
 import { EnsureArray, Undefined } from "../../utils/index.ts";
 
-export type SaveContentAttachmentRequest = Pick<ContentAttachment, "contentId"> & {
+export type SaveContentAttachmentRequest = Pick<
+    ContentAttachment,
+    "contentId"
+> & {
     attachments?: Array<{
         attachmentId: ContentAttachment["attachmentId"];
         displayType: ContentAttachment["displayType"];
@@ -25,30 +34,37 @@ export interface CreateContentAttachmentOptions {
 const saveContentAttachments = async (
     db: KnexDatabase,
     saveRequests: CreateQuery<SaveContentAttachmentRequest>,
-    options?: CreateContentAttachmentOptions
+    options?: CreateContentAttachmentOptions,
 ) => {
     for (const { attachments = [], contentId } of EnsureArray(saveRequests)) {
-        const data = attachments.map(({ displayType, attachmentId, displayId, displayOrder }) => ({
-            displayType,
-            attachmentId,
-            displayId,
-            displayOrder,
-            contentId,
-        }));
+        const data = attachments.map(
+            ({ displayType, attachmentId, displayId, displayOrder }) => ({
+                displayType,
+                attachmentId,
+                displayId,
+                displayOrder,
+                contentId,
+            }),
+        );
 
         if (options?.trimNotIn) {
             const res = await db<ContentAttachment>(lamington.contentAttachment)
                 .where({ contentId })
                 .whereNotIn(
                     contentAttachment.attachmentId,
-                    data.map(({ attachmentId }) => attachmentId).filter(Undefined)
+                    data
+                        .map(({ attachmentId }) => attachmentId)
+                        .filter(Undefined),
                 )
                 .delete();
         }
 
         if (!data.length) return;
 
-        await db<ContentAttachment>(lamington.contentAttachment).insert(data).onConflict(["attachmentId", "contentId"]).merge();
+        await db<ContentAttachment>(lamington.contentAttachment)
+            .insert(data)
+            .onConflict(["attachmentId", "contentId"])
+            .merge();
     }
 };
 
@@ -56,11 +72,12 @@ interface GetContentAttachmentsParams {
     contentId: string;
 }
 
-type GetContentAttachmentsResponse = ContentAttachment & Pick<Attachment, "createdBy" | "uri">;
+type GetContentAttachmentsResponse = ContentAttachment &
+    Pick<Attachment, "createdBy" | "uri">;
 
 const readContentAttachments = async (
     db: KnexDatabase,
-    params: ReadQuery<GetContentAttachmentsParams>
+    params: ReadQuery<GetContentAttachmentsParams>,
 ): ReadResponse<GetContentAttachmentsResponse> => {
     const entityIds = EnsureArray(params).map(({ contentId }) => contentId);
 
@@ -72,10 +89,14 @@ const readContentAttachments = async (
             contentAttachment.displayId,
             contentAttachment.displayOrder,
             contentAttachment.displayType,
-            attachment.uri
+            attachment.uri,
         )
         .whereIn(contentAttachment.contentId, entityIds)
-        .leftJoin(lamington.attachment, contentAttachment.attachmentId, attachment.attachmentId);
+        .leftJoin(
+            lamington.attachment,
+            contentAttachment.attachmentId,
+            attachment.attachmentId,
+        );
 
     return query;
 };

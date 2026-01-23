@@ -13,4 +13,7 @@ export type EntityMembers = {
 
 export type NumberValue = { representation: "number"; value: string };
 export type RangeValue = { representation: "range"; value: [string, string] };
-export type FractionValue = { representation: "fraction"; value: [string, string, string] };
+export type FractionValue = {
+    representation: "fraction";
+    value: [string, string, string];
+};

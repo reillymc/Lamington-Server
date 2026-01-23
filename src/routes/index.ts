@@ -1,18 +1,22 @@
 import express from "express";
 
 import type { AppDependencies } from "../appDependencies.ts";
-import { createAuthenticationMiddleware, notFoundMiddleware } from "../middleware/index.ts";
+import {
+    createAuthenticationMiddleware,
+    notFoundMiddleware,
+} from "../middleware/index.ts";
 import { validationMiddleware } from "../middleware/validator.ts";
 import { createAttachmentsRouter } from "./attachments.ts";
 import { createAuthRouter } from "./auth.ts";
 import { createBookRouter } from "./books.ts";
 import { createCooklistRouter } from "./cookLists.ts";
 import { default as docsRouter } from "./docs.ts";
-import { default as healthRouter } from "./health.ts";
 import { createExtractorRouter } from "./extractor.ts";
+import { default as healthRouter } from "./health.ts";
 import { createListRouter } from "./lists.ts";
 import { createMealRouter } from "./meals.ts";
 import { createPlannerRouter } from "./planners.ts";
+import { createProfileRouter } from "./profile.ts";
 import { createRecipeRouter } from "./recipes.ts";
 import {
     assetEndpoint,
@@ -23,7 +27,6 @@ import {
     tagEndpoint,
 } from "./spec/index.ts";
 import { default as tagsRouter } from "./tags.ts";
-import { createProfileRouter } from "./profile.ts";
 import { createUserRouter } from "./users.ts";
 
 // TODO  createAppRouter :CreateRoute<all needed services>

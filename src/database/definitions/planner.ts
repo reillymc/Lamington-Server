@@ -25,5 +25,5 @@ export const plannerColumns = [
 ] as const satisfies (keyof Planner)[];
 
 export const planner = Object.fromEntries(
-    plannerColumns.map(column => [column, `${lamington.planner}.${column}`])
+    plannerColumns.map((column) => [column, `${lamington.planner}.${column}`]),
 ) as Table<Planner>;

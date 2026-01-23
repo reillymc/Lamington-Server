@@ -1,7 +1,6 @@
 import express from "express";
-
-import type { paths, routes } from "./spec/index.ts";
 import type { CreateRoute } from "./route.ts";
+import type { paths, routes } from "./spec/index.ts";
 
 export const createMealRouter: CreateRoute<"mealService"> = ({ mealService }) =>
     express

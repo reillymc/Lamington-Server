@@ -23,5 +23,7 @@ export * from "./definitions/index.ts";
 export type KnexDatabase = Knex.Transaction;
 
 export interface Database {
-    transaction<T>(transactionScope: (trx: Database) => Promise<T> | void): Promise<T>;
+    transaction<T>(
+        transactionScope: (trx: Database) => Promise<T> | void,
+    ): Promise<T>;
 }

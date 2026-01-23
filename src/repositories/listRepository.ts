@@ -6,7 +6,8 @@ import type { Database, User } from "../database/index.ts";
 import type { RepositoryBulkService, RepositoryService } from "./repository.ts";
 
 type ListUserStatus = "O" | "A" | "M" | "P" | "B";
-type ListIcon = `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17}`;
+type ListIcon =
+    `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17}`;
 
 type VerifyPermissionsRequest = {
     userId: User["userId"];
@@ -283,25 +284,85 @@ export interface ListRepository<TDatabase extends Database = Database> {
         CountOutstandingItemsRequest,
         CountOutstandingItemsResponse
     >;
-    create: RepositoryService<TDatabase, CreateListsRequest, CreateListsResponse>;
-    createItems: RepositoryService<TDatabase, CreateItemsRequest, CreateItemsResponse>;
-    delete: RepositoryService<TDatabase, DeleteListsRequest, DeleteListsResponse>;
-    deleteItems: RepositoryService<TDatabase, DeleteItemsRequest, DeleteItemsResponse>;
+    create: RepositoryService<
+        TDatabase,
+        CreateListsRequest,
+        CreateListsResponse
+    >;
+    createItems: RepositoryService<
+        TDatabase,
+        CreateItemsRequest,
+        CreateItemsResponse
+    >;
+    delete: RepositoryService<
+        TDatabase,
+        DeleteListsRequest,
+        DeleteListsResponse
+    >;
+    deleteItems: RepositoryService<
+        TDatabase,
+        DeleteItemsRequest,
+        DeleteItemsResponse
+    >;
     getLatestUpdatedTimestamp: RepositoryBulkService<
         TDatabase,
         GetLatestUpdatedTimestampRequest,
         GetLatestUpdatedTimestampResponse
     >;
-    moveItems: RepositoryService<TDatabase, MoveItemsRequest, MoveItemsResponse>;
+    moveItems: RepositoryService<
+        TDatabase,
+        MoveItemsRequest,
+        MoveItemsResponse
+    >;
     read: RepositoryService<TDatabase, ReadListsRequest, ReadListsResponse>;
-    readAll: RepositoryService<TDatabase, ReadAllListsRequest, ReadAllListsResponse>;
-    readAllItems: RepositoryService<TDatabase, ReadAllItemsRequest, ReadAllItemsResponse>;
-    readItems: RepositoryService<TDatabase, ReadItemsRequest, ReadItemsResponse>;
-    readMembers: RepositoryBulkService<TDatabase, ReadMembersRequest, ReadMembersResponse>;
-    removeMembers: RepositoryBulkService<TDatabase, RemoveMembersRequest, RemoveMembersResponse>;
-    saveMembers: RepositoryBulkService<TDatabase, SaveMembersRequest, SaveMembersResponse>;
-    update: RepositoryService<TDatabase, UpdateListsRequest, UpdateListsResponse>;
-    updateItems: RepositoryService<TDatabase, UpdateItemsRequest, UpdateItemsResponse>;
-    updateMembers: RepositoryBulkService<TDatabase, UpdateMembersRequest, UpdateMembersResponse>;
-    verifyPermissions: RepositoryService<TDatabase, VerifyPermissionsRequest, VerifyPermissionsResponse>;
+    readAll: RepositoryService<
+        TDatabase,
+        ReadAllListsRequest,
+        ReadAllListsResponse
+    >;
+    readAllItems: RepositoryService<
+        TDatabase,
+        ReadAllItemsRequest,
+        ReadAllItemsResponse
+    >;
+    readItems: RepositoryService<
+        TDatabase,
+        ReadItemsRequest,
+        ReadItemsResponse
+    >;
+    readMembers: RepositoryBulkService<
+        TDatabase,
+        ReadMembersRequest,
+        ReadMembersResponse
+    >;
+    removeMembers: RepositoryBulkService<
+        TDatabase,
+        RemoveMembersRequest,
+        RemoveMembersResponse
+    >;
+    saveMembers: RepositoryBulkService<
+        TDatabase,
+        SaveMembersRequest,
+        SaveMembersResponse
+    >;
+    update: RepositoryService<
+        TDatabase,
+        UpdateListsRequest,
+        UpdateListsResponse
+    >;
+    updateItems: RepositoryService<
+        TDatabase,
+        UpdateItemsRequest,
+        UpdateItemsResponse
+    >;
+    updateMembers: RepositoryBulkService<
+        TDatabase,
+        UpdateMembersRequest,
+        UpdateMembersResponse
+    >;
+    verifyPermissions: RepositoryService<
+        TDatabase,
+        VerifyPermissionsRequest,
+        VerifyPermissionsResponse
+    >;
 }

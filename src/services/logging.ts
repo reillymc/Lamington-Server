@@ -58,7 +58,9 @@ export class NotFoundError extends AppError {
             status: 404,
             code: "NOT_FOUND",
             message: `The requested ${entity} entries were not found: ${
-                entityIds?.length ? `Ids: ${EnsureArray(entityIds).join(", ")}` : ""
+                entityIds?.length
+                    ? `Ids: ${EnsureArray(entityIds).join(", ")}`
+                    : ""
             }`,
         });
     }
@@ -70,7 +72,9 @@ export class UpdatedDataFetchError extends AppError {
             status: 500,
             code: "UPDATE_READ_FAILED",
             message: `The updated ${entity} entries were not found: ${
-                entityIds.length ? `Ids: ${EnsureArray(entityIds).join(", ")}` : ""
+                entityIds.length
+                    ? `Ids: ${EnsureArray(entityIds).join(", ")}`
+                    : ""
             }`,
         });
     }
@@ -147,7 +151,7 @@ const ErrorLogFileTransport = new transports.DailyRotateFile({
         }),
         format.errors({ stack: true }),
         format.splat(),
-        format.json()
+        format.json(),
     ),
 });
 
@@ -164,7 +168,7 @@ const AccessLogFileTransport = new transports.DailyRotateFile({
         }),
         format.printf(({ level, message, timestamp }) => {
             return `${timestamp} ${level}: ${message}`;
-        })
+        }),
     ),
 });
 
@@ -177,7 +181,11 @@ const ConsoleLogTransport =
         : undefined;
 
 export const logger = createLogger({
-    transports: [ErrorLogFileTransport, AccessLogFileTransport, ConsoleLogTransport].filter(Undefined),
+    transports: [
+        ErrorLogFileTransport,
+        AccessLogFileTransport,
+        ConsoleLogTransport,
+    ].filter(Undefined),
 });
 
 export const MessageAction = {

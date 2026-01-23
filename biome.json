@@ -16,7 +16,13 @@
     "linter": {
         "enabled": true,
         "rules": {
-            "recommended": true
+            "recommended": true,
+            "correctness": {
+                "noUnusedImports": {
+                    "fix": "safe",
+                    "level": "warn"
+                }
+            }
         }
     },
     "javascript": {
@@ -27,9 +33,19 @@
     "assist": {
         "enabled": true,
         "actions": {
-            "source": {
-                "organizeImports": "on"
+            "recommended": true
+        }
+    },
+    "overrides": [
+        {
+            "includes": ["tests/**"],
+            "linter": {
+                "rules": {
+                    "style": {
+                        "noNonNullAssertion": "off"
+                    }
+                }
             }
         }
-    }
+    ]
 }

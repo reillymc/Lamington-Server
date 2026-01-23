@@ -1,12 +1,11 @@
-import { expect } from "expect";
 import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
+import { expect } from "expect";
 import request from "supertest";
-
+import { v4 } from "uuid";
 import { setupApp } from "../../src/app.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
-import { PrepareAuthenticatedUser, randomNumber } from "../helpers/index.ts";
 import type { ContentExtractionService } from "../../src/services/contentExtractionService.ts";
-import { v4 } from "uuid";
+import { PrepareAuthenticatedUser, randomNumber } from "../helpers/index.ts";
 
 after(async () => {
     await db.destroy();
@@ -31,10 +30,12 @@ describe("Extract recipe metadata", () => {
 
     it("should extract metadata from a URL", async () => {
         const extractRecipeMetadataMock = mock.fn(
-            async (): ReturnType<ContentExtractionService["extractRecipeMetadata"]> => ({
+            async (): ReturnType<
+                ContentExtractionService["extractRecipeMetadata"]
+            > => ({
                 name: "Test Recipe",
                 imageUrl: "http://example.com/image.jpg",
-            })
+            }),
         );
 
         const app = setupApp({
@@ -50,7 +51,10 @@ describe("Extract recipe metadata", () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const url = "https://example.com/recipe";
 
-        const res = await request(app).get("/v1/extractor/recipeMetadata").query({ url }).set(token);
+        const res = await request(app)
+            .get("/v1/extractor/recipeMetadata")
+            .query({ url })
+            .set(token);
 
         expect(res.statusCode).toEqual(200);
         expect(res.body).toEqual({
@@ -58,14 +62,18 @@ describe("Extract recipe metadata", () => {
             imageUrl: "http://example.com/image.jpg",
         });
         expect(extractRecipeMetadataMock.mock.calls.length).toBe(1);
-        expect(extractRecipeMetadataMock.mock.calls[0]!.arguments.at(0)).toEqual(url);
+        expect(
+            extractRecipeMetadataMock.mock.calls[0]!.arguments.at(0),
+        ).toEqual(url);
     });
 
     it("should return 500 if extraction fails", async () => {
         const extractRecipeMetadataMock = mock.fn(
-            async (): ReturnType<ContentExtractionService["extractRecipeMetadata"]> => {
+            async (): ReturnType<
+                ContentExtractionService["extractRecipeMetadata"]
+            > => {
                 throw new Error("Extraction failed");
-            }
+            },
         );
 
         const app = setupApp({
@@ -80,7 +88,10 @@ describe("Extract recipe metadata", () => {
 
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app).get("/v1/extractor/recipeMetadata").query({ url: "http://fail.com" }).set(token);
+        const res = await request(app)
+            .get("/v1/extractor/recipeMetadata")
+            .query({ url: "http://fail.com" })
+            .set(token);
 
         expect(res.statusCode).toEqual(500);
     });
@@ -104,7 +115,9 @@ describe("Extract full recipe", () => {
     });
 
     it("should extract full recipe from a URL", async () => {
-        const mockRecipe: Awaited<ReturnType<ContentExtractionService["extractRecipe"]>> = {
+        const mockRecipe: Awaited<
+            ReturnType<ContentExtractionService["extractRecipe"]>
+        > = {
             name: v4(),
             description: v4(),
             cookTime: randomNumber(),
@@ -116,7 +129,8 @@ describe("Extract full recipe", () => {
         };
 
         const extractRecipeMock = mock.fn(
-            async (): ReturnType<ContentExtractionService["extractRecipe"]> => mockRecipe
+            async (): ReturnType<ContentExtractionService["extractRecipe"]> =>
+                mockRecipe,
         );
 
         const app = setupApp({
@@ -132,7 +146,10 @@ describe("Extract full recipe", () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const url = "https://example.com/recipe";
 
-        const res = await request(app).get("/v1/extractor/recipe").query({ url }).set(token);
+        const res = await request(app)
+            .get("/v1/extractor/recipe")
+            .query({ url })
+            .set(token);
 
         expect(res.statusCode).toEqual(200);
         expect(res.body).toEqual(mockRecipe);
@@ -141,9 +158,11 @@ describe("Extract full recipe", () => {
     });
 
     it("should return 500 if extraction fails", async () => {
-        const extractRecipeMock = mock.fn(async (): ReturnType<ContentExtractionService["extractRecipe"]> => {
-            throw new Error("Extraction failed");
-        });
+        const extractRecipeMock = mock.fn(
+            async (): ReturnType<ContentExtractionService["extractRecipe"]> => {
+                throw new Error("Extraction failed");
+            },
+        );
 
         const app = setupApp({
             database,
@@ -157,7 +176,10 @@ describe("Extract full recipe", () => {
 
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app).get("/v1/extractor/recipe").query({ url: "http://fail.com" }).set(token);
+        const res = await request(app)
+            .get("/v1/extractor/recipe")
+            .query({ url: "http://fail.com" })
+            .set(token);
 
         expect(res.statusCode).toEqual(500);
     });

@@ -1,4 +1,6 @@
-const parseLogLevel = (logLevel: string | undefined): "tiny" | "short" | "dev" => {
+const parseLogLevel = (
+    logLevel: string | undefined,
+): "tiny" | "short" | "dev" => {
     switch (logLevel) {
         case "tiny":
             return "tiny";
@@ -11,7 +13,9 @@ const parseLogLevel = (logLevel: string | undefined): "tiny" | "short" | "dev" =
     }
 };
 
-const parseAttachmentStorage = (imageStorage: string | undefined): "local" | "s3" => {
+const parseAttachmentStorage = (
+    imageStorage: string | undefined,
+): "local" | "s3" => {
     switch (imageStorage) {
         case "local":
             return "local";
@@ -35,7 +39,9 @@ const config: LamingtonConfig = {
         jwtExpiration: process.env.JWT_EXPIRATION,
     },
     attachments: {
-        storageService: parseAttachmentStorage(process.env.ATTACHMENT_STORAGE_SERVICE),
+        storageService: parseAttachmentStorage(
+            process.env.ATTACHMENT_STORAGE_SERVICE,
+        ),
         awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
         awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
         awsRegion: process.env.AWS_REGION,

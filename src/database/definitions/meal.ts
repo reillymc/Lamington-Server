@@ -33,5 +33,8 @@ export const plannerMealColumns = [
 ] as const satisfies (keyof Meal)[];
 
 export const plannerMeal = Object.fromEntries(
-    plannerMealColumns.map(column => [column, `${lamington.plannerMeal}.${column}`])
+    plannerMealColumns.map((column) => [
+        column,
+        `${lamington.plannerMeal}.${column}`,
+    ]),
 ) as Table<Meal>;

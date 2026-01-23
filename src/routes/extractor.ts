@@ -1,9 +1,10 @@
 import express from "express";
-
-import type { paths, routes } from "./spec/index.ts";
 import type { CreateRoute } from "./route.ts";
+import type { paths, routes } from "./spec/index.ts";
 
-export const createExtractorRouter: CreateRoute<"contentExtractionService"> = ({ contentExtractionService }) =>
+export const createExtractorRouter: CreateRoute<"contentExtractionService"> = ({
+    contentExtractionService,
+}) =>
     express
         .Router()
         .get<
@@ -13,7 +14,9 @@ export const createExtractorRouter: CreateRoute<"contentExtractionService"> = ({
             paths["/extractor/recipeMetadata"]["get"]["requestBody"],
             paths["/extractor/recipeMetadata"]["get"]["parameters"]["query"]
         >("/extractor/recipeMetadata", async ({ query }, res) => {
-            const data = await contentExtractionService.extractRecipeMetadata(query.url);
+            const data = await contentExtractionService.extractRecipeMetadata(
+                query.url,
+            );
             return res.status(200).json(data);
         })
         .get<
@@ -23,6 +26,8 @@ export const createExtractorRouter: CreateRoute<"contentExtractionService"> = ({
             paths["/extractor/recipe"]["get"]["requestBody"],
             paths["/extractor/recipe"]["get"]["parameters"]["query"]
         >("/extractor/recipe", async ({ query }, res) => {
-            const data = await contentExtractionService.extractRecipe(query.url);
+            const data = await contentExtractionService.extractRecipe(
+                query.url,
+            );
             return res.status(200).json(data);
         });

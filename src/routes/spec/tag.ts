@@ -1,4 +1,9 @@
-import type { BaseRequest, BaseRequestBody, BaseRequestParams, BaseResponse } from "./base.ts";
+import type {
+    BaseRequest,
+    BaseRequestBody,
+    BaseRequestParams,
+    BaseResponse,
+} from "./base.ts";
 
 export const tagEndpoint = "/tags" as const;
 
@@ -36,7 +41,9 @@ export interface Tag {
 export type GetTagsRequestParams = BaseRequestParams;
 export type GetTagsRequestBody = BaseRequestBody;
 
-export type GetTagsRequest = BaseRequest<GetTagsRequestBody & GetTagsRequestParams>;
+export type GetTagsRequest = BaseRequest<
+    GetTagsRequestBody & GetTagsRequestParams
+>;
 export type GetTagsResponse = BaseResponse<TagGroups>;
 export type GetTagsService = (request: GetTagsRequest) => GetTagsResponse;
 

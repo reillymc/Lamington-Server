@@ -183,10 +183,34 @@ export interface BookRepository<TDatabase extends Database = Database> {
     create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;
     update: RepositoryService<TDatabase, UpdateRequest, UpdateResponse>;
     delete: RepositoryService<TDatabase, DeleteRequest, DeleteResponse>;
-    verifyPermissions: RepositoryService<TDatabase, VerifyPermissionsRequest, VerifyPermissionsResponse>;
-    saveRecipes: RepositoryBulkService<TDatabase, SaveRecipesRequest, SaveRecipesResponse>;
-    removeRecipes: RepositoryBulkService<TDatabase, RemoveRecipesRequest, RemoveRecipesResponse>;
-    readMembers: RepositoryBulkService<TDatabase, ReadMembersRequest, ReadMembersResponse>;
-    saveMembers: RepositoryBulkService<TDatabase, SaveMembersRequest, SaveMembersResponse>;
-    removeMembers: RepositoryBulkService<TDatabase, RemoveMembersRequest, RemoveMembersResponse>;
+    verifyPermissions: RepositoryService<
+        TDatabase,
+        VerifyPermissionsRequest,
+        VerifyPermissionsResponse
+    >;
+    saveRecipes: RepositoryBulkService<
+        TDatabase,
+        SaveRecipesRequest,
+        SaveRecipesResponse
+    >;
+    removeRecipes: RepositoryBulkService<
+        TDatabase,
+        RemoveRecipesRequest,
+        RemoveRecipesResponse
+    >;
+    readMembers: RepositoryBulkService<
+        TDatabase,
+        ReadMembersRequest,
+        ReadMembersResponse
+    >;
+    saveMembers: RepositoryBulkService<
+        TDatabase,
+        SaveMembersRequest,
+        SaveMembersResponse
+    >;
+    removeMembers: RepositoryBulkService<
+        TDatabase,
+        RemoveMembersRequest,
+        RemoveMembersResponse
+    >;
 }

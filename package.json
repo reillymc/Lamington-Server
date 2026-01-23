@@ -8,7 +8,7 @@
         "start": "NODE_ENV=development node --watch --env-file=./.devcontainer/.env --watch-path=openapi.yaml --watch-path=src src/index.ts",
         "prod": "npm run migrate:prod && npm run seed:prod && NODE_ENV=production node src/index.ts",
         "test": "NODE_ENV=test node --test",
-        "lint": "biome lint --max-diagnostics 1017",
+        "lint": "biome check --max-diagnostics 110",
         "test:coverage": "NODE_ENV=test node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=85",
         "migrate:dev": "knex migrate:latest --knexfile src/database/knexfile.development.ts",
         "migrate:prod": "knex migrate:latest --knexfile src/database/knexfile.production.ts",

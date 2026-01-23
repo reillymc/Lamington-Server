@@ -1,33 +1,53 @@
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
-
+import {
+    DefaultAppDependencies,
+    MergeAppDependencies,
+    type PartialAppDependencies,
+} from "./appDependencies.ts";
 import config from "./config.ts";
-import { errorMiddleware, loggerMiddleware, notFoundMiddleware } from "./middleware/index.ts";
+import db from "./database/index.ts";
+import {
+    errorMiddleware,
+    loggerMiddleware,
+    notFoundMiddleware,
+} from "./middleware/index.ts";
 import { createAppRouter, docsRouter, healthRouter } from "./routes/index.ts";
 import { attachmentEndpoint, uploadDirectory } from "./routes/spec/index.ts";
-import { DefaultAppDependencies, MergeAppDependencies, type PartialAppDependencies } from "./appDependencies.ts";
-import db from "./database/index.ts";
 
 export const setupApp = (dependencies?: PartialAppDependencies) => {
     const app = express();
 
     const database = dependencies?.database ?? db;
 
-    const appDependencies = MergeAppDependencies(DefaultAppDependencies(database), dependencies);
+    const appDependencies = MergeAppDependencies(
+        DefaultAppDependencies(database),
+        dependencies,
+    );
 
     // app setup
     app.use(express.json());
     app.use(express.urlencoded({ extended: false }));
     app.use(cors());
-    app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"] } } }));
+    app.use(
+        helmet({
+            contentSecurityPolicy: { directives: { defaultSrc: ["'self'"] } },
+        }),
+    );
 
     // logging
     app.use(loggerMiddleware);
 
     // routers
-    if (config.attachments.storageService === "local" || process.env.NODE_ENV !== "production") {
-        app.use(`/v1${attachmentEndpoint}/${uploadDirectory}`, express.static(uploadDirectory));
+    if (
+        config.attachments.storageService === "local" ||
+        process.env.NODE_ENV !== "production"
+    ) {
+        app.use(
+            `/v1${attachmentEndpoint}/${uploadDirectory}`,
+            express.static(uploadDirectory),
+        );
     }
     app.use("/v1/", createAppRouter(appDependencies));
     app.use("/health", healthRouter);

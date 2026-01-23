@@ -1,6 +1,6 @@
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
-import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 
@@ -8,8 +8,14 @@ import { setupApp } from "../../src/app.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
 import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
-import { UserStatus, type components } from "../../src/routes/spec/index.ts";
-import { CreateUsers, PrepareAuthenticatedUser, randomDay, randomMonth, randomYear } from "../helpers/index.ts";
+import { type components, UserStatus } from "../../src/routes/spec/index.ts";
+import {
+    CreateUsers,
+    PrepareAuthenticatedUser,
+    randomDay,
+    randomMonth,
+    randomYear,
+} from "../helpers/index.ts";
 
 after(async () => {
     await db.destroy();
@@ -65,7 +71,9 @@ describe("Get a meal by ID", () => {
             ],
         });
 
-        const res = await request(app).get(`/v1/meals/${createdMeal!.mealId}`).set(token);
+        const res = await request(app)
+            .get(`/v1/meals/${createdMeal!.mealId}`)
+            .set(token);
 
         expect(res.statusCode).toEqual(200);
         const meal = res.body as components["schemas"]["Meal"];
@@ -91,7 +99,9 @@ describe("Get a meal by ID", () => {
             ],
         });
 
-        const res = await request(app).get(`/v1/meals/${createdMeal!.mealId}`).set(token);
+        const res = await request(app)
+            .get(`/v1/meals/${createdMeal!.mealId}`)
+            .set(token);
 
         expect(res.statusCode).toEqual(200);
         const meal = res.body as components["schemas"]["Meal"];
@@ -136,7 +146,9 @@ describe("Get a meal by ID", () => {
                 ],
             });
 
-            const res = await request(app).get(`/v1/meals/${createdMeal!.mealId}`).set(token);
+            const res = await request(app)
+                .get(`/v1/meals/${createdMeal!.mealId}`)
+                .set(token);
 
             expect(res.statusCode).toEqual(200);
             const meal = res.body as components["schemas"]["Meal"];
@@ -179,7 +191,9 @@ describe("Get a meal by ID", () => {
                 ],
             });
 
-            const res = await request(app).get(`/v1/meals/${createdMeal!.mealId}`).set(token);
+            const res = await request(app)
+                .get(`/v1/meals/${createdMeal!.mealId}`)
+                .set(token);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -196,7 +210,9 @@ describe("Get a meal by ID", () => {
             meals: [{ course: "dinner", description: uuid() }],
         });
 
-        const res = await request(app).get(`/v1/meals/${createdMeal!.mealId}`).set(token);
+        const res = await request(app)
+            .get(`/v1/meals/${createdMeal!.mealId}`)
+            .set(token);
 
         expect(res.statusCode).toEqual(404);
     });
@@ -228,7 +244,9 @@ describe("Get a meal by ID", () => {
             ],
         });
 
-        const res = await request(app).get(`/v1/meals/${createdMeal!.mealId}`).set(token);
+        const res = await request(app)
+            .get(`/v1/meals/${createdMeal!.mealId}`)
+            .set(token);
 
         expect(res.statusCode).toEqual(404);
     });

@@ -1,5 +1,13 @@
+import bcrypt from "bcrypt";
 import { v4 as Uuid } from "uuid";
-import { UserStatus, type components } from "../routes/spec/index.ts";
+import { UniqueViolationError } from "../repositories/common/errors.ts";
+import type {
+    CreateUserPayload,
+    UserCredentials,
+    UserDirectoryEntry,
+    UserProfile,
+} from "../repositories/userRepository.ts";
+import { type components, UserStatus } from "../routes/spec/index.ts";
 import {
     CreatedDataFetchError,
     createToken,
@@ -9,15 +17,6 @@ import {
     UnauthorizedError,
 } from "./index.ts";
 import type { CreateService } from "./service.ts";
-import type {
-    CreateUserPayload,
-    UserCredentials,
-    UserDirectoryEntry,
-    UserProfile,
-} from "../repositories/userRepository.ts";
-import { UniqueViolationError } from "../repositories/common/errors.ts";
-
-import bcrypt from "bcrypt";
 
 const saltRounds = 10;
 
@@ -37,40 +36,73 @@ export interface UserService {
     delete(userId: string, userToDeleteId: string): Promise<void>;
     deleteProfile(userId: string): Promise<void>;
 
-    getAll(userId: string, status?: UserStatus): Promise<ReadonlyArray<UserDirectoryEntry>>;
+    getAll(
+        userId: string,
+        status?: UserStatus,
+    ): Promise<ReadonlyArray<UserDirectoryEntry>>;
     getProfile(userId: string): Promise<UserProfile>;
-    readCredentials(filter: { email: string } | { userId: string }): Promise<ReadonlyArray<UserCredentials>>;
+    readCredentials(
+        filter: { email: string } | { userId: string },
+    ): Promise<ReadonlyArray<UserCredentials>>;
 
-    login(credentials: { email: string; password: string }): Promise<components["schemas"]["AuthResponse"]>;
-    register(user: Omit<CreateUserPayload, "status">): Promise<components["schemas"]["AuthRegisterResponse"]>;
+    login(credentials: {
+        email: string;
+        password: string;
+    }): Promise<components["schemas"]["AuthResponse"]>;
+    register(
+        user: Omit<CreateUserPayload, "status">,
+    ): Promise<components["schemas"]["AuthRegisterResponse"]>;
 }
 
 export const createUserService: CreateService<
     UserService,
-    "userRepository" | "listRepository" | "bookRepository" | "recipeRepository" | "plannerRepository"
-> = (database, { userRepository, bookRepository, listRepository, plannerRepository, recipeRepository }) => ({
+    | "userRepository"
+    | "listRepository"
+    | "bookRepository"
+    | "recipeRepository"
+    | "plannerRepository"
+> = (
+    database,
+    {
+        userRepository,
+        bookRepository,
+        listRepository,
+        plannerRepository,
+        recipeRepository,
+    },
+) => ({
     getAll: async (userId, status) => {
-        const { hasPermissions } = await userRepository.verifyPermissions(database, {
-            userId,
-            status: [UserStatus.Administrator, UserStatus.Owner],
-        });
+        const { hasPermissions } = await userRepository.verifyPermissions(
+            database,
+            {
+                userId,
+                status: [UserStatus.Administrator, UserStatus.Owner],
+            },
+        );
         if (!hasPermissions) {
             throw new PermissionError("user");
         }
-        const { users } = await userRepository.readAll(database, { filter: { status } });
-        return users.filter(u => u.userId !== userId);
+        const { users } = await userRepository.readAll(database, {
+            filter: { status },
+        });
+        return users.filter((u) => u.userId !== userId);
     },
     approve: async (userId, userToApproveId) => {
-        const { hasPermissions } = await userRepository.verifyPermissions(database, {
-            userId,
-            status: [UserStatus.Administrator, UserStatus.Owner],
-        });
+        const { hasPermissions } = await userRepository.verifyPermissions(
+            database,
+            {
+                userId,
+                status: [UserStatus.Administrator, UserStatus.Owner],
+            },
+        );
         if (!hasPermissions) {
             throw new PermissionError("user");
         }
         const {
             users: [user],
-        } = await userRepository.read(database, { users: [{ userId: userToApproveId }] });
+        } = await userRepository.read(database, {
+            users: [{ userId: userToApproveId }],
+        });
 
         if (!user) {
             throw new NotFoundError("user", userId);
@@ -82,12 +114,20 @@ export const createUserService: CreateService<
             users: [{ userId: userToApproveId, status: UserStatus.Member }],
         });
 
-        if (user.status === UserStatus.Pending && updatedUser?.status === UserStatus.Member) {
+        if (
+            user.status === UserStatus.Pending &&
+            updatedUser?.status === UserStatus.Member
+        ) {
             const {
                 lists: [list],
             } = await listRepository.create(database, {
                 userId: userToApproveId,
-                lists: [{ name: "My Shopping List", description: "A list of groceries I need to buy" }],
+                lists: [
+                    {
+                        name: "My Shopping List",
+                        description: "A list of groceries I need to buy",
+                    },
+                ],
             });
 
             if (list) {
@@ -107,7 +147,13 @@ export const createUserService: CreateService<
                 books: [book],
             } = await bookRepository.create(database, {
                 userId: userToApproveId,
-                books: [{ name: "Favourite Recipes", description: "A recipe book for all my favourite recipes" }],
+                books: [
+                    {
+                        name: "Favourite Recipes",
+                        description:
+                            "A recipe book for all my favourite recipes",
+                    },
+                ],
             });
 
             const { recipes } = await recipeRepository.create(database, {
@@ -140,12 +186,21 @@ export const createUserService: CreateService<
             });
 
             if (book) {
-                await bookRepository.saveRecipes(database, { bookId: book.bookId, recipes });
+                await bookRepository.saveRecipes(database, {
+                    bookId: book.bookId,
+                    recipes,
+                });
             }
 
             const { planners } = await plannerRepository.create(database, {
                 userId: userToApproveId,
-                planners: [{ name: "My Meal Planner", description: "A planner for all the meals I want to cook" }],
+                planners: [
+                    {
+                        name: "My Meal Planner",
+                        description:
+                            "A planner for all the meals I want to cook",
+                    },
+                ],
             });
 
             const [planner] = planners;
@@ -176,36 +231,48 @@ export const createUserService: CreateService<
         }
     },
     blacklist: async (userId, userToBlacklistId) => {
-        const { hasPermissions } = await userRepository.verifyPermissions(database, {
-            userId,
-            status: [UserStatus.Administrator, UserStatus.Owner],
-        });
+        const { hasPermissions } = await userRepository.verifyPermissions(
+            database,
+            {
+                userId,
+                status: [UserStatus.Administrator, UserStatus.Owner],
+            },
+        );
         if (!hasPermissions) {
             throw new PermissionError("user");
         }
         const {
             users: [user],
-        } = await userRepository.read(database, { users: [{ userId: userToBlacklistId }] });
+        } = await userRepository.read(database, {
+            users: [{ userId: userToBlacklistId }],
+        });
 
         if (!user) {
             throw new NotFoundError("user", userId);
         }
 
         await userRepository.update(database, {
-            users: [{ userId: userToBlacklistId, status: UserStatus.Blacklisted }],
+            users: [
+                { userId: userToBlacklistId, status: UserStatus.Blacklisted },
+            ],
         });
     },
     delete: async (userId, userToDeleteId) => {
-        const { hasPermissions } = await userRepository.verifyPermissions(database, {
-            userId,
-            status: [UserStatus.Administrator, UserStatus.Owner],
-        });
+        const { hasPermissions } = await userRepository.verifyPermissions(
+            database,
+            {
+                userId,
+                status: [UserStatus.Administrator, UserStatus.Owner],
+            },
+        );
         if (!hasPermissions) {
             throw new PermissionError("user");
         }
-        await userRepository.delete(database, { users: [{ userId: userToDeleteId }] });
+        await userRepository.delete(database, {
+            users: [{ userId: userToDeleteId }],
+        });
     },
-    getProfile: async userId => {
+    getProfile: async (userId) => {
         const {
             users: [user],
         } = await userRepository.read(database, { users: [{ userId }] });
@@ -214,29 +281,36 @@ export const createUserService: CreateService<
         }
         return user;
     },
-    deleteProfile: async userId => {
+    deleteProfile: async (userId) => {
         await userRepository.delete(database, { users: [{ userId }] });
     },
-    register: async user => {
+    register: async (user) => {
         const password = await hashPassword(user.password);
         try {
             const { users } = await userRepository.create(database, {
-                users: [{ ...user, email: user.email.toLowerCase(), password, status: UserStatus.Pending }],
+                users: [
+                    {
+                        ...user,
+                        email: user.email.toLowerCase(),
+                        password,
+                        status: UserStatus.Pending,
+                    },
+                ],
             });
 
             const [createdUser] = users;
 
-        if (!createdUser) {
-            throw new CreatedDataFetchError("user");
-        }
+            if (!createdUser) {
+                throw new CreatedDataFetchError("user");
+            }
 
-        return {
-            user: {
-                userId: createdUser.userId,
-                email: createdUser.email,
-                status: createdUser.status,
-            },
-        };
+            return {
+                user: {
+                    userId: createdUser.userId,
+                    email: createdUser.email,
+                    status: createdUser.status,
+                },
+            };
         } catch (e: unknown) {
             if (e instanceof UniqueViolationError) {
                 throw new InvalidOperationError("user");
@@ -247,7 +321,9 @@ export const createUserService: CreateService<
     login: async ({ email, password }) => {
         const {
             users: [user],
-        } = await userRepository.readCredentials(database, { users: [{ email }] });
+        } = await userRepository.readCredentials(database, {
+            users: [{ email }],
+        });
 
         if (!user) {
             throw new UnauthorizedError();
@@ -272,8 +348,10 @@ export const createUserService: CreateService<
             message,
         };
     },
-    readCredentials: async filter => {
-        const { users } = await userRepository.readCredentials(database, { users: [filter] });
+    readCredentials: async (filter) => {
+        const { users } = await userRepository.readCredentials(database, {
+            users: [filter],
+        });
         return users;
     },
 });

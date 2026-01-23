@@ -1,8 +1,18 @@
 import type { ErrorRequestHandler } from "express";
 
-import { AppError, logger, UnauthorizedError, ValidationError } from "../services/index.ts";
+import {
+    AppError,
+    logger,
+    UnauthorizedError,
+    ValidationError,
+} from "../services/index.ts";
 
-export const errorMiddleware: ErrorRequestHandler = (error: unknown, request, response, _next) => {
+export const errorMiddleware: ErrorRequestHandler = (
+    error: unknown,
+    request,
+    response,
+    _next,
+) => {
     let status = 500;
     let message = "Internal Server Error";
     let innerError: unknown;
@@ -31,7 +41,9 @@ export const errorMiddleware: ErrorRequestHandler = (error: unknown, request, re
         request: {
             params: request.params,
             query: request.query,
-            body: request.originalUrl.includes("/auth") ? "REDACTED" : request.body, // TODO more robust solution
+            body: request.originalUrl.includes("/auth")
+                ? "REDACTED"
+                : request.body, // TODO more robust solution
             route: request.originalUrl,
             method: request.method,
         },

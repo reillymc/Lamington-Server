@@ -111,11 +111,35 @@ type VerifyPermissionsResponse = {
 };
 
 export interface UserRepository<TDatabase extends Database = Database> {
-    create: RepositoryService<TDatabase, CreateUsersRequest, CreateUsersResponse>;
-    delete: RepositoryService<TDatabase, DeleteUsersRequest, DeleteUsersResponse>;
+    create: RepositoryService<
+        TDatabase,
+        CreateUsersRequest,
+        CreateUsersResponse
+    >;
+    delete: RepositoryService<
+        TDatabase,
+        DeleteUsersRequest,
+        DeleteUsersResponse
+    >;
     read: RepositoryService<TDatabase, ReadUsersRequest, ReadUsersResponse>;
-    readAll: RepositoryService<TDatabase, ReadAllUsersRequest, ReadAllUsersResponse>;
-    readCredentials: RepositoryService<TDatabase, ReadCredentialsRequest, ReadCredentialsResponse>;
-    update: RepositoryService<TDatabase, UpdateUsersRequest, UpdateUsersResponse>;
-    verifyPermissions: RepositoryService<TDatabase, VerifyPermissionsRequest, VerifyPermissionsResponse>;
+    readAll: RepositoryService<
+        TDatabase,
+        ReadAllUsersRequest,
+        ReadAllUsersResponse
+    >;
+    readCredentials: RepositoryService<
+        TDatabase,
+        ReadCredentialsRequest,
+        ReadCredentialsResponse
+    >;
+    update: RepositoryService<
+        TDatabase,
+        UpdateUsersRequest,
+        UpdateUsersResponse
+    >;
+    verifyPermissions: RepositoryService<
+        TDatabase,
+        VerifyPermissionsRequest,
+        VerifyPermissionsResponse
+    >;
 }

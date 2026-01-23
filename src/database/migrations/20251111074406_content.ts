@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
-import { tables } from "../convertedMigrations/20240407043918_setup_tables.ts";
 import { UserStatus } from "../../routes/spec/user.ts";
+import { tables } from "../convertedMigrations/20240407043918_setup_tables.ts";
 
 export const newTables = {
     content: "content",
@@ -61,7 +61,11 @@ const migratingTables = [
 const memberTables = [
     { name: tables.listMember, id: "listId", entityTable: tables.list },
     { name: tables.bookMember, id: "bookId", entityTable: tables.book },
-    { name: tables.plannerMember, id: "plannerId", entityTable: tables.planner },
+    {
+        name: tables.plannerMember,
+        id: "plannerId",
+        entityTable: tables.planner,
+    },
 ];
 
 const onUpdateTrigger = (table: string) => `
@@ -72,26 +76,54 @@ const onUpdateTrigger = (table: string) => `
 `;
 
 export const up = async (knex: Knex): Promise<void> => {
-    await knex.schema.createTable(newTables.content, table => {
-        table.uuid("contentId").primary().defaultTo(knex.raw("gen_random_uuid()"));
-        table.uuid("createdBy").references("userId").inTable(tables.user).onDelete("SET NULL").onUpdate("CASCADE");
-        table.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
-        table.timestamp("updatedAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
+    await knex.schema.createTable(newTables.content, (table) => {
+        table
+            .uuid("contentId")
+            .primary()
+            .defaultTo(knex.raw("gen_random_uuid()"));
+        table
+            .uuid("createdBy")
+            .references("userId")
+            .inTable(tables.user)
+            .onDelete("SET NULL")
+            .onUpdate("CASCADE");
+        table
+            .timestamp("createdAt", { useTz: true })
+            .notNullable()
+            .defaultTo(knex.fn.now());
+        table
+            .timestamp("updatedAt", { useTz: true })
+            .notNullable()
+            .defaultTo(knex.fn.now());
     });
 
     await knex.raw(onUpdateTrigger(newTables.content));
 
-    await knex.schema.createTable(newTables.attachment, table => {
-        table.uuid("attachmentId").primary().defaultTo(knex.raw("gen_random_uuid()"));
+    await knex.schema.createTable(newTables.attachment, (table) => {
+        table
+            .uuid("attachmentId")
+            .primary()
+            .defaultTo(knex.raw("gen_random_uuid()"));
         table.text("uri").notNullable();
-        table.uuid("createdBy").references("userId").inTable(tables.user).onDelete("SET NULL").onUpdate("CASCADE");
-        table.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
-        table.timestamp("updatedAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
+        table
+            .uuid("createdBy")
+            .references("userId")
+            .inTable(tables.user)
+            .onDelete("SET NULL")
+            .onUpdate("CASCADE");
+        table
+            .timestamp("createdAt", { useTz: true })
+            .notNullable()
+            .defaultTo(knex.fn.now());
+        table
+            .timestamp("updatedAt", { useTz: true })
+            .notNullable()
+            .defaultTo(knex.fn.now());
     });
 
     await knex.raw(onUpdateTrigger(newTables.attachment));
 
-    await knex.schema.createTable(newTables.contentAttachment, table => {
+    await knex.schema.createTable(newTables.contentAttachment, (table) => {
         table
             .uuid("contentId")
             .references("contentId")
@@ -111,19 +143,24 @@ export const up = async (knex: Knex): Promise<void> => {
     });
 
     // content_tag: replaces recipe_tag
-    await knex.schema.createTable(newTables.contentTag, table => {
+    await knex.schema.createTable(newTables.contentTag, (table) => {
         table
             .uuid("contentId")
             .references("contentId")
             .inTable(newTables.content)
             .onDelete("CASCADE")
             .onUpdate("CASCADE");
-        table.uuid("tagId").references("tagId").inTable(tables.tag).onDelete("CASCADE").onUpdate("CASCADE");
+        table
+            .uuid("tagId")
+            .references("tagId")
+            .inTable(tables.tag)
+            .onDelete("CASCADE")
+            .onUpdate("CASCADE");
         table.primary(["contentId", "tagId"]);
     });
 
     // content_note: replaces recipe_note
-    await knex.schema.createTable(newTables.contentNote, table => {
+    await knex.schema.createTable(newTables.contentNote, (table) => {
         table
             .uuid("noteId")
             .primary()
@@ -143,7 +180,7 @@ export const up = async (knex: Knex): Promise<void> => {
     });
 
     // content_member: replaces various *_member tables
-    await knex.schema.createTable("content_member", table => {
+    await knex.schema.createTable("content_member", (table) => {
         table
             .uuid("contentId")
             .notNullable()
@@ -151,29 +188,34 @@ export const up = async (knex: Knex): Promise<void> => {
             .inTable(newTables.content)
             .onDelete("CASCADE")
             .onUpdate("CASCADE");
-        table.uuid("userId").references("userId").inTable(tables.user).onDelete("CASCADE").onUpdate("CASCADE");
+        table
+            .uuid("userId")
+            .references("userId")
+            .inTable(tables.user)
+            .onDelete("CASCADE")
+            .onUpdate("CASCADE");
         table.text("status").notNullable().defaultTo(UserStatus.Pending);
         table.primary(["contentId", "userId"]);
     });
 
     // Migrate listItem to single PK referencing content
-    await knex.schema.alterTable(tables.listItem, table => {
+    await knex.schema.alterTable(tables.listItem, (table) => {
         table.dropPrimary();
     });
 
-    await knex.schema.alterTable(tables.listItem, table => {
+    await knex.schema.alterTable(tables.listItem, (table) => {
         table.uuid("itemId").primary().alter();
 
         table.unique(["listId", "itemId"]);
     });
 
     // Migrate plannerMeal.id -> plannerMeal.mealId, link to content
-    await knex.schema.alterTable(tables.plannerMeal, table => {
+    await knex.schema.alterTable(tables.plannerMeal, (table) => {
         table.dropPrimary();
         table.renameColumn("id", "mealId");
     });
 
-    await knex.schema.alterTable(tables.plannerMeal, table => {
+    await knex.schema.alterTable(tables.plannerMeal, (table) => {
         table.uuid("mealId").primary().alter();
     });
 
@@ -246,13 +288,13 @@ export const up = async (knex: Knex): Promise<void> => {
             WHERE n."${photoColumn}" IS NOT NULL;
         `);
 
-        await knex.schema.alterTable(name, table => {
+        await knex.schema.alterTable(name, (table) => {
             table.dropColumn(photoColumn);
         });
     }
 
     // Recipe step photos are currently unused so safely dropped
-    await knex.schema.alterTable(tables.recipeStep, table => {
+    await knex.schema.alterTable(tables.recipeStep, (table) => {
         table.dropColumn("photo");
     });
 
@@ -285,14 +327,18 @@ export const up = async (knex: Knex): Promise<void> => {
     // Drop redundant columns and triggers from content-deriving tables
     for (const { name } of migratingTables) {
         const columns = await knex(name).columnInfo();
-        const dropCols = ["createdBy", "createdAt", "updatedAt"].filter(c => c in columns);
+        const dropCols = ["createdBy", "createdAt", "updatedAt"].filter(
+            (c) => c in columns,
+        );
         if (dropCols.length > 0) {
-            await knex.schema.alterTable(name, table => {
+            await knex.schema.alterTable(name, (table) => {
                 for (const col of dropCols) table.dropColumn(col);
             });
         }
 
-        await knex.raw(`DROP TRIGGER IF EXISTS "${name}_updatedAt" ON ${name};`);
+        await knex.raw(
+            `DROP TRIGGER IF EXISTS "${name}_updatedAt" ON ${name};`,
+        );
     }
 };
 
@@ -300,7 +346,7 @@ export const down = async (knex: Knex): Promise<void> => {
     // Restore recipe_note
     const hasContentNote = await knex.schema.hasTable(newTables.contentNote);
     if (hasContentNote) {
-        await knex.schema.createTable(tables.recipeNote, table => {
+        await knex.schema.createTable(tables.recipeNote, (table) => {
             table.uuid("noteId").primary();
             table
                 .uuid("recipeId")
@@ -308,7 +354,12 @@ export const down = async (knex: Knex): Promise<void> => {
                 .inTable(tables.recipe)
                 .onDelete("CASCADE")
                 .onUpdate("CASCADE");
-            table.uuid("authorId").references("userId").inTable(tables.user).onDelete("SET NULL").onUpdate("CASCADE");
+            table
+                .uuid("authorId")
+                .references("userId")
+                .inTable(tables.user)
+                .onDelete("SET NULL")
+                .onUpdate("CASCADE");
             table.string("title", 255);
             table.text("content");
             table.boolean("public").defaultTo(false);
@@ -318,8 +369,14 @@ export const down = async (knex: Knex): Promise<void> => {
                 .inTable(tables.recipeNote)
                 .onDelete("SET NULL")
                 .onUpdate("CASCADE");
-            table.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
-            table.timestamp("updatedAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
+            table
+                .timestamp("createdAt", { useTz: true })
+                .notNullable()
+                .defaultTo(knex.fn.now());
+            table
+                .timestamp("updatedAt", { useTz: true })
+                .notNullable()
+                .defaultTo(knex.fn.now());
         });
 
         await knex.raw(`
@@ -338,14 +395,19 @@ export const down = async (knex: Knex): Promise<void> => {
     // Recreate recipe_tag
     const hasContentTag = await knex.schema.hasTable(newTables.contentTag);
     if (hasContentTag) {
-        await knex.schema.createTable(tables.recipeTag, table => {
+        await knex.schema.createTable(tables.recipeTag, (table) => {
             table
                 .uuid("recipeId")
                 .references("recipeId")
                 .inTable(tables.recipe)
                 .onDelete("CASCADE")
                 .onUpdate("CASCADE");
-            table.uuid("tagId").references("tagId").inTable(tables.tag).onDelete("CASCADE").onUpdate("CASCADE");
+            table
+                .uuid("tagId")
+                .references("tagId")
+                .inTable(tables.tag)
+                .onDelete("CASCADE")
+                .onUpdate("CASCADE");
             table.primary(["recipeId", "tagId"]);
         });
 
@@ -362,7 +424,7 @@ export const down = async (knex: Knex): Promise<void> => {
     for (const { name, id, entityTable } of memberTables) {
         const exists = await knex.schema.hasTable(name);
         if (!exists) {
-            await knex.schema.createTable(name, table => {
+            await knex.schema.createTable(name, (table) => {
                 table
                     .uuid(id)
                     .notNullable()
@@ -377,7 +439,10 @@ export const down = async (knex: Knex): Promise<void> => {
                     .inTable(tables.user)
                     .onDelete("CASCADE")
                     .onUpdate("CASCADE");
-                table.text("status").notNullable().defaultTo(UserStatus.Pending);
+                table
+                    .text("status")
+                    .notNullable()
+                    .defaultTo(UserStatus.Pending);
                 table.primary([id, "userId"]);
             });
         }
@@ -395,7 +460,7 @@ export const down = async (knex: Knex): Promise<void> => {
 
     // Restore dropped timestamp/creator columns. Technically an impure migration as not all had timestamps before
     for (const { name, id, hasCreatedAt, hasUpdatedAt } of migratingTables) {
-        await knex.schema.alterTable(name, table => {
+        await knex.schema.alterTable(name, (table) => {
             table
                 .uuid("createdBy")
                 .nullable()
@@ -403,8 +468,16 @@ export const down = async (knex: Knex): Promise<void> => {
                 .inTable(tables.user)
                 .onDelete("CASCADE")
                 .onUpdate("CASCADE");
-            if (hasCreatedAt) table.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
-            if (hasUpdatedAt) table.timestamp("updatedAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
+            if (hasCreatedAt)
+                table
+                    .timestamp("createdAt", { useTz: true })
+                    .notNullable()
+                    .defaultTo(knex.fn.now());
+            if (hasUpdatedAt)
+                table
+                    .timestamp("updatedAt", { useTz: true })
+                    .notNullable()
+                    .defaultTo(knex.fn.now());
         });
 
         await knex.raw(`
@@ -418,7 +491,9 @@ export const down = async (knex: Knex): Promise<void> => {
         `);
 
         // Drop FK constraint to content
-        await knex.raw(`ALTER TABLE "${name}" DROP CONSTRAINT IF EXISTS "${name}_${id}_fk_content";`);
+        await knex.raw(
+            `ALTER TABLE "${name}" DROP CONSTRAINT IF EXISTS "${name}_${id}_fk_content";`,
+        );
 
         if (hasUpdatedAt) {
             await knex.raw(onUpdateTrigger(name));
@@ -428,9 +503,11 @@ export const down = async (knex: Knex): Promise<void> => {
     // Restore photo columns and data
     for (const { name, id, photoColumn } of migratingTables) {
         if (!photoColumn) continue;
-        const hasAttachments = await knex.schema.hasTable(newTables.contentAttachment);
+        const hasAttachments = await knex.schema.hasTable(
+            newTables.contentAttachment,
+        );
         if (hasAttachments) {
-            await knex.schema.alterTable(name, t => {
+            await knex.schema.alterTable(name, (t) => {
                 t.string(photoColumn, 255);
             });
             await knex.raw(`
@@ -443,27 +520,31 @@ export const down = async (knex: Knex): Promise<void> => {
         }
     }
 
-    await knex.schema.alterTable(tables.recipeStep, t => {
+    await knex.schema.alterTable(tables.recipeStep, (t) => {
         t.string("photo", 255);
     });
 
     // Revert plannerMeal.mealId -> id
-    await knex.schema.alterTable(tables.plannerMeal, table => {
+    await knex.schema.alterTable(tables.plannerMeal, (table) => {
         table.dropPrimary();
         table.renameColumn("mealId", "id");
         table.primary(["id"]);
     });
 
     // Revert listItem PK
-    await knex.schema.alterTable(tables.listItem, table => {
+    await knex.schema.alterTable(tables.listItem, (table) => {
         table.dropPrimary();
         table.dropUnique(["listId", "itemId"]);
         table.primary(["listId", "itemId"]);
     });
 
     // Drop triggers
-    await knex.raw(`DROP TRIGGER IF EXISTS "${newTables.content}_updatedAt" ON ${newTables.content};`);
-    await knex.raw(`DROP TRIGGER IF EXISTS "${newTables.attachment}_updatedAt" ON ${newTables.attachment};`);
+    await knex.raw(
+        `DROP TRIGGER IF EXISTS "${newTables.content}_updatedAt" ON ${newTables.content};`,
+    );
+    await knex.raw(
+        `DROP TRIGGER IF EXISTS "${newTables.attachment}_updatedAt" ON ${newTables.attachment};`,
+    );
 
     // Drop attachment-related tables
     await knex.schema.dropTableIfExists(newTables.contentAttachment);

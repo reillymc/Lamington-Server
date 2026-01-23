@@ -1,19 +1,23 @@
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
-import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import { v4 } from "uuid";
 
 import { setupApp } from "../../src/app.ts";
-import { type components, UserStatus } from "../../src/routes/spec/index.ts";
-import { CreateUsers, PrepareAuthenticatedUser, randomCount } from "../helpers/index.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
-import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
-import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
-import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
-import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
+import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
+import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
+import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
+import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
+import { type components, UserStatus } from "../../src/routes/spec/index.ts";
+import {
+    CreateUsers,
+    PrepareAuthenticatedUser,
+    randomCount,
+} from "../helpers/index.ts";
 
 after(async () => {
     await db.destroy();
@@ -39,13 +43,19 @@ describe("Get all users", () => {
     });
 
     it("route should fail for non-administrator", async () => {
-        const [registeredToken] = await PrepareAuthenticatedUser(database, UserStatus.Member);
+        const [registeredToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Member,
+        );
         const res = await request(app).get("/v1/users").set(registeredToken);
         expect(res.statusCode).toEqual(403);
     });
 
     it("route should return emails for request with administrator privileges", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
+        const [adminToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Administrator,
+        );
 
         await CreateUsers(database, { count: 1, status: UserStatus.Member });
 
@@ -59,12 +69,27 @@ describe("Get all users", () => {
     });
 
     it("should return correct number of active users and no pending/blacklisted users", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
+        const [adminToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Administrator,
+        );
 
-        const usersRegistered = await CreateUsers(database, { count: randomCount, status: UserStatus.Member });
-        const usersAdmin = await CreateUsers(database, { count: randomCount, status: UserStatus.Administrator });
-        await CreateUsers(database, { count: randomCount, status: UserStatus.Pending });
-        await CreateUsers(database, { count: randomCount, status: UserStatus.Blacklisted });
+        const usersRegistered = await CreateUsers(database, {
+            count: randomCount,
+            status: UserStatus.Member,
+        });
+        const usersAdmin = await CreateUsers(database, {
+            count: randomCount,
+            status: UserStatus.Administrator,
+        });
+        await CreateUsers(database, {
+            count: randomCount,
+            status: UserStatus.Pending,
+        });
+        await CreateUsers(database, {
+            count: randomCount,
+            status: UserStatus.Blacklisted,
+        });
 
         const res = await request(app).get("/v1/users").set(adminToken);
 
@@ -81,7 +106,10 @@ describe("Get all users", () => {
     });
 
     it("should not return current authenticated user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
+        const [adminToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Administrator,
+        );
 
         const res = await request(app).get("/v1/users").set(adminToken);
 
@@ -93,7 +121,10 @@ describe("Get all users", () => {
     });
 
     it("should return correct number of pending users when filtered", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
+        const [adminToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Administrator,
+        );
 
         const users = await CreateUsers(database, {
             count: Math.floor(Math.random() * 10) + 1,
@@ -105,14 +136,17 @@ describe("Get all users", () => {
             status: UserStatus.Member,
         });
 
-        const res = await request(app).get("/v1/users").query({ status: UserStatus.Pending }).set(adminToken);
+        const res = await request(app)
+            .get("/v1/users")
+            .query({ status: UserStatus.Pending })
+            .set(adminToken);
 
         expect(res.statusCode).toEqual(200);
 
         const data = res.body as components["schemas"]["User"][];
 
         expect(data.length).toEqual(users.length);
-        expect(data.every(u => u.status === UserStatus.Pending)).toBe(true);
+        expect(data.every((u) => u.status === UserStatus.Pending)).toBe(true);
     });
 });
 
@@ -130,7 +164,10 @@ describe("Delete user", () => {
     });
 
     it("route should require authentication", async () => {
-        const [_, { userId }] = await PrepareAuthenticatedUser(database, UserStatus.Member);
+        const [_, { userId }] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Member,
+        );
 
         const res = await request(app).delete(`/v1/users/${userId}`);
 
@@ -138,24 +175,40 @@ describe("Delete user", () => {
     });
 
     it("should not allow deletion of user if not admin", async () => {
-        const [_, { userId }] = await PrepareAuthenticatedUser(database, UserStatus.Member);
-        const [otherToken] = await PrepareAuthenticatedUser(database, UserStatus.Member);
+        const [_, { userId }] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Member,
+        );
+        const [otherToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Member,
+        );
 
-        const response = await request(app).delete(`/v1/users/${userId}`).set(otherToken);
+        const response = await request(app)
+            .delete(`/v1/users/${userId}`)
+            .set(otherToken);
 
         expect(response.statusCode).toEqual(403);
     });
 
     it("should delete user (Admin)", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
+        const [adminToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Administrator,
+        );
         const [userToDelete] = await CreateUsers(database);
 
-        const response = await request(app).delete(`/v1/users/${userToDelete!.userId}`).set(adminToken);
+        const response = await request(app)
+            .delete(`/v1/users/${userToDelete!.userId}`)
+            .set(adminToken);
         expect(response.statusCode).toEqual(204);
     });
 
     it("should delete user and accommodate foreign keys", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
+        const [adminToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Administrator,
+        );
         const [userToDelete] = await CreateUsers(database);
         const userId = userToDelete!.userId;
 
@@ -180,7 +233,9 @@ describe("Delete user", () => {
             recipes: [{ name: v4() }],
         });
 
-        const response = await request(app).delete(`/v1/users/${userId}`).set(adminToken);
+        const response = await request(app)
+            .delete(`/v1/users/${userId}`)
+            .set(adminToken);
 
         expect(response.statusCode).toEqual(204);
     });
@@ -206,26 +261,39 @@ describe("Approve user", () => {
     });
 
     it("route should require administrator privileges", async () => {
-        const [registeredToken] = await PrepareAuthenticatedUser(database, UserStatus.Member);
+        const [registeredToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Member,
+        );
         const endpoint = `/v1/users/${v4()}/approve`; // Non-existent user
         const res = await request(app).post(endpoint).set(registeredToken);
         expect(res.statusCode).toEqual(403);
     });
 
     it("should return 404 for non-existent user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
+        const [adminToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Administrator,
+        );
         const endpoint = `/v1/users/${v4()}/approve`; // Non-existent user
         const res = await request(app).post(endpoint).set(adminToken);
         expect(res.statusCode).toEqual(404);
     });
 
     it("should register pending user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
+        const [adminToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Administrator,
+        );
 
-        const [user] = await CreateUsers(database, { status: UserStatus.Pending });
+        const [user] = await CreateUsers(database, {
+            status: UserStatus.Pending,
+        });
         if (!user) throw new Error("User not created");
 
-        const response = await request(app).post(`/v1/users/${user.userId}/approve`).set(adminToken);
+        const response = await request(app)
+            .post(`/v1/users/${user.userId}/approve`)
+            .set(adminToken);
 
         expect(response.statusCode).toEqual(204);
 
@@ -237,9 +305,14 @@ describe("Approve user", () => {
     });
 
     it("should create sample data for pending => registered user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
+        const [adminToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Administrator,
+        );
 
-        const [user] = await CreateUsers(database, { status: UserStatus.Pending });
+        const [user] = await CreateUsers(database, {
+            status: UserStatus.Pending,
+        });
         if (!user) throw new Error("User not created");
 
         const response = await request(app)
@@ -281,7 +354,10 @@ describe("Approve user", () => {
         if (!recipe) throw new Error("Recipe/BookRecipe not created");
         expect(recipe.owner.userId).toEqual(user.userId);
 
-        const { planners } = await KnexPlannerRepository.readAll(database, user);
+        const { planners } = await KnexPlannerRepository.readAll(
+            database,
+            user,
+        );
         expect(planners.length).toEqual(1);
 
         const [planner] = planners;
@@ -319,26 +395,39 @@ describe("Blacklist user", () => {
     });
 
     it("route should require administrator privileges", async () => {
-        const [registeredToken] = await PrepareAuthenticatedUser(database, UserStatus.Member);
+        const [registeredToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Member,
+        );
         const endpoint = `/v1/users/${v4()}/blacklist`;
         const res = await request(app).post(endpoint).set(registeredToken);
         expect(res.statusCode).toEqual(403);
     });
 
     it("should return 404 for non-existent user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
+        const [adminToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Administrator,
+        );
         const endpoint = `/v1/users/${v4()}/blacklist`;
         const res = await request(app).post(endpoint).set(adminToken);
         expect(res.statusCode).toEqual(404);
     });
 
     it("should blacklist pending user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
+        const [adminToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Administrator,
+        );
 
-        const [user] = await CreateUsers(database, { status: UserStatus.Pending });
+        const [user] = await CreateUsers(database, {
+            status: UserStatus.Pending,
+        });
         if (!user) throw new Error("User not created");
 
-        const response = await request(app).post(`/v1/users/${user.userId}/blacklist`).set(adminToken);
+        const response = await request(app)
+            .post(`/v1/users/${user.userId}/blacklist`)
+            .set(adminToken);
 
         expect(response.statusCode).toEqual(204);
 
@@ -350,12 +439,19 @@ describe("Blacklist user", () => {
     });
 
     it("should blacklist registered user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
+        const [adminToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Administrator,
+        );
 
-        const [user] = await CreateUsers(database, { status: UserStatus.Member });
+        const [user] = await CreateUsers(database, {
+            status: UserStatus.Member,
+        });
         if (!user) throw new Error("User not created");
 
-        const response = await request(app).post(`/v1/users/${user.userId}/blacklist`).set(adminToken);
+        const response = await request(app)
+            .post(`/v1/users/${user.userId}/blacklist`)
+            .set(adminToken);
 
         expect(response.statusCode).toEqual(204);
 
@@ -367,12 +463,19 @@ describe("Blacklist user", () => {
     });
 
     it("should blacklist admin user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(database, UserStatus.Administrator);
+        const [adminToken] = await PrepareAuthenticatedUser(
+            database,
+            UserStatus.Administrator,
+        );
 
-        const [user] = await CreateUsers(database, { status: UserStatus.Administrator });
+        const [user] = await CreateUsers(database, {
+            status: UserStatus.Administrator,
+        });
         if (!user) throw new Error("User not created");
 
-        const response = await request(app).post(`/v1/users/${user.userId}/blacklist`).set(adminToken);
+        const response = await request(app)
+            .post(`/v1/users/${user.userId}/blacklist`)
+            .set(adminToken);
 
         expect(response.statusCode).toEqual(204);
 

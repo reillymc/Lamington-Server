@@ -1,7 +1,6 @@
 import express from "express";
-
-import type { paths, routes } from "./spec/index.ts";
 import type { CreateRoute } from "./route.ts";
+import type { paths, routes } from "./spec/index.ts";
 
 export const createUserRouter: CreateRoute<"userService"> = ({ userService }) =>
     express
@@ -13,7 +12,10 @@ export const createUserRouter: CreateRoute<"userService"> = ({ userService }) =>
             paths["/users"]["get"]["requestBody"],
             paths["/users"]["get"]["parameters"]["query"]
         >("/users", async ({ session, query }, res) => {
-            const data = await userService.getAll(session.userId, query?.status);
+            const data = await userService.getAll(
+                session.userId,
+                query?.status,
+            );
             return res.status(200).json(data);
         })
         .post<

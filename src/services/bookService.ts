@@ -1,4 +1,13 @@
-import { UserStatus } from "../routes/spec/user.ts";
+import type {
+    ReadAllResponse,
+    ReadResponse,
+    SaveMembersResponse,
+    SaveRecipesResponse,
+} from "../repositories/bookRepository.ts";
+import type {
+    ReadAllResponse as ReadAllRecipesResponse,
+    ReadAllRequest,
+} from "../repositories/recipeRepository.ts";
 import type {
     DeleteBookMemberRequest,
     DeleteBookRecipeRequest,
@@ -8,50 +17,70 @@ import type {
     PostBookMemberRequest,
     PostBookRecipeRequest,
     PostBookRequest,
-    PutBookRequest,
     PostBookRequestBody,
+    PutBookRequest,
     PutBookRequestBody,
 } from "../routes/spec/book.ts";
-import { BisectOnValidPartialItems, EnsureDefinedArray, Undefined } from "../utils/index.ts";
-import type {
-    ReadAllResponse,
-    ReadResponse,
-    SaveMembersResponse,
-    SaveRecipesResponse,
-} from "../repositories/bookRepository.ts";
-import type { ReadAllResponse as ReadAllRecipesResponse, ReadAllRequest } from "../repositories/recipeRepository.ts";
-
-import { type CreateService } from "./service.ts";
+import { UserStatus } from "../routes/spec/user.ts";
+import {
+    BisectOnValidPartialItems,
+    EnsureDefinedArray,
+    Undefined,
+} from "../utils/index.ts";
 import { AppError } from "./logging.ts";
+import type { CreateService } from "./service.ts";
 
 export interface BookService {
-    get: (userId: string, request: GetBookRequest) => Promise<ReadResponse["books"][number]>;
-    getAll: (userId: string, request?: GetBooksRequest) => Promise<ReadAllResponse["books"]>;
-    create: (userId: string, request: PostBookRequest["data"]) => Promise<ReadResponse["books"]>;
-    update: (userId: string, request: PutBookRequest["data"]) => Promise<ReadResponse["books"]>;
+    get: (
+        userId: string,
+        request: GetBookRequest,
+    ) => Promise<ReadResponse["books"][number]>;
+    getAll: (
+        userId: string,
+        request?: GetBooksRequest,
+    ) => Promise<ReadAllResponse["books"]>;
+    create: (
+        userId: string,
+        request: PostBookRequest["data"],
+    ) => Promise<ReadResponse["books"]>;
+    update: (
+        userId: string,
+        request: PutBookRequest["data"],
+    ) => Promise<ReadResponse["books"]>;
     delete: (userId: string, request: DeleteBookRequest) => Promise<boolean>;
     addRecipe: (
         userId: string,
-        request: PostBookRecipeRequest
+        request: PostBookRecipeRequest,
     ) => Promise<NonNullable<SaveRecipesResponse["recipes"]>[number]>;
-    removeRecipe: (userId: string, request: DeleteBookRecipeRequest) => Promise<boolean>;
+    removeRecipe: (
+        userId: string,
+        request: DeleteBookRecipeRequest,
+    ) => Promise<boolean>;
     readRecipes: (
         userId: string,
-        request: { bookId: string } & Omit<ReadAllRequest, "userId"> & { filter?: { name?: string } }
+        request: { bookId: string } & Omit<ReadAllRequest, "userId"> & {
+                filter?: { name?: string };
+            },
     ) => Promise<ReadAllRecipesResponse>;
     joinMembership: (
         userId: string,
-        request: PostBookMemberRequest
+        request: PostBookMemberRequest,
     ) => Promise<NonNullable<SaveMembersResponse["members"]>[number]>;
-    leaveMembership: (userId: string, request: DeleteBookMemberRequest) => Promise<boolean>;
+    leaveMembership: (
+        userId: string,
+        request: DeleteBookMemberRequest,
+    ) => Promise<boolean>;
 }
 
-export const createBookService: CreateService<BookService, "bookRepository" | "recipeRepository"> = (
-    database,
-    { bookRepository, recipeRepository }
-) => ({
+export const createBookService: CreateService<
+    BookService,
+    "bookRepository" | "recipeRepository"
+> = (database, { bookRepository, recipeRepository }) => ({
     getAll: async (userId, params) => {
-        const { books } = await bookRepository.readAll(database, { userId, filter: params });
+        const { books } = await bookRepository.readAll(database, {
+            userId,
+            filter: params,
+        });
 
         return books;
     },
@@ -67,7 +96,7 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
         return book;
     },
     create: (userId, request) =>
-        database.transaction(async trx => {
+        database.transaction(async (trx) => {
             // TODO: move validation to route middleware
             const [validBooks, invalidBooks] = validateCreateBookBody(request);
 
@@ -79,12 +108,15 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
                 });
             }
 
-            const { books } = await bookRepository.create(trx, { userId, books: validBooks });
+            const { books } = await bookRepository.create(trx, {
+                userId,
+                books: validBooks,
+            });
 
             return books;
         }),
     update: (userId, request) =>
-        database.transaction(async trx => {
+        database.transaction(async (trx) => {
             // TODO: move validation to route middleware
             const [validBooks, invalidBooks] = validateUpdateBookBody(request);
 
@@ -96,25 +128,39 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
                 });
             }
 
-            const permissions = await bookRepository.verifyPermissions(trx, { userId, books: validBooks });
-            const missingPermissions = permissions.books.some(({ hasPermissions }) => !hasPermissions);
+            const permissions = await bookRepository.verifyPermissions(trx, {
+                userId,
+                books: validBooks,
+            });
+            const missingPermissions = permissions.books.some(
+                ({ hasPermissions }) => !hasPermissions,
+            );
 
             if (missingPermissions) {
                 throw new AppError({
                     status: 403,
-                    message: "You do not have permission to update one or more books",
+                    message:
+                        "You do not have permission to update one or more books",
                 });
             }
 
-            const { books } = await bookRepository.update(trx, { userId, books: validBooks });
+            const { books } = await bookRepository.update(trx, {
+                userId,
+                books: validBooks,
+            });
 
             return books;
         }),
     delete: (userId, { bookId }) =>
-        database.transaction(async trx => {
-            const permissions = await bookRepository.verifyPermissions(trx, { userId, books: [{ bookId }] });
+        database.transaction(async (trx) => {
+            const permissions = await bookRepository.verifyPermissions(trx, {
+                userId,
+                books: [{ bookId }],
+            });
 
-            const missingPermissions = permissions.books.some(({ hasPermissions }) => !hasPermissions);
+            const missingPermissions = permissions.books.some(
+                ({ hasPermissions }) => !hasPermissions,
+            );
 
             if (missingPermissions) {
                 throw new AppError({
@@ -123,7 +169,9 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
                 });
             }
 
-            const { count } = await bookRepository.delete(trx, { books: [{ bookId }] });
+            const { count } = await bookRepository.delete(trx, {
+                books: [{ bookId }],
+            });
 
             if (count !== 1) {
                 throw new AppError({
@@ -135,12 +183,12 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
             return true;
         }),
     addRecipe: (userId, { bookId, data }) =>
-        database.transaction(async trx => {
+        database.transaction(async (trx) => {
             // TODO: validate at route middleware
             const validRecipes = EnsureDefinedArray(data)
                 .map(({ recipeId }) => recipeId)
                 .filter(Undefined)
-                .map(recipeId => ({ recipeId }));
+                .map((recipeId) => ({ recipeId }));
 
             const permissions = await bookRepository.verifyPermissions(trx, {
                 userId,
@@ -148,7 +196,9 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
                 status: UserStatus.Administrator,
             });
 
-            const missingPermissions = permissions.books.some(({ hasPermissions }) => !hasPermissions);
+            const missingPermissions = permissions.books.some(
+                ({ hasPermissions }) => !hasPermissions,
+            );
 
             if (missingPermissions) {
                 throw new AppError({
@@ -157,7 +207,10 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
                 });
             }
 
-            const [result] = await bookRepository.saveRecipes(trx, { bookId, recipes: validRecipes });
+            const [result] = await bookRepository.saveRecipes(trx, {
+                bookId,
+                recipes: validRecipes,
+            });
 
             const [recipe] = result?.recipes ?? [];
 
@@ -171,14 +224,16 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
             return recipe;
         }),
     removeRecipe: (userId, params) =>
-        database.transaction(async trx => {
+        database.transaction(async (trx) => {
             const permissions = await bookRepository.verifyPermissions(trx, {
                 userId,
                 books: [params],
                 status: [UserStatus.Administrator],
             });
 
-            const missingPermissions = permissions.books.some(({ hasPermissions }) => !hasPermissions);
+            const missingPermissions = permissions.books.some(
+                ({ hasPermissions }) => !hasPermissions,
+            );
 
             if (missingPermissions) {
                 throw new AppError({
@@ -188,7 +243,10 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
                 });
             }
 
-            const [result] = await bookRepository.removeRecipes(trx, { bookId: params.bookId, recipes: [params] });
+            const [result] = await bookRepository.removeRecipes(trx, {
+                bookId: params.bookId,
+                recipes: [params],
+            });
 
             if (result?.count !== 1) {
                 throw new AppError({
@@ -200,14 +258,16 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
             return true;
         }),
     joinMembership: (userId, params) =>
-        database.transaction(async trx => {
+        database.transaction(async (trx) => {
             const permissions = await bookRepository.verifyPermissions(trx, {
                 userId,
                 books: [params],
                 status: [UserStatus.Pending],
             });
 
-            const missingPermissions = permissions.books.some(({ hasPermissions }) => !hasPermissions);
+            const missingPermissions = permissions.books.some(
+                ({ hasPermissions }) => !hasPermissions,
+            );
 
             if (missingPermissions) {
                 throw new AppError({
@@ -234,19 +294,28 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
             return member;
         }),
     leaveMembership: (userId, params) =>
-        database.transaction(async trx => {
+        database.transaction(async (trx) => {
             const removingSelf = !params.userId || params.userId === userId;
             if (removingSelf) {
-                const permissions = await bookRepository.verifyPermissions(trx, {
-                    userId,
-                    books: [params],
-                    status: [UserStatus.Administrator, UserStatus.Member],
-                });
+                const permissions = await bookRepository.verifyPermissions(
+                    trx,
+                    {
+                        userId,
+                        books: [params],
+                        status: [UserStatus.Administrator, UserStatus.Member],
+                    },
+                );
 
-                const missingPermissions = permissions.books.some(({ hasPermissions }) => !hasPermissions);
+                const missingPermissions = permissions.books.some(
+                    ({ hasPermissions }) => !hasPermissions,
+                );
 
                 if (missingPermissions) {
-                    throw new AppError({ status: 404, code: "BOOK_NOT_FOUND", message: "Cannot find book to leave" });
+                    throw new AppError({
+                        status: 404,
+                        code: "BOOK_NOT_FOUND",
+                        message: "Cannot find book to leave",
+                    });
                 }
 
                 const [result] = await bookRepository.removeMembers(trx, {
@@ -255,15 +324,23 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
                 });
 
                 if (result?.count !== 1) {
-                    throw new AppError({ status: 500, message: `Failed to leave book` });
+                    throw new AppError({
+                        status: 500,
+                        message: `Failed to leave book`,
+                    });
                 }
             } else {
-                const permissions = await bookRepository.verifyPermissions(trx, {
-                    userId,
-                    books: [params],
-                });
+                const permissions = await bookRepository.verifyPermissions(
+                    trx,
+                    {
+                        userId,
+                        books: [params],
+                    },
+                );
 
-                const missingPermissions = permissions.books.some(({ hasPermissions }) => !hasPermissions);
+                const missingPermissions = permissions.books.some(
+                    ({ hasPermissions }) => !hasPermissions,
+                );
 
                 if (missingPermissions) {
                     throw new AppError({
@@ -279,7 +356,10 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
                 });
 
                 if (result?.count !== 1) {
-                    throw new AppError({ status: 500, message: `Failed to remove user from book` });
+                    throw new AppError({
+                        status: 500,
+                        message: `Failed to remove user from book`,
+                    });
                 }
             }
             return true;
@@ -290,7 +370,9 @@ export const createBookService: CreateService<BookService, "bookRepository" | "r
             books: [{ bookId }],
         });
 
-        const missingPermissions = permissions.books.some(({ hasPermissions }) => !hasPermissions);
+        const missingPermissions = permissions.books.some(
+            ({ hasPermissions }) => !hasPermissions,
+        );
 
         if (missingPermissions) {
             throw new AppError({ status: 404, message: "Book not found" });
@@ -312,7 +394,7 @@ const DefaultBookIcon = "variant1";
 const validateCreateBookBody = (data: PostBookRequestBody["data"]) => {
     const filteredData = EnsureDefinedArray(data);
 
-    return BisectOnValidPartialItems(filteredData, item => {
+    return BisectOnValidPartialItems(filteredData, (item) => {
         if (!item.name) return;
 
         return {
@@ -326,7 +408,7 @@ const validateCreateBookBody = (data: PostBookRequestBody["data"]) => {
 };
 
 const validateUpdateBookBody = (data: PutBookRequestBody["data"]) =>
-    BisectOnValidPartialItems(EnsureDefinedArray(data), item => {
+    BisectOnValidPartialItems(EnsureDefinedArray(data), (item) => {
         if (!item.bookId) return;
 
         return {

@@ -1,10 +1,10 @@
 import type { BookService } from "./bookService.ts";
 import type { ContentExtractionService } from "./contentExtractionService.ts";
-import type { MealService } from "./mealService.ts";
 import type { CooklistService } from "./cooklistService.ts";
-import type { RecipeService } from "./recipeService.ts";
-import type { PlannerService } from "./plannerService.ts";
 import type { ListService } from "./listService.ts";
+import type { MealService } from "./mealService.ts";
+import type { PlannerService } from "./plannerService.ts";
+import type { RecipeService } from "./recipeService.ts";
 import type { UserService } from "./userService.ts";
 
 export { printConfig } from "./console.ts";

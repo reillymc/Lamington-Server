@@ -5,8 +5,8 @@ import type { Recipe } from "../database/definitions/recipe.ts";
 import type { RecipeIngredient } from "../database/definitions/recipeIngredient.ts";
 import type { RecipeRating } from "../database/definitions/recipeRating.ts";
 import type { RecipeStep } from "../database/definitions/recipeStep.ts";
-import type { RepositoryService } from "./repository.ts";
 import type { Database, Ingredient, Tag, User } from "../database/index.ts";
+import type { RepositoryService } from "./repository.ts";
 
 // TODO: clean up extraneous exports after migration to openapi spec at service layer is complete
 type SortKeys<TKeys> = keyof TKeys;
@@ -55,7 +55,10 @@ type ReadFilters = {
 export type ReadAllRequest = {
     userId: User["userId"];
     page?: Pagination;
-    sort?: SortKeys<Pick<Recipe, "name" | "cookTime"> & Pick<AdditionalFields, "ratingAverage" | "ratingPersonal">>;
+    sort?: SortKeys<
+        Pick<Recipe, "name" | "cookTime"> &
+            Pick<AdditionalFields, "ratingAverage" | "ratingPersonal">
+    >;
     order?: "asc" | "desc";
     filter?: ReadFilters;
 };
@@ -190,7 +193,9 @@ export type ReadResponse = {
             timesCooked: Recipe["timesCooked"];
             tips: Recipe["tips"];
             photo?: ReadAttachmentResponse;
-            ingredients: Array<ReadSectionItemResponse<ReadIngredientItemResponse>>;
+            ingredients: Array<
+                ReadSectionItemResponse<ReadIngredientItemResponse>
+            >;
             method: Array<ReadSectionItemResponse<ReadMethodStepResponse>>;
             tags: ReadTagsResponse;
         }
@@ -225,10 +230,18 @@ export type SaveRatingResponse = {
 
 export interface RecipeRepository<TDatabase extends Database = Database> {
     readAll: RepositoryService<TDatabase, ReadAllRequest, ReadAllResponse>;
-    verifyPermissions: RepositoryService<TDatabase, VerifyPermissionsRequest, VerifyPermissionsResponse>;
+    verifyPermissions: RepositoryService<
+        TDatabase,
+        VerifyPermissionsRequest,
+        VerifyPermissionsResponse
+    >;
     read: RepositoryService<TDatabase, ReadRequest, ReadResponse>;
     create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;
     update: RepositoryService<TDatabase, UpdateRequest, UpdateResponse>;
     delete: RepositoryService<TDatabase, DeleteRequest, DeleteResponse>;
-    saveRating: RepositoryService<TDatabase, SaveRatingRequest, SaveRatingResponse>;
+    saveRating: RepositoryService<
+        TDatabase,
+        SaveRatingRequest,
+        SaveRatingResponse
+    >;
 }

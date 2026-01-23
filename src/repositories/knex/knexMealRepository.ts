@@ -2,7 +2,7 @@ import { attachment } from "../../database/definitions/attachment.ts";
 import { content } from "../../database/definitions/content.ts";
 import { contentAttachment } from "../../database/definitions/contentAttachment.ts";
 import { plannerMeal } from "../../database/definitions/meal.ts";
-import { lamington, user, type KnexDatabase } from "../../database/index.ts";
+import { type KnexDatabase, lamington, user } from "../../database/index.ts";
 import { toUndefined } from "../../utils/index.ts";
 import type { MealRepository } from "../mealRepository.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
@@ -28,7 +28,7 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
                 content.createdBy,
                 user.firstName,
                 db.ref(contentAttachment.attachmentId).as("heroAttachmentId"),
-                db.ref(attachment.uri).as("heroAttachmentUri")
+                db.ref(attachment.uri).as("heroAttachmentUri"),
             )
             .whereIn(plannerMeal.mealId, mealIds)
             .leftJoin(lamington.content, plannerMeal.mealId, content.contentId)
@@ -36,26 +36,37 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
             .leftJoin(
                 `${lamington.content} as ${plannerContentAlias}`,
                 plannerMeal.plannerId,
-                `${plannerContentAlias}.contentId`
+                `${plannerContentAlias}.contentId`,
             )
             .modify(
                 withContentReadPermissions({
                     userId,
                     idColumn: plannerMeal.plannerId,
-                    ownerColumns: [content.createdBy, `${plannerContentAlias}.createdBy`],
+                    ownerColumns: [
+                        content.createdBy,
+                        `${plannerContentAlias}.createdBy`,
+                    ],
                     allowedStatuses: ["A", "M", "O"],
-                })
+                }),
             )
-            .leftJoin(lamington.contentAttachment, join =>
+            .leftJoin(lamington.contentAttachment, (join) =>
                 join
                     .on(contentAttachment.contentId, "=", plannerMeal.mealId)
-                    .andOn(contentAttachment.displayType, "=", db.raw("?", ["hero"]))
+                    .andOn(
+                        contentAttachment.displayType,
+                        "=",
+                        db.raw("?", ["hero"]),
+                    ),
             )
-            .leftJoin(lamington.attachment, contentAttachment.attachmentId, attachment.attachmentId);
+            .leftJoin(
+                lamington.attachment,
+                contentAttachment.attachmentId,
+                attachment.attachmentId,
+            );
 
         return {
             userId,
-            meals: result.map(meal => ({
+            meals: result.map((meal) => ({
                 mealId: meal.mealId,
                 course: meal.meal.toLowerCase(),
                 owner: {

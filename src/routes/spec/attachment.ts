@@ -18,9 +18,12 @@ export interface AttachmentKey {
 
 // Post image attachment
 export type PostImageAttachmentRequestParams = BaseRequestParams;
-export type PostImageAttachmentRequest = BaseRequest<PostImageAttachmentRequestParams>;
+export type PostImageAttachmentRequest =
+    BaseRequest<PostImageAttachmentRequestParams>;
 export type PostImageAttachmentResponse = BaseResponse<ImageAttachment>;
-export type PostImageAttachmentService = (request: PostImageAttachmentRequest) => PostImageAttachmentResponse;
+export type PostImageAttachmentService = (
+    request: PostImageAttachmentRequest,
+) => PostImageAttachmentResponse;
 
 export interface AttachmentServices {
     postImage: PostImageAttachmentService;

@@ -1,16 +1,22 @@
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
-import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import { setupApp } from "../../src/app.ts";
+import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
 import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import { type components, UserStatus } from "../../src/routes/spec/index.ts";
-import db, { type KnexDatabase } from "../../src/database/index.ts";
-import { CreateUsers, PrepareAuthenticatedUser, randomDay, randomMonth, randomYear } from "../helpers/index.ts";
+import {
+    CreateUsers,
+    PrepareAuthenticatedUser,
+    randomDay,
+    randomMonth,
+    randomYear,
+} from "../helpers/index.ts";
 import { randomCourse } from "../helpers/meal.ts";
 
 const randomMeal = () =>
@@ -23,7 +29,9 @@ const randomMeal = () =>
     }) satisfies components["schemas"]["PlannerMealCreate"];
 
 const randomColor = (): components["schemas"]["PlannerColor"] =>
-    (["variant1", "variant2", "variant3", "variant4", "variant5"] as const)[Math.floor(Math.random() * 5)]!;
+    (["variant1", "variant2", "variant3", "variant4", "variant5"] as const)[
+        Math.floor(Math.random() * 5)
+    ]!;
 
 after(async () => {
     await db.destroy();
@@ -66,7 +74,7 @@ describe("Get user planners", () => {
 
         expect(body).toHaveLength(3);
 
-        const ids = body.map(p => p.plannerId);
+        const ids = body.map((p) => p.plannerId);
         expect(ids).toContain(planners[0]!.plannerId);
         expect(ids).toContain(planners[1]!.plannerId);
         expect(ids).toContain(planners[2]!.plannerId);
@@ -90,7 +98,9 @@ describe("Get user planners", () => {
         await KnexPlannerRepository.saveMembers(database, [
             {
                 plannerId: adminPlanner!.plannerId,
-                members: [{ userId: user.userId, status: UserStatus.Administrator }],
+                members: [
+                    { userId: user.userId, status: UserStatus.Administrator },
+                ],
             },
             {
                 plannerId: memberPlanner!.plannerId,
@@ -106,7 +116,7 @@ describe("Get user planners", () => {
         expect(res.statusCode).toEqual(200);
 
         const body = res.body as components["schemas"]["Planner"][];
-        const ids = body.map(p => p.plannerId);
+        const ids = body.map((p) => p.plannerId);
 
         expect(ids).toContain(adminPlanner!.plannerId);
         expect(ids).toContain(memberPlanner!.plannerId);
@@ -127,7 +137,9 @@ describe("Get user planners", () => {
         await KnexPlannerRepository.saveMembers(database, [
             {
                 plannerId: blockedPlanner!.plannerId,
-                members: [{ userId: user.userId, status: UserStatus.Blacklisted }],
+                members: [
+                    { userId: user.userId, status: UserStatus.Blacklisted },
+                ],
             },
         ]);
 
@@ -135,7 +147,7 @@ describe("Get user planners", () => {
         expect(res.statusCode).toEqual(200);
 
         const body = res.body as components["schemas"]["Planner"][];
-        const ids = body.map(p => p.plannerId);
+        const ids = body.map((p) => p.plannerId);
 
         expect(ids).not.toContain(blockedPlanner!.plannerId);
     });
@@ -155,7 +167,7 @@ describe("Get user planners", () => {
         expect(res.statusCode).toEqual(200);
 
         const body = res.body as components["schemas"]["Planner"][];
-        const found = body.find(p => p.plannerId === planner!.plannerId);
+        const found = body.find((p) => p.plannerId === planner!.plannerId);
         expect(found).toBeUndefined();
     });
 
@@ -179,7 +191,9 @@ describe("Get user planners", () => {
         expect(res.statusCode).toEqual(200);
 
         const body = res.body as components["schemas"]["Planner"][];
-        const planner = body.find(p => p.plannerId === createdPlanner!.plannerId);
+        const planner = body.find(
+            (p) => p.plannerId === createdPlanner!.plannerId,
+        );
 
         expect(planner).toBeDefined();
         expect(planner!.plannerId).toBeDefined();
@@ -227,10 +241,14 @@ describe("Get a planner", () => {
             planners: [planner],
         } = await KnexPlannerRepository.create(database, {
             userId: plannerOwner!.userId,
-            planners: [{ name: uuid(), description: uuid(), color: randomColor() }],
+            planners: [
+                { name: uuid(), description: uuid(), color: randomColor() },
+            ],
         });
 
-        const res = await request(app).get(`/v1/planners/${planner!.plannerId}`).set(token);
+        const res = await request(app)
+            .get(`/v1/planners/${planner!.plannerId}`)
+            .set(token);
 
         expect(res.statusCode).toEqual(404);
     });
@@ -242,10 +260,14 @@ describe("Get a planner", () => {
             planners: [planner],
         } = await KnexPlannerRepository.create(database, {
             userId: user.userId,
-            planners: [{ name: uuid(), description: uuid(), color: randomColor() }],
+            planners: [
+                { name: uuid(), description: uuid(), color: randomColor() },
+            ],
         });
 
-        const res = await request(app).get(`/v1/planners/${planner!.plannerId}`).set(token);
+        const res = await request(app)
+            .get(`/v1/planners/${planner!.plannerId}`)
+            .set(token);
 
         expect(res.statusCode).toEqual(200);
 
@@ -279,7 +301,9 @@ describe("Get a planner", () => {
                 members: [{ userId: user.userId, status }],
             });
 
-            const res = await request(app).get(`/v1/planners/${planner!.plannerId}`).set(token);
+            const res = await request(app)
+                .get(`/v1/planners/${planner!.plannerId}`)
+                .set(token);
 
             expect(res.statusCode).toEqual(200);
 
@@ -308,7 +332,9 @@ describe("Get a planner", () => {
                 members: [{ userId: user.userId, status }],
             });
 
-            const res = await request(app).get(`/v1/planners/${planner!.plannerId}`).set(token);
+            const res = await request(app)
+                .get(`/v1/planners/${planner!.plannerId}`)
+                .set(token);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -337,7 +363,10 @@ describe("Delete a planner", () => {
     it("should return 404 for non-existent planner", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app).delete(`/v1/planners/${uuid()}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/planners/${uuid()}`)
+            .set(token)
+            .send();
 
         expect(res.statusCode).toEqual(404);
     });
@@ -353,7 +382,10 @@ describe("Delete a planner", () => {
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        const res = await request(app).delete(`/v1/planners/${planner!.plannerId}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/planners/${planner!.plannerId}`)
+            .set(token)
+            .send();
 
         expect(res.statusCode).toEqual(404);
     });
@@ -376,10 +408,15 @@ describe("Delete a planner", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: user!.userId, status: UserStatus.Administrator }],
+            members: [
+                { userId: user!.userId, status: UserStatus.Administrator },
+            ],
         });
 
-        const res = await request(app).delete(`/v1/planners/${planner!.plannerId}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/planners/${planner!.plannerId}`)
+            .set(token)
+            .send();
 
         expect(res.statusCode).toEqual(404);
     });
@@ -394,11 +431,17 @@ describe("Delete a planner", () => {
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        const res = await request(app).delete(`/v1/planners/${planner!.plannerId}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/planners/${planner!.plannerId}`)
+            .set(token)
+            .send();
 
         expect(res.statusCode).toEqual(204);
 
-        const { planners } = await KnexPlannerRepository.read(database, { planners: [planner!], userId: user.userId });
+        const { planners } = await KnexPlannerRepository.read(database, {
+            planners: [planner!],
+            userId: user.userId,
+        });
 
         expect(planners.length).toEqual(0);
     });
@@ -418,7 +461,9 @@ describe("Get planner meals", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).get(`/v1/planners/${uuid()}/meals/${randomYear()}/${randomMonth()}`);
+        const res = await request(app).get(
+            `/v1/planners/${uuid()}/meals/${randomYear()}/${randomMonth()}`,
+        );
         expect(res.statusCode).toEqual(401);
     });
 
@@ -449,7 +494,9 @@ describe("Get planner meals", () => {
         });
 
         const res = await request(app)
-            .get(`/v1/planners/${planner!.plannerId}/meals/${meal!.year}/${meal!.month}`)
+            .get(
+                `/v1/planners/${planner!.plannerId}/meals/${meal!.year}/${meal!.month}`,
+            )
             .set(token);
 
         expect(res.statusCode).toEqual(200);
@@ -485,7 +532,9 @@ describe("Get planner meals", () => {
         });
 
         const res = await request(app)
-            .get(`/v1/planners/${planner!.plannerId}/meals/${randomYear()}/${randomMonth()}`)
+            .get(
+                `/v1/planners/${planner!.plannerId}/meals/${randomYear()}/${randomMonth()}`,
+            )
             .set(token);
 
         expect(res.statusCode).toEqual(404);
@@ -535,17 +584,24 @@ describe("Get planner meals", () => {
         });
 
         const res = await request(app)
-            .get(`/v1/planners/${planner!.plannerId}/meals/${targetYear}/${targetMonth}`)
+            .get(
+                `/v1/planners/${planner!.plannerId}/meals/${targetYear}/${targetMonth}`,
+            )
             .set(token);
 
         expect(res.statusCode).toEqual(200);
 
-        const plannerMealData = res.body as components["schemas"]["PlannerMeal"][];
+        const plannerMealData =
+            res.body as components["schemas"]["PlannerMeal"][];
 
         expect(plannerMealData).toHaveLength(1);
         expect(plannerMealData[0]!.mealId).toEqual(targetMeal!.mealId);
-        expect(plannerMealData.find(m => m.mealId === wrongMonthMeal!.mealId)).toBeUndefined();
-        expect(plannerMealData.find(m => m.mealId === wrongYearMeal!.mealId)).toBeUndefined();
+        expect(
+            plannerMealData.find((m) => m.mealId === wrongMonthMeal!.mealId),
+        ).toBeUndefined();
+        expect(
+            plannerMealData.find((m) => m.mealId === wrongYearMeal!.mealId),
+        ).toBeUndefined();
     });
 
     it("should return planner meals for allowed member statuses (A, M)", async () => {
@@ -584,7 +640,9 @@ describe("Get planner meals", () => {
             });
 
             const res = await request(app)
-                .get(`/v1/planners/${planner!.plannerId}/meals/${meal!.year}/${meal!.month}`)
+                .get(
+                    `/v1/planners/${planner!.plannerId}/meals/${meal!.year}/${meal!.month}`,
+                )
                 .set(token);
 
             expect(res.statusCode).toEqual(200);
@@ -613,7 +671,9 @@ describe("Get planner meals", () => {
             });
 
             const res = await request(app)
-                .get(`/v1/planners/${planner!.plannerId}/meals/${randomYear()}/${randomMonth()}`)
+                .get(
+                    `/v1/planners/${planner!.plannerId}/meals/${randomYear()}/${randomMonth()}`,
+                )
                 .set(token);
 
             expect(res.statusCode).toEqual(404);
@@ -635,7 +695,9 @@ describe("Get planner meals", () => {
 
         await KnexCookListRepository.createMeals(database, {
             userId: user.userId,
-            meals: [{ description: uuid(), course: randomCourse(), sequence: 1 }],
+            meals: [
+                { description: uuid(), course: randomCourse(), sequence: 1 },
+            ],
         });
 
         await KnexPlannerRepository.createMeals(database, {
@@ -652,7 +714,9 @@ describe("Get planner meals", () => {
             ],
         });
 
-        const res = await request(app).get(`/v1/planners/${planner!.plannerId}/meals/${year}/${month}`).set(token);
+        const res = await request(app)
+            .get(`/v1/planners/${planner!.plannerId}/meals/${year}/${month}`)
+            .set(token);
 
         expect(res.statusCode).toEqual(200);
         expect(res.body).toHaveLength(1);
@@ -687,11 +751,17 @@ describe("Create a planner", () => {
             color: randomColor(),
         } satisfies components["schemas"]["PlannerCreate"];
 
-        const res = await request(app).post("/v1/planners").set(token).send(planner);
+        const res = await request(app)
+            .post("/v1/planners")
+            .set(token)
+            .send(planner);
 
         expect(res.statusCode).toEqual(201);
 
-        const { planners: savedPlanners } = await KnexPlannerRepository.readAll(database, user);
+        const { planners: savedPlanners } = await KnexPlannerRepository.readAll(
+            database,
+            user,
+        );
 
         expect(savedPlanners.length).toEqual(1);
 
@@ -746,7 +816,10 @@ describe("Update a planner", () => {
 
     it("should return 404 for non-existent planner", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app).patch(`/v1/planners/${uuid()}`).set(token).send({ name: uuid() });
+        const res = await request(app)
+            .patch(`/v1/planners/${uuid()}`)
+            .set(token)
+            .send({ name: uuid() });
         expect(res.statusCode).toEqual(404);
     });
 
@@ -754,7 +827,12 @@ describe("Update a planner", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Administrator,
+            UserStatus.Member,
+            UserStatus.Pending,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const {
@@ -785,7 +863,9 @@ describe("Update a planner", () => {
             planners: [planner],
         } = await KnexPlannerRepository.create(database, {
             userId: user.userId,
-            planners: [{ name: uuid(), description: uuid(), color: randomColor() }],
+            planners: [
+                { name: uuid(), description: uuid(), color: randomColor() },
+            ],
         });
 
         const updatedPlanner = {
@@ -794,13 +874,19 @@ describe("Update a planner", () => {
             color: randomColor(),
         } satisfies components["schemas"]["PlannerUpdate"];
 
-        const res = await request(app).patch(`/v1/planners/${planner!.plannerId}`).set(token).send(updatedPlanner);
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}`)
+            .set(token)
+            .send(updatedPlanner);
 
         expect(res.statusCode).toEqual(200);
 
         const {
             planners: [savedPlanner],
-        } = await KnexPlannerRepository.read(database, { planners: [planner!], userId: user.userId });
+        } = await KnexPlannerRepository.read(database, {
+            planners: [planner!],
+            userId: user.userId,
+        });
 
         expect(savedPlanner?.name).toEqual(updatedPlanner.name);
         expect(savedPlanner?.color).toEqual(updatedPlanner.color);
@@ -836,7 +922,10 @@ describe("Update a planner", () => {
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        const res = await request(app).patch(`/v1/planners/${planner!.plannerId}`).set(token).send({ name: 12345 });
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}`)
+            .set(token)
+            .send({ name: 12345 });
         expect(res.statusCode).toEqual(400);
     });
 
@@ -850,7 +939,10 @@ describe("Update a planner", () => {
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        const res = await request(app).patch(`/v1/planners/${planner!.plannerId}`).set(token).send({ name: null });
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}`)
+            .set(token)
+            .send({ name: null });
         expect(res.statusCode).toEqual(400);
     });
 });
@@ -908,10 +1000,14 @@ describe("Add a meal to a planner", () => {
             description: uuid(),
         } satisfies components["schemas"]["PlannerMealCreate"];
 
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/meals`).set(token).send(mealData);
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/meals`)
+            .set(token)
+            .send(mealData);
 
         expect(res.statusCode).toEqual(201);
-        const [returnedMeal] = res.body as components["schemas"]["PlannerMeal"][];
+        const [returnedMeal] =
+            res.body as components["schemas"]["PlannerMeal"][];
 
         expect(returnedMeal!.plannerId).toEqual(planner!.plannerId);
         expect(returnedMeal!.dayOfMonth).toEqual(mealData.dayOfMonth);
@@ -921,10 +1017,13 @@ describe("Add a meal to a planner", () => {
         expect(returnedMeal!.description).toEqual(mealData.description);
         expect(returnedMeal!.owner.userId).toEqual(user.userId);
 
-        const { meals: savedMeals } = await KnexPlannerRepository.readAllMeals(database, {
-            userId: user.userId,
-            filter: { plannerId: planner!.plannerId },
-        });
+        const { meals: savedMeals } = await KnexPlannerRepository.readAllMeals(
+            database,
+            {
+                userId: user.userId,
+                filter: { plannerId: planner!.plannerId },
+            },
+        );
 
         expect(savedMeals).toHaveLength(1);
         const [savedMeal] = savedMeals;
@@ -963,10 +1062,14 @@ describe("Add a meal to a planner", () => {
             recipeId: recipe!.recipeId,
         } satisfies components["schemas"]["PlannerMealCreate"];
 
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/meals`).set(token).send(mealData);
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/meals`)
+            .set(token)
+            .send(mealData);
 
         expect(res.statusCode).toEqual(201);
-        const [returnedMeal] = res.body as components["schemas"]["PlannerMeal"][];
+        const [returnedMeal] =
+            res.body as components["schemas"]["PlannerMeal"][];
         expect(returnedMeal!.recipeId).toEqual(recipe!.recipeId);
     });
 
@@ -1051,17 +1154,23 @@ describe("Add a meal to a planner", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: user!.userId, status: UserStatus.Administrator }],
+            members: [
+                { userId: user!.userId, status: UserStatus.Administrator },
+            ],
         });
 
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/meals`).set(token).send(meal);
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/meals`)
+            .set(token)
+            .send(meal);
 
         expect(res.statusCode).toEqual(201);
 
-        const { meals: plannerMeals } = await KnexPlannerRepository.readAllMeals(database, {
-            userId: user.userId,
-            filter: { plannerId: planner!.plannerId },
-        });
+        const { meals: plannerMeals } =
+            await KnexPlannerRepository.readAllMeals(database, {
+                userId: user.userId,
+                filter: { plannerId: planner!.plannerId },
+            });
 
         expect(plannerMeals.length).toEqual(1);
 
@@ -1082,10 +1191,14 @@ describe("Add a meal to a planner", () => {
 
         const meals = [randomMeal(), randomMeal()];
 
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/meals`).set(token).send(meals);
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/meals`)
+            .set(token)
+            .send(meals);
 
         expect(res.statusCode).toEqual(201);
-        const returnedMeals = res.body as components["schemas"]["PlannerMeal"][];
+        const returnedMeals =
+            res.body as components["schemas"]["PlannerMeal"][];
         expect(returnedMeals).toHaveLength(2);
     });
 
@@ -1098,7 +1211,10 @@ describe("Add a meal to a planner", () => {
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/meals`).set(token).send([]);
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/meals`)
+            .set(token)
+            .send([]);
         expect(res.statusCode).toEqual(400);
     });
 
@@ -1111,14 +1227,17 @@ describe("Add a meal to a planner", () => {
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/meals`).set(token).send({
-            dayOfMonth: randomDay(),
-            month: randomMonth(),
-            course: randomCourse(),
-            year: randomYear(),
-            description: uuid(),
-            extra: "invalid",
-        });
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/meals`)
+            .set(token)
+            .send({
+                dayOfMonth: randomDay(),
+                month: randomMonth(),
+                course: randomCourse(),
+                year: randomYear(),
+                description: uuid(),
+                extra: "invalid",
+            });
         expect(res.statusCode).toEqual(400);
     });
 
@@ -1131,12 +1250,15 @@ describe("Add a meal to a planner", () => {
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/meals`).set(token).send({
-            dayOfMonth: 80,
-            month: 13,
-            course: "unknown",
-            year: 3000,
-        });
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/meals`)
+            .set(token)
+            .send({
+                dayOfMonth: 80,
+                month: 13,
+                course: "unknown",
+                year: 3000,
+            });
         expect(res.statusCode).toEqual(400);
     });
 });
@@ -1155,7 +1277,9 @@ describe("Update a meal in a planner", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).patch(`/v1/planners/${uuid()}/meals/${uuid()}`);
+        const res = await request(app).patch(
+            `/v1/planners/${uuid()}/meals/${uuid()}`,
+        );
         expect(res.statusCode).toEqual(401);
     });
 
@@ -1187,14 +1311,17 @@ describe("Update a meal in a planner", () => {
         const res = await request(app)
             .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
             .set(token)
-            .send({ description: "Updated Description" } satisfies components["schemas"]["PlannerMealUpdate"]);
+            .send({
+                description: "Updated Description",
+            } satisfies components["schemas"]["PlannerMealUpdate"]);
 
         expect(res.statusCode).toEqual(200);
 
-        const { meals: plannerMeals } = await KnexPlannerRepository.readAllMeals(database, {
-            userId: user.userId,
-            filter: { plannerId: planner!.plannerId },
-        });
+        const { meals: plannerMeals } =
+            await KnexPlannerRepository.readAllMeals(database, {
+                userId: user.userId,
+                filter: { plannerId: planner!.plannerId },
+            });
 
         expect(plannerMeals.length).toEqual(1);
 
@@ -1238,7 +1365,9 @@ describe("Update a meal in a planner", () => {
         const res = await request(app)
             .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
             .set(token)
-            .send({ description: "Updated Description" } satisfies components["schemas"]["PlannerMealUpdate"]);
+            .send({
+                description: "Updated Description",
+            } satisfies components["schemas"]["PlannerMealUpdate"]);
 
         expect(res.statusCode).toEqual(404);
     });
@@ -1256,7 +1385,9 @@ describe("Update a meal in a planner", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: user.userId, status: UserStatus.Administrator }],
+            members: [
+                { userId: user.userId, status: UserStatus.Administrator },
+            ],
         });
 
         const {
@@ -1280,7 +1411,9 @@ describe("Update a meal in a planner", () => {
         const res = await request(app)
             .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
             .set(token)
-            .send(updateData satisfies components["schemas"]["PlannerMealUpdate"]);
+            .send(
+                updateData satisfies components["schemas"]["PlannerMealUpdate"],
+            );
 
         expect(res.statusCode).toEqual(200);
 
@@ -1288,10 +1421,11 @@ describe("Update a meal in a planner", () => {
         expect(returnedMeal.description).toEqual(updateData.description);
         expect(returnedMeal.mealId).toEqual(meal!.mealId);
 
-        const { meals: plannerMeals } = await KnexPlannerRepository.readAllMeals(database, {
-            userId: user.userId,
-            filter: { plannerId: planner!.plannerId },
-        });
+        const { meals: plannerMeals } =
+            await KnexPlannerRepository.readAllMeals(database, {
+                userId: user.userId,
+                filter: { plannerId: planner!.plannerId },
+            });
 
         expect(plannerMeals.length).toEqual(1);
         expect(plannerMeals[0]!.description).toEqual(updateData.description);
@@ -1347,10 +1481,11 @@ describe("Update a meal in a planner", () => {
         expect(returnedMeal.year).toEqual(updateData.year);
         expect(returnedMeal.source).toEqual(updateData.source);
 
-        const { meals: plannerMeals } = await KnexPlannerRepository.readAllMeals(database, {
-            userId: user.userId,
-            filter: { plannerId: planner!.plannerId },
-        });
+        const { meals: plannerMeals } =
+            await KnexPlannerRepository.readAllMeals(database, {
+                userId: user.userId,
+                filter: { plannerId: planner!.plannerId },
+            });
 
         expect(plannerMeals.length).toEqual(1);
         const [savedMeal] = plannerMeals;
@@ -1424,11 +1559,15 @@ describe("Update a meal in a planner", () => {
             meals: [cookListMeal],
         } = await KnexCookListRepository.createMeals(database, {
             userId: user.userId,
-            meals: [{ description: uuid(), course: randomCourse(), sequence: 1 }],
+            meals: [
+                { description: uuid(), course: randomCourse(), sequence: 1 },
+            ],
         });
 
         const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}/meals/${cookListMeal!.mealId}`)
+            .patch(
+                `/v1/planners/${planner!.plannerId}/meals/${cookListMeal!.mealId}`,
+            )
             .set(token)
             .send({ description: "Updated" });
 
@@ -1546,7 +1685,9 @@ describe("Remove a meal from a planner", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).delete(`/v1/planners/${uuid()}/meals/${uuid()}`);
+        const res = await request(app).delete(
+            `/v1/planners/${uuid()}/meals/${uuid()}`,
+        );
 
         expect(res.statusCode).toEqual(401);
     });
@@ -1554,7 +1695,10 @@ describe("Remove a meal from a planner", () => {
     it("should return 404 for non-existent planner", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app).delete(`/v1/planners/${uuid()}/meals/${uuid()}`).set(token).send();
+        const res = await request(app)
+            .delete(`/v1/planners/${uuid()}/meals/${uuid()}`)
+            .set(token)
+            .send();
 
         expect(res.statusCode).toEqual(404);
     });
@@ -1586,7 +1730,9 @@ describe("Remove a meal from a planner", () => {
         });
 
         const res = await request(app)
-            .delete(`/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`)
+            .delete(
+                `/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`,
+            )
             .set(token)
             .send();
 
@@ -1630,7 +1776,9 @@ describe("Remove a meal from a planner", () => {
         });
 
         const res = await request(app)
-            .delete(`/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`)
+            .delete(
+                `/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`,
+            )
             .set(token)
             .send();
 
@@ -1650,7 +1798,9 @@ describe("Remove a meal from a planner", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: user!.userId, status: UserStatus.Administrator }],
+            members: [
+                { userId: user!.userId, status: UserStatus.Administrator },
+            ],
         });
 
         const {
@@ -1669,16 +1819,19 @@ describe("Remove a meal from a planner", () => {
         });
 
         const res = await request(app)
-            .delete(`/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`)
+            .delete(
+                `/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`,
+            )
             .set(token)
             .send();
 
         expect(res.statusCode).toEqual(204);
 
-        const { meals: plannerMeals } = await KnexPlannerRepository.readAllMeals(database, {
-            userId: user!.userId,
-            filter: { plannerId: planner!.plannerId },
-        });
+        const { meals: plannerMeals } =
+            await KnexPlannerRepository.readAllMeals(database, {
+                userId: user!.userId,
+                filter: { plannerId: planner!.plannerId },
+            });
 
         expect(plannerMeals.length).toEqual(0);
     });
@@ -1709,16 +1862,19 @@ describe("Remove a meal from a planner", () => {
         });
 
         const res = await request(app)
-            .delete(`/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`)
+            .delete(
+                `/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`,
+            )
             .set(token)
             .send();
 
         expect(res.statusCode).toEqual(204);
 
-        const { meals: plannerMeals } = await KnexPlannerRepository.readAllMeals(database, {
-            userId: user.userId,
-            filter: { plannerId: planner!.plannerId },
-        });
+        const { meals: plannerMeals } =
+            await KnexPlannerRepository.readAllMeals(database, {
+                userId: user.userId,
+                filter: { plannerId: planner!.plannerId },
+            });
 
         expect(plannerMeals.length).toEqual(0);
     });
@@ -1737,11 +1893,15 @@ describe("Remove a meal from a planner", () => {
             meals: [cookListMeal],
         } = await KnexCookListRepository.createMeals(database, {
             userId: user.userId,
-            meals: [{ description: uuid(), course: randomCourse(), sequence: 1 }],
+            meals: [
+                { description: uuid(), course: randomCourse(), sequence: 1 },
+            ],
         });
 
         const res = await request(app)
-            .delete(`/v1/planners/${planner!.plannerId}/meals/${cookListMeal!.mealId}`)
+            .delete(
+                `/v1/planners/${planner!.plannerId}/meals/${cookListMeal!.mealId}`,
+            )
             .set(token)
             .send();
 
@@ -1783,7 +1943,9 @@ describe("Get planner members", () => {
             members: [{ userId: member!.userId, status: UserStatus.Member }],
         });
 
-        const res = await request(app).get(`/v1/planners/${planner!.plannerId}/members`).set(token);
+        const res = await request(app)
+            .get(`/v1/planners/${planner!.plannerId}/members`)
+            .set(token);
         expect(res.statusCode).toEqual(200);
         expect(res.body).toHaveLength(1);
         expect(res.body[0].userId).toEqual(member!.userId);
@@ -1793,7 +1955,12 @@ describe("Get planner members", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [plannerOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Member, UserStatus.Pending, UserStatus.Administrator, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Member,
+            UserStatus.Pending,
+            UserStatus.Administrator,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const {
@@ -1808,7 +1975,9 @@ describe("Get planner members", () => {
                 members: [{ userId: user.userId, status }],
             });
 
-            const res = await request(app).get(`/v1/planners/${planner!.plannerId}/members`).set(token);
+            const res = await request(app)
+                .get(`/v1/planners/${planner!.plannerId}/members`)
+                .set(token);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -1829,7 +1998,9 @@ describe("Invite a member to a planner", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/planners/${uuid()}/members`).send();
+        const res = await request(app)
+            .post(`/v1/planners/${uuid()}/members`)
+            .send();
         expect(res.statusCode).toEqual(401);
     });
 
@@ -1851,7 +2022,9 @@ describe("Invite a member to a planner", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexPlannerRepository.readMembers(database, [{ plannerId: planner!.plannerId }]);
+        const [members] = await KnexPlannerRepository.readMembers(database, [
+            { plannerId: planner!.plannerId },
+        ]);
         expect(members!.members).toHaveLength(1);
         expect(members!.members[0]!.userId).toEqual(invitee!.userId);
         expect(members!.members[0]!.status).toEqual("P");
@@ -1862,7 +2035,12 @@ describe("Invite a member to a planner", () => {
         const [plannerOwner] = await CreateUsers(database);
         const [invitee] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Administrator,
+            UserStatus.Member,
+            UserStatus.Pending,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const {
@@ -1973,13 +2151,16 @@ describe("Accept planner invitation", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/planners/${uuid()}/invite/accept`).send();
+        const res = await request(app)
+            .post(`/v1/planners/${uuid()}/invite/accept`)
+            .send();
         expect(res.statusCode).toEqual(401);
     });
 
     it("should successfully accept an invite", async () => {
         const [ownerToken, owner] = await PrepareAuthenticatedUser(database);
-        const [inviteeToken, invitee] = await PrepareAuthenticatedUser(database);
+        const [inviteeToken, invitee] =
+            await PrepareAuthenticatedUser(database);
 
         const {
             planners: [planner],
@@ -1993,19 +2174,28 @@ describe("Accept planner invitation", () => {
             members: [{ userId: invitee.userId, status: "P" as any }],
         });
 
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/invite/accept`).set(inviteeToken);
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/invite/accept`)
+            .set(inviteeToken);
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexPlannerRepository.readMembers(database, [{ plannerId: planner!.plannerId }]);
+        const [members] = await KnexPlannerRepository.readMembers(database, [
+            { plannerId: planner!.plannerId },
+        ]);
         expect(members!.members[0]!.status).toEqual("M");
     });
 
     it("should return 404 when accepting an invite if the user is already a member (A, M) or blacklisted (B)", async () => {
-        const [inviteeToken, invitee] = await PrepareAuthenticatedUser(database);
+        const [inviteeToken, invitee] =
+            await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Administrator,
+            UserStatus.Member,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const {
@@ -2020,7 +2210,9 @@ describe("Accept planner invitation", () => {
                 members: [{ userId: invitee.userId, status }],
             });
 
-            const res = await request(app).post(`/v1/planners/${planner!.plannerId}/invite/accept`).set(inviteeToken);
+            const res = await request(app)
+                .post(`/v1/planners/${planner!.plannerId}/invite/accept`)
+                .set(inviteeToken);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -2041,13 +2233,16 @@ describe("Decline planner invitation", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/planners/${uuid()}/invite/decline`).send();
+        const res = await request(app)
+            .post(`/v1/planners/${uuid()}/invite/decline`)
+            .send();
         expect(res.statusCode).toEqual(401);
     });
 
     it("should successfully decline an invite", async () => {
         const [ownerToken, owner] = await PrepareAuthenticatedUser(database);
-        const [inviteeToken, invitee] = await PrepareAuthenticatedUser(database);
+        const [inviteeToken, invitee] =
+            await PrepareAuthenticatedUser(database);
 
         const {
             planners: [planner],
@@ -2061,19 +2256,28 @@ describe("Decline planner invitation", () => {
             members: [{ userId: invitee.userId, status: "P" as any }],
         });
 
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/invite/decline`).set(inviteeToken);
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/invite/decline`)
+            .set(inviteeToken);
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexPlannerRepository.readMembers(database, [{ plannerId: planner!.plannerId }]);
+        const [members] = await KnexPlannerRepository.readMembers(database, [
+            { plannerId: planner!.plannerId },
+        ]);
         expect(members!.members).toHaveLength(0);
     });
 
     it("should return 404 when declining an invite if the user is already a member (A, M) or blacklisted (B)", async () => {
-        const [inviteeToken, invitee] = await PrepareAuthenticatedUser(database);
+        const [inviteeToken, invitee] =
+            await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Administrator,
+            UserStatus.Member,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const {
@@ -2088,7 +2292,9 @@ describe("Decline planner invitation", () => {
                 members: [{ userId: invitee.userId, status }],
             });
 
-            const res = await request(app).post(`/v1/planners/${planner!.plannerId}/invite/decline`).set(inviteeToken);
+            const res = await request(app)
+                .post(`/v1/planners/${planner!.plannerId}/invite/decline`)
+                .set(inviteeToken);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -2109,7 +2315,9 @@ describe("Leave a planner", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/planners/${uuid()}/leave`).send();
+        const res = await request(app)
+            .post(`/v1/planners/${uuid()}/leave`)
+            .send();
         expect(res.statusCode).toEqual(401);
     });
 
@@ -2132,11 +2340,16 @@ describe("Leave a planner", () => {
                 members: [{ userId: user.userId, status }],
             });
 
-            const res = await request(app).post(`/v1/planners/${planner!.plannerId}/leave`).set(userToken);
+            const res = await request(app)
+                .post(`/v1/planners/${planner!.plannerId}/leave`)
+                .set(userToken);
 
             expect(res.statusCode).toEqual(204);
 
-            const [members] = await KnexPlannerRepository.readMembers(database, [{ plannerId: planner!.plannerId }]);
+            const [members] = await KnexPlannerRepository.readMembers(
+                database,
+                [{ plannerId: planner!.plannerId }],
+            );
             expect(members!.members).toHaveLength(0);
         }
     });
@@ -2151,7 +2364,9 @@ describe("Leave a planner", () => {
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        const res = await request(app).post(`/v1/planners/${planner!.plannerId}/leave`).set(ownerToken);
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/leave`)
+            .set(ownerToken);
 
         expect(res.statusCode).toEqual(404);
     });
@@ -2175,7 +2390,9 @@ describe("Leave a planner", () => {
                 members: [{ userId: user.userId, status }],
             });
 
-            const res = await request(app).post(`/v1/planners/${planner!.plannerId}/leave`).set(userToken);
+            const res = await request(app)
+                .post(`/v1/planners/${planner!.plannerId}/leave`)
+                .set(userToken);
 
             expect(res.statusCode).toEqual(404);
         }
@@ -2196,7 +2413,9 @@ describe("Remove a member from a planner", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).delete(`/v1/planners/${uuid()}/members/${uuid()}`).send();
+        const res = await request(app)
+            .delete(`/v1/planners/${uuid()}/members/${uuid()}`)
+            .send();
         expect(res.statusCode).toEqual(401);
     });
 
@@ -2217,12 +2436,16 @@ describe("Remove a member from a planner", () => {
         });
 
         const res = await request(app)
-            .delete(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+            .delete(
+                `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+            )
             .set(token);
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexPlannerRepository.readMembers(database, [{ plannerId: planner!.plannerId }]);
+        const [members] = await KnexPlannerRepository.readMembers(database, [
+            { plannerId: planner!.plannerId },
+        ]);
         expect(members!.members).toHaveLength(0);
     });
 
@@ -2231,7 +2454,12 @@ describe("Remove a member from a planner", () => {
         const [owner] = await CreateUsers(database);
         const [member] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Administrator,
+            UserStatus.Member,
+            UserStatus.Pending,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const {
@@ -2252,7 +2480,9 @@ describe("Remove a member from a planner", () => {
             ]);
 
             const res = await request(app)
-                .delete(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+                .delete(
+                    `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+                )
                 .set(token);
 
             expect(res.statusCode).toEqual(404);
@@ -2274,7 +2504,9 @@ describe("Update a planner member", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).patch(`/v1/planners/${uuid()}/members/${uuid()}`).send();
+        const res = await request(app)
+            .patch(`/v1/planners/${uuid()}/members/${uuid()}`)
+            .send();
         expect(res.statusCode).toEqual(401);
     });
 
@@ -2297,26 +2529,34 @@ describe("Update a planner member", () => {
 
         // Update M -> A
         let res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+            .patch(
+                `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+            )
             .set(token)
             .send({ status: UserStatus.Administrator });
 
         expect(res.statusCode).toEqual(200);
         expect(res.body.status).toEqual(UserStatus.Administrator);
 
-        let [members] = await KnexPlannerRepository.readMembers(database, [{ plannerId: planner!.plannerId }]);
+        let [members] = await KnexPlannerRepository.readMembers(database, [
+            { plannerId: planner!.plannerId },
+        ]);
         expect(members!.members[0]!.status).toEqual(UserStatus.Administrator);
 
         // Update A -> M
         res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+            .patch(
+                `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+            )
             .set(token)
             .send({ status: UserStatus.Member });
 
         expect(res.statusCode).toEqual(200);
         expect(res.body.status).toEqual(UserStatus.Member);
 
-        [members] = await KnexPlannerRepository.readMembers(database, [{ plannerId: planner!.plannerId }]);
+        [members] = await KnexPlannerRepository.readMembers(database, [
+            { plannerId: planner!.plannerId },
+        ]);
         expect(members!.members[0]!.status).toEqual(UserStatus.Member);
     });
 
@@ -2340,7 +2580,9 @@ describe("Update a planner member", () => {
 
         for (const status of restrictedStatuses) {
             const res = await request(app)
-                .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+                .patch(
+                    `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+                )
                 .set(token)
                 .send({ status });
 
@@ -2353,7 +2595,12 @@ describe("Update a planner member", () => {
         const [owner] = await CreateUsers(database);
         const [member] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member, UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = [
+            UserStatus.Administrator,
+            UserStatus.Member,
+            UserStatus.Pending,
+            UserStatus.Blacklisted,
+        ];
 
         for (const status of statuses) {
             const {
@@ -2374,7 +2621,9 @@ describe("Update a planner member", () => {
             ]);
 
             const res = await request(app)
-                .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+                .patch(
+                    `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+                )
                 .set(token)
                 .send({ status: UserStatus.Administrator });
 
@@ -2399,7 +2648,9 @@ describe("Update a planner member", () => {
         });
 
         const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+            .patch(
+                `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+            )
             .set(token)
             .send({ status: UserStatus.Member });
 
@@ -2421,7 +2672,9 @@ describe("Update a planner member", () => {
         });
 
         const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+            .patch(
+                `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+            )
             .set(token)
             .send({ status: UserStatus.Administrator, extra: "invalid" });
         expect(res.statusCode).toEqual(400);
@@ -2442,7 +2695,9 @@ describe("Update a planner member", () => {
         });
 
         const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+            .patch(
+                `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+            )
             .set(token)
             .send({ status: "INVALID" });
         expect(res.statusCode).toEqual(400);
@@ -2463,7 +2718,9 @@ describe("Update a planner member", () => {
         });
 
         const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}/members/${member!.userId}`)
+            .patch(
+                `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+            )
             .set(token)
             .send({ status: null });
         expect(res.statusCode).toEqual(400);

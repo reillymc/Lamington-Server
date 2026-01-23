@@ -1,5 +1,5 @@
 import { type Knex } from "knex";
-import { type Tag, lamington } from "../../definitions/index.ts";
+import { lamington, type Tag } from "../../definitions/index.ts";
 
 // Default tags
 export const seed = async (knex: Knex): Promise<void> => {

@@ -1,15 +1,18 @@
+import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
-import { after, afterEach, beforeEach, describe, it, mock, skip } from "node:test";
 import request from "supertest";
 
 import { setupApp } from "../../src/app.ts";
-import { type PostImageAttachmentResponse } from "../../src/routes/spec/index.ts";
-import { AttachmentEndpoint, PrepareAuthenticatedUser } from "../helpers/index.ts";
+import type { AttachmentActions } from "../../src/controllers/attachment.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
+import type { PostImageAttachmentResponse } from "../../src/routes/spec/index.ts";
 import type { AttachmentService } from "../../src/services/attachment/attachmentService.ts";
-import { AttachmentActions } from "../../src/controllers/attachment.ts";
 import { readAllAttachments } from "../helpers/attachment.ts";
+import {
+    AttachmentEndpoint,
+    PrepareAuthenticatedUser,
+} from "../helpers/index.ts";
 
 const MockSuccessfulAttachmentService: AttachmentService = {
     put: async () => true,
@@ -40,7 +43,10 @@ describe("post", () => {
 
     beforeEach(async () => {
         database = await db.transaction();
-        app = setupApp({ database, attachmentService: MockSuccessfulAttachmentService });
+        app = setupApp({
+            database,
+            attachmentService: MockSuccessfulAttachmentService,
+        });
     });
 
     afterEach(async () => {
@@ -49,7 +55,9 @@ describe("post", () => {
     });
 
     it("should require authentication", async () => {
-        const res = await request(app).get(AttachmentEndpoint.postImage).attach("file", "tests/testAttachment.jpg");
+        const res = await request(app)
+            .get(AttachmentEndpoint.postImage)
+            .attach("file", "tests/testAttachment.jpg");
 
         expect(res.statusCode).toEqual(401);
     });
@@ -57,7 +65,9 @@ describe("post", () => {
     it("should fail when no file is provided", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app).post(AttachmentEndpoint.postImage).set(token);
+        const res = await request(app)
+            .post(AttachmentEndpoint.postImage)
+            .set(token);
 
         expect(res.statusCode).toEqual(400);
     });
@@ -79,11 +89,16 @@ describe("post", () => {
 
         const attachmentReadResponse = await readAllAttachments(database);
         expect(attachmentReadResponse).toHaveLength(1);
-        expect(data!.attachmentId).toEqual(attachmentReadResponse[0]!.attachmentId);
+        expect(data!.attachmentId).toEqual(
+            attachmentReadResponse[0]!.attachmentId,
+        );
     });
 
     it("should not save to db when upload fails", async () => {
-        app = setupApp({ database, attachmentService: MockFailingAttachmentService });
+        app = setupApp({
+            database,
+            attachmentService: MockFailingAttachmentService,
+        });
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
@@ -103,7 +118,10 @@ describe("post", () => {
         app = setupApp({
             database,
             attachmentActions: MockFailingAttachmentActions,
-            attachmentService: { ...MockSuccessfulAttachmentService, put: mockPut },
+            attachmentService: {
+                ...MockSuccessfulAttachmentService,
+                put: mockPut,
+            },
         });
 
         const [token] = await PrepareAuthenticatedUser(database);

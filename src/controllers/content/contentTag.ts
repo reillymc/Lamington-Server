@@ -1,12 +1,12 @@
 import type { Content } from "../../database/definitions/content.ts";
 import {
-    type CreateQuery,
     type ContentTag,
-    type Tag,
-    lamington,
+    type CreateQuery,
     contentTag,
-    tag,
     type KnexDatabase,
+    lamington,
+    type Tag,
+    tag,
 } from "../../database/index.ts";
 import { EnsureArray } from "../../utils/index.ts";
 
@@ -16,8 +16,15 @@ import { EnsureArray } from "../../utils/index.ts";
  * @param tagIds to delete
  * @returns count of rows affected/tags deleted?
  */
-const deleteContentTags = async (db: KnexDatabase, contentId: string, tagIds: string[]) => {
-    const result = await db<ContentTag>(lamington.contentTag).del().whereIn("tagId", tagIds).andWhere({ contentId });
+const deleteContentTags = async (
+    db: KnexDatabase,
+    contentId: string,
+    tagIds: string[],
+) => {
+    const result = await db<ContentTag>(lamington.contentTag)
+        .del()
+        .whereIn("tagId", tagIds)
+        .andWhere({ contentId });
 
     return result;
 };
@@ -28,16 +35,29 @@ const deleteContentTags = async (db: KnexDatabase, contentId: string, tagIds: st
  * @param retainedCategoryIds tags to keep
  * @returns
  */
-const deleteExcessRows = async (db: KnexDatabase, contentId: string, retainedCategoryIds: string[]) =>
-    db<ContentTag>(lamington.contentTag).where({ contentId }).whereNotIn("tagId", retainedCategoryIds).del();
+const deleteExcessRows = async (
+    db: KnexDatabase,
+    contentId: string,
+    retainedCategoryIds: string[],
+) =>
+    db<ContentTag>(lamington.contentTag)
+        .where({ contentId })
+        .whereNotIn("tagId", retainedCategoryIds)
+        .del();
 
 /**
  * Create ContentTags provided
  * @param contentTags
  * @returns
  */
-const insertRows = async (db: KnexDatabase, contentTags: CreateQuery<ContentTag>) =>
-    db<ContentTag>(lamington.contentTag).insert(contentTags).onConflict(["contentId", "tagId"]).merge();
+const insertRows = async (
+    db: KnexDatabase,
+    contentTags: CreateQuery<ContentTag>,
+) =>
+    db<ContentTag>(lamington.contentTag)
+        .insert(contentTags)
+        .onConflict(["contentId", "tagId"])
+        .merge();
 
 /**
  * Update ContentTags for contentId, by deleting all tags not in tag list and then creating / updating provided tags in list
@@ -46,7 +66,9 @@ const insertRows = async (db: KnexDatabase, contentTags: CreateQuery<ContentTag>
  */
 const updateRows = async (
     db: KnexDatabase,
-    params: CreateQuery<Pick<Content, "contentId"> & { tags: Array<Pick<ContentTag, "tagId">> }>
+    params: CreateQuery<
+        Pick<Content, "contentId"> & { tags: Array<Pick<ContentTag, "tagId">> }
+    >,
 ) => {
     const contentTags = EnsureArray(params);
 
@@ -54,32 +76,39 @@ const updateRows = async (
         await deleteExcessRows(
             db,
             contentTagList.contentId,
-            contentTagList.tags.map(({ tagId }) => tagId)
+            contentTagList.tags.map(({ tagId }) => tagId),
         );
     }
 
-    const tags = contentTags.flatMap(({ contentId, tags }) => tags.map(({ tagId }) => ({ contentId, tagId })));
+    const tags = contentTags.flatMap(({ contentId, tags }) =>
+        tags.map(({ tagId }) => ({ contentId, tagId })),
+    );
 
     if (tags.length) await insertRows(db, tags);
 
     return [];
 };
 
-export type TagReadByContentIdResults = Array<ContentTag & Pick<Tag, "parentId" | "name">>;
+export type TagReadByContentIdResults = Array<
+    ContentTag & Pick<Tag, "parentId" | "name">
+>;
 
 /**
  * Get all tags for a content
  * @param contentId content to retrieve tags from
  * @returns ContentTagResults
  */
-const readByContentId = async (db: KnexDatabase, contentIds: string | string[]): Promise<TagReadByContentIdResults> => {
+const readByContentId = async (
+    db: KnexDatabase,
+    contentIds: string | string[],
+): Promise<TagReadByContentIdResults> => {
     const contentIdList = Array.isArray(contentIds) ? contentIds : [contentIds];
 
     return db(lamington.tag)
         .select(contentTag.tagId, tag.parentId, tag.name, contentTag.contentId)
         .whereIn(contentTag.contentId, contentIdList)
         .leftJoin(lamington.contentTag, contentTag.tagId, tag.tagId)
-        .union(qb =>
+        .union((qb) =>
             qb
                 .select(tag.tagId, tag.parentId, tag.name, contentTag.contentId)
                 .leftJoin(lamington.contentTag, contentTag.tagId, tag.tagId)
@@ -90,8 +119,12 @@ const readByContentId = async (db: KnexDatabase, contentIds: string | string[]):
                         .select(tag.parentId)
                         .from(lamington.tag)
                         .whereIn(contentTag.contentId, contentIdList)
-                        .leftJoin(lamington.contentTag, contentTag.tagId, tag.tagId)
-                )
+                        .leftJoin(
+                            lamington.contentTag,
+                            contentTag.tagId,
+                            tag.tagId,
+                        ),
+                ),
         );
 };
 

@@ -9,7 +9,9 @@ export type PresetIngredients = string[];
 
 export type GetPresetIngredientsRequest = BaseRequest;
 export type GetPresetIngredientsResponse = BaseResponse<PresetIngredients>;
-export type GetPresetIngredientsService = (request: GetPresetIngredientsRequest) => GetPresetIngredientsResponse;
+export type GetPresetIngredientsService = (
+    request: GetPresetIngredientsRequest,
+) => GetPresetIngredientsResponse;
 
 export interface AssetServices {
     getPresetIngredients: GetPresetIngredientsService;

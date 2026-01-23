@@ -12,19 +12,35 @@ interface WithContentReadPermissionsParams {
 }
 
 export const withContentReadPermissions =
-    ({ userId, idColumn, ownerColumns, allowedStatuses = [] }: WithContentReadPermissionsParams) =>
-    <TRecord extends {}, TResult>(query: Knex.QueryBuilder<TRecord, TResult>) => {
-        const owners = ownerColumns === undefined ? [content.createdBy] : EnsureArray(ownerColumns);
+    ({
+        userId,
+        idColumn,
+        ownerColumns,
+        allowedStatuses = [],
+    }: WithContentReadPermissionsParams) =>
+    <TRecord extends {}, TResult>(
+        query: Knex.QueryBuilder<TRecord, TResult>,
+    ) => {
+        const owners =
+            ownerColumns === undefined
+                ? [content.createdBy]
+                : EnsureArray(ownerColumns);
 
         query
-            .leftJoin(lamington.contentMember, join =>
-                join.on(idColumn, "=", contentMember.contentId).andOnVal(contentMember.userId, "=", userId)
+            .leftJoin(lamington.contentMember, (join) =>
+                join
+                    .on(idColumn, "=", contentMember.contentId)
+                    .andOnVal(contentMember.userId, "=", userId),
             )
-            .where(b => {
+            .where((b) => {
                 let hasCondition = false;
                 const statuses = EnsureArray(allowedStatuses);
                 if (statuses.length > 0) {
-                    b.orWhere(sub => sub.whereNotNull(contentMember.userId).whereIn(contentMember.status, statuses));
+                    b.orWhere((sub) =>
+                        sub
+                            .whereNotNull(contentMember.userId)
+                            .whereIn(contentMember.status, statuses),
+                    );
                     hasCondition = true;
                 }
 

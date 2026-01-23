@@ -1,25 +1,25 @@
 import { type Knex } from "knex";
+import { hashPassword } from "../../../services/password.ts";
+import type { Book } from "../../definitions/book.ts";
+import type { BookRecipe } from "../../definitions/bookRecipe.ts";
+import type { Content } from "../../definitions/content.ts";
 import {
+    type ContentTag,
     type Ingredient,
     type List,
     type ListItem,
+    lamington,
     type Meal,
     type Planner,
-    type ContentTag,
     type Tag,
     type User,
-    lamington,
 } from "../../definitions/index.ts";
-import { clearDatabase } from "../helpers.ts";
-import type { Content } from "../../definitions/content.ts";
-import type { Book } from "../../definitions/book.ts";
 import type { Recipe } from "../../definitions/recipe.ts";
-import type { BookRecipe } from "../../definitions/bookRecipe.ts";
-import type { RecipeRating } from "../../definitions/recipeRating.ts";
 import type { RecipeIngredient } from "../../definitions/recipeIngredient.ts";
+import type { RecipeRating } from "../../definitions/recipeRating.ts";
 import type { RecipeSection } from "../../definitions/recipeSection.ts";
 import type { RecipeStep } from "../../definitions/recipeStep.ts";
-import { hashPassword } from "../../../services/password.ts";
+import { clearDatabase } from "../helpers.ts";
 
 export const seed = async (knex: Knex): Promise<void> => {
     // Delete ALL existing entries
@@ -438,14 +438,14 @@ export const seed = async (knex: Knex): Promise<void> => {
         books.map(({ bookId, createdBy }) => ({
             contentId: bookId,
             createdBy,
-        }))
+        })),
     );
     await knex<Book>(lamington.book).insert(
         books.map(({ bookId, name, description }) => ({
             bookId,
             name,
             description,
-        }))
+        })),
     );
 
     const ingredients = [
@@ -515,20 +515,23 @@ export const seed = async (knex: Knex): Promise<void> => {
         ingredients.map(({ ingredientId, createdBy }) => ({
             contentId: ingredientId,
             createdBy,
-        }))
+        })),
     );
     await knex<Ingredient>(lamington.ingredient).insert(
         ingredients.map(({ ingredientId, name }) => ({
             ingredientId,
             name,
-        }))
+        })),
     );
 
     const recipes = [
         {
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             name: "Gnocchi with Tomato Cream Sauce",
-            servings: { unit: "people", count: { representation: "number", value: "4" } },
+            servings: {
+                unit: "people",
+                count: { representation: "number", value: "4" },
+            },
             prepTime: 20,
             cookTime: 30,
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
@@ -540,7 +543,10 @@ export const seed = async (knex: Knex): Promise<void> => {
         {
             recipeId: "99656745-3325-4a47-9361-caba8849a4e2",
             name: "Black Bean Enchiladas",
-            servings: { unit: "people", count: { representation: "number", value: "3" } },
+            servings: {
+                unit: "people",
+                count: { representation: "number", value: "3" },
+            },
             prepTime: 20,
             cookTime: 40,
             createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
@@ -555,7 +561,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         recipes.map(({ recipeId, createdBy }) => ({
             contentId: recipeId,
             createdBy,
-        }))
+        })),
     );
 
     await knex<Recipe>(lamington.recipe).insert(
@@ -580,8 +586,8 @@ export const seed = async (knex: Knex): Promise<void> => {
                 updatedAt,
                 public: isPublic,
                 timesCooked,
-            })
-        )
+            }),
+        ),
     );
 
     await knex<BookRecipe>(lamington.bookRecipe).insert([
@@ -739,14 +745,16 @@ export const seed = async (knex: Knex): Promise<void> => {
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             sectionId: "6859b86b-def1-4779-a794-ac33cb9d180f",
             index: 2,
-            description: "Stir in the gnocchi. Garnish with basil and freshly grated parmesan cheese.",
+            description:
+                "Stir in the gnocchi. Garnish with basil and freshly grated parmesan cheese.",
         },
         {
             id: "2200de77-1d51-472f-b415-ebebbfdf2030",
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             sectionId: "50030d2b-2a01-4fbe-b725-2947831f35ac",
             index: 3,
-            description: "Add gnocchi. Sauté 2-4 minutes until it begins to brown.",
+            description:
+                "Add gnocchi. Sauté 2-4 minutes until it begins to brown.",
         },
         {
             id: "2892b0fb-80d7-46d1-a0fa-3b700ce9911c",
@@ -760,7 +768,8 @@ export const seed = async (knex: Knex): Promise<void> => {
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             sectionId: "6859b86b-def1-4779-a794-ac33cb9d180f",
             index: 0,
-            description: "Add tomatoes and tomato sauce to the skillet and bring to a simmer.",
+            description:
+                "Add tomatoes and tomato sauce to the skillet and bring to a simmer.",
         },
         {
             id: "7f468385-0081-4f5b-8a88-d0a4fc572f55",
@@ -775,21 +784,24 @@ export const seed = async (knex: Knex): Promise<void> => {
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             sectionId: "50030d2b-2a01-4fbe-b725-2947831f35ac",
             index: 1,
-            description: "Boil gnocchi for 2-3 minutes until it floats. Drain, then toss with 3 teaspoons olive oil.",
+            description:
+                "Boil gnocchi for 2-3 minutes until it floats. Drain, then toss with 3 teaspoons olive oil.",
         },
         {
             id: "ee8c1fdc-0af6-462f-afbb-5c8e87883fd3",
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             sectionId: "50030d2b-2a01-4fbe-b725-2947831f35ac",
             index: 2,
-            description: "Melt butter in a large skillet. Add garlic and sauté until fragrant.",
+            description:
+                "Melt butter in a large skillet. Add garlic and sauté until fragrant.",
         },
         {
             id: "fd34ae8c-f83b-42b2-8894-cf4aefb6f802",
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             sectionId: "50030d2b-2a01-4fbe-b725-2947831f35ac",
             index: 0,
-            description: "Fill a pot with about 3 inches of water and bring to a boil.",
+            description:
+                "Fill a pot with about 3 inches of water and bring to a boil.",
         },
     ]);
 
@@ -812,7 +824,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         lists.map(({ listId, createdBy }) => ({
             contentId: listId,
             createdBy,
-        }))
+        })),
     );
 
     await knex<List>(lamington.list).insert(
@@ -820,7 +832,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             listId,
             name,
             description,
-        }))
+        })),
     );
 
     const listItems = [
@@ -900,20 +912,31 @@ export const seed = async (knex: Knex): Promise<void> => {
         listItems.map(({ itemId, createdBy }) => ({
             contentId: itemId,
             createdBy,
-        }))
+        })),
     );
 
     await knex<ListItem>(lamington.listItem).insert(
-        listItems.map(({ listId, itemId, name, ingredientId, unit, amount, updatedAt, completed }) => ({
-            listId,
-            itemId,
-            name,
-            ingredientId: ingredientId,
-            unit: unit,
-            amount: amount,
-            updatedAt,
-            completed,
-        }))
+        listItems.map(
+            ({
+                listId,
+                itemId,
+                name,
+                ingredientId,
+                unit,
+                amount,
+                updatedAt,
+                completed,
+            }) => ({
+                listId,
+                itemId,
+                name,
+                ingredientId: ingredientId,
+                unit: unit,
+                amount: amount,
+                updatedAt,
+                completed,
+            }),
+        ),
     );
 
     const planners = [
@@ -929,7 +952,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         planners.map(({ plannerId, createdBy }) => ({
             contentId: plannerId,
             createdBy,
-        }))
+        })),
     );
 
     await knex<Planner>(lamington.planner).insert(
@@ -937,7 +960,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             plannerId,
             name,
             description,
-        }))
+        })),
     );
 
     const plannerMeals = [
@@ -1082,20 +1105,32 @@ export const seed = async (knex: Knex): Promise<void> => {
         plannerMeals.map(({ mealId, createdBy }) => ({
             contentId: mealId,
             createdBy,
-        }))
+        })),
     );
 
     await knex<Meal>(lamington.plannerMeal).insert(
-        plannerMeals.map(({ mealId, plannerId, year, month, dayOfMonth, meal, description, recipeId, source }) => ({
-            mealId,
-            plannerId,
-            year,
-            month,
-            dayOfMonth,
-            meal,
-            description,
-            recipeId: recipeId,
-            source: source,
-        }))
+        plannerMeals.map(
+            ({
+                mealId,
+                plannerId,
+                year,
+                month,
+                dayOfMonth,
+                meal,
+                description,
+                recipeId,
+                source,
+            }) => ({
+                mealId,
+                plannerId,
+                year,
+                month,
+                dayOfMonth,
+                meal,
+                description,
+                recipeId: recipeId,
+                source: source,
+            }),
+        ),
     );
 };

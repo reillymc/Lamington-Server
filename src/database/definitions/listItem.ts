@@ -3,7 +3,10 @@ import { lamington } from "./lamington.ts";
 
 export type NumberValue = { representation: "number"; value: string };
 export type RangeValue = { representation: "range"; value: [string, string] };
-export type FractionValue = { representation: "fraction"; value: [string, string, string] };
+export type FractionValue = {
+    representation: "fraction";
+    value: [string, string, string];
+};
 
 type ListItemIngredientAmountV1 = RangeValue | NumberValue | FractionValue;
 
@@ -35,5 +38,8 @@ export const listItemColumns = [
 ] as const satisfies (keyof ListItem)[];
 
 export const listItem = Object.fromEntries(
-    listItemColumns.map(column => [column, `${lamington.listItem}.${column}`])
+    listItemColumns.map((column) => [
+        column,
+        `${lamington.listItem}.${column}`,
+    ]),
 ) as Table<ListItem>;

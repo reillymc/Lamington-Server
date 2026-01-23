@@ -21,14 +21,15 @@ export const openApiValidatorMiddlewares = OpenApiValidator.middleware({
     },
 });
 
-export const validationMiddleware: RequestHandler[] = openApiValidatorMiddlewares.map(
-    (middleware): RequestHandler =>
-        async (req, res, next) => {
-            await middleware(req, res, error => {
-                if (error) {
-                    return next(new ValidationError(error));
-                }
-                next();
-            });
-        }
-);
+export const validationMiddleware: RequestHandler[] =
+    openApiValidatorMiddlewares.map(
+        (middleware): RequestHandler =>
+            async (req, res, next) => {
+                await middleware(req, res, (error) => {
+                    if (error) {
+                        return next(new ValidationError(error));
+                    }
+                    next();
+                });
+            },
+    );

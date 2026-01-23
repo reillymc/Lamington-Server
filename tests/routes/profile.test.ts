@@ -1,13 +1,13 @@
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
-import { after, afterEach, beforeEach, describe, it } from "node:test";
 import request from "supertest";
 
 import { setupApp } from "../../src/app.ts";
-import { type components } from "../../src/routes/spec/index.ts";
-import { PrepareAuthenticatedUser } from "../helpers/index.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
+import type { components } from "../../src/routes/spec/index.ts";
+import { PrepareAuthenticatedUser } from "../helpers/index.ts";
 
 after(async () => {
     await db.destroy();
@@ -73,7 +73,9 @@ describe("Delete current user profile", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const { users } = await KnexUserRepository.read(database, { users: [{ userId: user.userId }] });
+        const { users } = await KnexUserRepository.read(database, {
+            users: [{ userId: user.userId }],
+        });
         expect(users.length).toEqual(0);
     });
 });

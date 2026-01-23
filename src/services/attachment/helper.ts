@@ -9,7 +9,11 @@ export const compressImage = (file: Buffer) =>
         .withMetadata()
         .toBuffer();
 
-export const constructAttachmentPath = (userId: string, attachmentId: string, extension: string) => {
+export const constructAttachmentPath = (
+    userId: string,
+    attachmentId: string,
+    extension: string,
+) => {
     const uploadPath = `${config.attachments.path}/${userId}/${attachmentId}.${extension}`;
     const uri = `${config.attachments.storageService}:${uploadPath}`;
     return { uri, uploadPath };

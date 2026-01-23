@@ -20,7 +20,9 @@ describe("OpenAPI Spec", () => {
     if (doc.paths) {
         for (const pathItem of Object.values(doc.paths) as any[]) {
             for (const method of Object.keys(pathItem)) {
-                if (["get", "post", "put", "delete", "patch"].includes(method)) {
+                if (
+                    ["get", "post", "put", "delete", "patch"].includes(method)
+                ) {
                     const operation = pathItem[method];
                     if (operation.tags && Array.isArray(operation.tags)) {
                         for (const tag of operation.tags) {
@@ -37,7 +39,9 @@ describe("OpenAPI Spec", () => {
         }
     }
 
-    const tags = doc.tags ? doc.tags.map((t: any) => t.name) : Object.keys(operationsByTag);
+    const tags = doc.tags
+        ? doc.tags.map((t: any) => t.name)
+        : Object.keys(operationsByTag);
 
     for (const tag of tags) {
         it(`should have tests for ${tag} endpoints`, () => {
@@ -45,13 +49,20 @@ describe("OpenAPI Spec", () => {
             if (!summaries || summaries.length === 0) return;
 
             const testFileName = `${tag.toLowerCase()}.test.ts`;
-            const testFilePath = path.join(process.cwd(), "tests", "routes", testFileName);
+            const testFilePath = path.join(
+                process.cwd(),
+                "tests",
+                "routes",
+                testFileName,
+            );
 
             if (fs.existsSync(testFilePath)) {
                 const testFileContent = fs.readFileSync(testFilePath, "utf-8");
                 for (const summary of summaries) {
                     if (!testFileContent.includes(`describe("${summary}"`)) {
-                        throw new Error(`Missing describe block for "${summary}" in ${testFileName}`);
+                        throw new Error(
+                            `Missing describe block for "${summary}" in ${testFileName}`,
+                        );
                     }
                 }
             } else {

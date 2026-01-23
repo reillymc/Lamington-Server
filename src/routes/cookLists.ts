@@ -1,10 +1,12 @@
 import express from "express";
 
 import { EnsureArray } from "../utils/index.ts";
-import type { paths, routes } from "./spec/index.ts";
 import type { CreateRoute } from "./route.ts";
+import type { paths, routes } from "./spec/index.ts";
 
-export const createCooklistRouter: CreateRoute<"cooklistService"> = ({ cooklistService }) =>
+export const createCooklistRouter: CreateRoute<"cooklistService"> = ({
+    cooklistService,
+}) =>
     express
         .Router()
         .get<
@@ -24,7 +26,10 @@ export const createCooklistRouter: CreateRoute<"cooklistService"> = ({ cooklistS
             paths["/cooklist/meals"]["post"]["requestBody"]["content"]["application/json"],
             paths["/cooklist/meals"]["post"]["parameters"]["query"]
         >("/cooklist/meals", async ({ body, session }, res) => {
-            const data = await cooklistService.createMeals(session.userId, EnsureArray(body));
+            const data = await cooklistService.createMeals(
+                session.userId,
+                EnsureArray(body),
+            );
             return res.status(201).json(data);
         })
         .patch<
@@ -34,7 +39,11 @@ export const createCooklistRouter: CreateRoute<"cooklistService"> = ({ cooklistS
             paths["/cooklist/meals/{mealId}"]["patch"]["requestBody"]["content"]["application/json"],
             paths["/cooklist/meals/{mealId}"]["patch"]["parameters"]["query"]
         >("/cooklist/meals/:mealId", async ({ params, body, session }, res) => {
-            const data = await cooklistService.updateMeal(session.userId, params.mealId, body);
+            const data = await cooklistService.updateMeal(
+                session.userId,
+                params.mealId,
+                body,
+            );
             return res.status(200).json(data);
         })
         .delete<
