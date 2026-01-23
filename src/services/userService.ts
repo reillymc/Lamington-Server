@@ -219,19 +219,12 @@ export const createUserService: CreateService<
     },
     register: async user => {
         const password = await hashPassword(user.password);
-        let users;
         try {
-            ({ users } = await userRepository.create(database, {
+            const { users } = await userRepository.create(database, {
                 users: [{ ...user, email: user.email.toLowerCase(), password, status: UserStatus.Pending }],
-            }));
-        } catch (e: unknown) {
-            if (e instanceof UniqueViolationError) {
-                throw new InvalidOperationError("user");
-            }
-            throw e;
-        }
+            });
 
-        const [createdUser] = users;
+            const [createdUser] = users;
 
         if (!createdUser) {
             throw new CreatedDataFetchError("user");
@@ -244,6 +237,12 @@ export const createUserService: CreateService<
                 status: createdUser.status,
             },
         };
+        } catch (e: unknown) {
+            if (e instanceof UniqueViolationError) {
+                throw new InvalidOperationError("user");
+            }
+            throw e;
+        }
     },
     login: async ({ email, password }) => {
         const {

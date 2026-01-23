@@ -729,7 +729,7 @@ export const ingredientsRequestToRows = ({
     return ingredients
         .flatMap(({ items }) => items)
         .map(({ ingredientId, name, ...item }): (Ingredient & { createdBy: Content["createdBy"] }) | undefined => {
-            if (!ingredientId || !name) return;
+            if (!ingredientId || !name) return undefined;
 
             return {
                 ingredientId,

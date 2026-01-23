@@ -11,15 +11,11 @@
         "vscode": {
             // Add the IDs of extensions you want installed when the container is created.
             "extensions": [
-                "dbaeumer.vscode-eslint",
+                "biomejs.biome",
                 "connor4312.nodejs-testing",
-                "esbenp.prettier-vscode",
                 "mtxr.sqltools",
                 "mtxr.sqltools-driver-pg"
-            ],
-            "settings": {
-                "eslint.alwaysShowStatus": true
-            }
+            ]
         }
     },
     "remoteUser": "node"

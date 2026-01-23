@@ -7,8 +7,6 @@ import { lamington } from "./lamington.ts";
  * Contains the mapping of each of the recipe's steps in its method to a unique id with its associated properties
  */
 
-export interface RecipeStepProperties {}
-
 export interface RecipeStep {
     id: string;
     recipeId: string;
