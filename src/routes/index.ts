@@ -8,6 +8,7 @@ import { createAuthRouter } from "./auth.ts";
 import { createBookRouter } from "./books.ts";
 import { createCooklistRouter } from "./cookLists.ts";
 import { default as docsRouter } from "./docs.ts";
+import { default as healthRouter } from "./health.ts";
 import { createExtractorRouter } from "./extractor.ts";
 import { createListRouter } from "./lists.ts";
 import { createMealRouter } from "./meals.ts";
@@ -46,4 +47,4 @@ const createAppRouter = (appDependencies: AppDependencies) =>
         .use(createUserRouter(appDependencies.services))
         .use("/", notFoundMiddleware);
 
-export { createAppRouter, createAuthRouter, docsRouter };
+export { createAppRouter, createAuthRouter, docsRouter, healthRouter };

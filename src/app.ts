@@ -4,7 +4,7 @@ import helmet from "helmet";
 
 import config from "./config.ts";
 import { errorMiddleware, loggerMiddleware, notFoundMiddleware } from "./middleware/index.ts";
-import { createAppRouter, docsRouter } from "./routes/index.ts";
+import { createAppRouter, docsRouter, healthRouter } from "./routes/index.ts";
 import { attachmentEndpoint, uploadDirectory } from "./routes/spec/index.ts";
 import { DefaultAppDependencies, MergeAppDependencies, type PartialAppDependencies } from "./appDependencies.ts";
 import db from "./database/index.ts";
@@ -30,6 +30,7 @@ export const setupApp = (dependencies?: PartialAppDependencies) => {
         app.use(`/v1${attachmentEndpoint}/${uploadDirectory}`, express.static(uploadDirectory));
     }
     app.use("/v1/", createAppRouter(appDependencies));
+    app.use("/health", healthRouter);
     app.use("/", docsRouter);
 
     // Catch 404 and forward to error handler

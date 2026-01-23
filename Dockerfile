@@ -31,3 +31,6 @@ COPY --from=build /home/node/app/src ./src
 EXPOSE 3000
 
 CMD npm run prod
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
+  CMD wget -qO- http://localhost:${PORT}/health || exit 1
