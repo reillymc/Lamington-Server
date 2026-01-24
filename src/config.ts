@@ -32,6 +32,7 @@ const config: LamingtonConfig = {
         logDetail: parseLogLevel(process.env.LOG_LEVEL),
         pageSize: parseInt(process.env.PAGE_SIZE ?? "50", 10),
         externalHost: process.env.EXTERNAL_HOST,
+        allowedOrigin: process.env.CORS_ALLOWED_ORIGIN,
     },
     authentication: {
         jwtSecret: process.env.JWT_SECRET,
@@ -58,6 +59,7 @@ export interface LamingtonConfig {
         logDetail: "tiny" | "short" | "dev";
         pageSize: number;
         externalHost: string | undefined;
+        allowedOrigin: string | undefined;
     };
     authentication: {
         jwtSecret: string | undefined;

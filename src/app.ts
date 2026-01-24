@@ -19,7 +19,13 @@ export const setupApp = ({ database, repositories, services }: AppParams) =>
     express()
         .use(express.json())
         .use(express.urlencoded({ extended: false }))
-        .use(cors())
+        .use(
+            cors({
+                origin: config.app.allowedOrigin,
+                methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+                allowedHeaders: ["Content-Type", "Authorization"],
+            }),
+        )
         .use(
             helmet({
                 contentSecurityPolicy: {
