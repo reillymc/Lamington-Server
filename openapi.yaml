@@ -5,6 +5,8 @@ info:
 servers:
   - url: http://localhost:3000/v1
 tags:
+  - name: Auth
+    description: Authentication operations
   - name: Meals
     description: Meal planning operations
   - name: Books
@@ -29,8 +31,6 @@ tags:
     description: User management operations
   - name: Profile
     description: User profile operations
-  - name: Auth
-    description: Authentication operations
 security:
   - bearerAuth: []
 paths:
@@ -710,6 +710,7 @@ paths:
         - Auth
       summary: Register a new user
       operationId: registerUser
+      security: []
       requestBody:
         required: true
         content:
@@ -735,12 +736,42 @@ paths:
         - Auth
       summary: Login a user
       operationId: loginUser
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/AuthLogin"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Refresh authentication token
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+              required:
+                - refreshToken
       responses:
         200:
           description: Successful response
@@ -2680,13 +2711,13 @@ components:
         authorization:
           type: object
           properties:
-            token:
+            access:
               type: string
-            tokenType:
+            refresh:
               type: string
           required:
-            - token
-            - tokenType
+            - access
+            - refresh
         user:
           type: object
           properties:

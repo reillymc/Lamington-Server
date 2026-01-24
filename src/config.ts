@@ -35,8 +35,9 @@ const config: LamingtonConfig = {
     },
     authentication: {
         jwtSecret: process.env.JWT_SECRET,
-        // TODO: handle string to ms.StringValue | number safely
-        jwtExpiration: process.env.JWT_EXPIRATION,
+        jwtAccessExpiration: process.env.JWT_ACCESS_EXPIRATION ?? "15m",
+        jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
+        jwtRefreshExpiration: process.env.JWT_REFRESH_EXPIRATION ?? "7d",
     },
     attachments: {
         storageService: parseAttachmentStorage(
@@ -60,7 +61,9 @@ export interface LamingtonConfig {
     };
     authentication: {
         jwtSecret: string | undefined;
-        jwtExpiration: string | undefined;
+        jwtAccessExpiration: string;
+        jwtRefreshSecret: string | undefined;
+        jwtRefreshExpiration: string;
     };
     attachments: {
         storageService: "local" | "s3";

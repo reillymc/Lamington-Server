@@ -1,15 +1,18 @@
 import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
+import jwt from "jsonwebtoken";
 import request from "supertest";
-
 import { setupApp } from "../../src/app.ts";
+import config from "../../src/config.ts";
 import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { comparePassword } from "../../src/services/userService.ts";
 import { CreateUsers } from "../helpers/index.ts";
+
+const { jwtRefreshSecret } = config.authentication;
 
 after(async () => {
     await db.destroy();
@@ -78,8 +81,8 @@ describe("Login a user", () => {
 
         expect(data.user.email).toEqual(user.email);
 
-        expect(data.authorization?.token).toBeTruthy();
-        expect(data.authorization?.tokenType).toEqual("Bearer");
+        expect(data.authorization?.access).toBeTruthy();
+        expect(data.authorization?.refresh).toBeTruthy();
     });
 
     it("should return pending error message when logging in with pending account", async () => {
@@ -119,7 +122,7 @@ describe("Login a user", () => {
         expect(res.statusCode).toEqual(200);
         const data = res.body as components["schemas"]["AuthResponse"];
         expect(data.user.status).toEqual("B");
-        expect(data.authorization?.token).toBeDefined();
+        expect(data.authorization).toBeUndefined();
     });
 });
 
@@ -268,5 +271,109 @@ describe("Register a new user", () => {
         const res = await request(app).post("/v1/auth/register").send(user);
 
         expect(res.statusCode).toEqual(400);
+    });
+});
+
+describe("Refresh authentication token", () => {
+    let database: KnexDatabase;
+    let app: Express;
+
+    beforeEach(async () => {
+        database = await db.transaction();
+        app = setupApp({ database });
+    });
+
+    afterEach(async () => {
+        await database.rollback();
+    });
+
+    const createValidRefreshToken = (userId: string) => {
+        return jwt.sign({ userId }, jwtRefreshSecret!, {
+            noTimestamp: true,
+            expiresIn: "5m",
+        });
+    };
+
+    it("should refresh tokens with a valid refresh token", async () => {
+        const [user] = await CreateUsers(database);
+        if (!user) throw new Error("User not created");
+
+        const refreshToken = createValidRefreshToken(user.userId);
+
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send({ refreshToken });
+
+        expect(res.statusCode).toEqual(200);
+        const data = res.body;
+
+        expect(data.authorization).toBeDefined();
+        expect(data.authorization.access).toBeDefined();
+        expect(data.authorization.refresh).toBeDefined();
+        expect(data.user.userId).toEqual(user.userId);
+    });
+
+    it("should fail with invalid refresh token", async () => {
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send({ refreshToken: "invalid-token" });
+
+        expect(res.statusCode).toEqual(401);
+    });
+
+    it("should fail with expired refresh token", async () => {
+        const expiredToken = jwt.sign(
+            { userId: "some-id" },
+            jwtRefreshSecret!,
+            {
+                noTimestamp: true,
+                expiresIn: "-1s",
+            },
+        );
+
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send({ refreshToken: expiredToken });
+
+        expect(res.statusCode).toEqual(401);
+    });
+
+    it("should fail if user does not exist", async () => {
+        const nonExistentId = "00000000-0000-0000-0000-000000000000";
+        const refreshToken = createValidRefreshToken(nonExistentId);
+
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send({ refreshToken });
+
+        expect(res.statusCode).toEqual(401);
+    });
+
+    it("should fail if user is Blacklisted", async () => {
+        const [user] = await CreateUsers(database, {
+            status: "B",
+        });
+
+        const refreshToken = createValidRefreshToken(user!.userId);
+
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send({ refreshToken });
+
+        expect(res.statusCode).toEqual(401);
+    });
+
+    it("should fail if user is Pending", async () => {
+        const [user] = await CreateUsers(database, {
+            status: "P",
+        });
+
+        const refreshToken = createValidRefreshToken(user!.userId);
+
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send({ refreshToken });
+
+        expect(res.statusCode).toEqual(401);
     });
 });
