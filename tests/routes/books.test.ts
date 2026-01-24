@@ -1,11 +1,8 @@
 import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
-import type { Knex } from "knex";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
-
-import { setupApp } from "../../src/app.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
@@ -29,24 +26,24 @@ import {
     randomCount,
     randomNumber,
 } from "../helpers/index.ts";
+import { createTestApp } from "../helpers/setup.ts";
+
+let database: KnexDatabase;
+let app: Express;
+
+beforeEach(async () => {
+    [app, database] = await createTestApp();
+});
+
+afterEach(async () => {
+    await database.rollback();
+});
 
 after(async () => {
     await db.destroy();
 });
 
 describe("get all books", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const res = await request(app).get(BookEndpoint.getBooks);
 
@@ -172,18 +169,6 @@ describe("get all books", () => {
 });
 
 describe("delete book", () => {
-    let database: Knex.Transaction;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const res = await request(app).delete(BookEndpoint.deleteBook(uuid()));
 
@@ -276,18 +261,6 @@ describe("delete book", () => {
 });
 
 describe("delete book member", () => {
-    let database: Knex.Transaction;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const res = await request(app).delete(
             BookEndpoint.deleteBookMember(uuid(), uuid()),
@@ -407,18 +380,6 @@ describe("delete book member", () => {
 });
 
 describe("delete book recipe", () => {
-    let database: Knex.Transaction;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const res = await request(app).delete(
             BookEndpoint.deleteBookRecipe(uuid(), uuid()),
@@ -661,18 +622,6 @@ describe("delete book recipe", () => {
 });
 
 describe("get book", () => {
-    let database: Knex.Transaction;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const res = await request(app).get(BookEndpoint.getBook(uuid()));
 
@@ -808,18 +757,6 @@ describe("get book", () => {
 });
 
 describe("post book", () => {
-    let database: Knex.Transaction;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const res = await request(app).post(BookEndpoint.postBook);
 
@@ -879,18 +816,6 @@ describe("post book", () => {
 });
 
 describe("put book", () => {
-    let database: Knex.Transaction;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const res = await request(app).put(BookEndpoint.putBook);
 
@@ -1134,18 +1059,6 @@ describe("put book", () => {
 });
 
 describe("post book member", () => {
-    let database: Knex.Transaction;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const res = await request(app).post(
             BookEndpoint.postBookMember(uuid()),
@@ -1225,18 +1138,6 @@ describe("post book member", () => {
 });
 
 describe("post book recipe", () => {
-    let database: Knex.Transaction;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const res = await request(app).post(
             BookEndpoint.postBookRecipe(uuid()),
@@ -1420,18 +1321,6 @@ describe("post book recipe", () => {
 });
 
 describe("get book recipes", () => {
-    let database: Knex.Transaction;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const res = await request(app).get(BookEndpoint.getBookRecipes(uuid()));
         expect(res.statusCode).toEqual(401);

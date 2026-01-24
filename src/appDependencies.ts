@@ -1,3 +1,5 @@
+import type { RequestHandler } from "express";
+import { rateLimit } from "express-rate-limit";
 import config from "./config.ts";
 import { AttachmentActions } from "./controllers/attachment.ts";
 import type { Database, KnexDatabase } from "./database/index.ts";
@@ -77,6 +79,10 @@ export type AppDependencies<T extends Database = Database> = {
     attachmentService: AttachmentService;
     attachmentActions: AttachmentActions;
     database: Database;
+    limiters: {
+        general: RequestHandler;
+        auth: RequestHandler;
+    };
 };
 
 export const DefaultAppDependencies = (
@@ -90,6 +96,22 @@ export const DefaultAppDependencies = (
             : S3AttachmentService,
     attachmentActions: AttachmentActions,
     database,
+    limiters: {
+        general: rateLimit({
+            windowMs: 15 * 60 * 1000, // 15 minutes
+            limit: 100,
+            standardHeaders: true,
+            legacyHeaders: false,
+            ipv6Subnet: 56,
+        }),
+        auth: rateLimit({
+            windowMs: 15 * 60 * 1000, // 15 minutes
+            limit: 10,
+            standardHeaders: true,
+            legacyHeaders: false,
+            ipv6Subnet: 56,
+        }),
+    },
 });
 
 export type PartialAppDependencies<T extends Database = Database> = Partial<{
@@ -98,6 +120,10 @@ export type PartialAppDependencies<T extends Database = Database> = Partial<{
     attachmentService: AttachmentService;
     attachmentActions: AttachmentActions;
     database: Database;
+    limiters: Partial<{
+        general: RequestHandler;
+        auth: RequestHandler;
+    }>;
 }>;
 
 export const MergeAppDependencies = <T extends Database = Database>(
@@ -111,4 +137,5 @@ export const MergeAppDependencies = <T extends Database = Database>(
     attachmentActions:
         overrides.attachmentActions ?? defaults.attachmentActions,
     database: overrides.database ?? defaults.database,
+    limiters: { ...defaults.limiters, ...(overrides.limiters ?? {}) },
 });

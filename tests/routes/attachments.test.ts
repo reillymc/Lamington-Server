@@ -13,6 +13,7 @@ import {
     AttachmentEndpoint,
     PrepareAuthenticatedUser,
 } from "../helpers/index.ts";
+import { createTestApp } from "../helpers/setup.ts";
 
 const MockSuccessfulAttachmentService: AttachmentService = {
     put: async () => true,
@@ -33,24 +34,25 @@ const MockFailingAttachmentActions: AttachmentActions = {
     },
 };
 
+let database: KnexDatabase;
+let app: Express;
+
+beforeEach(async () => {
+    [app, database] = await createTestApp({
+        attachmentService: MockSuccessfulAttachmentService,
+    });
+});
+
+afterEach(async () => {
+    await database.rollback();
+});
+
 after(async () => {
     await db.destroy();
 });
 
 describe("post", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({
-            database,
-            attachmentService: MockSuccessfulAttachmentService,
-        });
-    });
-
     afterEach(async () => {
-        await database.rollback();
         mock.reset();
     });
 

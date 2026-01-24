@@ -33,8 +33,12 @@ import { createUserRouter } from "./users.ts";
 export const createAppRouter = (appDependencies: AppDependencies) =>
     express
         .Router()
+        .use(appDependencies.limiters.general)
         .use(validationMiddleware)
-        .use(createAuthRouter(appDependencies.services))
+        .use(
+            appDependencies.limiters.auth,
+            createAuthRouter(appDependencies.services),
+        )
         .use(createCooklistRouter(appDependencies.services))
         .use(createExtractorRouter(appDependencies.services))
         .use(createListRouter(appDependencies.services))
@@ -47,6 +51,7 @@ export const createAppRouter = (appDependencies: AppDependencies) =>
 export const createLegacyAppRouter = (appDependencies: AppDependencies) =>
     express
         .Router()
+        .use(appDependencies.limiters.general)
         .use(createAuthenticationMiddleware(appDependencies.services))
         .use(assetEndpoint, express.static(assetsDirectory))
         .use(attachmentEndpoint, createAttachmentsRouter(appDependencies))
