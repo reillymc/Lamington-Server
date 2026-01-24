@@ -53,7 +53,7 @@ describe("Login a user", () => {
 
         const requestBody: components["schemas"]["AuthLogin"] = {
             email: user.email,
-            password: "invalid",
+            password: "invalid_password",
         };
 
         const res = await request(app).post("/v1/auth/login").send(requestBody);
@@ -157,7 +157,22 @@ describe("Register a new user", () => {
         const requestBody: Partial<components["schemas"]["AuthRegister"]> = {
             firstName: "John",
             lastName: "Doe",
-            password: "password",
+            password: "secure_password",
+        };
+
+        const res = await request(app)
+            .post("/v1/auth/register")
+            .send(requestBody);
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should fail register with short password", async () => {
+        const requestBody: components["schemas"]["AuthRegister"] = {
+            email: "user@email.com",
+            firstName: "John",
+            lastName: "Doe",
+            password: "short",
         };
 
         const res = await request(app)
@@ -172,7 +187,7 @@ describe("Register a new user", () => {
             email: "user@email.com",
             firstName: "John",
             lastName: "Doe",
-            password: "password",
+            password: "secure_password",
         };
 
         const res = await request(app)
@@ -203,7 +218,7 @@ describe("Register a new user", () => {
             email: "Email_Address@hosT.CoM",
             firstName: "John",
             lastName: "Doe",
-            password: "password",
+            password: "secure_password",
         };
 
         const res = await request(app)
@@ -231,7 +246,7 @@ describe("Register a new user", () => {
             email: "user@email.com",
             firstName: "John",
             lastName: "Doe",
-            password: "password",
+            password: "secure_password",
         } satisfies components["schemas"]["AuthRegister"];
 
         const res = await request(app)
@@ -263,7 +278,7 @@ describe("Register a new user", () => {
             email: "duplicate@example.com",
             firstName: "John",
             lastName: "Doe",
-            password: "password",
+            password: "secure_password",
         } satisfies components["schemas"]["AuthRegister"];
 
         await request(app).post("/v1/auth/register").send(user).expect(200);

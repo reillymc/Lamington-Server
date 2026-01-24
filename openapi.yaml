@@ -2677,6 +2677,10 @@ components:
       required:
         - attachmentId
         - uri
+    Password:
+      type: string
+      minLength: 12
+      maxLength: 128
     AuthRegister:
       type: object
       properties:
@@ -2688,7 +2692,7 @@ components:
         lastName:
           type: string
         password:
-          type: string
+          $ref: "#/components/schemas/Password"
       required:
         - email
         - firstName
@@ -2701,7 +2705,7 @@ components:
           type: string
           format: email
         password:
-          type: string
+          $ref: "#/components/schemas/Password"
       required:
         - email
         - password
