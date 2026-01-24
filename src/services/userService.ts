@@ -4,7 +4,8 @@ import { UniqueViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
 import {
     CreatedDataFetchError,
-    createToken,
+    createAccessToken,
+    createRefreshToken,
     InvalidOperationError,
     NotFoundError,
     PermissionError,
@@ -328,11 +329,20 @@ export const createUserService: CreateService<
         }
 
         const userPending = user.status === "P";
-        const token = !userPending ? createToken(user.userId) : undefined;
+        const userBlacklisted = user.status === "B";
+        const access = !userPending
+            ? createAccessToken(user.userId, user.status)
+            : undefined;
+        const refresh = !userPending
+            ? createRefreshToken(user.userId)
+            : undefined;
         const message = userPending ? "Account is pending approval" : undefined;
 
         return {
-            authorization: token ? { token, tokenType: "Bearer" } : undefined,
+            authorization:
+                !userPending && !userBlacklisted && access && refresh
+                    ? { access, refresh }
+                    : undefined,
             user: {
                 userId: user.userId,
                 email: user.email,

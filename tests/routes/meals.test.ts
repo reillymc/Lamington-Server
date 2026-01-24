@@ -3,8 +3,6 @@ import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
-
-import { setupApp } from "../../src/app.ts";
 import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
@@ -17,24 +15,24 @@ import {
     randomMonth,
     randomYear,
 } from "../helpers/index.ts";
+import { createTestApp } from "../helpers/setup.ts";
+
+let database: KnexDatabase;
+let app: Express;
+
+beforeEach(async () => {
+    [app, database] = await createTestApp();
+});
+
+afterEach(async () => {
+    await database.rollback();
+});
 
 after(async () => {
     await db.destroy();
 });
 
 describe("Get a meal by ID", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).get(`/v1/meals/${uuid()}`);
         expect(res.statusCode).toEqual(401);

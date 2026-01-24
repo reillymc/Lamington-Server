@@ -1,6 +1,5 @@
 import express from "express";
 import {
-    createAuthenticationMiddleware,
     errorMiddleware,
     loggerMiddleware,
     notFoundMiddleware,
@@ -43,9 +42,8 @@ export const createAppRouter: CreateRouter<
             "/v1",
             express
                 .Router()
-                .use(createAuthRouter(services))
-                .use(createAuthenticationMiddleware(services))
                 .use(validationMiddleware)
+                .use(createAuthRouter(services))
                 .use(createAssetsRouter({}))
                 .use(createAttachmentsRouter(services))
                 .use(createBookRouter(services))

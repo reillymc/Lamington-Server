@@ -11,6 +11,7 @@ import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { readAllAttachments } from "../helpers/attachment.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
+import { createTestApp } from "../helpers/setup.ts";
 
 const MockSuccessfulFileRepository: FileRepository = {
     create: mock.fn(async () => true),
@@ -31,24 +32,25 @@ const MockFailingAttachmentRepository: AttachmentRepository = {
     },
 };
 
+let database: KnexDatabase;
+let app: Express;
+
+beforeEach(async () => {
+    [app, database] = await createTestApp({
+        repositories: { fileRepository: MockSuccessfulFileRepository },
+    });
+});
+
+afterEach(async () => {
+    await database.rollback();
+});
+
 after(async () => {
     await db.destroy();
 });
 
 describe("Upload an image", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({
-            database,
-            repositories: { fileRepository: MockSuccessfulFileRepository },
-        });
-    });
-
     afterEach(async () => {
-        await database.rollback();
         mock.reset();
     });
 

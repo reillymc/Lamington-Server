@@ -3,7 +3,6 @@ import { expect } from "expect";
 import type { Express } from "express";
 import jwt from "jsonwebtoken";
 import request from "supertest";
-import { setupApp } from "../../src/app.ts";
 import config from "../../src/config.ts";
 import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
@@ -11,26 +10,26 @@ import { KnexUserRepository } from "../../src/repositories/knex/knexUserReposito
 import type { components } from "../../src/routes/spec/index.ts";
 import { comparePassword } from "../../src/services/userService.ts";
 import { CreateUsers } from "../helpers/index.ts";
+import { createTestApp } from "../helpers/setup.ts";
 
 const { jwtRefreshSecret } = config.authentication;
+
+let database: KnexDatabase;
+let app: Express;
+
+beforeEach(async () => {
+    [app, database] = await createTestApp();
+});
+
+afterEach(async () => {
+    await database.rollback();
+});
 
 after(async () => {
     await db.destroy();
 });
 
 describe("Login a user", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should fail login with invalid email", async () => {
         const [user] = await CreateUsers(database);
 
@@ -127,18 +126,6 @@ describe("Login a user", () => {
 });
 
 describe("Register a new user", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should fail register missing password", async () => {
         const requestBody: Partial<components["schemas"]["AuthRegister"]> = {
             email: "user@email.com",
@@ -290,18 +277,6 @@ describe("Register a new user", () => {
 });
 
 describe("Refresh authentication token", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     const createValidRefreshToken = (userId: string) => {
         return jwt.sign({ userId }, jwtRefreshSecret!, {
             noTimestamp: true,

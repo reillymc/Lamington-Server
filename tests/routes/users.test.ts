@@ -3,8 +3,6 @@ import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { v4 } from "uuid";
-
-import { setupApp } from "../../src/app.ts";
 import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
@@ -19,24 +17,24 @@ import {
     PrepareAuthenticatedUser,
     randomCount,
 } from "../helpers/index.ts";
+import { createTestApp } from "../helpers/setup.ts";
+
+let database: KnexDatabase;
+let app: Express;
+
+beforeEach(async () => {
+    [app, database] = await createTestApp();
+});
+
+afterEach(async () => {
+    await database.rollback();
+});
 
 after(async () => {
     await db.destroy();
 });
 
 describe("Get all users", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const res = await request(app).get("/v1/users");
 
@@ -137,18 +135,6 @@ describe("Get all users", () => {
 });
 
 describe("Delete user", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const [_, { userId }] = await PrepareAuthenticatedUser(database, "M");
 
@@ -213,18 +199,6 @@ describe("Delete user", () => {
 });
 
 describe("Approve user", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const endpoint = `/v1/users/${v4()}/approve`; // Non-existent user
         const res = await request(app).post(endpoint);
@@ -335,18 +309,6 @@ describe("Approve user", () => {
 });
 
 describe("Blacklist user", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("route should require authentication", async () => {
         const endpoint = `/v1/users/${v4()}/blacklist`;
         const res = await request(app).post(endpoint);

@@ -6,10 +6,11 @@ import {
     DefaultAppServices,
     type PartialAppDependencies,
 } from "./appDependencies.ts";
+import config from "./config.ts";
 import type { AppRepositories, Database } from "./repositories/index.ts";
 import { createAppRouter } from "./routes/index.ts";
 
-interface AppParams {
+export interface AppParams {
     database?: Database;
     services?: PartialAppDependencies;
     repositories?: Partial<AppRepositories>;
