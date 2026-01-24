@@ -1,3 +1,4 @@
+import compression from "compression";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
@@ -46,6 +47,7 @@ export const setupApp = (dependencies?: PartialAppDependencies) => {
             contentSecurityPolicy: { directives: { defaultSrc: ["'self'"] } },
         }),
     );
+    app.use(compression());
 
     // logging
     app.use(loggerMiddleware);
