@@ -1,3 +1,4 @@
+import compression from "compression";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
@@ -34,6 +35,7 @@ export const setupApp = ({ database, repositories, services }: AppParams) =>
                 },
             }),
         )
+        .use(compression())
         .use(
             createAppRouter({
                 ...DefaultAppServices(database, repositories),

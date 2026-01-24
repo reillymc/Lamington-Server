@@ -26,6 +26,7 @@
         "@aws-sdk/client-s3": "^3.879.0",
         "bcrypt": "^6.0.0",
         "cheerio": "^1.1.2",
+        "compression": "^1.8.1",
         "cors": "^2.8.5",
         "express": "^5.1.0",
         "express-openapi-validator": "^5.6.0",
@@ -48,6 +49,7 @@
     "devDependencies": {
         "@biomejs/biome": "2.3.12",
         "@types/bcrypt": "^6.0.0",
+        "@types/compression": "^1.8.1",
         "@types/cors": "^2.8.19",
         "@types/express": "^5.0.6",
         "@types/jsonwebtoken": "^9.0.10",
