@@ -30,15 +30,9 @@ import { default as tagsRouter } from "./tags.ts";
 import { createUserRouter } from "./users.ts";
 
 // TODO  createAppRouter :CreateRoute<all needed services>
-const createAppRouter = (appDependencies: AppDependencies) =>
+export const createAppRouter = (appDependencies: AppDependencies) =>
     express
         .Router()
-        .use(createAuthenticationMiddleware(appDependencies.services))
-        .use(assetEndpoint, express.static(assetsDirectory))
-        .use(attachmentEndpoint, createAttachmentsRouter(appDependencies))
-        .use(bookEndpoint, createBookRouter(appDependencies.services))
-        .use(recipeEndpoint, createRecipeRouter(appDependencies.services))
-        .use(tagEndpoint, tagsRouter)
         .use(validationMiddleware)
         .use(createAuthRouter(appDependencies.services))
         .use(createCooklistRouter(appDependencies.services))
@@ -50,4 +44,14 @@ const createAppRouter = (appDependencies: AppDependencies) =>
         .use(createUserRouter(appDependencies.services))
         .use("/", notFoundMiddleware);
 
-export { createAppRouter, createAuthRouter, docsRouter, healthRouter };
+export const createLegacyAppRouter = (appDependencies: AppDependencies) =>
+    express
+        .Router()
+        .use(createAuthenticationMiddleware(appDependencies.services))
+        .use(assetEndpoint, express.static(assetsDirectory))
+        .use(attachmentEndpoint, createAttachmentsRouter(appDependencies))
+        .use(bookEndpoint, createBookRouter(appDependencies.services))
+        .use(recipeEndpoint, createRecipeRouter(appDependencies.services))
+        .use(tagEndpoint, tagsRouter);
+
+export { createAuthRouter, docsRouter, healthRouter };

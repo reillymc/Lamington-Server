@@ -24,4 +24,8 @@ export const createAuthRouter: CreateRoute<"userService"> = ({ userService }) =>
         >("/auth/login", async ({ body }, res) => {
             const response = await userService.login(body);
             return res.status(200).json(response);
+        })
+        .post("/auth/refresh", async ({ body }, res) => {
+            const response = await userService.refresh(body.refreshToken);
+            return res.status(200).json(response);
         });

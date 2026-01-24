@@ -13,7 +13,12 @@ import {
     loggerMiddleware,
     notFoundMiddleware,
 } from "./middleware/index.ts";
-import { createAppRouter, docsRouter, healthRouter } from "./routes/index.ts";
+import {
+    createAppRouter,
+    createLegacyAppRouter,
+    docsRouter,
+    healthRouter,
+} from "./routes/index.ts";
 import { attachmentEndpoint, uploadDirectory } from "./routes/spec/index.ts";
 
 export const setupApp = (dependencies?: PartialAppDependencies) => {
@@ -49,6 +54,7 @@ export const setupApp = (dependencies?: PartialAppDependencies) => {
             express.static(uploadDirectory),
         );
     }
+    app.use("/v1/", createLegacyAppRouter(appDependencies));
     app.use("/v1/", createAppRouter(appDependencies));
     app.use("/health", healthRouter);
     app.use("/", docsRouter);
