@@ -64,6 +64,33 @@ describe("post", () => {
         expect(res.statusCode).toEqual(401);
     });
 
+    it("should respect rate limit", async () => {
+        // Override app to ensure default rate limiter is used
+        app = setupApp({
+            database,
+            attachmentService: MockSuccessfulAttachmentService,
+        });
+
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        // Exceed rate limit
+        for (let i = 0; i < 20; i++) {
+            const res = await request(app)
+                .post(AttachmentEndpoint.postImage)
+                .set(token)
+                .attach("file", "tests/testAttachment.jpg");
+
+            expect(res.statusCode).not.toEqual(429);
+        }
+
+        const res = await request(app)
+            .post(AttachmentEndpoint.postImage)
+            .set(token)
+            .attach("file", "tests/testAttachment.jpg");
+
+        expect(res.statusCode).toEqual(429);
+    });
+
     it("should fail when no file is provided", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 

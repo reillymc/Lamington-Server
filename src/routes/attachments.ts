@@ -18,12 +18,14 @@ export const createAttachmentsRouter = ({
     attachmentService,
     attachmentActions,
     database,
+    middleware,
 }: AppDependencies) => {
     const router = express.Router();
 
     // upload image
     router.post<PostImageAttachmentRequestParams, PostImageAttachmentResponse>(
         AttachmentEndpoint.postImage,
+        middleware.rateLimiterControlled,
         uploadImageMiddleware,
         async ({ file, session }, res, next) => {
             const { userId } = session;

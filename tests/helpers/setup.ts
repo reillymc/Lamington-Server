@@ -18,9 +18,10 @@ export const createTestApp = async (dependencies?: PartialAppDependencies) => {
             MergeAppDependencies(
                 MergeAppDependencies(DefaultAppDependencies(database), {
                     database,
-                    limiters: {
-                        auth: dummyRequestHandler,
-                        general: dummyRequestHandler,
+                    middleware: {
+                        rateLimiterControlled: dummyRequestHandler,
+                        rateLimiterLoose: dummyRequestHandler,
+                        rateLimiterRestrictive: dummyRequestHandler,
                     },
                 }),
                 dependencies,

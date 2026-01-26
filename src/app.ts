@@ -62,6 +62,7 @@ export const setupApp = (dependencies?: PartialAppDependencies) => {
             express.static(uploadDirectory),
         );
     }
+    app.use(appDependencies.middleware.rateLimiterLoose);
     app.use("/v1/", createLegacyAppRouter(appDependencies));
     app.use("/v1/", createAppRouter(appDependencies));
     app.use("/health", healthRouter);
