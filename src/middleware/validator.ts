@@ -79,16 +79,17 @@ const openApiValidatorMiddlewares = OpenApiValidator.middleware({
 });
 
 // biome-ignore lint/suspicious/noExplicitAny: OpenAPI middleware incompatible with strictly typed routes
-type Handler = RequestHandler<any, any, unknown, any>;
+export type Validator = RequestHandler<any, any, unknown, any>;
 
-export const validationMiddleware: Handler[] = openApiValidatorMiddlewares.map(
-    (middleware): Handler =>
-        async (req, res, next) => {
-            await middleware(req, res, (error) => {
-                if (error) {
-                    return next(new ValidationError(error));
-                }
-                next();
-            });
-        },
-);
+export const createValidatorMiddleware = (): Validator[] =>
+    openApiValidatorMiddlewares.map(
+        (middleware): Validator =>
+            async (req, res, next) => {
+                await middleware(req, res, (error) => {
+                    if (error) {
+                        return next(new ValidationError(error));
+                    }
+                    next();
+                });
+            },
+    );

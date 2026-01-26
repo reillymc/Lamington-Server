@@ -1,4 +1,4 @@
-import { after, afterEach, beforeEach, describe, it } from "node:test";
+import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
 import jwt from "jsonwebtoken";
@@ -12,15 +12,6 @@ import { CreateUsers } from "./helpers/index.ts";
 
 let database: KnexDatabase;
 let app: Express;
-
-beforeEach(async () => {
-    database = await db.transaction();
-    app = setupApp({ database }); // App setup with default rate limiter
-});
-
-afterEach(async () => {
-    await database.rollback();
-});
 
 after(async () => {
     await db.destroy();
@@ -96,104 +87,97 @@ describe("Authentication Middleware", () => {
     });
 });
 
-describe("rate limits", () => {
-    describe("for auth", () => {
-        describe("login", () => {
-            it("should trigger 429 response after 10 requests", async () => {
-                const [user] = await CreateUsers(database);
+describe("Rate Limiter Middleware", () => {
+    describe("for auth", async () => {
+        before(async () => {
+            database = await db.transaction();
+            app = setupApp({ database }); // App setup with default rate limiter
 
-                const requestBody: components["schemas"]["AuthLogin"] = {
-                    email: user!.email,
-                    password: user!.password,
-                };
+            const [user] = await CreateUsers(database);
 
-                for (let i = 0; i < 10; i++) {
-                    const res = await request(app)
-                        .post("/v1/auth/login")
-                        .send(requestBody);
-                    expect(res.statusCode).not.toEqual(429);
-                }
+            const requestBody: components["schemas"]["AuthLogin"] = {
+                email: user!.email,
+                password: user!.password,
+            };
 
+            // Exceed rate limit for auth endpoints
+            for (let i = 0; i < 5; i++) {
                 const res = await request(app)
                     .post("/v1/auth/login")
                     .send(requestBody);
-                expect(res.statusCode).toEqual(429);
-            });
+                expect(res.statusCode).not.toEqual(429);
+            }
         });
 
-        describe("for register", () => {
-            it("should trigger 429 response after 10 requests", async () => {
-                const requestBody: components["schemas"]["AuthRegister"] = {
-                    email: "test@example.com",
-                    firstName: "Test",
-                    lastName: "User",
-                    password: "secure_password",
-                };
-
-                for (let i = 0; i < 10; i++) {
-                    const res = await request(app)
-                        .post("/v1/auth/register")
-                        .send({
-                            ...requestBody,
-                            email: `test${i}@example.com`,
-                        });
-                    expect(res.statusCode).not.toEqual(429);
-                }
-
-                const res = await request(app)
-                    .post("/v1/auth/register")
-                    .send({ ...requestBody, email: "final@example.com" });
-                expect(res.statusCode).toEqual(429);
-            });
+        after(async () => {
+            await database.rollback();
         });
 
-        describe("for refresh", () => {
-            it("should trigger 429 response after 10 requests", async () => {
-                const requestBody = { refreshToken: "some-token" };
+        it("login should trigger 429 response after 5 requests", async () => {
+            const [user] = await CreateUsers(database);
 
-                for (let i = 0; i < 10; i++) {
-                    const res = await request(app)
-                        .post("/v1/auth/refresh")
-                        .send(requestBody);
-                    expect(res.statusCode).not.toEqual(429);
-                }
+            const requestBody: components["schemas"]["AuthLogin"] = {
+                email: user!.email,
+                password: user!.password,
+            };
 
-                const res = await request(app)
-                    .post("/v1/auth/refresh")
-                    .send(requestBody);
-                expect(res.statusCode).toEqual(429);
-            });
+            const res = await request(app)
+                .post("/v1/auth/login")
+                .send(requestBody);
+            expect(res.statusCode).toEqual(429);
+        });
+
+        it("register should trigger 429 response after 5 requests", async () => {
+            const requestBody: components["schemas"]["AuthRegister"] = {
+                email: "test@example.com",
+                firstName: "Test",
+                lastName: "User",
+                password: "secure_password",
+            };
+
+            const res = await request(app)
+                .post("/v1/auth/register")
+                .send({ ...requestBody, email: "final@example.com" });
+            expect(res.statusCode).toEqual(429);
+        });
+
+        it("refresh should trigger 429 response after 5 requests", async () => {
+            const requestBody = { refreshToken: "some-token" };
+
+            const res = await request(app)
+                .post("/v1/auth/refresh")
+                .send(requestBody);
+            expect(res.statusCode).toEqual(429);
         });
     });
 
     describe("for general", () => {
-        it("books should trigger 429 response after 100 requests", async () => {
+        before(async () => {
+            database = await db.transaction();
+            app = setupApp({ database }); // App setup with default rate limiter
+
+            // Exceed rate limit for general endpoints
             for (let i = 0; i < 100; i++) {
-                const res = await request(app).get("/v1/books");
+                const res = await request(app).get("/v1/planners");
                 expect(res.statusCode).not.toEqual(429);
             }
+        });
 
+        after(async () => {
+            await database.rollback();
+        });
+
+        it("books should trigger 429 response after 100 requests", async () => {
             const res = await request(app).get("/v1/books");
             expect(res.statusCode).toEqual(429);
         });
 
         it("planners should trigger 429 response after 100 requests", async () => {
-            for (let i = 0; i < 100; i++) {
-                const res = await request(app).get("/v1/planners");
-                expect(res.statusCode).not.toEqual(429);
-            }
-
             const res = await request(app).get("/v1/planners");
             expect(res.statusCode).toEqual(429);
         });
 
         it("lists should trigger 429 response after 100 requests", async () => {
-            for (let i = 0; i < 100; i++) {
-                const res = await request(app).delete(`/v1/lists/${v4()}`);
-
-                expect(res.statusCode).not.toEqual(429);
-            }
-
             const res = await request(app).delete(`/v1/lists/${v4()}`);
 
             expect(res.statusCode).toEqual(429);

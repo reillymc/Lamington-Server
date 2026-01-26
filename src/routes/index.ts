@@ -4,7 +4,6 @@ import {
     loggerMiddleware,
     notFoundMiddleware,
 } from "../middleware/index.ts";
-import { validationMiddleware } from "../middleware/validator.ts";
 import { createAssetsRouter } from "./assets.ts";
 import { createAttachmentsRouter } from "./attachments.ts";
 import { createAuthRouter } from "./auth.ts";
@@ -32,8 +31,12 @@ export const createAppRouter: CreateRouter<
     | "mealService"
     | "plannerService"
     | "recipeService"
-    | "tagService"
-> = (services) =>
+    | "tagService",
+    | "rateLimiterControlled"
+    | "rateLimiterLoose"
+    | "rateLimiterRestrictive"
+    | "validator"
+> = (services, middleware) =>
     express
         .Router()
         .use(loggerMiddleware)
@@ -42,10 +45,11 @@ export const createAppRouter: CreateRouter<
             "/v1",
             express
                 .Router()
-                .use(validationMiddleware)
-                .use(createAuthRouter(services))
+                .use(middleware.rateLimiterLoose)
+                .use(middleware.validator)
+                .use(createAuthRouter(services, middleware))
                 .use(createAssetsRouter({}))
-                .use(createAttachmentsRouter(services))
+                .use(createAttachmentsRouter(services, middleware))
                 .use(createBookRouter(services))
                 .use(createCooklistRouter(services))
                 .use(createExtractorRouter(services))
