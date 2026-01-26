@@ -1,3 +1,4 @@
+import compression from "compression";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
@@ -13,7 +14,12 @@ import {
     loggerMiddleware,
     notFoundMiddleware,
 } from "./middleware/index.ts";
-import { createAppRouter, docsRouter, healthRouter } from "./routes/index.ts";
+import {
+    createAppRouter,
+    createLegacyAppRouter,
+    docsRouter,
+    healthRouter,
+} from "./routes/index.ts";
 import { attachmentEndpoint, uploadDirectory } from "./routes/spec/index.ts";
 
 export const setupApp = (dependencies?: PartialAppDependencies) => {
@@ -29,12 +35,19 @@ export const setupApp = (dependencies?: PartialAppDependencies) => {
     // app setup
     app.use(express.json());
     app.use(express.urlencoded({ extended: false }));
-    app.use(cors());
+    app.use(
+        cors({
+            origin: config.app.allowedOrigin,
+            methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+            allowedHeaders: ["Content-Type", "Authorization"],
+        }),
+    );
     app.use(
         helmet({
             contentSecurityPolicy: { directives: { defaultSrc: ["'self'"] } },
         }),
     );
+    app.use(compression());
 
     // logging
     app.use(loggerMiddleware);
@@ -49,6 +62,8 @@ export const setupApp = (dependencies?: PartialAppDependencies) => {
             express.static(uploadDirectory),
         );
     }
+    app.use(appDependencies.middleware.rateLimiterLoose);
+    app.use("/v1/", createLegacyAppRouter(appDependencies));
     app.use("/v1/", createAppRouter(appDependencies));
     app.use("/health", healthRouter);
     app.use("/", docsRouter);

@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import * as OpenApiValidator from "express-openapi-validator";
 import { ValidationError } from "../services/logging.ts";
+import { bearerAuthValidator } from "./authentication.ts";
 
 export const openApiValidatorMiddlewares = OpenApiValidator.middleware({
     apiSpec: "./openapi.yaml",
@@ -10,7 +11,11 @@ export const openApiValidatorMiddlewares = OpenApiValidator.middleware({
         removeAdditional: true,
     },
     validateApiSpec: true,
-    validateSecurity: false,
+    validateSecurity: {
+        handlers: {
+            bearerAuth: bearerAuthValidator,
+        },
+    },
     validateFormats: true,
     ajvFormats: {
         mode: "full",

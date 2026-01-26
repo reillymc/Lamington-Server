@@ -1,32 +1,35 @@
 import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
+import jwt from "jsonwebtoken";
 import request from "supertest";
-
-import { setupApp } from "../../src/app.ts";
+import config from "../../src/config.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import { type components, UserStatus } from "../../src/routes/spec/index.ts";
+
 import { comparePassword } from "../../src/services/password.ts";
 import { CreateUsers } from "../helpers/index.ts";
+import { createTestApp } from "../helpers/setup.ts";
+
+const { jwtRefreshSecret } = config.authentication;
+
+let database: KnexDatabase;
+let app: Express;
+
+beforeEach(async () => {
+    [app, database] = await createTestApp();
+});
+
+afterEach(async () => {
+    await database.rollback();
+});
 
 after(async () => {
     await db.destroy();
 });
 
 describe("Login a user", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should fail login with invalid email", async () => {
         const [user] = await CreateUsers(database);
 
@@ -49,7 +52,7 @@ describe("Login a user", () => {
 
         const requestBody: components["schemas"]["AuthLogin"] = {
             email: user.email,
-            password: "invalid",
+            password: "invalid_password",
         };
 
         const res = await request(app).post("/v1/auth/login").send(requestBody);
@@ -77,8 +80,8 @@ describe("Login a user", () => {
 
         expect(data.user.email).toEqual(user.email);
 
-        expect(data.authorization?.token).toBeTruthy();
-        expect(data.authorization?.tokenType).toEqual("Bearer");
+        expect(data.authorization?.access).toBeTruthy();
+        expect(data.authorization?.refresh).toBeTruthy();
     });
 
     it("should return pending error message when logging in with pending account", async () => {
@@ -118,23 +121,11 @@ describe("Login a user", () => {
         expect(res.statusCode).toEqual(200);
         const data = res.body as components["schemas"]["AuthResponse"];
         expect(data.user.status).toEqual(UserStatus.Blacklisted);
-        expect(data.authorization?.token).toBeDefined();
+        expect(data.authorization).toBeUndefined();
     });
 });
 
 describe("Register a new user", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should fail register missing password", async () => {
         const requestBody: Partial<components["schemas"]["AuthRegister"]> = {
             email: "user@email.com",
@@ -153,7 +144,22 @@ describe("Register a new user", () => {
         const requestBody: Partial<components["schemas"]["AuthRegister"]> = {
             firstName: "John",
             lastName: "Doe",
-            password: "password",
+            password: "secure_password",
+        };
+
+        const res = await request(app)
+            .post("/v1/auth/register")
+            .send(requestBody);
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should fail register with short password", async () => {
+        const requestBody: components["schemas"]["AuthRegister"] = {
+            email: "user@email.com",
+            firstName: "John",
+            lastName: "Doe",
+            password: "short",
         };
 
         const res = await request(app)
@@ -168,7 +174,7 @@ describe("Register a new user", () => {
             email: "user@email.com",
             firstName: "John",
             lastName: "Doe",
-            password: "password",
+            password: "secure_password",
         };
 
         const res = await request(app)
@@ -199,7 +205,7 @@ describe("Register a new user", () => {
             email: "Email_Address@hosT.CoM",
             firstName: "John",
             lastName: "Doe",
-            password: "password",
+            password: "secure_password",
         };
 
         const res = await request(app)
@@ -227,7 +233,7 @@ describe("Register a new user", () => {
             email: "user@email.com",
             firstName: "John",
             lastName: "Doe",
-            password: "password",
+            password: "secure_password",
         } satisfies components["schemas"]["AuthRegister"];
 
         const res = await request(app)
@@ -259,7 +265,7 @@ describe("Register a new user", () => {
             email: "duplicate@example.com",
             firstName: "John",
             lastName: "Doe",
-            password: "password",
+            password: "secure_password",
         } satisfies components["schemas"]["AuthRegister"];
 
         await request(app).post("/v1/auth/register").send(user).expect(200);
@@ -267,5 +273,99 @@ describe("Register a new user", () => {
         const res = await request(app).post("/v1/auth/register").send(user);
 
         expect(res.statusCode).toEqual(400);
+    });
+});
+
+describe("Refresh authentication token", () => {
+    const createValidRefreshToken = (userId: string) => {
+        return jwt.sign({ userId }, jwtRefreshSecret!, {
+            noTimestamp: true,
+            expiresIn: "5m",
+        });
+    };
+
+    it("should refresh tokens with a valid refresh token", async () => {
+        const [user] = await CreateUsers(database);
+        if (!user) throw new Error("User not created");
+
+        const refreshToken = createValidRefreshToken(user.userId);
+
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send({ refreshToken });
+
+        expect(res.statusCode).toEqual(200);
+        const data = res.body;
+
+        expect(data.authorization).toBeDefined();
+        expect(data.authorization.access).toBeDefined();
+        expect(data.authorization.refresh).toBeDefined();
+        expect(data.user.userId).toEqual(user.userId);
+    });
+
+    it("should fail with invalid refresh token", async () => {
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send({ refreshToken: "invalid-token" });
+
+        expect(res.statusCode).toEqual(401);
+    });
+
+    it("should fail with expired refresh token", async () => {
+        const expiredToken = jwt.sign(
+            { userId: "some-id" },
+            jwtRefreshSecret!,
+            {
+                noTimestamp: true,
+                expiresIn: "-1s",
+            },
+        );
+
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send({ refreshToken: expiredToken });
+
+        expect(res.statusCode).toEqual(401);
+    });
+
+    it("should fail if user does not exist", async () => {
+        const nonExistentId = "00000000-0000-0000-0000-000000000000";
+        const refreshToken = createValidRefreshToken(nonExistentId);
+
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send({ refreshToken });
+
+        expect(res.statusCode).toEqual(401);
+    });
+
+    it("should fail if user is Blacklisted", async () => {
+        const [user] = await CreateUsers(database, {
+            status: UserStatus.Blacklisted,
+        });
+        if (!user) throw new Error("User not created");
+
+        const refreshToken = createValidRefreshToken(user.userId);
+
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send({ refreshToken });
+
+        expect(res.statusCode).toEqual(401);
+    });
+
+    it("should fail if user is Pending", async () => {
+        const [user] = await CreateUsers(database, {
+            status: UserStatus.Pending,
+        });
+        if (!user) throw new Error("User not created");
+
+        const refreshToken = createValidRefreshToken(user.userId);
+
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send({ refreshToken });
+
+        expect(res.statusCode).toEqual(401);
     });
 });

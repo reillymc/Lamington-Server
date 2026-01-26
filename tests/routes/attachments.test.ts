@@ -13,6 +13,7 @@ import {
     AttachmentEndpoint,
     PrepareAuthenticatedUser,
 } from "../helpers/index.ts";
+import { createTestApp } from "../helpers/setup.ts";
 
 const MockSuccessfulAttachmentService: AttachmentService = {
     put: async () => true,
@@ -33,24 +34,25 @@ const MockFailingAttachmentActions: AttachmentActions = {
     },
 };
 
+let database: KnexDatabase;
+let app: Express;
+
+beforeEach(async () => {
+    [app, database] = await createTestApp({
+        attachmentService: MockSuccessfulAttachmentService,
+    });
+});
+
+afterEach(async () => {
+    await database.rollback();
+});
+
 after(async () => {
     await db.destroy();
 });
 
 describe("post", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({
-            database,
-            attachmentService: MockSuccessfulAttachmentService,
-        });
-    });
-
     afterEach(async () => {
-        await database.rollback();
         mock.reset();
     });
 
@@ -60,6 +62,33 @@ describe("post", () => {
             .attach("file", "tests/testAttachment.jpg");
 
         expect(res.statusCode).toEqual(401);
+    });
+
+    it("should respect rate limit", async () => {
+        // Override app to ensure default rate limiter is used
+        app = setupApp({
+            database,
+            attachmentService: MockSuccessfulAttachmentService,
+        });
+
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        // Exceed rate limit
+        for (let i = 0; i < 20; i++) {
+            const res = await request(app)
+                .post(AttachmentEndpoint.postImage)
+                .set(token)
+                .attach("file", "tests/testAttachment.jpg");
+
+            expect(res.statusCode).not.toEqual(429);
+        }
+
+        const res = await request(app)
+            .post(AttachmentEndpoint.postImage)
+            .set(token)
+            .attach("file", "tests/testAttachment.jpg");
+
+        expect(res.statusCode).toEqual(429);
     });
 
     it("should fail when no file is provided", async () => {

@@ -1,6 +1,12 @@
 import config from "./config.ts";
 import { AttachmentActions } from "./controllers/attachment.ts";
 import type { Database, KnexDatabase } from "./database/index.ts";
+import type { AppMiddleware } from "./middleware/index.ts";
+import {
+    createRateLimiterControlled,
+    createRateLimiterLoose,
+    createRateLimiterRestrictive,
+} from "./middleware/rateLimiters.ts";
 import type { AppRepositories } from "./repositories/index.ts";
 import { KnexBookRepository } from "./repositories/knex/knexBookRepository.ts";
 import { KnexCookListRepository } from "./repositories/knex/knexCooklistRepository.ts";
@@ -71,33 +77,42 @@ export const DefaultAppServices = (database: Database): AppServices => ({
     ),
 });
 
+const DefaultAppMiddleware = (): AppMiddleware => ({
+    rateLimiterControlled: createRateLimiterControlled(),
+    rateLimiterLoose: createRateLimiterLoose(),
+    rateLimiterRestrictive: createRateLimiterRestrictive(),
+});
+
 export type AppDependencies<T extends Database = Database> = {
-    services: AppServices;
-    repositories: AppRepositories<T>;
-    attachmentService: AttachmentService;
     attachmentActions: AttachmentActions;
+    attachmentService: AttachmentService;
     database: Database;
+    middleware: AppMiddleware;
+    repositories: AppRepositories<T>;
+    services: AppServices;
 };
 
 export const DefaultAppDependencies = (
     database: Database,
 ): AppDependencies => ({
-    services: DefaultAppServices(database),
-    repositories: DefaultAppRepositories as AppRepositories,
+    attachmentActions: AttachmentActions,
     attachmentService:
         config.attachments.storageService === "local"
             ? LocalAttachmentService
             : S3AttachmentService,
-    attachmentActions: AttachmentActions,
     database,
+    middleware: DefaultAppMiddleware(),
+    repositories: DefaultAppRepositories as AppRepositories,
+    services: DefaultAppServices(database),
 });
 
 export type PartialAppDependencies<T extends Database = Database> = Partial<{
-    services: Partial<AppServices>;
-    repositories: Partial<AppRepositories<T>>;
-    attachmentService: AttachmentService;
     attachmentActions: AttachmentActions;
+    attachmentService: AttachmentService;
     database: Database;
+    middleware: Partial<AppMiddleware>;
+    repositories: Partial<AppRepositories<T>>;
+    services: Partial<AppServices>;
 }>;
 
 export const MergeAppDependencies = <T extends Database = Database>(
@@ -111,4 +126,5 @@ export const MergeAppDependencies = <T extends Database = Database>(
     attachmentActions:
         overrides.attachmentActions ?? defaults.attachmentActions,
     database: overrides.database ?? defaults.database,
+    middleware: { ...defaults.middleware, ...(overrides.middleware ?? {}) },
 });

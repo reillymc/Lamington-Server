@@ -12,10 +12,10 @@ const applyColor = ({
 const formatAuthenticationString = (
     config: LamingtonConfig["authentication"],
 ) => {
-    const message = `Authentication: JWT Secret=${!!config.jwtSecret}, Expiration=${config.jwtExpiration}`;
+    const message = `Authentication: JWT Secret=${!!config.jwtSecret}, JWT Refresh Secret=${!!config.jwtRefreshSecret}`;
     let error = false;
 
-    if (!config.jwtSecret || !config.jwtExpiration) {
+    if (!config.jwtSecret || !config.jwtRefreshSecret) {
         error = true;
     }
 

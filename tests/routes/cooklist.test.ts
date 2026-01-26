@@ -3,8 +3,6 @@ import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
-
-import { setupApp } from "../../src/app.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
 import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
@@ -19,24 +17,24 @@ import {
     randomYear,
 } from "../helpers/index.ts";
 import { randomCourse } from "../helpers/meal.ts";
+import { createTestApp } from "../helpers/setup.ts";
+
+let database: KnexDatabase;
+let app: Express;
+
+beforeEach(async () => {
+    [app, database] = await createTestApp();
+});
+
+afterEach(async () => {
+    await database.rollback();
+});
 
 after(async () => {
     await db.destroy();
 });
 
 describe("Add meal to cook list", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).post("/v1/cooklist/meals");
 
@@ -183,18 +181,6 @@ describe("Add meal to cook list", () => {
 });
 
 describe("Update meal in cook list", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).patch(`/v1/cooklist/meals/${uuid()}`);
         expect(res.statusCode).toEqual(401);
@@ -436,18 +422,6 @@ describe("Update meal in cook list", () => {
 });
 
 describe("Remove meal from cook list", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).delete(`/v1/cooklist/meals/${uuid()}`);
 
@@ -553,18 +527,6 @@ describe("Remove meal from cook list", () => {
 });
 
 describe("Get cook list meals", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).get("/v1/cooklist/meals");
 

@@ -3,8 +3,6 @@ import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
-
-import { setupApp } from "../../src/app.ts";
 import { TagActions } from "../../src/controllers/index.ts";
 import db, {
     type KnexDatabase,
@@ -33,24 +31,24 @@ import {
     randomNumber,
     TEST_ITEM_COUNT,
 } from "../helpers/index.ts";
+import { createTestApp } from "../helpers/setup.ts";
+
+let database: KnexDatabase;
+let app: Express;
+
+beforeEach(async () => {
+    [app, database] = await createTestApp();
+});
+
+afterEach(async () => {
+    await database.rollback();
+});
 
 after(async () => {
     await db.destroy();
 });
 
 describe("get all recipes", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).get(RecipeEndpoint.getAllRecipes());
 
@@ -660,18 +658,6 @@ describe("get all recipes", () => {
 });
 
 describe("get my recipes", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).get(RecipeEndpoint.getMyRecipes());
 
@@ -1234,18 +1220,6 @@ describe("get my recipes", () => {
 });
 
 describe("post recipe", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).post(RecipeEndpoint.postRecipe);
 
