@@ -32,13 +32,13 @@ type BaseResponse = {
         userId: User["userId"];
         firstName: User["firstName"];
     };
-    status?: string;
+    status?: BookUserStatus;
 };
 
 export type ReadAllResponse = {
     userId: User["userId"];
     filter?: ReadFilters;
-    books: Array<BaseResponse>;
+    books: ReadonlyArray<BaseResponse>;
 };
 
 type VerifyPermissionsRequest = {
@@ -46,16 +46,16 @@ type VerifyPermissionsRequest = {
     /**
      * Will return true of user is a member of a book with the provided statuses
      */
-    status?: User["status"] | Array<User["status"]>;
-    books: Array<{
+    status: BookUserStatus | ReadonlyArray<BookUserStatus>;
+    books: ReadonlyArray<{
         bookId: Book["bookId"];
     }>;
 };
 
 type VerifyPermissionsResponse = {
     userId: User["userId"];
-    status?: User["status"] | Array<User["status"]>;
-    books: Array<{
+    status?: BookUserStatus | ReadonlyArray<BookUserStatus>;
+    books: ReadonlyArray<{
         bookId: Book["bookId"];
         hasPermissions: boolean;
     }>;
@@ -63,12 +63,11 @@ type VerifyPermissionsResponse = {
 
 type CreateRequest = {
     userId: User["userId"];
-    books: Array<{
+    books: ReadonlyArray<{
         name: Book["name"];
         description?: Book["description"];
         color?: string;
         icon?: string;
-        members?: Array<MemberItem>;
     }>;
 };
 
@@ -76,13 +75,12 @@ type CreateResponse = ReadResponse;
 
 type UpdateRequest = {
     userId: User["userId"];
-    books: Array<{
+    books: ReadonlyArray<{
         bookId: Book["bookId"];
         name?: Book["name"];
         description?: Book["description"];
         color?: string;
         icon?: string;
-        members?: Array<MemberItem>;
     }>;
 };
 
@@ -91,22 +89,18 @@ type UpdateResponse = ReadResponse;
 type SaveMemberRequest = MemberItem;
 type ReadRequest = {
     userId: User["userId"];
-    books: Array<{
+    books: ReadonlyArray<{
         bookId: Book["bookId"];
     }>;
 };
 
 export type ReadResponse = {
     userId: User["userId"];
-    books: Array<
-        BaseResponse & {
-            members: Array<MemberItem>;
-        }
-    >;
+    books: ReadonlyArray<BaseResponse>;
 };
 
 type DeleteRequest = {
-    books: Array<{
+    books: ReadonlyArray<{
         bookId: Book["bookId"];
     }>;
 };
@@ -117,21 +111,21 @@ type DeleteResponse = {
 
 type SaveRecipesRequest = {
     bookId: Book["bookId"];
-    recipes: Array<{
+    recipes: ReadonlyArray<{
         recipeId: Recipe["recipeId"];
     }>;
 };
 
 export type SaveRecipesResponse = {
     bookId: Book["bookId"];
-    recipes: Array<{
+    recipes: ReadonlyArray<{
         recipeId: Recipe["recipeId"];
     }>;
 };
 
 type RemoveRecipesRequest = {
     bookId: Book["bookId"];
-    recipes: Array<{
+    recipes: ReadonlyArray<{
         recipeId: Recipe["recipeId"];
     }>;
 };
@@ -143,17 +137,17 @@ type RemoveRecipesResponse = {
 
 type SaveMembersRequest = {
     bookId: Book["bookId"];
-    members?: Array<SaveMemberRequest>;
+    members?: ReadonlyArray<SaveMemberRequest>;
 };
 
 export type SaveMembersResponse = {
     bookId: Book["bookId"];
-    members: Array<MemberItem>;
+    members: ReadonlyArray<MemberItem>;
 };
 
 type RemoveMembersRequest = {
     bookId: Book["bookId"];
-    members: Array<{
+    members: ReadonlyArray<{
         userId: ContentMember["userId"];
     }>;
 };
@@ -169,7 +163,7 @@ type ReadMembersRequest = {
 
 type ReadMembersResponse = {
     bookId: Book["bookId"];
-    members: Array<
+    members: ReadonlyArray<
         MemberItem & {
             firstName: User["firstName"];
             lastName: User["lastName"];

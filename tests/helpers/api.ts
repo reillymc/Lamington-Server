@@ -1,16 +1,12 @@
 import {
     type AttachmentServices,
     attachmentEndpoint,
-    type BookApi,
-    bookEndpoint,
-    bookMemberSubpath,
     type GetAllRecipesRequestQuery,
     type GetMyRecipesRequestQuery,
     imageSubpath,
     type RecipeApi,
     rateSubpath,
     recipeEndpoint,
-    recipeSubpath,
     type TagServices,
     tagEndpoint,
     uploadDirectory,
@@ -34,25 +30,6 @@ export const AttachmentEndpoint = {
     downloadImage:
         `${ApiUrl}${attachmentEndpoint}/${uploadDirectory}/` as const,
 } as const satisfies Record<keyof AttachmentServices, Endpoint>;
-
-export const BookEndpoint = {
-    deleteBook: (bookId: string) =>
-        `${ApiUrl}${bookEndpoint}/${bookId}` as const,
-    deleteBookRecipe: (bookId: string, recipeId: string) =>
-        `${ApiUrl}${bookEndpoint}/${bookId}/${recipeSubpath}/${recipeId}` as const,
-    getBook: (bookId: string) => `${ApiUrl}${bookEndpoint}/${bookId}` as const,
-    getBooks: `${ApiUrl}${bookEndpoint}`,
-    postBook: `${ApiUrl}${bookEndpoint}`,
-    putBook: `${ApiUrl}${bookEndpoint}`,
-    postBookRecipe: (bookId: string) =>
-        `${ApiUrl}${bookEndpoint}/${bookId}/${recipeSubpath}` as const,
-    deleteBookMember: (bookId: string, memberId: string) =>
-        `${ApiUrl}${bookEndpoint}/${bookId}/${bookMemberSubpath}/${memberId}` as const,
-    postBookMember: (bookId: string) =>
-        `${ApiUrl}${bookEndpoint}/${bookId}/${bookMemberSubpath}` as const,
-    getBookRecipes: (bookId: string) =>
-        `${ApiUrl}${bookEndpoint}/${bookId}/${recipeSubpath}` as const,
-} as const satisfies Record<keyof BookApi, Endpoint>;
 
 export const RecipeEndpoint = {
     deleteRecipe: (recipeId: string) =>

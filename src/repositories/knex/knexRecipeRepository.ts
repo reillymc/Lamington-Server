@@ -47,6 +47,7 @@ import type { RecipeMethod } from "../../routes/spec/recipe.ts";
 import {
     EnsureArray,
     ObjectFromEntries,
+    toUndefined,
     Undefined,
 } from "../../utils/index.ts";
 import type { RecipeRepository } from "../recipeRepository.ts";
@@ -445,6 +446,24 @@ const getFullRecipe = async (
     return query;
 };
 
+const formatRecipe = (recipe: any) => ({
+    recipeId: recipe.recipeId,
+    name: recipe.name,
+    cookTime: toUndefined(recipe.cookTime),
+    prepTime: toUndefined(recipe.prepTime),
+    servings: toUndefined(recipe.servings),
+    source: toUndefined(recipe.source),
+    summary: toUndefined(recipe.summary),
+    tips: toUndefined(recipe.tips),
+    timesCooked: recipe.timesCooked,
+    public: recipe.public,
+    nutritionalInformation: toUndefined(recipe.nutritionalInformation),
+    owner: {
+        userId: recipe.createdBy,
+        firstName: recipe.createdByName,
+    },
+});
+
 const read: RecipeRepository<KnexDatabase>["read"] = async (
     db,
     { userId, recipes },
@@ -478,25 +497,11 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
         );
 
         response.push({
-            recipeId: recipe.recipeId,
-            owner: {
-                userId: recipe.createdBy,
-                firstName: recipe.createdByName,
-            },
+            ...formatRecipe(recipe),
             rating: {
                 average: parseFloat(recipe[ratingAverageName]),
-                personal: recipe[ratingPersonalName],
+                personal: toUndefined(recipe[ratingPersonalName]),
             },
-            name: recipe.name,
-            cookTime: recipe.cookTime,
-            nutritionalInformation: recipe.nutritionalInformation,
-            prepTime: recipe.prepTime,
-            public: recipe.public,
-            servings: recipe.servings,
-            source: recipe.source,
-            summary: recipe.summary,
-            timesCooked: recipe.timesCooked,
-            tips: recipe.tips,
             ingredients: recipeIngredientRowsToResponse({
                 ingredients,
                 sections,
@@ -792,9 +797,9 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                     heroAttachmentUri,
                     ...recipe
                 }) => ({
-                    ...recipe,
+                    ...formatRecipe(recipe),
                     ratingAverage: parseFloat(ratingAverage),
-                    ratingPersonal,
+                    ratingPersonal: toUndefined(ratingPersonal),
                     tags: ContentTagRowsToResponse(
                         recipeCategoriesList.filter(
                             (cat) =>
@@ -810,10 +815,6 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                               },
                           }
                         : undefined,
-                    owner: {
-                        userId: recipe.createdBy,
-                        firstName: recipe.createdByName,
-                    },
                 }),
             ),
         };

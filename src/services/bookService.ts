@@ -1,422 +1,456 @@
-import type {
-    ReadAllResponse,
-    ReadResponse,
-    SaveMembersResponse,
-    SaveRecipesResponse,
-} from "../repositories/bookRepository.ts";
-import type {
-    ReadAllResponse as ReadAllRecipesResponse,
-    ReadAllRequest,
-} from "../repositories/recipeRepository.ts";
-import type {
-    DeleteBookMemberRequest,
-    DeleteBookRecipeRequest,
-    DeleteBookRequest,
-    GetBookRequest,
-    GetBooksRequest,
-    PostBookMemberRequest,
-    PostBookRecipeRequest,
-    PostBookRequest,
-    PostBookRequestBody,
-    PutBookRequest,
-    PutBookRequestBody,
-} from "../routes/spec/book.ts";
-import { UserStatus } from "../routes/spec/user.ts";
+import { ForeignKeyViolationError } from "../repositories/common/errors.ts";
+import type { components } from "../routes/spec/index.ts";
 import {
-    BisectOnValidPartialItems,
-    EnsureDefinedArray,
-    Undefined,
-} from "../utils/index.ts";
-import { AppError } from "./logging.ts";
+    CreatedDataFetchError,
+    InvalidOperationError,
+    NotFoundError,
+    UpdatedDataFetchError,
+} from "./logging.ts";
 import type { CreateService } from "./service.ts";
 
 export interface BookService {
-    get: (
-        userId: string,
-        request: GetBookRequest,
-    ) => Promise<ReadResponse["books"][number]>;
     getAll: (
         userId: string,
-        request?: GetBooksRequest,
-    ) => Promise<ReadAllResponse["books"]>;
+    ) => Promise<ReadonlyArray<components["schemas"]["Book"]>>;
+    get: (
+        userId: string,
+        bookId: string,
+    ) => Promise<components["schemas"]["Book"]>;
     create: (
         userId: string,
-        request: PostBookRequest["data"],
-    ) => Promise<ReadResponse["books"]>;
+        request: components["schemas"]["BookCreate"],
+    ) => Promise<components["schemas"]["Book"]>;
     update: (
         userId: string,
-        request: PutBookRequest["data"],
-    ) => Promise<ReadResponse["books"]>;
-    delete: (userId: string, request: DeleteBookRequest) => Promise<boolean>;
+        bookId: string,
+        request: components["schemas"]["BookUpdate"],
+    ) => Promise<components["schemas"]["Book"]>;
+    delete: (userId: string, bookId: string) => Promise<void>;
+    getRecipes: (
+        userId: string,
+        bookId: string,
+        page?: number,
+        search?: string,
+        sort?: components["schemas"]["RecipeSortFields"],
+        order?: components["schemas"]["Order"],
+    ) => Promise<ReadonlyArray<components["schemas"]["Recipe"]>>;
     addRecipe: (
         userId: string,
-        request: PostBookRecipeRequest,
-    ) => Promise<NonNullable<SaveRecipesResponse["recipes"]>[number]>;
+        bookId: string,
+        request: components["schemas"]["BookRecipeCreate"],
+    ) => Promise<{ recipeId: string }>;
     removeRecipe: (
         userId: string,
-        request: DeleteBookRecipeRequest,
-    ) => Promise<boolean>;
-    readRecipes: (
+        bookId: string,
+        recipeId: string,
+    ) => Promise<void>;
+    getMembers: (
         userId: string,
-        request: { bookId: string } & Omit<ReadAllRequest, "userId"> & {
-                filter?: { name?: string };
-            },
-    ) => Promise<ReadAllRecipesResponse>;
-    joinMembership: (
+        bookId: string,
+    ) => Promise<ReadonlyArray<components["schemas"]["Member"]>>;
+    inviteMember: (
         userId: string,
-        request: PostBookMemberRequest,
-    ) => Promise<NonNullable<SaveMembersResponse["members"]>[number]>;
-    leaveMembership: (
+        bookId: string,
+        targetUserId: string,
+    ) => Promise<void>;
+    updateMember: (
         userId: string,
-        request: DeleteBookMemberRequest,
-    ) => Promise<boolean>;
+        bookId: string,
+        memberId: string,
+        status: components["schemas"]["MemberUpdateStatus"],
+    ) => Promise<components["schemas"]["Member"]>;
+    removeMember: (
+        userId: string,
+        bookId: string,
+        memberId: string,
+    ) => Promise<void>;
+    leaveBook: (userId: string, bookId: string) => Promise<void>;
+    acceptInvite: (userId: string, bookId: string) => Promise<void>;
+    declineInvite: (userId: string, bookId: string) => Promise<void>;
 }
 
 export const createBookService: CreateService<
     BookService,
     "bookRepository" | "recipeRepository"
 > = (database, { bookRepository, recipeRepository }) => ({
-    getAll: async (userId, params) => {
+    getAll: async (userId) => {
         const { books } = await bookRepository.readAll(database, {
             userId,
-            filter: params,
         });
 
-        return books;
+        return books.map((book) => ({
+            bookId: book.bookId,
+            name: book.name,
+            owner: book.owner,
+            description: book.description,
+            color: book.color,
+            icon: book.icon,
+            status: book.status,
+        }));
     },
-    get: async (userId, params) => {
+    get: async (userId, bookId) => {
         const {
             books: [book],
-        } = await bookRepository.read(database, { userId, books: [params] });
+        } = await bookRepository.read(database, {
+            userId,
+            books: [{ bookId }],
+        });
 
         if (!book) {
-            throw new AppError({ status: 404, message: "Book not found" });
+            throw new NotFoundError("book", bookId);
         }
 
-        return book;
+        return {
+            bookId: book.bookId,
+            name: book.name,
+            owner: book.owner,
+            description: book.description,
+            color: book.color,
+            icon: book.icon,
+            status: book.status,
+        };
     },
     create: (userId, request) =>
         database.transaction(async (trx) => {
-            // TODO: move validation to route middleware
-            const [validBooks, invalidBooks] = validateCreateBookBody(request);
-
-            if (!validBooks.length || invalidBooks.length) {
-                throw new AppError({
-                    status: 400,
-                    code: "INSUFFICIENT_DATA",
-                    message: "Insufficient data to create book",
-                });
-            }
-
             const { books } = await bookRepository.create(trx, {
                 userId,
-                books: validBooks,
+                books: [
+                    {
+                        name: request.name,
+                        description: request.description,
+                        color: request.color ?? "variant1",
+                        icon: request.icon ?? "variant1",
+                    },
+                ],
             });
 
-            return books;
-        }),
-    update: (userId, request) =>
-        database.transaction(async (trx) => {
-            // TODO: move validation to route middleware
-            const [validBooks, invalidBooks] = validateUpdateBookBody(request);
+            const [book] = books;
 
-            if (!validBooks.length || invalidBooks.length) {
-                throw new AppError({
-                    status: 400,
-                    code: "INSUFFICIENT_DATA",
-                    message: "Insufficient data to update book",
-                });
+            if (!book) {
+                throw new CreatedDataFetchError("book");
             }
 
-            const permissions = await bookRepository.verifyPermissions(trx, {
-                userId,
-                books: validBooks,
-            });
-            const missingPermissions = permissions.books.some(
-                ({ hasPermissions }) => !hasPermissions,
-            );
-
-            if (missingPermissions) {
-                throw new AppError({
-                    status: 403,
-                    message:
-                        "You do not have permission to update one or more books",
-                });
-            }
-
-            const { books } = await bookRepository.update(trx, {
-                userId,
-                books: validBooks,
-            });
-
-            return books;
+            return {
+                bookId: book.bookId,
+                name: book.name,
+                owner: book.owner,
+                description: book.description,
+                color: book.color,
+                icon: book.icon,
+                status: book.status,
+            };
         }),
-    delete: (userId, { bookId }) =>
+    update: (userId, bookId, request) =>
         database.transaction(async (trx) => {
             const permissions = await bookRepository.verifyPermissions(trx, {
                 userId,
                 books: [{ bookId }],
+                status: "O",
             });
 
-            const missingPermissions = permissions.books.some(
-                ({ hasPermissions }) => !hasPermissions,
-            );
+            if (
+                permissions.books.some(({ hasPermissions }) => !hasPermissions)
+            ) {
+                throw new NotFoundError("book", bookId);
+            }
 
-            if (missingPermissions) {
-                throw new AppError({
-                    status: 404,
-                    message: `Cannot find book to delete`,
-                });
+            const { books } = await bookRepository.update(trx, {
+                userId,
+                books: [{ ...request, bookId }],
+            });
+
+            const [book] = books;
+            if (!book) {
+                throw new UpdatedDataFetchError("book", bookId);
+            }
+            return book;
+        }),
+    delete: (userId, bookId) =>
+        database.transaction(async (trx) => {
+            const permissions = await bookRepository.verifyPermissions(trx, {
+                userId,
+                books: [{ bookId }],
+                status: "O",
+            });
+
+            const [permission] = permissions.books;
+
+            if (!permission?.hasPermissions) {
+                throw new NotFoundError("book", bookId);
             }
 
             const { count } = await bookRepository.delete(trx, {
                 books: [{ bookId }],
             });
 
-            if (count !== 1) {
-                throw new AppError({
-                    status: 500,
-                    message: `Failed to delete books`,
-                });
+            if (count === 0) {
+                throw new NotFoundError("book", bookId);
             }
-
-            return true;
         }),
-    addRecipe: (userId, { bookId, data }) =>
-        database.transaction(async (trx) => {
-            // TODO: validate at route middleware
-            const validRecipes = EnsureDefinedArray(data)
-                .map(({ recipeId }) => recipeId)
-                .filter(Undefined)
-                .map((recipeId) => ({ recipeId }));
+    getRecipes: async (userId, bookId, page, search, sort, order) => {
+        const permissions = await bookRepository.verifyPermissions(database, {
+            userId,
+            books: [{ bookId }],
+            status: ["O", "A", "M"],
+        });
 
+        if (permissions.books.some(({ hasPermissions }) => !hasPermissions)) {
+            throw new NotFoundError("book", bookId);
+        }
+
+        const { recipes } = await recipeRepository.readAll(database, {
+            userId,
+            filter: {
+                books: [{ bookId }],
+                name: search,
+            },
+            page,
+            sort,
+            order,
+        });
+        return recipes;
+    },
+    addRecipe: (userId, bookId, request) =>
+        database.transaction(async (trx) => {
             const permissions = await bookRepository.verifyPermissions(trx, {
                 userId,
                 books: [{ bookId }],
-                status: UserStatus.Administrator,
+                status: ["O", "A"],
             });
 
-            const missingPermissions = permissions.books.some(
-                ({ hasPermissions }) => !hasPermissions,
-            );
+            const [permission] = permissions.books;
 
-            if (missingPermissions) {
-                throw new AppError({
-                    status: 404,
-                    message: `Cannot find book to save recipe to`,
-                });
+            if (!permission?.hasPermissions) {
+                throw new NotFoundError("book", bookId);
             }
 
             const [result] = await bookRepository.saveRecipes(trx, {
                 bookId,
-                recipes: validRecipes,
+                recipes: [{ recipeId: request.recipeId }],
             });
 
-            const [recipe] = result?.recipes ?? [];
-
-            if (!recipe || result?.recipes.length !== validRecipes.length) {
-                throw new AppError({
-                    status: 500,
-                    message: `Failed to save recipes to book`,
-                });
+            const recipe = result?.recipes?.[0];
+            if (!recipe) {
+                throw new CreatedDataFetchError("book recipe");
             }
-
-            return recipe;
+            return { recipeId: recipe.recipeId };
         }),
-    removeRecipe: (userId, params) =>
+    removeRecipe: (userId, bookId, recipeId) =>
         database.transaction(async (trx) => {
             const permissions = await bookRepository.verifyPermissions(trx, {
                 userId,
-                books: [params],
-                status: [UserStatus.Administrator],
+                books: [{ bookId }],
+                status: ["O", "A"],
             });
 
-            const missingPermissions = permissions.books.some(
-                ({ hasPermissions }) => !hasPermissions,
-            );
+            const [permission] = permissions.books;
 
-            if (missingPermissions) {
-                throw new AppError({
-                    status: 404,
-                    code: "BOOK_NOT_FOUND",
-                    message: "Cannot find book to remove recipe from",
-                });
+            if (!permission?.hasPermissions) {
+                throw new NotFoundError("book", bookId);
             }
 
             const [result] = await bookRepository.removeRecipes(trx, {
-                bookId: params.bookId,
-                recipes: [params],
+                bookId,
+                recipes: [{ recipeId }],
             });
 
-            if (result?.count !== 1) {
-                throw new AppError({
-                    status: 500,
-                    message: `Failed to remove recipe from book`,
-                });
+            if (result?.count === 0) {
+                throw new NotFoundError("book recipe", recipeId);
             }
-
-            return true;
         }),
-    joinMembership: (userId, params) =>
+    getMembers: async (userId, bookId) => {
+        const permissions = await bookRepository.verifyPermissions(database, {
+            userId,
+            books: [{ bookId }],
+            status: "O",
+        });
+
+        const [permission] = permissions.books;
+
+        if (!permission?.hasPermissions) {
+            throw new NotFoundError("book", bookId);
+        }
+
+        const [bookMembers] = await bookRepository.readMembers(database, {
+            bookId,
+        });
+
+        if (!bookMembers) {
+            throw new NotFoundError("book", bookId);
+        }
+
+        return bookMembers.members.map((m) => ({
+            userId: m.userId,
+            firstName: m.firstName,
+            lastName: m.lastName,
+            status: m.status,
+        }));
+    },
+    inviteMember: (userId, bookId, targetUserId) =>
         database.transaction(async (trx) => {
             const permissions = await bookRepository.verifyPermissions(trx, {
                 userId,
-                books: [params],
-                status: [UserStatus.Pending],
+                books: [{ bookId }],
+                status: "O",
             });
 
-            const missingPermissions = permissions.books.some(
-                ({ hasPermissions }) => !hasPermissions,
-            );
-
-            if (missingPermissions) {
-                throw new AppError({
-                    status: 404,
-                    code: "BOOK_NOT_FOUND",
-                    message: "Cannot find book to join",
-                });
+            const [permission] = permissions.books;
+            if (!permission?.hasPermissions) {
+                throw new NotFoundError("book", bookId);
             }
 
-            const [result] = await bookRepository.saveMembers(trx, {
-                bookId: params.bookId,
-                members: [{ userId, status: UserStatus.Member }],
+            const [currentMembers] = await bookRepository.readMembers(trx, {
+                bookId,
+            });
+            if (
+                currentMembers?.members.some((m) => m.userId === targetUserId)
+            ) {
+                throw new InvalidOperationError(
+                    "book member",
+                    "User is already a member",
+                );
+            }
+
+            try {
+                await bookRepository.saveMembers(trx, {
+                    bookId,
+                    members: [{ userId: targetUserId, status: "P" }],
+                });
+            } catch (error: unknown) {
+                if (error instanceof ForeignKeyViolationError) {
+                    throw new NotFoundError("user", targetUserId);
+                }
+                throw error;
+            }
+        }),
+    updateMember: (userId, bookId, memberId, status) =>
+        database.transaction(async (trx) => {
+            const permissions = await bookRepository.verifyPermissions(trx, {
+                userId,
+                books: [{ bookId }],
+                status: "O",
             });
 
-            const member = result?.members?.[0];
+            if (
+                permissions.books.some(({ hasPermissions }) => !hasPermissions)
+            ) {
+                throw new NotFoundError("book", bookId);
+            }
 
-            if (!member || result?.members?.length !== 1) {
-                throw new AppError({
-                    status: 500,
-                    message: `Failed to join book`,
-                });
+            const [currentPlannerMembers] = await bookRepository.readMembers(
+                trx,
+                { bookId },
+            );
+            const currentMember = currentPlannerMembers?.members.find(
+                (m) => m.userId === memberId,
+            );
+
+            if (!currentMember) {
+                throw new NotFoundError("book member", memberId);
+            }
+
+            if (currentMember.status === "P") {
+                throw new InvalidOperationError(
+                    "book member",
+                    "Cannot update a pending member",
+                );
+            }
+
+            await bookRepository.saveMembers(trx, {
+                bookId,
+                members: [{ userId: memberId, status }],
+            });
+
+            const [bookMembers] = await bookRepository.readMembers(trx, {
+                bookId,
+            });
+
+            const member = bookMembers?.members.find(
+                (m) => m.userId === memberId,
+            );
+
+            if (!member) {
+                throw new NotFoundError("book member", memberId);
             }
 
             return member;
         }),
-    leaveMembership: (userId, params) =>
+    removeMember: (userId, bookId, memberId) =>
         database.transaction(async (trx) => {
-            const removingSelf = !params.userId || params.userId === userId;
-            if (removingSelf) {
-                const permissions = await bookRepository.verifyPermissions(
-                    trx,
-                    {
-                        userId,
-                        books: [params],
-                        status: [UserStatus.Administrator, UserStatus.Member],
-                    },
-                );
+            const permissions = await bookRepository.verifyPermissions(trx, {
+                userId,
+                books: [{ bookId }],
+                status: "O",
+            });
 
-                const missingPermissions = permissions.books.some(
-                    ({ hasPermissions }) => !hasPermissions,
-                );
-
-                if (missingPermissions) {
-                    throw new AppError({
-                        status: 404,
-                        code: "BOOK_NOT_FOUND",
-                        message: "Cannot find book to leave",
-                    });
-                }
-
-                const [result] = await bookRepository.removeMembers(trx, {
-                    bookId: params.bookId,
-                    members: [{ userId }],
-                });
-
-                if (result?.count !== 1) {
-                    throw new AppError({
-                        status: 500,
-                        message: `Failed to leave book`,
-                    });
-                }
-            } else {
-                const permissions = await bookRepository.verifyPermissions(
-                    trx,
-                    {
-                        userId,
-                        books: [params],
-                    },
-                );
-
-                const missingPermissions = permissions.books.some(
-                    ({ hasPermissions }) => !hasPermissions,
-                );
-
-                if (missingPermissions) {
-                    throw new AppError({
-                        status: 404,
-                        code: "BOOK_NOT_FOUND",
-                        message: "Cannot find book to remove user from",
-                    });
-                }
-
-                const [result] = await bookRepository.removeMembers(trx, {
-                    bookId: params.bookId,
-                    members: [{ userId: params.userId }],
-                });
-
-                if (result?.count !== 1) {
-                    throw new AppError({
-                        status: 500,
-                        message: `Failed to remove user from book`,
-                    });
-                }
+            const [permission] = permissions.books;
+            if (!permission?.hasPermissions) {
+                throw new NotFoundError("book", bookId);
             }
-            return true;
+
+            if (memberId === userId) {
+                throw new InvalidOperationError(
+                    "book member",
+                    "Cannot remove self from book",
+                );
+            }
+
+            await bookRepository.removeMembers(trx, {
+                bookId,
+                members: [{ userId: memberId }],
+            });
         }),
-    readRecipes: async (userId, { bookId, page, order, sort, filter }) => {
-        const permissions = await bookRepository.verifyPermissions(database, {
-            userId,
-            books: [{ bookId }],
-        });
+    leaveBook: (userId, bookId) =>
+        database.transaction(async (trx) => {
+            const permissions = await bookRepository.verifyPermissions(trx, {
+                userId,
+                books: [{ bookId }],
+                status: ["A", "M"],
+            });
+            const [permission] = permissions.books;
+            if (!permission?.hasPermissions) {
+                throw new NotFoundError("book", bookId);
+            }
 
-        const missingPermissions = permissions.books.some(
-            ({ hasPermissions }) => !hasPermissions,
-        );
+            await bookRepository.removeMembers(trx, {
+                bookId,
+                members: [{ userId }],
+            });
+        }),
+    acceptInvite: (userId, bookId) =>
+        database.transaction(async (trx) => {
+            const permissions = await bookRepository.verifyPermissions(trx, {
+                userId,
+                books: [{ bookId }],
+                status: "P",
+            });
 
-        if (missingPermissions) {
-            throw new AppError({ status: 404, message: "Book not found" });
-        }
+            const [permission] = permissions.books;
+            if (!permission?.hasPermissions) {
+                throw new NotFoundError("book", bookId);
+            }
 
-        return recipeRepository.readAll(database, {
-            userId,
-            filter: { ...filter, books: [{ bookId }] },
-            order,
-            page,
-            sort,
-        });
-    },
+            await bookRepository.saveMembers(trx, {
+                bookId,
+                members: [{ userId, status: "M" }],
+            });
+        }),
+    declineInvite: (userId, bookId) =>
+        database.transaction(async (trx) => {
+            const permissions = await bookRepository.verifyPermissions(trx, {
+                userId,
+                books: [{ bookId }],
+                status: "P",
+            });
+
+            const [permission] = permissions.books;
+            if (!permission?.hasPermissions) {
+                throw new NotFoundError("book", bookId);
+            }
+
+            await bookRepository.removeMembers(trx, {
+                bookId,
+                members: [{ userId }],
+            });
+        }),
 });
-
-const DefaultBookColor = "variant1";
-const DefaultBookIcon = "variant1";
-
-const validateCreateBookBody = (data: PostBookRequestBody["data"]) => {
-    const filteredData = EnsureDefinedArray(data);
-
-    return BisectOnValidPartialItems(filteredData, (item) => {
-        if (!item.name) return;
-
-        return {
-            name: item.name,
-            description: item.description,
-            color: item.color ?? DefaultBookColor,
-            icon: item.icon ?? DefaultBookIcon,
-            members: item.members,
-        };
-    });
-};
-
-const validateUpdateBookBody = (data: PutBookRequestBody["data"]) =>
-    BisectOnValidPartialItems(EnsureDefinedArray(data), (item) => {
-        if (!item.bookId) return;
-
-        return {
-            bookId: item.bookId,
-            name: item.name,
-            description: item.description,
-            color: item.color ?? DefaultBookColor,
-            icon: item.icon ?? DefaultBookIcon,
-            members: item.members,
-        };
-    });

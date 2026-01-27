@@ -60,8 +60,8 @@ export type ReadRequest<
 > = ({ [P in K]: T[P] } & C) | Array<{ [P in K]: T[P] } & C>;
 
 // QUERY
-export type DefaultSortOptions = "name" | "date";
-export type QueryMetadata<TSort extends string = DefaultSortOptions> = {
+export type DefaultRecipeSortFieldss = "name" | "date";
+export type QueryMetadata<TSort extends string = DefaultRecipeSortFieldss> = {
     page?: number;
     search?: string;
     sort?: TSort;

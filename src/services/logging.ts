@@ -31,6 +31,9 @@ export class AppError {
 
 type KnownEntities =
     | "attachment"
+    | "book"
+    | "book member"
+    | "book recipe"
     | "cooklist meal"
     | "list item"
     | "list member"

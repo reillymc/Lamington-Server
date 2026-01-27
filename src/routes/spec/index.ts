@@ -4,13 +4,6 @@ import {
     imageSubpath,
     uploadDirectory,
 } from "./attachment.ts";
-import {
-    type BookApi,
-    bookIdParam,
-    bookMemberIdParam,
-    bookMemberSubpath,
-    recipeSubpath,
-} from "./book.ts";
 
 import { type RecipeApi, rateSubpath, recipeIdParam } from "./recipe.ts";
 import type { components, paths } from "./schema.d.ts";
@@ -34,19 +27,6 @@ export const AttachmentEndpoint = {
     downloadImage: `/${uploadDirectory}`,
 } as const satisfies Record<keyof AttachmentServices, string>;
 
-export const BookEndpoint = {
-    deleteBook: `/:${bookIdParam}`,
-    deleteBookMember: `/:${bookIdParam}/${bookMemberSubpath}/:${bookMemberIdParam}`,
-    deleteBookRecipe: `/:${bookIdParam}/${recipeSubpath}/:${recipeIdParam}`,
-    getBook: `/:${bookIdParam}`,
-    getBooks: `/`,
-    postBook: `/`,
-    putBook: `/`,
-    getBookRecipes: `/:${bookIdParam}/${recipeSubpath}`,
-    postBookMember: `/:${bookIdParam}/${bookMemberSubpath}`,
-    postBookRecipe: `/:${bookIdParam}/${recipeSubpath}`,
-} as const satisfies Record<keyof BookApi, string>;
-
 export const RecipeEndpoint = {
     deleteRecipe: `/:${recipeIdParam}`,
     getRecipe: `/:${recipeIdParam}`,
@@ -68,7 +48,6 @@ export type {
     QueryParam,
     RequestValidator,
 } from "./base.ts";
-export * from "./book.ts";
 export * from "./common.ts";
 export * from "./recipe.ts";
 export * from "./tag.ts";
