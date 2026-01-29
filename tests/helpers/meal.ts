@@ -1,4 +1,4 @@
-import type { components } from "../../src/routes/spec/schema.js";
+import type { components } from "../../src/routes/spec/schema.ts";
 
 export const randomCourse = (): components["schemas"]["Course"] => {
     const courses = [

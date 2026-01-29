@@ -67,7 +67,9 @@ const insertRows = async (
 const updateRows = async (
     db: KnexDatabase,
     params: CreateQuery<
-        Pick<Content, "contentId"> & { tags: Array<Pick<ContentTag, "tagId">> }
+        Pick<Content, "contentId"> & {
+            tags: ReadonlyArray<Pick<ContentTag, "tagId">>;
+        }
     >,
 ) => {
     const contentTags = EnsureArray(params);
@@ -89,7 +91,7 @@ const updateRows = async (
     return [];
 };
 
-export type TagReadByContentIdResults = Array<
+export type TagReadByContentIdResults = ReadonlyArray<
     ContentTag & Pick<Tag, "parentId" | "name">
 >;
 

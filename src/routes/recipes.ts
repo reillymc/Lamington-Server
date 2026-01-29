@@ -1,193 +1,91 @@
 import express from "express";
-import type { ReadAllRequest } from "../repositories/recipeRepository.ts";
-import { Undefined } from "../utils/index.ts";
-import { parseBaseQuery } from "./helpers/queryParams.ts";
 import type { CreateRoute } from "./route.ts";
-import type { QueryParam } from "./spec/base.ts";
-import { RecipeEndpoint } from "./spec/index.ts";
-import type {
-    DeleteRecipeRequestBody,
-    DeleteRecipeRequestParams,
-    DeleteRecipeResponse,
-    GetAllRecipesRequestBody,
-    GetAllRecipesRequestParams,
-    GetAllRecipesRequestQuery,
-    GetAllRecipesResponse,
-    GetMyRecipesRequestBody,
-    GetMyRecipesRequestParams,
-    GetMyRecipesRequestQuery,
-    GetMyRecipesResponse,
-    GetRecipeRequestBody,
-    GetRecipeRequestParams,
-    GetRecipeResponse,
-    PostRecipeRatingRequestBody,
-    PostRecipeRatingRequestParams,
-    PostRecipeRatingResponse,
-    PostRecipeRequestBody,
-    PostRecipeRequestParams,
-    PostRecipeResponse,
-    PutRecipeRequestBody,
-    PutRecipeRequestParams,
-    PutRecipeResponse,
-} from "./spec/recipe.ts";
-
-const parseRecipesQuerySort = (sort: QueryParam) => {
-    if (Array.isArray(sort)) return;
-    if (sort === undefined) return;
-
-    switch (sort) {
-        case "name":
-            return "name";
-        case "ratingPersonal":
-            return "ratingPersonal";
-        case "ratingAverage":
-            return "ratingAverage";
-        case "cookTime":
-            return "cookTime";
-    }
-};
-
-// TODO: move validation to middleware via zod
-export const parseRecipeQuery = ({
-    sort: rawSort,
-    ingredients: rawIngredients,
-    order: rawOrder,
-    page: rawPage,
-    search: rawSearch,
-    tags: rawTags,
-}: GetAllRecipesRequestQuery): Omit<ReadAllRequest, "userId"> => {
-    const { page, search, order } = parseBaseQuery({
-        page: rawPage,
-        search: rawSearch,
-        order: rawOrder,
-    });
-    const sort = parseRecipesQuerySort(rawSort);
-
-    const ingredients = (
-        Array.isArray(rawIngredients) ? rawIngredients : [rawIngredients]
-    )
-        .filter(Undefined)
-        .map((name) => ({ name }));
-    const tags = (Array.isArray(rawTags) ? rawTags : [rawTags])
-        .filter(Undefined)
-        .map((tagId) => ({ tagId }));
-
-    return { page, sort, order, filter: { name: search, tags, ingredients } };
-};
+import type { paths, routes } from "./spec/index.ts";
 
 export const createRecipeRouter: CreateRoute<"recipeService"> = ({
     recipeService,
-}) => {
-    const router = express.Router();
-
-    /**
-     * GET request to fetch all recipes
-     */
-    router.get<
-        GetAllRecipesRequestParams,
-        GetAllRecipesResponse,
-        GetAllRecipesRequestBody,
-        GetAllRecipesRequestQuery
-    >(RecipeEndpoint.getAllRecipes, async ({ query, session }, res) => {
-        const options = parseRecipeQuery(query);
-        const { recipes: data, nextPage } = await recipeService.getAll(
-            session.userId,
-            options,
-        );
-        return res
-            .status(200)
-            .json({ error: false, data, page: options.page, nextPage });
-    });
-
-    /**
-     * GET request to fetch all recipes by a user
-     */
-    router.get<
-        GetMyRecipesRequestParams,
-        GetMyRecipesResponse,
-        GetMyRecipesRequestBody,
-        GetMyRecipesRequestQuery
-    >(RecipeEndpoint.getMyRecipes, async ({ query, session }, res) => {
-        const options = parseRecipeQuery(query);
-        const { recipes: data, nextPage } = await recipeService.getAll(
-            session.userId,
-            {
-                ...options,
-                filter: { ...options.filter, owner: session.userId },
+}) =>
+    express
+        .Router()
+        .get<
+            routes,
+            paths["/recipes"]["get"]["parameters"]["path"],
+            paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"],
+            paths["/recipes"]["get"]["requestBody"],
+            paths["/recipes"]["get"]["parameters"]["query"]
+        >("/recipes", async ({ query, session }, res) => {
+            const data = await recipeService.getAll(
+                session.userId,
+                query?.page,
+                query?.search,
+                query?.sort,
+                query?.order,
+                query?.owner,
+                query?.tags,
+            );
+            return res.status(200).json(data);
+        })
+        .get<
+            routes,
+            paths["/recipes/{recipeId}"]["get"]["parameters"]["path"],
+            paths["/recipes/{recipeId}"]["get"]["responses"]["200"]["content"]["application/json"],
+            paths["/recipes/{recipeId}"]["get"]["requestBody"],
+            paths["/recipes/{recipeId}"]["get"]["parameters"]["query"]
+        >("/recipes/:recipeId", async ({ params, session }, res) => {
+            const data = await recipeService.get(
+                session.userId,
+                params.recipeId,
+            );
+            return res.status(200).json(data);
+        })
+        .delete<
+            routes,
+            paths["/recipes/{recipeId}"]["delete"]["parameters"]["path"],
+            paths["/recipes/{recipeId}"]["delete"]["responses"]["204"]["content"],
+            paths["/recipes/{recipeId}"]["delete"]["requestBody"],
+            paths["/recipes/{recipeId}"]["delete"]["parameters"]["query"]
+        >("/recipes/:recipeId", async ({ session, params }, res) => {
+            await recipeService.delete(session.userId, params.recipeId);
+            return res.status(204).send();
+        })
+        .post<
+            routes,
+            paths["/recipes"]["post"]["parameters"]["path"],
+            paths["/recipes"]["post"]["responses"]["201"]["content"]["application/json"],
+            paths["/recipes"]["post"]["requestBody"]["content"]["application/json"],
+            paths["/recipes"]["post"]["parameters"]["query"]
+        >("/recipes", async ({ body, session }, res) => {
+            const data = await recipeService.create(session.userId, body);
+            return res.status(201).json(data);
+        })
+        .patch<
+            routes,
+            paths["/recipes/{recipeId}"]["patch"]["parameters"]["path"],
+            paths["/recipes/{recipeId}"]["patch"]["responses"]["200"]["content"]["application/json"],
+            paths["/recipes/{recipeId}"]["patch"]["requestBody"]["content"]["application/json"],
+            paths["/recipes/{recipeId}"]["patch"]["parameters"]["query"]
+        >("/recipes/:recipeId", async ({ body, session, params }, res) => {
+            const data = await recipeService.update(
+                session.userId,
+                params.recipeId,
+                body,
+            );
+            return res.status(200).json(data);
+        })
+        .post<
+            routes,
+            paths["/recipes/{recipeId}/rating"]["post"]["parameters"]["path"],
+            paths["/recipes/{recipeId}/rating"]["post"]["responses"]["200"]["content"]["application/json"],
+            paths["/recipes/{recipeId}/rating"]["post"]["requestBody"]["content"]["application/json"],
+            paths["/recipes/{recipeId}/rating"]["post"]["parameters"]["query"]
+        >(
+            "/recipes/:recipeId/rating",
+            async ({ body, session, params }, res) => {
+                const data = await recipeService.saveRating(
+                    session.userId,
+                    params.recipeId,
+                    body.rating,
+                );
+                return res.status(200).json(data);
             },
         );
-        return res
-            .status(200)
-            .json({ error: false, data, page: options.page, nextPage });
-    });
-
-    /**
-     * GET request to fetch a recipe by Id
-     * Requires recipe query params
-     */
-    router.get<GetRecipeRequestParams, GetRecipeResponse, GetRecipeRequestBody>(
-        RecipeEndpoint.getRecipe,
-        async ({ params, session }, res) => {
-            const data = await recipeService.get(session.userId, params);
-            return res.status(200).json({ error: false, data });
-        },
-    );
-
-    /**
-     * DELETE request to delete a recipe
-     * Requires recipe delete body
-     */
-    router.delete<
-        DeleteRecipeRequestParams,
-        DeleteRecipeResponse,
-        DeleteRecipeRequestBody
-    >(RecipeEndpoint.deleteRecipe, async ({ session, params }, res) => {
-        await recipeService.delete(session.userId, params);
-        return res.status(204).send();
-    });
-
-    /**
-     * POST request to create a new recipe or update an existing recipe
-     * Requires recipe data body
-     */
-    router.post<
-        PostRecipeRequestParams,
-        PostRecipeResponse,
-        PostRecipeRequestBody
-    >(RecipeEndpoint.postRecipe, async ({ body, session }, res) => {
-        const data = await recipeService.create(session.userId, body.data);
-        return res.status(201).json({ error: false, data });
-    });
-
-    /**
-     * PUT request to update a recipe.
-     */
-    router.put<PutRecipeRequestParams, PutRecipeResponse, PutRecipeRequestBody>(
-        RecipeEndpoint.putRecipe,
-        async ({ body, session }, res) => {
-            const data = await recipeService.update(session.userId, body.data);
-            return res.status(200).json({ error: false, data });
-        },
-    );
-
-    /**
-     * POST request to rate a recipe
-     * Requires recipe rating body
-     */
-    router.post<
-        PostRecipeRatingRequestParams,
-        PostRecipeRatingResponse,
-        PostRecipeRatingRequestBody
-    >(
-        RecipeEndpoint.postRecipeRating,
-        async ({ body, session, params }, res) => {
-            const data = await recipeService.saveRating(session.userId, {
-                ...params,
-                ...body,
-            });
-            return res.status(201).json({ error: false, data });
-        },
-    );
-
-    return router;
-};

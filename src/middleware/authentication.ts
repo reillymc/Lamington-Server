@@ -2,12 +2,30 @@ import type { RequestHandler } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 
 import config from "../config.ts";
-import { getStatus } from "../routes/helpers/index.ts";
-import { UserStatus } from "../routes/spec/index.ts";
+import type { components } from "../routes/spec/schema.ts";
 import { UnauthorizedError, UnknownError } from "../services/index.ts";
 import type { CreateMiddleware } from "./middleware.ts";
 
 const { jwtSecret } = config.authentication;
+
+type UserStatus = components["schemas"]["UserStatus"];
+
+export const getStatus = (
+    status: string | undefined,
+    isOwner?: boolean,
+): UserStatus | undefined => {
+    if (isOwner) return "O";
+
+    switch (status) {
+        case "A":
+        case "M":
+        case "B":
+        case "P":
+            return status;
+        default:
+            return undefined;
+    }
+};
 
 export interface AuthData {
     userId: string;
@@ -56,13 +74,13 @@ export const createAuthenticationMiddleware: CreateMiddleware<"userService"> =
 
             const userStatus = getStatus(user.status);
 
-            if (userStatus === UserStatus.Pending) {
+            if (userStatus === "P") {
                 return next(
                     new UnauthorizedError("User account is pending approval"),
                 );
             }
 
-            if (userStatus === UserStatus.Blacklisted) {
+            if (userStatus === "B") {
                 return next(
                     new UnauthorizedError("User account access denied"),
                 );

@@ -8,7 +8,7 @@ import { setupApp } from "../../src/app.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
 import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
-import { type components, UserStatus } from "../../src/routes/spec/index.ts";
+import type { components } from "../../src/routes/spec/index.ts";
 import {
     CreateUsers,
     PrepareAuthenticatedUser,
@@ -115,7 +115,7 @@ describe("Get a meal by ID", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member];
+        const statuses = ["A", "M"] as const;
 
         for (const status of statuses) {
             const {
@@ -160,7 +160,7 @@ describe("Get a meal by ID", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = ["P", "B"] as const;
 
         for (const status of statuses) {
             const {

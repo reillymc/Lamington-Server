@@ -12,7 +12,7 @@ import { KnexListRepository } from "../../src/repositories/knex/knexListReposito
 import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
-import { type components, UserStatus } from "../../src/routes/spec/index.ts";
+import type { components } from "../../src/routes/spec/index.ts";
 import {
     CreateUsers,
     PrepareAuthenticatedUser,
@@ -43,21 +43,15 @@ describe("Get all users", () => {
     });
 
     it("route should fail for non-administrator", async () => {
-        const [registeredToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Member,
-        );
+        const [registeredToken] = await PrepareAuthenticatedUser(database, "M");
         const res = await request(app).get("/v1/users").set(registeredToken);
         expect(res.statusCode).toEqual(403);
     });
 
     it("route should return emails for request with administrator privileges", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Administrator,
-        );
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
-        await CreateUsers(database, { count: 1, status: UserStatus.Member });
+        await CreateUsers(database, { count: 1, status: "M" });
 
         const res = await request(app).get("/v1/users").set(adminToken);
 
@@ -69,26 +63,23 @@ describe("Get all users", () => {
     });
 
     it("should return correct number of active users and no pending/blacklisted users", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Administrator,
-        );
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
         const usersRegistered = await CreateUsers(database, {
             count: randomCount,
-            status: UserStatus.Member,
+            status: "M",
         });
         const usersAdmin = await CreateUsers(database, {
             count: randomCount,
-            status: UserStatus.Administrator,
+            status: "A",
         });
         await CreateUsers(database, {
             count: randomCount,
-            status: UserStatus.Pending,
+            status: "P",
         });
         await CreateUsers(database, {
             count: randomCount,
-            status: UserStatus.Blacklisted,
+            status: "B",
         });
 
         const res = await request(app).get("/v1/users").set(adminToken);
@@ -101,15 +92,12 @@ describe("Get all users", () => {
 
         const statuses = data.map(({ status }) => status);
 
-        expect(statuses).not.toContain(UserStatus.Pending);
-        expect(statuses).not.toContain(UserStatus.Blacklisted);
+        expect(statuses).not.toContain("P");
+        expect(statuses).not.toContain("B");
     });
 
     it("should not return current authenticated user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Administrator,
-        );
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
         const res = await request(app).get("/v1/users").set(adminToken);
 
@@ -121,24 +109,21 @@ describe("Get all users", () => {
     });
 
     it("should return correct number of pending users when filtered", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Administrator,
-        );
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
         const users = await CreateUsers(database, {
             count: Math.floor(Math.random() * 10) + 1,
-            status: UserStatus.Pending,
+            status: "P",
         });
 
         await CreateUsers(database, {
             count: Math.floor(Math.random() * 10) + 1,
-            status: UserStatus.Member,
+            status: "M",
         });
 
         const res = await request(app)
             .get("/v1/users")
-            .query({ status: UserStatus.Pending })
+            .query({ status: "P" })
             .set(adminToken);
 
         expect(res.statusCode).toEqual(200);
@@ -146,7 +131,7 @@ describe("Get all users", () => {
         const data = res.body as components["schemas"]["User"][];
 
         expect(data.length).toEqual(users.length);
-        expect(data.every((u) => u.status === UserStatus.Pending)).toBe(true);
+        expect(data.every((u) => u.status === "P")).toBe(true);
     });
 });
 
@@ -164,10 +149,7 @@ describe("Delete user", () => {
     });
 
     it("route should require authentication", async () => {
-        const [_, { userId }] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Member,
-        );
+        const [_, { userId }] = await PrepareAuthenticatedUser(database, "M");
 
         const res = await request(app).delete(`/v1/users/${userId}`);
 
@@ -175,14 +157,8 @@ describe("Delete user", () => {
     });
 
     it("should not allow deletion of user if not admin", async () => {
-        const [_, { userId }] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Member,
-        );
-        const [otherToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Member,
-        );
+        const [_, { userId }] = await PrepareAuthenticatedUser(database, "M");
+        const [otherToken] = await PrepareAuthenticatedUser(database, "M");
 
         const response = await request(app)
             .delete(`/v1/users/${userId}`)
@@ -192,10 +168,7 @@ describe("Delete user", () => {
     });
 
     it("should delete user (Admin)", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Administrator,
-        );
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
         const [userToDelete] = await CreateUsers(database);
 
         const response = await request(app)
@@ -205,10 +178,7 @@ describe("Delete user", () => {
     });
 
     it("should delete user and accommodate foreign keys", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Administrator,
-        );
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
         const [userToDelete] = await CreateUsers(database);
         const userId = userToDelete!.userId;
 
@@ -261,33 +231,24 @@ describe("Approve user", () => {
     });
 
     it("route should require administrator privileges", async () => {
-        const [registeredToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Member,
-        );
+        const [registeredToken] = await PrepareAuthenticatedUser(database, "M");
         const endpoint = `/v1/users/${v4()}/approve`; // Non-existent user
         const res = await request(app).post(endpoint).set(registeredToken);
         expect(res.statusCode).toEqual(403);
     });
 
     it("should return 404 for non-existent user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Administrator,
-        );
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
         const endpoint = `/v1/users/${v4()}/approve`; // Non-existent user
         const res = await request(app).post(endpoint).set(adminToken);
         expect(res.statusCode).toEqual(404);
     });
 
     it("should register pending user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Administrator,
-        );
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
         const [user] = await CreateUsers(database, {
-            status: UserStatus.Pending,
+            status: "P",
         });
         if (!user) throw new Error("User not created");
 
@@ -301,17 +262,14 @@ describe("Approve user", () => {
             users: [updatedUser],
         } = await KnexUserRepository.read(database, { users: [user] });
 
-        expect(updatedUser?.status).toEqual(UserStatus.Member);
+        expect(updatedUser?.status).toEqual("M");
     });
 
     it("should create sample data for pending => registered user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Administrator,
-        );
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
         const [user] = await CreateUsers(database, {
-            status: UserStatus.Pending,
+            status: "P",
         });
         if (!user) throw new Error("User not created");
 
@@ -324,7 +282,7 @@ describe("Approve user", () => {
         const {
             users: [updatedUser],
         } = await KnexUserRepository.read(database, { users: [user] });
-        expect(updatedUser?.status).toEqual(UserStatus.Member);
+        expect(updatedUser?.status).toEqual("M");
 
         const { lists } = await KnexListRepository.readAll(database, user);
         expect(lists.length).toEqual(1);
@@ -395,33 +353,24 @@ describe("Blacklist user", () => {
     });
 
     it("route should require administrator privileges", async () => {
-        const [registeredToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Member,
-        );
+        const [registeredToken] = await PrepareAuthenticatedUser(database, "M");
         const endpoint = `/v1/users/${v4()}/blacklist`;
         const res = await request(app).post(endpoint).set(registeredToken);
         expect(res.statusCode).toEqual(403);
     });
 
     it("should return 404 for non-existent user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Administrator,
-        );
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
         const endpoint = `/v1/users/${v4()}/blacklist`;
         const res = await request(app).post(endpoint).set(adminToken);
         expect(res.statusCode).toEqual(404);
     });
 
     it("should blacklist pending user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Administrator,
-        );
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
         const [user] = await CreateUsers(database, {
-            status: UserStatus.Pending,
+            status: "P",
         });
         if (!user) throw new Error("User not created");
 
@@ -435,17 +384,14 @@ describe("Blacklist user", () => {
             users: [updatedUser],
         } = await KnexUserRepository.read(database, { users: [user] });
 
-        expect(updatedUser?.status).toEqual(UserStatus.Blacklisted);
+        expect(updatedUser?.status).toEqual("B");
     });
 
     it("should blacklist registered user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Administrator,
-        );
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
         const [user] = await CreateUsers(database, {
-            status: UserStatus.Member,
+            status: "M",
         });
         if (!user) throw new Error("User not created");
 
@@ -459,17 +405,14 @@ describe("Blacklist user", () => {
             users: [updatedUser],
         } = await KnexUserRepository.read(database, { users: [user] });
 
-        expect(updatedUser?.status).toEqual(UserStatus.Blacklisted);
+        expect(updatedUser?.status).toEqual("B");
     });
 
     it("should blacklist admin user", async () => {
-        const [adminToken] = await PrepareAuthenticatedUser(
-            database,
-            UserStatus.Administrator,
-        );
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
         const [user] = await CreateUsers(database, {
-            status: UserStatus.Administrator,
+            status: "A",
         });
         if (!user) throw new Error("User not created");
 
@@ -483,6 +426,6 @@ describe("Blacklist user", () => {
             users: [updatedUser],
         } = await KnexUserRepository.read(database, { users: [user] });
 
-        expect(updatedUser?.status).toEqual(UserStatus.Blacklisted);
+        expect(updatedUser?.status).toEqual("B");
     });
 });

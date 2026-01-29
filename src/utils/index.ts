@@ -84,8 +84,9 @@ export const BisectOnPredicate = <T>(
     return [trueArr, falseArr] as const;
 };
 
-export const randomElement = <T>(array: T[]): T | undefined =>
-    array[Math.floor(Math.random() * array.length)];
+export const randomElement = <T>(
+    array: Array<T> | ReadonlyArray<T>,
+): T | undefined => array[Math.floor(Math.random() * array.length)];
 
 export const toUndefined = <T>(value: T | null): T | undefined =>
     value === null ? undefined : value;

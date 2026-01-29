@@ -2,8 +2,8 @@ import type { Table } from "./index.ts";
 import { lamington } from "./lamington.ts";
 
 type BookCustomisationsV1 = {
-    color?: string;
-    icon?: string;
+    color: string;
+    icon: string;
 };
 
 export type BookCustomisations = BookCustomisationsV1;
@@ -14,13 +14,17 @@ export type BookCustomisations = BookCustomisationsV1;
 export interface Book {
     bookId: string;
     name: string;
-    customisations?: BookCustomisations;
-    description?: string;
+    customisations: BookCustomisations | null;
+    description: string | null;
 }
 
-export const book: Table<Book> = {
-    bookId: `${lamington.book}.bookId`,
-    name: `${lamington.book}.name`,
-    customisations: `${lamington.book}.customisations`,
-    description: `${lamington.book}.description`,
-} as const;
+export const bookColumns = [
+    "bookId",
+    "name",
+    "customisations",
+    "description",
+] as const satisfies (keyof Book)[];
+
+export const book = Object.fromEntries(
+    bookColumns.map((column) => [column, `${lamington.book}.${column}`]),
+) as Table<Book>;

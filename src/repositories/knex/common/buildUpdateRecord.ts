@@ -1,34 +1,28 @@
-export const buildUpdateRecord = <Definition extends ReadonlyArray<string>>(
-    source: Record<string, unknown>,
+export const buildUpdateRecord = <
+    Definition extends ReadonlyArray<string>,
+    Source extends Record<string, unknown> = Record<string, unknown>,
+>(
+    source: Source,
     definition: Definition,
-    mapping: Record<
-        string,
-        | Definition[number]
-        | { target: Definition[number]; transform: (val: unknown) => unknown }
+    mapping: Partial<
+        Record<Definition[number], (source: Source) => unknown>
     > = {},
 ) => {
     const update: Record<string, unknown> = {};
 
-    Object.entries(source).forEach(([key, value]) => {
-        if (value === undefined) return;
-
-        const mapConfig = mapping[key];
-        let targetColumn = key;
-        let finalValue = value as unknown;
-
-        if (mapConfig) {
-            if (typeof mapConfig === "string") {
-                targetColumn = mapConfig;
-            } else {
-                targetColumn = mapConfig.target;
-                finalValue = mapConfig.transform(value);
+    for (const column of definition) {
+        if (column in mapping) {
+            const mapper = mapping[column as Definition[number]];
+            if (mapper) {
+                const value = mapper(source);
+                if (value !== undefined) {
+                    update[column] = value;
+                }
             }
+        } else if ((source as Record<string, unknown>)[column] !== undefined) {
+            update[column] = (source as Record<string, unknown>)[column];
         }
-
-        if (targetColumn && definition.includes(targetColumn)) {
-            update[targetColumn] = finalValue;
-        }
-    });
+    }
 
     if (Object.keys(update).length === 0) {
         return undefined;

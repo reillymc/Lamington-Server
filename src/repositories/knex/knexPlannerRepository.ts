@@ -317,7 +317,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
     updateMeals: async (db, { plannerId, meals }) => {
         for (const meal of meals) {
             const updateData = buildUpdateRecord(meal, plannerMealColumns, {
-                course: "meal",
+                meal: ({ course }) => course,
             });
 
             if (updateData) {
@@ -430,9 +430,8 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
     update: async (db, { userId, planners }) => {
         for (const p of planners) {
             const updateData = buildUpdateRecord(p, plannerColumns, {
-                color: {
-                    target: "customisations",
-                    transform: (color) => ({ color }),
+                customisations: ({ color }) => {
+                    return color !== undefined ? { color } : undefined;
                 },
             });
 

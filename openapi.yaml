@@ -7,12 +7,16 @@ servers:
 tags:
   - name: Meals
     description: Meal planning operations
+  - name: Books
+    description: Book operations
   - name: Extractor
     description: Recipe extraction operations
   - name: Planners
     description: Planner operations
   - name: CookList
     description: Cook list operations
+  - name: Recipes
+    description: Recipe operations
   - name: Lists
     description: List operations
   - name: Users
@@ -24,6 +28,575 @@ tags:
 security:
   - bearerAuth: []
 paths:
+  /recipes:
+    get:
+      tags:
+        - Recipes
+      summary: Get recipes
+      operationId: getRecipes
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            $ref: "#/components/schemas/RecipeSortFields"
+        - name: order
+          in: query
+          schema:
+            $ref: "#/components/schemas/Order"
+        - name: owner
+          in: query
+          schema:
+            $ref: "#/components/schemas/Uuid"
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/Uuid"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recipes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Recipe"
+                  nextPage:
+                    type: integer
+                required:
+                  - recipes
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Recipes
+      summary: Create a recipe
+      operationId: postRecipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecipeCreate"
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /recipes/{recipeId}:
+    parameters:
+      - name: recipeId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    get:
+      tags:
+        - Recipes
+      summary: Get a recipe
+      operationId: getRecipe
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Recipes
+      summary: Update a recipe
+      operationId: patchRecipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecipeUpdate"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - Recipes
+      summary: Delete a recipe
+      operationId: deleteRecipe
+      responses:
+        204:
+          description: No Content
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /recipes/{recipeId}/rating:
+    parameters:
+      - name: recipeId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Recipes
+      summary: Rate a recipe
+      operationId: rateRecipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rating:
+                  type: number
+                  minimum: 0
+                  maximum: 5
+              required:
+                - rating
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rating:
+                    type: number
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /books:
+    get:
+      tags:
+        - Books
+      summary: Get user books
+      operationId: getBooks
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Book"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Books
+      summary: Create a book
+      operationId: postBook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookCreate"
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /books/{bookId}:
+    parameters:
+      - name: bookId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    get:
+      tags:
+        - Books
+      summary: Get a book
+      operationId: getBook
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Books
+      summary: Update a book
+      operationId: patchBook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookUpdate"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - Books
+      summary: Delete a book
+      operationId: deleteBook
+      responses:
+        204:
+          description: No Content
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /books/{bookId}/recipes:
+    parameters:
+      - name: bookId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    get:
+      tags:
+        - Books
+      summary: Get book recipes
+      operationId: getBookRecipes
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            $ref: "#/components/schemas/RecipeSortFields"
+        - name: order
+          in: query
+          schema:
+            $ref: "#/components/schemas/Order"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recipes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Recipe"
+                  nextPage:
+                    type: integer
+                required:
+                  - recipes
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Books
+      summary: Add recipe to book
+      operationId: postBookRecipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookRecipeCreate"
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recipeId:
+                    $ref: "#/components/schemas/Uuid"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /books/{bookId}/recipes/{recipeId}:
+    parameters:
+      - name: bookId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+      - name: recipeId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    delete:
+      tags:
+        - Books
+      summary: Remove recipe from book
+      operationId: deleteBookRecipe
+      responses:
+        204:
+          description: No Content
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /books/{bookId}/members:
+    parameters:
+      - name: bookId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    get:
+      tags:
+        - Books
+      summary: Get book members
+      operationId: getBookMembers
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Member"
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Books
+      summary: Invite member to book
+      operationId: postBookMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberCreate"
+      responses:
+        204:
+          description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /books/{bookId}/members/{userId}:
+    parameters:
+      - name: bookId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    patch:
+      tags:
+        - Books
+      summary: Update book member
+      operationId: patchBookMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberUpdate"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - Books
+      summary: Remove member from book
+      operationId: deleteBookMember
+      responses:
+        204:
+          description: No Content
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /books/{bookId}/invite/accept:
+    parameters:
+      - name: bookId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Books
+      summary: Accept book invitation
+      operationId: acceptBookInvite
+      responses:
+        204:
+          description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /books/{bookId}/invite/decline:
+    parameters:
+      - name: bookId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Books
+      summary: Decline book invitation
+      operationId: declineBookInvite
+      responses:
+        204:
+          description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /books/{bookId}/leave:
+    parameters:
+      - name: bookId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Uuid"
+    post:
+      tags:
+        - Books
+      summary: Leave book
+      operationId: leaveBook
+      responses:
+        204:
+          description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
   /auth/register:
     post:
       tags:
@@ -1865,18 +2438,76 @@ components:
         - $ref: "#/components/schemas/ExtractedRecipeMetadata"
         - $ref: "#/components/schemas/RecipeBase"
     Recipe:
-      allOf:
-        - $ref: "#/components/schemas/ExtractedRecipe"
-        - type: object
+      type: object
+      properties:
+        recipeId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        source:
+          type: string
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeSectionIngredient"
+        method:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeSectionMethod"
+        summary:
+          type: string
+        tips:
+          type: string
+        rating:
+          type: object
           properties:
-            recipeId:
-              $ref: "#/components/schemas/Uuid"
-            public:
-              type: boolean
-            timesCooked:
-              type: integer
-            owner:
-              $ref: "#/components/schemas/Owner"
+            average:
+              type: number
+            personal:
+              type: number
+        tags:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              tagId:
+                type: string
+              name:
+                type: string
+              tags:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    tagId:
+                      type: string
+                    name:
+                      type: string
+                  required:
+                    - tagId
+                    - name
+            required:
+              - tagId
+        owner:
+          $ref: "#/components/schemas/Owner"
+        cookTime:
+          type: integer
+        prepTime:
+          type: integer
+        servings:
+          $ref: "#/components/schemas/Servings"
+        public:
+          type: boolean
+        nutritionalInformation:
+          type: string
+        timesCooked:
+          type: integer
+        photo:
+          $ref: "#/components/schemas/ImageAttachment"
+      required:
+        - recipeId
+        - name
+        - owner
     ImageAttachment:
       type: object
       properties:
@@ -1965,3 +2596,266 @@ components:
             - status
       required:
         - user
+    BookColor:
+      type: string
+      enum:
+        - variant1
+        - variant2
+        - variant3
+        - variant4
+        - variant5
+    BookIcon:
+      type: string
+      enum:
+        - variant1
+        - variant2
+        - variant3
+        - variant4
+        - variant5
+        - variant6
+        - variant7
+        - variant8
+        - variant9
+        - variant10
+    Book:
+      type: object
+      properties:
+        bookId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        owner:
+          $ref: "#/components/schemas/Owner"
+        description:
+          type: string
+        color:
+          $ref: "#/components/schemas/BookColor"
+        icon:
+          $ref: "#/components/schemas/BookIcon"
+        status:
+          $ref: "#/components/schemas/UserStatus"
+      required:
+        - bookId
+        - name
+        - owner
+    BookCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        color:
+          $ref: "#/components/schemas/BookColor"
+        icon:
+          $ref: "#/components/schemas/BookIcon"
+      required:
+        - name
+      unevaluatedProperties: false
+    Servings:
+      type: object
+      properties:
+        unit:
+          type: string
+        count:
+          oneOf:
+            - $ref: "#/components/schemas/AmountRange"
+            - $ref: "#/components/schemas/AmountNumber"
+      required:
+        - unit
+        - count
+    RecipeTagRef:
+      type: object
+      properties:
+        tagId:
+          $ref: "#/components/schemas/Uuid"
+      required:
+        - tagId
+    RecipeIngredientItem:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/Uuid"
+        ingredientId:
+          $ref: "#/components/schemas/Uuid"
+        subrecipeId:
+          $ref: "#/components/schemas/Uuid"
+        amount:
+          $ref: "#/components/schemas/ListItemAmount"
+        description:
+          type: string
+        unit:
+          type: string
+        multiplier:
+          type: number
+        name:
+          type: string
+      required:
+        - id
+    RecipeSectionIngredient:
+      type: object
+      properties:
+        sectionId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        description:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeIngredientItem"
+      required:
+        - sectionId
+        - name
+        - items
+    RecipeMethodStep:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/Uuid"
+        description:
+          type: string
+      required:
+        - id
+    RecipeSectionMethod:
+      type: object
+      properties:
+        sectionId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        description:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeMethodStep"
+      required:
+        - sectionId
+        - name
+        - items
+    RecipeCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        source:
+          type: string
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeSectionIngredient"
+        method:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeSectionMethod"
+        summary:
+          type: string
+        tips:
+          type: string
+        rating:
+          type: number
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeTagRef"
+        cookTime:
+          type: integer
+        prepTime:
+          type: integer
+        servings:
+          $ref: "#/components/schemas/Servings"
+        public:
+          type: boolean
+        nutritionalInformation:
+          type: string
+        timesCooked:
+          type: integer
+        photo:
+          type: object
+          properties:
+            attachmentId:
+              $ref: "#/components/schemas/Uuid"
+          required:
+            - attachmentId
+      required:
+        - name
+      unevaluatedProperties: false
+    RecipeUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        source:
+          type: string
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeSectionIngredient"
+        method:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeSectionMethod"
+        summary:
+          type: string
+        tips:
+          type: string
+        rating:
+          type: number
+        nutritionalInformation:
+          type: string
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeTagRef"
+        cookTime:
+          type: integer
+        prepTime:
+          type: integer
+        servings:
+          $ref: "#/components/schemas/Servings"
+        public:
+          type: boolean
+        timesCooked:
+          type: integer
+        photo:
+          type: object
+          properties:
+            attachmentId:
+              $ref: "#/components/schemas/Uuid"
+          required:
+            - attachmentId
+      unevaluatedProperties: false
+    BookUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        color:
+          $ref: "#/components/schemas/BookColor"
+        icon:
+          $ref: "#/components/schemas/BookIcon"
+      unevaluatedProperties: false
+    BookRecipeCreate:
+      type: object
+      properties:
+        recipeId:
+          $ref: "#/components/schemas/Uuid"
+      required:
+        - recipeId
+      unevaluatedProperties: false
+    RecipeSortFields:
+      type: string
+      enum:
+        - name
+        - cookTime
+        - ratingAverage
+        - ratingPersonal
+    Order:
+      type: string
+      enum:
+        - asc
+        - desc

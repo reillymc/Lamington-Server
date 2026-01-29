@@ -1,16 +1,32 @@
 import { ContentMemberActions } from "../../controllers/index.ts";
-import { type Book, book } from "../../database/definitions/book.ts";
+import {
+    type Book,
+    book,
+    bookColumns,
+} from "../../database/definitions/book.ts";
 import { bookRecipe } from "../../database/definitions/bookRecipe.ts";
 import { type Content, content } from "../../database/definitions/content.ts";
 import { contentMember } from "../../database/definitions/contentMember.ts";
 import { type KnexDatabase, lamington, user } from "../../database/index.ts";
-import {
-    EnsureArray,
-    EnsureDefinedArray,
-    toUndefined,
-} from "../../utils/index.ts";
+import { EnsureArray, toUndefined } from "../../utils/index.ts";
 import type { BookRepository } from "../bookRepository.ts";
+import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
+
+const formatBook = (
+    book: any,
+): Awaited<ReturnType<BookRepository["read"]>>["books"][number] => ({
+    bookId: book.bookId,
+    name: book.name,
+    description: toUndefined(book.description),
+    icon: toUndefined(book.customisations?.icon),
+    color: toUndefined(book.customisations?.color),
+    owner: {
+        userId: book.createdBy,
+        firstName: book.firstName,
+    },
+    status: book.status ?? "O",
+});
 
 const readMembers: BookRepository<KnexDatabase>["readMembers"] = async (
     db,
@@ -60,7 +76,6 @@ const read: BookRepository<KnexDatabase>["read"] = async (
     db,
     { books, userId },
 ) => {
-    const members = await readMembers(db, books);
     const result: any[] = await db(lamington.book)
         .select(
             book.bookId,
@@ -87,17 +102,7 @@ const read: BookRepository<KnexDatabase>["read"] = async (
 
     return {
         userId,
-        books: result.map((book) => ({
-            bookId: book.bookId,
-            name: book.name,
-            description: book.description,
-            icon: book.customisations?.icon,
-            color: book.customisations?.color,
-            owner: { userId: book.createdBy, firstName: book.firstName },
-            status: book.status ?? "O",
-            members:
-                members.find((m) => m.bookId === book.bookId)?.members ?? [],
-        })),
+        books: result.map(formatBook),
     };
 };
 
@@ -113,67 +118,68 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         }));
 
         await db<Book>(lamington.book).insert(
-            booksToCreate.map(({ name, bookId, color, icon, description }) => ({
-                name,
-                bookId,
-                customisations: { color, icon },
-                description,
-            })),
+            booksToCreate.map(
+                ({
+                    name,
+                    bookId,
+                    color = "variant1",
+                    icon = "variant1",
+                    description,
+                }) => ({
+                    name,
+                    bookId,
+                    customisations: { color, icon },
+                    description,
+                }),
+            ),
         );
 
-        await setMembers(db, booksToCreate);
         return read(db, { userId, books: booksToCreate });
     },
     update: async (db, { userId, books }) => {
-        await db<Book>(lamington.book)
-            .insert(
-                books.map(({ bookId, name, description, color, icon }) => ({
-                    bookId,
-                    name,
-                    description,
-                    customisations: { color, icon },
-                })),
-            )
-            .onConflict("bookId")
-            .merge(["name", "description", "customisations"]);
+        for (const b of books) {
+            const updateData = buildUpdateRecord(b, bookColumns, {
+                customisations: ({ color, icon }) => {
+                    if (color === undefined && icon === undefined)
+                        return undefined;
+                    return {
+                        ...(color !== undefined ? { color } : {}),
+                        ...(icon !== undefined ? { icon } : {}),
+                    };
+                },
+            });
 
-        await setMembers(
-            db,
-            books.filter((b) => b.members),
-        );
+            if (updateData) {
+                await db(lamington.book)
+                    .where(book.bookId, b.bookId)
+                    .update(updateData);
+            }
+        }
 
         return read(db, { userId, books });
     },
     verifyPermissions: async (db, { userId, status, books }) => {
-        const query = db(lamington.book)
-            .select("bookId")
+        const statuses = EnsureArray(status);
+        const memberStatuses = statuses.filter((s) => s !== "O");
+
+        const bookOwners: Array<Pick<Book, "bookId">> = await db(lamington.book)
+            .select(book.bookId)
             .leftJoin(lamington.content, content.contentId, book.bookId)
-            .where({ [content.createdBy]: userId })
             .whereIn(
                 book.bookId,
                 books.map(({ bookId }) => bookId),
+            )
+            .modify(
+                withContentReadPermissions({
+                    userId,
+                    idColumn: book.bookId,
+                    allowedStatuses: memberStatuses,
+                    ownerColumns: statuses.includes("O") ? undefined : [],
+                }),
             );
 
-        const statuses = EnsureDefinedArray(status);
-
-        if (statuses?.length) {
-            query
-                .orWhere((builder) =>
-                    builder
-                        .where({ [contentMember.userId]: userId })
-                        .whereIn(contentMember.status, statuses),
-                )
-                .leftJoin(
-                    lamington.contentMember,
-                    content.contentId,
-                    contentMember.contentId,
-                );
-        }
-
-        const bookOwners: Array<Pick<Book, "bookId">> = await query;
-
         const permissionMap = Object.fromEntries(
-            bookOwners.map((book) => [book.bookId, true]),
+            bookOwners.map(({ bookId }) => [bookId, true]),
         );
 
         return {
@@ -214,25 +220,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         return {
             userId,
             filter,
-            books: bookList.map(
-                ({
-                    bookId,
-                    name,
-                    description,
-                    customisations,
-                    createdBy,
-                    firstName,
-                    status,
-                }) => ({
-                    bookId,
-                    name,
-                    description,
-                    icon: customisations?.icon,
-                    color: customisations?.color,
-                    owner: { userId: createdBy, firstName: firstName },
-                    status: status ?? "O",
-                }),
-            ),
+            books: bookList.map(formatBook),
         };
     },
     read,
