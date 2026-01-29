@@ -7,6 +7,9 @@ import type { RepositoryBulkService, RepositoryService } from "./repository.ts";
 
 // TODO: clean up extraneous exports after migration to openapi spec at service layer is complete
 type BookUserStatus = "O" | "A" | "M" | "P" | "B";
+type BookIcon = `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10}`;
+
+type BookColor = `variant${1 | 2 | 3 | 4 | 5}`;
 
 type MemberItem = {
     userId: ContentMember["userId"];
@@ -26,8 +29,8 @@ type BaseResponse = {
     bookId: Book["bookId"];
     name: Book["name"];
     description: Book["description"];
-    color: string;
-    icon: string;
+    color: BookColor;
+    icon: BookIcon;
     owner: {
         userId: User["userId"];
         firstName: User["firstName"];
@@ -66,8 +69,8 @@ type CreateRequest = {
     books: ReadonlyArray<{
         name: Book["name"];
         description?: Book["description"];
-        color?: string;
-        icon?: string;
+        color?: BookColor;
+        icon?: BookIcon;
     }>;
 };
 
@@ -79,8 +82,8 @@ type UpdateRequest = {
         bookId: Book["bookId"];
         name?: Book["name"];
         description?: Book["description"];
-        color?: string;
-        icon?: string;
+        color?: BookColor;
+        icon?: BookIcon;
     }>;
 };
 

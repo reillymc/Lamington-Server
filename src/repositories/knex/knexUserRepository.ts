@@ -1,6 +1,5 @@
 import { user, userColumns } from "../../database/definitions/user.ts";
 import { type KnexDatabase, lamington } from "../../database/index.ts";
-import { UserStatus } from "../../routes/spec/index.ts";
 import { EnsureArray, Undefined } from "../../utils/index.ts";
 import { UniqueViolationError } from "../common/errors.ts";
 import type { UserRepository } from "../userRepository.ts";
@@ -45,10 +44,7 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
         if (filter?.status) {
             query.whereIn(user.status, EnsureArray(filter.status));
         } else {
-            query.whereNotIn(user.status, [
-                UserStatus.Pending,
-                UserStatus.Blacklisted,
-            ]);
+            query.whereNotIn(user.status, ["P", "B"]);
         }
 
         const result = await query;

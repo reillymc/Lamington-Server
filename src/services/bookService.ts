@@ -81,15 +81,7 @@ export const createBookService: CreateService<
             userId,
         });
 
-        return books.map((book) => ({
-            bookId: book.bookId,
-            name: book.name,
-            owner: book.owner,
-            description: book.description,
-            color: book.color,
-            icon: book.icon,
-            status: book.status,
-        }));
+        return books;
     },
     get: async (userId, bookId) => {
         const {
@@ -103,15 +95,7 @@ export const createBookService: CreateService<
             throw new NotFoundError("book", bookId);
         }
 
-        return {
-            bookId: book.bookId,
-            name: book.name,
-            owner: book.owner,
-            description: book.description,
-            color: book.color,
-            icon: book.icon,
-            status: book.status,
-        };
+        return book;
     },
     create: (userId, request) =>
         database.transaction(async (trx) => {
@@ -133,15 +117,7 @@ export const createBookService: CreateService<
                 throw new CreatedDataFetchError("book");
             }
 
-            return {
-                bookId: book.bookId,
-                name: book.name,
-                owner: book.owner,
-                description: book.description,
-                color: book.color,
-                icon: book.icon,
-                status: book.status,
-            };
+            return book;
         }),
     update: (userId, bookId, request) =>
         database.transaction(async (trx) => {

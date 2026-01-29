@@ -8,17 +8,18 @@ import { setupApp } from "../../src/app.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
-import {
-    type components,
-    type paths,
-    UserStatus,
-} from "../../src/routes/spec/index.ts";
+import type { components, paths } from "../../src/routes/spec/index.ts";
 import {
     CreateUsers,
     PrepareAuthenticatedUser,
     randomBoolean,
     randomNumber,
 } from "../helpers/index.ts";
+
+const randomVariant = () =>
+    (["variant1", "variant2", "variant3"] as const)[
+        Math.floor(Math.random() * 3)
+    ];
 
 after(async () => {
     await db.destroy();
@@ -75,17 +76,15 @@ describe("Get user books", () => {
         await KnexBookRepository.saveMembers(database, [
             {
                 bookId: adminBook!.bookId,
-                members: [
-                    { userId: user.userId, status: UserStatus.Administrator },
-                ],
+                members: [{ userId: user.userId, status: "A" }],
             },
             {
                 bookId: memberBook!.bookId,
-                members: [{ userId: user.userId, status: UserStatus.Member }],
+                members: [{ userId: user.userId, status: "M" }],
             },
             {
                 bookId: pendingBook!.bookId,
-                members: [{ userId: user.userId, status: UserStatus.Pending }],
+                members: [{ userId: user.userId, status: "P" }],
             },
         ]);
 
@@ -113,9 +112,7 @@ describe("Get user books", () => {
         await KnexBookRepository.saveMembers(database, [
             {
                 bookId: blockedBook!.bookId,
-                members: [
-                    { userId: user.userId, status: UserStatus.Blacklisted },
-                ],
+                members: [{ userId: user.userId, status: "B" }],
             },
         ]);
 
@@ -189,7 +186,7 @@ describe("Delete a book", () => {
             members: [
                 {
                     userId: user!.userId,
-                    status: UserStatus.Administrator,
+                    status: "A",
                 },
             ],
         });
@@ -271,7 +268,7 @@ describe("Remove member from book", () => {
 
         await KnexBookRepository.saveMembers(database, {
             bookId: book!.bookId,
-            members: [{ userId: user!.userId, status: UserStatus.Pending }],
+            members: [{ userId: user!.userId, status: "P" }],
         });
 
         const res = await request(app)
@@ -304,12 +301,10 @@ describe("Remove member from book", () => {
         await KnexBookRepository.saveMembers(database, {
             bookId: book!.bookId,
             members: [
-                { userId: user!.userId, status: UserStatus.Administrator },
+                { userId: user!.userId, status: "A" },
                 {
                     userId: otherMember!.userId,
-                    status: randomBoolean()
-                        ? UserStatus.Administrator
-                        : UserStatus.Member,
+                    status: randomBoolean() ? "A" : "M",
                 },
             ],
         });
@@ -414,7 +409,7 @@ describe("Remove recipe from book", () => {
             members: [
                 {
                     userId: user!.userId,
-                    status: UserStatus.Member,
+                    status: "M",
                 },
             ],
         });
@@ -455,7 +450,7 @@ describe("Remove recipe from book", () => {
             members: [
                 {
                     userId: user!.userId,
-                    status: UserStatus.Administrator,
+                    status: "A",
                 },
             ],
         });
@@ -622,8 +617,8 @@ describe("Get a book", () => {
                 {
                     name: uuid(),
                     description: uuid(),
-                    color: uuid(),
-                    icon: uuid(),
+                    color: randomVariant(),
+                    icon: randomVariant(),
                 },
             ],
         });
@@ -663,7 +658,7 @@ describe("Get a book", () => {
 
         await KnexBookRepository.saveMembers(database, {
             bookId: book!.bookId,
-            members: [{ userId: user.userId, status: UserStatus.Member }],
+            members: [{ userId: user.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -702,8 +697,8 @@ describe("Create a book", () => {
         const bookData = {
             name: uuid(),
             description: uuid(),
-            color: uuid(),
-            icon: uuid(),
+            color: randomVariant(),
+            icon: randomVariant(),
         } satisfies components["schemas"]["BookCreate"];
 
         const res = await request(app)
@@ -775,7 +770,7 @@ describe("Update a book", () => {
             members: [
                 {
                     userId: user!.userId,
-                    status: UserStatus.Administrator,
+                    status: "A",
                 },
             ],
         });
@@ -855,7 +850,7 @@ describe("Get book members", () => {
 
         await KnexBookRepository.saveMembers(database, {
             bookId: book!.bookId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -872,12 +867,7 @@ describe("Get book members", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [bookOwner] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "P", "B"] as const;
 
         for (const status of statuses) {
             const {
@@ -1008,17 +998,17 @@ describe("Update book member", () => {
 
         await KnexBookRepository.saveMembers(database, {
             bookId: book.bookId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
             .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
             .set(token)
-            .send({ status: UserStatus.Administrator });
+            .send({ status: "A" });
 
         expect(res.statusCode).toEqual(200);
         const updatedMember = res.body as components["schemas"]["Member"];
-        expect(updatedMember.status).toEqual(UserStatus.Administrator);
+        expect(updatedMember.status).toEqual("A");
     });
 
     it("should not allow non-owners (A, M, P, B) to update a member status", async () => {
@@ -1026,12 +1016,7 @@ describe("Update book member", () => {
         const [owner] = await CreateUsers(database);
         const [member] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "P", "B"] as const;
 
         for (const status of statuses) {
             const { books } = await KnexBookRepository.create(database, {
@@ -1045,7 +1030,7 @@ describe("Update book member", () => {
                     bookId: book.bookId,
                     members: [
                         { userId: user.userId, status },
-                        { userId: member!.userId, status: UserStatus.Member },
+                        { userId: member!.userId, status: "M" },
                     ],
                 },
             ]);
@@ -1053,7 +1038,7 @@ describe("Update book member", () => {
             const res = await request(app)
                 .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
                 .set(token)
-                .send({ status: UserStatus.Administrator });
+                .send({ status: "A" });
 
             expect(res.statusCode).toEqual(404);
         }
@@ -1071,10 +1056,10 @@ describe("Update book member", () => {
 
         await KnexBookRepository.saveMembers(database, {
             bookId: book.bookId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
-        const restrictedStatuses = [UserStatus.Owner, UserStatus.Pending];
+        const restrictedStatuses = ["O", "P"];
 
         for (const status of restrictedStatuses) {
             const res = await request(app)
@@ -1098,13 +1083,13 @@ describe("Update book member", () => {
 
         await KnexBookRepository.saveMembers(database, {
             bookId: book.bookId,
-            members: [{ userId: member!.userId, status: UserStatus.Pending }],
+            members: [{ userId: member!.userId, status: "P" }],
         });
 
         const res = await request(app)
             .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
             .set(token)
-            .send({ status: UserStatus.Member });
+            .send({ status: "M" });
 
         expect(res.statusCode).toEqual(400);
     });
@@ -1119,13 +1104,13 @@ describe("Update book member", () => {
         const book = books[0]!;
         await KnexBookRepository.saveMembers(database, {
             bookId: book.bookId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
             .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
             .set(token)
-            .send({ status: UserStatus.Administrator, extra: "invalid" });
+            .send({ status: "A", extra: "invalid" });
         expect(res.statusCode).toEqual(400);
     });
 
@@ -1139,7 +1124,7 @@ describe("Update book member", () => {
         const book = books[0]!;
         await KnexBookRepository.saveMembers(database, {
             bookId: book.bookId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -1159,7 +1144,7 @@ describe("Update book member", () => {
         const book = books[0]!;
         await KnexBookRepository.saveMembers(database, {
             bookId: book.bookId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -1201,7 +1186,7 @@ describe("Accept book invitation", () => {
 
         await KnexBookRepository.saveMembers(database, {
             bookId: book!.bookId,
-            members: [{ userId: user!.userId, status: UserStatus.Pending }],
+            members: [{ userId: user!.userId, status: "P" }],
         });
 
         const res = await request(app)
@@ -1216,7 +1201,7 @@ describe("Accept book invitation", () => {
         });
 
         expect(bookMembers!.members.length).toEqual(1);
-        expect(bookMembers!.members[0]!.status).toEqual(UserStatus.Member);
+        expect(bookMembers!.members[0]!.status).toEqual("M");
     });
 });
 
@@ -1272,11 +1257,7 @@ describe("Decline book invitation", () => {
             await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "B"] as const;
 
         for (const status of statuses) {
             const { books } = await KnexBookRepository.create(database, {
@@ -1329,7 +1310,7 @@ describe("Leave book", () => {
 
         await KnexBookRepository.saveMembers(database, {
             bookId: book.bookId,
-            members: [{ userId: member.userId, status: UserStatus.Member }],
+            members: [{ userId: member.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -1364,7 +1345,7 @@ describe("Leave book", () => {
         const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
         const [userToken, user] = await PrepareAuthenticatedUser(database);
 
-        const statuses = [UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = ["P", "B"] as const;
 
         for (const status of statuses) {
             const { books } = await KnexBookRepository.create(database, {
@@ -1468,7 +1449,7 @@ describe("Add recipe to book", () => {
             members: [
                 {
                     userId: user!.userId,
-                    status: UserStatus.Member,
+                    status: "M",
                 },
             ],
         });
@@ -1504,7 +1485,7 @@ describe("Add recipe to book", () => {
             members: [
                 {
                     userId: user!.userId,
-                    status: UserStatus.Administrator,
+                    status: "A",
                 },
             ],
         });

@@ -1,5 +1,4 @@
 import type { Knex } from "knex";
-import { UserStatus } from "../../routes/spec/user.ts";
 import { tables } from "../convertedMigrations/20240407043918_setup_tables.ts";
 
 export const newTables = {
@@ -194,7 +193,7 @@ export const up = async (knex: Knex): Promise<void> => {
             .inTable(tables.user)
             .onDelete("CASCADE")
             .onUpdate("CASCADE");
-        table.text("status").notNullable().defaultTo(UserStatus.Pending);
+        table.text("status").notNullable().defaultTo("P");
         table.primary(["contentId", "userId"]);
     });
 
@@ -439,10 +438,7 @@ export const down = async (knex: Knex): Promise<void> => {
                     .inTable(tables.user)
                     .onDelete("CASCADE")
                     .onUpdate("CASCADE");
-                table
-                    .text("status")
-                    .notNullable()
-                    .defaultTo(UserStatus.Pending);
+                table.text("status").notNullable().defaultTo("P");
                 table.primary([id, "userId"]);
             });
         }

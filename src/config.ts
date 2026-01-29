@@ -36,7 +36,7 @@ const config: LamingtonConfig = {
     authentication: {
         jwtSecret: process.env.JWT_SECRET,
         // TODO: handle string to ms.StringValue | number safely
-        jwtExpiration: process.env.JWT_EXPIRATION ?? "1h",
+        jwtExpiration: process.env.JWT_EXPIRATION,
     },
     attachments: {
         storageService: parseAttachmentStorage(

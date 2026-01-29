@@ -59,15 +59,6 @@ export type ReadRequest<
     C extends Record<string, unknown> = {},
 > = ({ [P in K]: T[P] } & C) | Array<{ [P in K]: T[P] } & C>;
 
-// QUERY
-export type DefaultRecipeSortFieldss = "name" | "date";
-export type QueryMetadata<TSort extends string = DefaultRecipeSortFieldss> = {
-    page?: number;
-    search?: string;
-    sort?: TSort;
-    order?: "asc" | "desc";
-};
-
 export type CreateQuery<T> = T | Array<T>;
 
 export type CreateResponse<T> = Promise<Array<T>>;

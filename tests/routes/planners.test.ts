@@ -9,7 +9,7 @@ import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
 import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
-import { type components, UserStatus } from "../../src/routes/spec/index.ts";
+import type { components } from "../../src/routes/spec/index.ts";
 import {
     CreateUsers,
     PrepareAuthenticatedUser,
@@ -98,17 +98,15 @@ describe("Get user planners", () => {
         await KnexPlannerRepository.saveMembers(database, [
             {
                 plannerId: adminPlanner!.plannerId,
-                members: [
-                    { userId: user.userId, status: UserStatus.Administrator },
-                ],
+                members: [{ userId: user.userId, status: "A" }],
             },
             {
                 plannerId: memberPlanner!.plannerId,
-                members: [{ userId: user.userId, status: UserStatus.Member }],
+                members: [{ userId: user.userId, status: "M" }],
             },
             {
                 plannerId: pendingPlanner!.plannerId,
-                members: [{ userId: user.userId, status: UserStatus.Pending }],
+                members: [{ userId: user.userId, status: "P" }],
             },
         ]);
 
@@ -137,9 +135,7 @@ describe("Get user planners", () => {
         await KnexPlannerRepository.saveMembers(database, [
             {
                 plannerId: blockedPlanner!.plannerId,
-                members: [
-                    { userId: user.userId, status: UserStatus.Blacklisted },
-                ],
+                members: [{ userId: user.userId, status: "B" }],
             },
         ]);
 
@@ -286,7 +282,7 @@ describe("Get a planner", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [plannerOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member];
+        const statuses = ["A", "M"] as const;
 
         for (const status of statuses) {
             const {
@@ -317,7 +313,7 @@ describe("Get a planner", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [plannerOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = ["P", "B"] as const;
 
         for (const status of statuses) {
             const {
@@ -408,9 +404,7 @@ describe("Delete a planner", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [
-                { userId: user!.userId, status: UserStatus.Administrator },
-            ],
+            members: [{ userId: user!.userId, status: "A" }],
         });
 
         const res = await request(app)
@@ -608,7 +602,7 @@ describe("Get planner meals", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [plannerOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member];
+        const statuses = ["A", "M"] as const;
 
         for (const status of statuses) {
             const {
@@ -655,7 +649,7 @@ describe("Get planner meals", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [plannerOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Blacklisted, UserStatus.Pending];
+        const statuses = ["B", "P"] as const;
 
         for (const status of statuses) {
             const {
@@ -827,12 +821,7 @@ describe("Update a planner", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "P", "B"] as const;
 
         for (const status of statuses) {
             const {
@@ -908,7 +897,7 @@ describe("Update a planner", () => {
         const res = await request(app)
             .patch(`/v1/planners/${planner!.plannerId}`)
             .set(token)
-            .send({ extra: "invalid" } as any);
+            .send({ extra: "invalid" });
         expect(res.statusCode).toEqual(400);
     });
 
@@ -1116,7 +1105,7 @@ describe("Add a meal to a planner", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: user!.userId, status: UserStatus.Member }],
+            members: [{ userId: user!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -1154,9 +1143,7 @@ describe("Add a meal to a planner", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [
-                { userId: user!.userId, status: UserStatus.Administrator },
-            ],
+            members: [{ userId: user!.userId, status: "A" }],
         });
 
         const res = await request(app)
@@ -1343,7 +1330,7 @@ describe("Update a meal in a planner", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: user.userId, status: UserStatus.Member }],
+            members: [{ userId: user.userId, status: "M" }],
         });
 
         const {
@@ -1385,9 +1372,7 @@ describe("Update a meal in a planner", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [
-                { userId: user.userId, status: UserStatus.Administrator },
-            ],
+            members: [{ userId: user.userId, status: "A" }],
         });
 
         const {
@@ -1757,7 +1742,7 @@ describe("Remove a meal from a planner", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: user!.userId, status: UserStatus.Member }],
+            members: [{ userId: user!.userId, status: "M" }],
         });
 
         const {
@@ -1798,9 +1783,7 @@ describe("Remove a meal from a planner", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [
-                { userId: user!.userId, status: UserStatus.Administrator },
-            ],
+            members: [{ userId: user!.userId, status: "A" }],
         });
 
         const {
@@ -1940,7 +1923,7 @@ describe("Get planner members", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -1955,12 +1938,7 @@ describe("Get planner members", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [plannerOwner] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Administrator,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["M", "P", "A", "B"] as const;
 
         for (const status of statuses) {
             const {
@@ -2035,12 +2013,7 @@ describe("Invite a member to a planner", () => {
         const [plannerOwner] = await CreateUsers(database);
         const [invitee] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "P", "B"] as const;
 
         for (const status of statuses) {
             const {
@@ -2077,7 +2050,7 @@ describe("Invite a member to a planner", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -2171,7 +2144,7 @@ describe("Accept planner invitation", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: invitee.userId, status: "P" as any }],
+            members: [{ userId: invitee.userId, status: "P" }],
         });
 
         const res = await request(app)
@@ -2191,11 +2164,7 @@ describe("Accept planner invitation", () => {
             await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "B"] as const;
 
         for (const status of statuses) {
             const {
@@ -2253,7 +2222,7 @@ describe("Decline planner invitation", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: invitee.userId, status: "P" as any }],
+            members: [{ userId: invitee.userId, status: "P" }],
         });
 
         const res = await request(app)
@@ -2273,11 +2242,7 @@ describe("Decline planner invitation", () => {
             await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "B"] as const;
 
         for (const status of statuses) {
             const {
@@ -2325,7 +2290,7 @@ describe("Leave a planner", () => {
         const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
         const [userToken, user] = await PrepareAuthenticatedUser(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member];
+        const statuses = ["A", "M"] as const;
 
         for (const status of statuses) {
             const {
@@ -2375,7 +2340,7 @@ describe("Leave a planner", () => {
         const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
         const [userToken, user] = await PrepareAuthenticatedUser(database);
 
-        const statuses = [UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = ["P", "B"] as const;
 
         for (const status of statuses) {
             const {
@@ -2432,7 +2397,7 @@ describe("Remove a member from a planner", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -2454,12 +2419,7 @@ describe("Remove a member from a planner", () => {
         const [owner] = await CreateUsers(database);
         const [member] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "P", "B"] as const;
 
         for (const status of statuses) {
             const {
@@ -2474,7 +2434,7 @@ describe("Remove a member from a planner", () => {
                     plannerId: planner!.plannerId,
                     members: [
                         { userId: user.userId, status },
-                        { userId: member!.userId, status: UserStatus.Member },
+                        { userId: member!.userId, status: "M" },
                     ],
                 },
             ]);
@@ -2524,7 +2484,7 @@ describe("Update a planner member", () => {
         // Start as Member
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         // Update M -> A
@@ -2533,15 +2493,15 @@ describe("Update a planner member", () => {
                 `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
             )
             .set(token)
-            .send({ status: UserStatus.Administrator });
+            .send({ status: "A" });
 
         expect(res.statusCode).toEqual(200);
-        expect(res.body.status).toEqual(UserStatus.Administrator);
+        expect(res.body.status).toEqual("A");
 
         let [members] = await KnexPlannerRepository.readMembers(database, [
             { plannerId: planner!.plannerId },
         ]);
-        expect(members!.members[0]!.status).toEqual(UserStatus.Administrator);
+        expect(members!.members[0]!.status).toEqual("A");
 
         // Update A -> M
         res = await request(app)
@@ -2549,15 +2509,15 @@ describe("Update a planner member", () => {
                 `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
             )
             .set(token)
-            .send({ status: UserStatus.Member });
+            .send({ status: "M" });
 
         expect(res.statusCode).toEqual(200);
-        expect(res.body.status).toEqual(UserStatus.Member);
+        expect(res.body.status).toEqual("M");
 
         [members] = await KnexPlannerRepository.readMembers(database, [
             { plannerId: planner!.plannerId },
         ]);
-        expect(members!.members[0]!.status).toEqual(UserStatus.Member);
+        expect(members!.members[0]!.status).toEqual("M");
     });
 
     it("should fail when trying to update a member to restricted statuses (O, P)", async () => {
@@ -2573,10 +2533,10 @@ describe("Update a planner member", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
-        const restrictedStatuses = [UserStatus.Owner, UserStatus.Pending];
+        const restrictedStatuses = ["O", "P"];
 
         for (const status of restrictedStatuses) {
             const res = await request(app)
@@ -2595,12 +2555,7 @@ describe("Update a planner member", () => {
         const [owner] = await CreateUsers(database);
         const [member] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "P", "B"] as const;
 
         for (const status of statuses) {
             const {
@@ -2615,7 +2570,7 @@ describe("Update a planner member", () => {
                     plannerId: planner!.plannerId,
                     members: [
                         { userId: user.userId, status },
-                        { userId: member!.userId, status: UserStatus.Member },
+                        { userId: member!.userId, status: "M" },
                     ],
                 },
             ]);
@@ -2625,7 +2580,7 @@ describe("Update a planner member", () => {
                     `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
                 )
                 .set(token)
-                .send({ status: UserStatus.Administrator });
+                .send({ status: "A" });
 
             expect(res.statusCode).toEqual(404);
         }
@@ -2644,7 +2599,7 @@ describe("Update a planner member", () => {
 
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: UserStatus.Pending }],
+            members: [{ userId: member!.userId, status: "P" }],
         });
 
         const res = await request(app)
@@ -2652,7 +2607,7 @@ describe("Update a planner member", () => {
                 `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
             )
             .set(token)
-            .send({ status: UserStatus.Member });
+            .send({ status: "M" });
 
         expect(res.statusCode).toEqual(400);
     });
@@ -2668,7 +2623,7 @@ describe("Update a planner member", () => {
         });
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -2676,7 +2631,7 @@ describe("Update a planner member", () => {
                 `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
             )
             .set(token)
-            .send({ status: UserStatus.Administrator, extra: "invalid" });
+            .send({ status: "A", extra: "invalid" });
         expect(res.statusCode).toEqual(400);
     });
 
@@ -2691,7 +2646,7 @@ describe("Update a planner member", () => {
         });
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -2714,7 +2669,7 @@ describe("Update a planner member", () => {
         });
         await KnexPlannerRepository.saveMembers(database, {
             plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)

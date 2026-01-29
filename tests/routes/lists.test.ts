@@ -7,7 +7,7 @@ import { v4 as uuid } from "uuid";
 import { setupApp } from "../../src/app.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
-import { type components, UserStatus } from "../../src/routes/spec/index.ts";
+import type { components } from "../../src/routes/spec/index.ts";
 import { CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
 
 const randomIcon = () =>
@@ -69,17 +69,15 @@ describe("Get user lists", () => {
         await KnexListRepository.saveMembers(database, [
             {
                 listId: adminList!.listId,
-                members: [
-                    { userId: user.userId, status: UserStatus.Administrator },
-                ],
+                members: [{ userId: user.userId, status: "A" }],
             },
             {
                 listId: memberList!.listId,
-                members: [{ userId: user.userId, status: UserStatus.Member }],
+                members: [{ userId: user.userId, status: "M" }],
             },
             {
                 listId: pendingList!.listId,
-                members: [{ userId: user.userId, status: UserStatus.Pending }],
+                members: [{ userId: user.userId, status: "P" }],
             },
         ]);
 
@@ -107,9 +105,7 @@ describe("Get user lists", () => {
         await KnexListRepository.saveMembers(database, [
             {
                 listId: blockedList!.listId,
-                members: [
-                    { userId: user.userId, status: UserStatus.Blacklisted },
-                ],
+                members: [{ userId: user.userId, status: "B" }],
             },
         ]);
 
@@ -274,7 +270,7 @@ describe("Get a list", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [listOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member];
+        const statuses = ["A", "M"] as const;
 
         for (const status of statuses) {
             const {
@@ -305,7 +301,7 @@ describe("Get a list", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [listOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = ["P", "B"] as const;
 
         for (const status of statuses) {
             const {
@@ -360,12 +356,7 @@ describe("Update a list", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "P", "B"] as const;
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -527,9 +518,7 @@ describe("Delete a list", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [
-                { userId: user.userId, status: UserStatus.Administrator },
-            ],
+            members: [{ userId: user.userId, status: "A" }],
         });
 
         const res = await request(app)
@@ -612,7 +601,7 @@ describe("Get list items", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [listOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Administrator, UserStatus.Member];
+        const statuses = ["A", "M"] as const;
 
         for (const status of statuses) {
             const {
@@ -649,7 +638,7 @@ describe("Get list items", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [listOwner] = await CreateUsers(database);
 
-        const statuses = [UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = ["P", "B"] as const;
 
         for (const status of statuses) {
             const {
@@ -755,9 +744,7 @@ describe("Add item to list", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [
-                { userId: user.userId, status: UserStatus.Administrator },
-            ],
+            members: [{ userId: user.userId, status: "A" }],
         });
 
         const itemData = {
@@ -779,11 +766,7 @@ describe("Add item to list", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [listOwner] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["M", "P", "B"] as const;
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -911,9 +894,7 @@ describe("Update list item", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [
-                { userId: user.userId, status: UserStatus.Administrator },
-            ],
+            members: [{ userId: user.userId, status: "A" }],
         });
 
         const { items } = await KnexListRepository.createItems(database, {
@@ -942,11 +923,7 @@ describe("Update list item", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [listOwner] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["M", "P", "B"] as const;
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1146,9 +1123,7 @@ describe("Delete list item", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [
-                { userId: user.userId, status: UserStatus.Administrator },
-            ],
+            members: [{ userId: user.userId, status: "A" }],
         });
 
         const { items } = await KnexListRepository.createItems(database, {
@@ -1179,11 +1154,7 @@ describe("Delete list item", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [listOwner] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["M", "P", "B"] as const;
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1268,7 +1239,7 @@ describe("Get list members", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -1285,12 +1256,7 @@ describe("Get list members", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [listOwner] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "P", "B"] as const;
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1367,7 +1333,7 @@ describe("Invite member to list", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -1383,12 +1349,7 @@ describe("Invite member to list", () => {
         const [listOwner] = await CreateUsers(database);
         const [invitee] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "P", "B"] as const;
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1489,17 +1450,17 @@ describe("Update list member", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
             .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
             .set(token)
-            .send({ status: UserStatus.Administrator });
+            .send({ status: "A" });
 
         expect(res.statusCode).toEqual(200);
         const updatedMember = res.body as components["schemas"]["Member"];
-        expect(updatedMember.status).toEqual(UserStatus.Administrator);
+        expect(updatedMember.status).toEqual("A");
     });
 
     it("should not allow non-owners (A, M, P, B) to update a member status", async () => {
@@ -1507,12 +1468,7 @@ describe("Update list member", () => {
         const [owner] = await CreateUsers(database);
         const [member] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "P", "B"] as const;
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1526,7 +1482,7 @@ describe("Update list member", () => {
                     listId: list.listId,
                     members: [
                         { userId: user.userId, status },
-                        { userId: member!.userId, status: UserStatus.Member },
+                        { userId: member!.userId, status: "M" },
                     ],
                 },
             ]);
@@ -1534,7 +1490,7 @@ describe("Update list member", () => {
             const res = await request(app)
                 .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
                 .set(token)
-                .send({ status: UserStatus.Administrator });
+                .send({ status: "A" });
 
             expect(res.statusCode).toEqual(404);
         }
@@ -1552,10 +1508,10 @@ describe("Update list member", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
-        const restrictedStatuses = [UserStatus.Owner, UserStatus.Pending];
+        const restrictedStatuses = ["O", "P"];
 
         for (const status of restrictedStatuses) {
             const res = await request(app)
@@ -1579,13 +1535,13 @@ describe("Update list member", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: member!.userId, status: UserStatus.Pending }],
+            members: [{ userId: member!.userId, status: "P" }],
         });
 
         const res = await request(app)
             .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
             .set(token)
-            .send({ status: UserStatus.Member });
+            .send({ status: "M" });
 
         expect(res.statusCode).toEqual(400);
     });
@@ -1600,13 +1556,13 @@ describe("Update list member", () => {
         const list = lists[0]!;
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
             .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
             .set(token)
-            .send({ status: UserStatus.Administrator, extra: "invalid" });
+            .send({ status: "A", extra: "invalid" });
         expect(res.statusCode).toEqual(400);
     });
 
@@ -1620,7 +1576,7 @@ describe("Update list member", () => {
         const list = lists[0]!;
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -1640,7 +1596,7 @@ describe("Update list member", () => {
         const list = lists[0]!;
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -1683,7 +1639,7 @@ describe("Remove member from list", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: member!.userId, status: UserStatus.Member }],
+            members: [{ userId: member!.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -1703,12 +1659,7 @@ describe("Remove member from list", () => {
         const [owner] = await CreateUsers(database);
         const [member] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Pending,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "P", "B"] as const;
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1722,7 +1673,7 @@ describe("Remove member from list", () => {
                     listId: list.listId,
                     members: [
                         { userId: user.userId, status },
-                        { userId: member!.userId, status: UserStatus.Member },
+                        { userId: member!.userId, status: "M" },
                     ],
                 },
             ]);
@@ -1768,7 +1719,7 @@ describe("Accept list invitation", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: invitee.userId, status: "P" as any }],
+            members: [{ userId: invitee.userId, status: "P" }],
         });
 
         const res = await request(app)
@@ -1788,11 +1739,7 @@ describe("Accept list invitation", () => {
             await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "B"] as const;
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1847,7 +1794,7 @@ describe("Decline list invitation", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: invitee.userId, status: "P" as any }],
+            members: [{ userId: invitee.userId, status: "P" }],
         });
 
         const res = await request(app)
@@ -1867,11 +1814,7 @@ describe("Decline list invitation", () => {
             await PrepareAuthenticatedUser(database);
         const [owner] = await CreateUsers(database);
 
-        const statuses = [
-            UserStatus.Administrator,
-            UserStatus.Member,
-            UserStatus.Blacklisted,
-        ];
+        const statuses = ["A", "M", "B"] as const;
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {
@@ -1924,7 +1867,7 @@ describe("Leave list", () => {
 
         await KnexListRepository.saveMembers(database, {
             listId: list.listId,
-            members: [{ userId: member.userId, status: UserStatus.Member }],
+            members: [{ userId: member.userId, status: "M" }],
         });
 
         const res = await request(app)
@@ -1959,7 +1902,7 @@ describe("Leave list", () => {
         const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
         const [userToken, user] = await PrepareAuthenticatedUser(database);
 
-        const statuses = [UserStatus.Pending, UserStatus.Blacklisted];
+        const statuses = ["P", "B"] as const;
 
         for (const status of statuses) {
             const { lists } = await KnexListRepository.create(database, {

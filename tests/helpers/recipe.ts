@@ -4,7 +4,7 @@ import { TagActions } from "../../src/controllers/index.ts";
 import type { RecipeServings } from "../../src/database/definitions/recipe.ts";
 import type { RecipeIngredientAmount } from "../../src/database/definitions/recipeIngredient.ts";
 import type { KnexDatabase } from "../../src/database/index.ts";
-import type { components } from "../../src/routes/spec/schema.js";
+import type { components } from "../../src/routes/spec/schema.ts";
 import { Undefined } from "../../src/utils/index.ts";
 import { randomBoolean, randomNumber } from "./data.ts";
 

@@ -512,12 +512,7 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
             }),
             method: recipeStepRowsToResponse({ method, sections }),
             tags: ContentTagRowsToResponse(tags),
-            photo: heroAttachment
-                ? {
-                      attachmentId: heroAttachment.attachmentId,
-                      uri: heroAttachment.uri,
-                  }
-                : undefined,
+            photo: heroAttachment,
         });
     }
 

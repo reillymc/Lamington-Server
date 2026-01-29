@@ -32,11 +32,4 @@ export const TagEndpoint = {
 
 export * from "./asset.ts";
 export * from "./attachment.ts";
-export type {
-    BasePaginatedRequestQuery,
-    QueryParam,
-    RequestValidator,
-} from "./base.ts";
-export * from "./common.ts";
 export * from "./tag.ts";
-export * from "./user.ts";

@@ -1,5 +1,4 @@
 import type { Knex } from "knex";
-import { UserStatus } from "../../routes/spec/index.ts";
 
 export const tables = {
     book: "book",
@@ -40,7 +39,7 @@ export const up = async (knex: Knex): Promise<void> =>
             table.string("firstName", 255).notNullable();
             table.string("lastName", 255).notNullable();
             table.string("password", 255).notNullable();
-            table.text("status").notNullable().defaultTo(UserStatus.Pending);
+            table.text("status").notNullable().defaultTo("P");
             table.jsonb("preferences");
             table.timestamps(true, true, true);
         })
@@ -255,7 +254,7 @@ export const up = async (knex: Knex): Promise<void> =>
                 .inTable(tables.user)
                 .onDelete("CASCADE")
                 .onUpdate("CASCADE");
-            table.text("status").notNullable().defaultTo(UserStatus.Pending);
+            table.text("status").notNullable().defaultTo("P");
             table.primary(["listId", "userId"]);
         })
         .createTable(tables.book, (table) => {
@@ -298,7 +297,7 @@ export const up = async (knex: Knex): Promise<void> =>
                 .inTable(tables.user)
                 .onDelete("CASCADE")
                 .onUpdate("CASCADE");
-            table.text("status").notNullable().defaultTo(UserStatus.Pending);
+            table.text("status").notNullable().defaultTo("P");
             table.primary(["bookId", "userId"]);
         })
         .createTable(tables.planner, (table) => {
@@ -356,7 +355,7 @@ export const up = async (knex: Knex): Promise<void> =>
                 .inTable(tables.user)
                 .onDelete("CASCADE")
                 .onUpdate("CASCADE");
-            table.text("status").notNullable().defaultTo(UserStatus.Pending);
+            table.text("status").notNullable().defaultTo("P");
             table.primary(["plannerId", "userId"]);
         })
         .then(() => knex.raw(onUpdateTrigger(tables.user)))

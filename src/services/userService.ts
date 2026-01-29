@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { v4 as Uuid } from "uuid";
 import { UniqueViolationError } from "../repositories/common/errors.ts";
-import { type components, UserStatus } from "../routes/spec/index.ts";
+import type { components } from "../routes/spec/index.ts";
 import {
     CreatedDataFetchError,
     createToken,
@@ -74,7 +74,7 @@ export const createUserService: CreateService<
             database,
             {
                 userId,
-                status: [UserStatus.Administrator, UserStatus.Owner],
+                status: ["A", "O"],
             },
         );
         if (!hasPermissions) {
@@ -90,7 +90,7 @@ export const createUserService: CreateService<
             database,
             {
                 userId,
-                status: [UserStatus.Administrator, UserStatus.Owner],
+                status: ["A", "O"],
             },
         );
         if (!hasPermissions) {
@@ -109,13 +109,10 @@ export const createUserService: CreateService<
         const {
             users: [updatedUser],
         } = await userRepository.update(database, {
-            users: [{ userId: userToApproveId, status: UserStatus.Member }],
+            users: [{ userId: userToApproveId, status: "M" }],
         });
 
-        if (
-            user.status === UserStatus.Pending &&
-            updatedUser?.status === UserStatus.Member
-        ) {
+        if (user.status === "P" && updatedUser?.status === "M") {
             const {
                 lists: [list],
             } = await listRepository.create(database, {
@@ -233,7 +230,7 @@ export const createUserService: CreateService<
             database,
             {
                 userId,
-                status: [UserStatus.Administrator, UserStatus.Owner],
+                status: ["A", "O"],
             },
         );
         if (!hasPermissions) {
@@ -250,9 +247,7 @@ export const createUserService: CreateService<
         }
 
         await userRepository.update(database, {
-            users: [
-                { userId: userToBlacklistId, status: UserStatus.Blacklisted },
-            ],
+            users: [{ userId: userToBlacklistId, status: "B" }],
         });
     },
     delete: async (userId, userToDeleteId) => {
@@ -260,7 +255,7 @@ export const createUserService: CreateService<
             database,
             {
                 userId,
-                status: [UserStatus.Administrator, UserStatus.Owner],
+                status: ["A", "O"],
             },
         );
         if (!hasPermissions) {
@@ -291,7 +286,7 @@ export const createUserService: CreateService<
                         ...user,
                         email: user.email.toLowerCase(),
                         password,
-                        status: UserStatus.Pending,
+                        status: "P",
                     },
                 ],
             });
@@ -332,7 +327,7 @@ export const createUserService: CreateService<
             throw new UnauthorizedError();
         }
 
-        const userPending = user.status === UserStatus.Pending;
+        const userPending = user.status === "P";
         const token = !userPending ? createToken(user.userId) : undefined;
         const message = userPending ? "Account is pending approval" : undefined;
 

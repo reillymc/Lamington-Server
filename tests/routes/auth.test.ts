@@ -6,7 +6,7 @@ import request from "supertest";
 import { setupApp } from "../../src/app.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
-import { type components, UserStatus } from "../../src/routes/spec/index.ts";
+import type { components } from "../../src/routes/spec/index.ts";
 import { comparePassword } from "../../src/services/password.ts";
 import { CreateUsers } from "../helpers/index.ts";
 
@@ -83,7 +83,7 @@ describe("Login a user", () => {
 
     it("should return pending error message when logging in with pending account", async () => {
         const [user] = await CreateUsers(database, {
-            status: UserStatus.Pending,
+            status: "P",
         });
 
         if (!user) throw new Error("User not created");
@@ -104,7 +104,7 @@ describe("Login a user", () => {
 
     it("should login successfully but return Blacklisted status for blacklisted user", async () => {
         const [user] = await CreateUsers(database, {
-            status: UserStatus.Blacklisted,
+            status: "B",
         });
         if (!user) throw new Error("User not created");
 
@@ -117,7 +117,7 @@ describe("Login a user", () => {
 
         expect(res.statusCode).toEqual(200);
         const data = res.body as components["schemas"]["AuthResponse"];
-        expect(data.user.status).toEqual(UserStatus.Blacklisted);
+        expect(data.user.status).toEqual("B");
         expect(data.authorization?.token).toBeDefined();
     });
 });
@@ -180,7 +180,7 @@ describe("Register a new user", () => {
         const { users: pendingUsers } = await KnexUserRepository.readAll(
             database,
             {
-                filter: { status: UserStatus.Pending },
+                filter: { status: "P" },
             },
         );
 
@@ -191,7 +191,7 @@ describe("Register a new user", () => {
         expect(user?.email).toEqual(requestBody.email);
         expect(user?.firstName).toEqual(requestBody.firstName);
         expect(user?.lastName).toEqual(requestBody.lastName);
-        expect(user?.status).toEqual(UserStatus.Pending);
+        expect(user?.status).toEqual("P");
     });
 
     it("should convert email to lower case", async () => {
@@ -211,7 +211,7 @@ describe("Register a new user", () => {
         const { users: pendingUsers } = await KnexUserRepository.readAll(
             database,
             {
-                filter: { status: UserStatus.Pending },
+                filter: { status: "P" },
             },
         );
 
