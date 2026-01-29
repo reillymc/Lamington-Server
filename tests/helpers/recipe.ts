@@ -1,20 +1,10 @@
 import { expect } from "expect";
 import { v4 as uuid } from "uuid";
 import { TagActions } from "../../src/controllers/index.ts";
-import type {
-    KnexDatabase,
-    ServiceResponse,
-} from "../../src/database/index.ts";
-import type {
-    ContentTags,
-    RecipeIngredientAmount,
-    RecipeIngredientItem,
-    RecipeIngredients,
-    RecipeMethod,
-    RecipeMethodStep,
-    RecipeServings,
-} from "../../src/routes/spec/index.ts";
-import type { RecipeService } from "../../src/services/recipeService.ts";
+import type { RecipeServings } from "../../src/database/definitions/recipe.ts";
+import type { RecipeIngredientAmount } from "../../src/database/definitions/recipeIngredient.ts";
+import type { KnexDatabase } from "../../src/database/index.ts";
+import type { components } from "../../src/routes/spec/schema.js";
 import { Undefined } from "../../src/utils/index.ts";
 import { randomBoolean, randomNumber } from "./data.ts";
 
@@ -43,79 +33,58 @@ const generateRandomAmount = [
         }) satisfies RecipeIngredientAmount,
 ][randomNumber(0, 2)]!;
 
-export const generateRandomRecipeIngredientSections = (): ServiceResponse<
-    RecipeService,
-    "create"
->["ingredients"] =>
-    Array.from({ length: randomNumber() }).map(() => ({
-        sectionId: uuid(),
-        name: uuid(),
-        description: uuid(),
-        items: Array.from({ length: randomNumber() }).map(() => ({
-            id: uuid(),
-            name: uuid(),
-            amount: generateRandomAmount(),
-            description: uuid(),
-            multiplier: randomNumber(),
-            unit: uuid(),
-            // ingredientId: uuid(), TODO: verify or remove ingredient creation support entirely
-        })),
-    }));
-
-export const generateRandomPostRecipeIngredientSections =
-    (): RecipeIngredients =>
+export const generateRandomRecipeIngredientSections =
+    (): components["schemas"]["RecipeSectionIngredient"][] =>
         Array.from({ length: randomNumber() }).map(() => ({
             sectionId: uuid(),
             name: uuid(),
             description: uuid(),
-            items: Array.from({ length: randomNumber() }).map(
-                (): RecipeIngredientItem => ({
-                    id: uuid(),
-                    name: uuid(),
-                    amount: generateRandomAmount(),
-                    description: uuid(),
-                    multiplier: randomNumber(),
-                    unit: uuid(),
-                    ingredientId: uuid(),
-                }),
-            ),
+            items: Array.from({ length: randomNumber() }).map(() => ({
+                id: uuid(),
+                name: uuid(),
+                amount: generateRandomAmount(),
+                description: uuid(),
+                multiplier: randomNumber(),
+                unit: uuid(),
+                // ingredientId: uuid(), TODO: verify or remove ingredient creation support entirely
+            })),
         }));
 
-export const generateRandomRecipeMethodSections = (): RecipeMethod =>
-    Array.from({ length: randomNumber() }).map(() => ({
-        sectionId: uuid(),
-        name: uuid(),
-        description: uuid(),
-        items: Array.from({ length: randomNumber() }).map(
-            (): RecipeMethodStep => ({
+export const generateRandomRecipeMethodSections =
+    (): components["schemas"]["RecipeSectionMethod"][] =>
+        Array.from({ length: randomNumber() }).map(() => ({
+            sectionId: uuid(),
+            name: uuid(),
+            description: uuid(),
+            items: Array.from({ length: randomNumber() }).map(() => ({
                 id: uuid(),
                 description: uuid(),
-            }),
-        ),
-    }));
+            })),
+        }));
 
-export const generateRandomRecipeServings = (): RecipeServings => {
-    if (randomBoolean()) {
+export const generateRandomRecipeServings =
+    (): components["schemas"]["Servings"] => {
+        if (randomBoolean()) {
+            return {
+                unit: uuid(),
+                count: {
+                    representation: "number",
+                    value: randomNumber().toString(),
+                },
+            };
+        }
+
         return {
             unit: uuid(),
             count: {
-                representation: "number",
-                value: randomNumber().toString(),
+                representation: "range",
+                value: [randomNumber().toString(), randomNumber().toString()],
             },
         };
-    }
-
-    return {
-        unit: uuid(),
-        count: {
-            representation: "range",
-            value: [randomNumber().toString(), randomNumber().toString()],
-        },
     };
-};
 
 export const createRandomRecipeTags = async (database: KnexDatabase) => {
-    const tags: ContentTags = Object.fromEntries(
+    const tags = Object.fromEntries(
         Array.from({ length: randomNumber() }).map(() => {
             const parentTagId = uuid();
             return [
@@ -166,10 +135,7 @@ export const assertRecipeServingsAreEqual = (
     expect(servings1Parsed.count.value).toEqual(servings2Parsed.count.value);
 };
 
-export const assertRecipeTagsAreEqual = (
-    tags1: ContentTags = {},
-    tags2: ContentTags = {},
-) => {
+export const assertRecipeTagsAreEqual = (tags1: any = {}, tags2: any = {}) => {
     const tagGroups1 = Object.keys(tags1);
     const tagGroups2 = Object.keys(tags2);
 
@@ -188,9 +154,9 @@ export const assertRecipeTagsAreEqual = (
 
         expect(childTags1.length).toEqual(childTags2.length);
 
-        childTags1.forEach((childTag) => {
+        childTags1.forEach((childTag: any) => {
             const childTag1 = childTags1.find(
-                ({ tagId }) => tagId === childTag.tagId,
+                ({ tagId }: any) => tagId === childTag.tagId,
             );
 
             expect(childTag1).toBeDefined();

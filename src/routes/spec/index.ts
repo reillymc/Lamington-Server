@@ -5,7 +5,6 @@ import {
     uploadDirectory,
 } from "./attachment.ts";
 
-import { type RecipeApi, rateSubpath, recipeIdParam } from "./recipe.ts";
 import type { components, paths } from "./schema.d.ts";
 import type { TagServices } from "./tag.ts";
 
@@ -27,16 +26,6 @@ export const AttachmentEndpoint = {
     downloadImage: `/${uploadDirectory}`,
 } as const satisfies Record<keyof AttachmentServices, string>;
 
-export const RecipeEndpoint = {
-    deleteRecipe: `/:${recipeIdParam}`,
-    getRecipe: `/:${recipeIdParam}`,
-    getAllRecipes: `/`,
-    getMyRecipes: `/my`,
-    postRecipe: `/`,
-    putRecipe: `/`,
-    postRecipeRating: `/:${recipeIdParam}/${rateSubpath}`,
-} as const satisfies Record<keyof RecipeApi, string>;
-
 export const TagEndpoint = {
     getTags: `/`,
 } as const satisfies Record<keyof TagServices, string>;
@@ -49,6 +38,5 @@ export type {
     RequestValidator,
 } from "./base.ts";
 export * from "./common.ts";
-export * from "./recipe.ts";
 export * from "./tag.ts";
 export * from "./user.ts";

@@ -41,18 +41,18 @@ type SaveSectionRequest<T> = {
     sectionId: string;
     name: string;
     description?: string;
-    items: Array<T>;
+    items: ReadonlyArray<T>;
 };
 
 type ReadFilters = {
     name?: Recipe["name"];
     owner?: Content["createdBy"];
-    tags?: Array<{ tagId: Tag["tagId"] }>;
-    books?: Array<{ bookId: Book["bookId"] }>;
-    ingredients?: Array<{ name: Ingredient["name"] }>;
+    tags?: ReadonlyArray<{ tagId: Tag["tagId"] }>;
+    books?: ReadonlyArray<{ bookId: Book["bookId"] }>;
+    ingredients?: ReadonlyArray<{ name: Ingredient["name"] }>;
 };
 
-export type ReadAllRequest = {
+type ReadAllRequest = {
     userId: User["userId"];
     page?: Pagination;
     sort?: SortKeys<
@@ -74,28 +74,31 @@ type BaseResponse = {
         userId: User["userId"];
         firstName: User["firstName"];
     };
-    rating?: {
-        average?: RecipeRating["rating"];
-        personal?: RecipeRating["rating"];
+    rating: {
+        average: RecipeRating["rating"] | undefined;
+        personal: RecipeRating["rating"] | undefined;
     };
+    photo:
+        | { attachmentId: Attachment["attachmentId"]; uri: Attachment["uri"] }
+        | undefined;
 };
 
-export type ReadAllResponse = {
+type ReadAllResponse = {
     userId: User["userId"];
-    nextPage?: Pagination;
-    recipes: Array<BaseResponse>;
+    nextPage: Pagination | undefined;
+    recipes: ReadonlyArray<BaseResponse>;
 };
 
 type VerifyPermissionsRequest = {
     userId: User["userId"];
-    recipes: Array<{
+    recipes: ReadonlyArray<{
         recipeId: Recipe["recipeId"];
     }>;
 };
 
 type VerifyPermissionsResponse = {
     userId: User["userId"];
-    recipes: Array<{
+    recipes: ReadonlyArray<{
         recipeId: Recipe["recipeId"];
         hasPermissions: boolean;
     }>;
@@ -113,21 +116,22 @@ type RecipePayload = {
     timesCooked?: Recipe["timesCooked"];
     tips?: Recipe["tips"];
     rating?: RecipeRating["rating"];
-    ingredients?: Array<SaveSectionRequest<SaveIngredientItemRequest>>;
-    method?: Array<SaveSectionRequest<SaveMethodStepRequest>>;
-    tags?: Array<SaveTagRequest>;
+    ingredients?: ReadonlyArray<SaveSectionRequest<SaveIngredientItemRequest>>;
+    method?: ReadonlyArray<SaveSectionRequest<SaveMethodStepRequest>>;
+    tags?: ReadonlyArray<SaveTagRequest>;
+    photo?: { attachmentId: Attachment["attachmentId"] };
 };
 
 type CreateRequest = {
     userId: User["userId"];
-    recipes: Array<RecipePayload>;
+    recipes: ReadonlyArray<RecipePayload>;
 };
 
 type CreateResponse = ReadResponse;
 
 type UpdateRequest = {
     userId: User["userId"];
-    recipes: Array<
+    recipes: ReadonlyArray<
         Partial<RecipePayload> & {
             recipeId: Recipe["recipeId"];
         }
@@ -138,7 +142,7 @@ type UpdateResponse = ReadResponse;
 
 type ReadRequest = {
     userId: User["userId"];
-    recipes: Array<{
+    recipes: ReadonlyArray<{
         recipeId: Recipe["recipeId"];
     }>;
 };
@@ -150,60 +154,61 @@ type ReadAttachmentResponse = {
 
 type ReadIngredientItemResponse = {
     id: RecipeIngredient["id"];
-    amount?: RecipeIngredient["amount"];
-    description?: RecipeIngredient["description"];
-    multiplier?: RecipeIngredient["multiplier"];
-    unit?: RecipeIngredient["unit"];
-    subrecipeId?: RecipeIngredient["subrecipeId"];
-    ingredientId?: RecipeIngredient["ingredientId"];
-    name?: Ingredient["name"];
-    photo?: ReadAttachmentResponse;
+    amount: RecipeIngredient["amount"] | undefined;
+    description: RecipeIngredient["description"] | undefined;
+    multiplier: RecipeIngredient["multiplier"] | undefined;
+    unit: RecipeIngredient["unit"] | undefined;
+    subrecipeId: RecipeIngredient["subrecipeId"] | undefined;
+    ingredientId: RecipeIngredient["ingredientId"] | undefined;
+    name: Ingredient["name"] | undefined;
+    photo: ReadAttachmentResponse | undefined;
 };
 
 type ReadMethodStepResponse = {
     id: RecipeStep["id"];
-    description?: RecipeStep["description"];
-    photo?: ReadAttachmentResponse;
+    description: RecipeStep["description"];
+    photo: ReadAttachmentResponse;
 };
 
 type ReadTagsResponse = {
     [tagGroupId: string]: {
         tagId: Tag["tagId"];
         name: Tag["name"];
-        description: Tag["description"];
-        tags?: Array<Tag>;
+        description: Tag["description"] | undefined;
+        tags: ReadonlyArray<Tag>;
     };
 };
 
 type ReadSectionItemResponse<T> = {
     sectionId: string;
     name: string;
-    items: Array<T>;
-    description?: string;
-    photo?: ReadAttachmentResponse;
+    items: ReadonlyArray<T>;
+    description: string | undefined;
+    photo: ReadAttachmentResponse | undefined;
 };
 
-export type ReadResponse = {
+type ReadResponse = {
     userId: User["userId"];
-    recipes: Array<
+    recipes: ReadonlyArray<
         BaseResponse & {
             nutritionalInformation: Recipe["nutritionalInformation"];
             source: Recipe["source"];
             summary: Recipe["summary"];
             timesCooked: Recipe["timesCooked"];
             tips: Recipe["tips"];
-            photo?: ReadAttachmentResponse;
-            ingredients: Array<
+            ingredients: ReadonlyArray<
                 ReadSectionItemResponse<ReadIngredientItemResponse>
             >;
-            method: Array<ReadSectionItemResponse<ReadMethodStepResponse>>;
+            method: ReadonlyArray<
+                ReadSectionItemResponse<ReadMethodStepResponse>
+            >;
             tags: ReadTagsResponse;
         }
     >;
 };
 
 type DeleteRequest = {
-    recipes: Array<{
+    recipes: ReadonlyArray<{
         recipeId: Recipe["recipeId"];
     }>;
 };
@@ -214,15 +219,15 @@ type DeleteResponse = {
 
 type SaveRatingRequest = {
     userId: User["userId"];
-    ratings: Array<{
+    ratings: ReadonlyArray<{
         recipeId: RecipeRating["recipeId"];
         rating: RecipeRating["rating"];
     }>;
 };
 
-export type SaveRatingResponse = {
+type SaveRatingResponse = {
     userId: User["userId"];
-    ratings: Array<{
+    ratings: ReadonlyArray<{
         recipeId: RecipeRating["recipeId"];
         rating: RecipeRating["rating"];
     }>;

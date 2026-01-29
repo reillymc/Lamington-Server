@@ -1,11 +1,16 @@
 import { ContentMemberActions } from "../../controllers/index.ts";
-import { type Book, book } from "../../database/definitions/book.ts";
+import {
+    type Book,
+    book,
+    bookColumns,
+} from "../../database/definitions/book.ts";
 import { bookRecipe } from "../../database/definitions/bookRecipe.ts";
 import { type Content, content } from "../../database/definitions/content.ts";
 import { contentMember } from "../../database/definitions/contentMember.ts";
 import { type KnexDatabase, lamington, user } from "../../database/index.ts";
 import { EnsureArray, toUndefined } from "../../utils/index.ts";
 import type { BookRepository } from "../bookRepository.ts";
+import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
 
 const formatBook = (
@@ -113,28 +118,43 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         }));
 
         await db<Book>(lamington.book).insert(
-            booksToCreate.map(({ name, bookId, color, icon, description }) => ({
-                name,
-                bookId,
-                customisations: { color, icon },
-                description,
-            })),
+            booksToCreate.map(
+                ({
+                    name,
+                    bookId,
+                    color = "variant1",
+                    icon = "variant1",
+                    description,
+                }) => ({
+                    name,
+                    bookId,
+                    customisations: { color, icon },
+                    description,
+                }),
+            ),
         );
 
         return read(db, { userId, books: booksToCreate });
     },
     update: async (db, { userId, books }) => {
-        await db<Book>(lamington.book)
-            .insert(
-                books.map(({ bookId, name, description, color, icon }) => ({
-                    bookId,
-                    name,
-                    description,
-                    customisations: { color, icon },
-                })),
-            )
-            .onConflict("bookId")
-            .merge(["name", "description", "customisations"]);
+        for (const b of books) {
+            const updateData = buildUpdateRecord(b, bookColumns, {
+                customisations: ({ color, icon }) => {
+                    if (color === undefined && icon === undefined)
+                        return undefined;
+                    return {
+                        ...(color !== undefined ? { color } : {}),
+                        ...(icon !== undefined ? { icon } : {}),
+                    };
+                },
+            });
+
+            if (updateData) {
+                await db(lamington.book)
+                    .where(book.bookId, b.bookId)
+                    .update(updateData);
+            }
+        }
 
         return read(db, { userId, books });
     },

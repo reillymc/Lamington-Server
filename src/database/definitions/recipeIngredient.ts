@@ -1,6 +1,16 @@
-import type { RecipeIngredientAmount } from "../../routes/spec/index.ts";
 import type { Table } from "./index.ts";
 import { lamington } from "./lamington.ts";
+
+export type NumberValue = { representation: "number"; value: string };
+export type RangeValue = { representation: "range"; value: [string, string] };
+export type FractionValue = {
+    representation: "fraction";
+    value: [string, string, string];
+};
+
+type RecipeIngredientAmountV1 = RangeValue | NumberValue | FractionValue;
+
+export type RecipeIngredientAmount = RecipeIngredientAmountV1;
 
 /**
  * RecipeIngredient

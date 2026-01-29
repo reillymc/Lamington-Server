@@ -11,7 +11,7 @@ export type FractionValue = {
 
 type RecipeServingsV1 = {
     unit: string;
-    count: RangeValue | NumberValue | FractionValue;
+    count: RangeValue | NumberValue;
 };
 
 export type RecipeServings = RecipeServingsV1;
@@ -22,29 +22,33 @@ export type RecipeServings = RecipeServingsV1;
 export interface Recipe {
     recipeId: Content["contentId"];
     name: string;
-    source?: string;
-    servings?: RecipeServings;
-    prepTime?: number;
-    cookTime?: number;
-    nutritionalInformation?: string;
-    summary?: string;
-    tips?: string;
+    source: string | null;
+    servings: RecipeServings | null;
+    prepTime: number | null;
+    cookTime: number | null;
+    nutritionalInformation: string | null;
+    summary: string | null;
+    tips: string | null;
     public: boolean;
-    timesCooked?: number;
+    timesCooked: number | null;
 }
 
 export type RecipeTable = Table<Recipe>;
 
-export const recipe: RecipeTable = {
-    recipeId: `${lamington.recipe}.recipeId`,
-    name: `${lamington.recipe}.name`,
-    source: `${lamington.recipe}.source`,
-    summary: `${lamington.recipe}.summary`,
-    tips: `${lamington.recipe}.tips`,
-    servings: `${lamington.recipe}.servings`,
-    prepTime: `${lamington.recipe}.prepTime`,
-    cookTime: `${lamington.recipe}.cookTime`,
-    nutritionalInformation: `${lamington.recipe}.nutritionalInformation`,
-    public: `${lamington.recipe}.public`,
-    timesCooked: `${lamington.recipe}.timesCooked`,
-} as const;
+export const recipeColumns = [
+    "recipeId",
+    "name",
+    "source",
+    "summary",
+    "tips",
+    "servings",
+    "prepTime",
+    "cookTime",
+    "nutritionalInformation",
+    "public",
+    "timesCooked",
+] as const satisfies (keyof Recipe)[];
+
+export const recipe = Object.fromEntries(
+    recipeColumns.map((column) => [column, `${lamington.recipe}.${column}`]),
+) as Table<Recipe>;

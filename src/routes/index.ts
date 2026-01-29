@@ -22,7 +22,6 @@ import {
     assetEndpoint,
     assetsDirectory,
     attachmentEndpoint,
-    recipeEndpoint,
     tagEndpoint,
 } from "./spec/index.ts";
 import { default as tagsRouter } from "./tags.ts";
@@ -35,7 +34,6 @@ const createAppRouter = (appDependencies: AppDependencies) =>
         .use(createAuthenticationMiddleware(appDependencies.services))
         .use(assetEndpoint, express.static(assetsDirectory))
         .use(attachmentEndpoint, createAttachmentsRouter(appDependencies))
-        .use(recipeEndpoint, createRecipeRouter(appDependencies.services))
         .use(tagEndpoint, tagsRouter)
         .use(validationMiddleware)
         .use(createAuthRouter(appDependencies.services))
@@ -46,6 +44,7 @@ const createAppRouter = (appDependencies: AppDependencies) =>
         .use(createMealRouter(appDependencies.services))
         .use(createPlannerRouter(appDependencies.services))
         .use(createProfileRouter(appDependencies.services))
+        .use(createRecipeRouter(appDependencies.services))
         .use(createUserRouter(appDependencies.services))
         .use("/", notFoundMiddleware);
 

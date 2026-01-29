@@ -33,7 +33,10 @@ export interface BookService {
         search?: string,
         sort?: components["schemas"]["RecipeSortFields"],
         order?: components["schemas"]["Order"],
-    ) => Promise<ReadonlyArray<components["schemas"]["Recipe"]>>;
+    ) => Promise<{
+        recipes: ReadonlyArray<components["schemas"]["Recipe"]>;
+        nextPage?: number;
+    }>;
     addRecipe: (
         userId: string,
         bookId: string,
@@ -198,7 +201,7 @@ export const createBookService: CreateService<
             throw new NotFoundError("book", bookId);
         }
 
-        const { recipes } = await recipeRepository.readAll(database, {
+        return recipeRepository.readAll(database, {
             userId,
             filter: {
                 books: [{ bookId }],
@@ -208,7 +211,6 @@ export const createBookService: CreateService<
             sort,
             order,
         });
-        return recipes;
     },
     addRecipe: (userId, bookId, request) =>
         database.transaction(async (trx) => {
@@ -279,12 +281,7 @@ export const createBookService: CreateService<
             throw new NotFoundError("book", bookId);
         }
 
-        return bookMembers.members.map((m) => ({
-            userId: m.userId,
-            firstName: m.firstName,
-            lastName: m.lastName,
-            status: m.status,
-        }));
+        return bookMembers.members;
     },
     inviteMember: (userId, bookId, targetUserId) =>
         database.transaction(async (trx) => {

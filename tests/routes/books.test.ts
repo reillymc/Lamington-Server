@@ -8,7 +8,11 @@ import { setupApp } from "../../src/app.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
-import { type components, UserStatus } from "../../src/routes/spec/index.ts";
+import {
+    type components,
+    type paths,
+    UserStatus,
+} from "../../src/routes/spec/index.ts";
 import {
     CreateUsers,
     PrepareAuthenticatedUser,
@@ -1644,18 +1648,21 @@ describe("Get book recipes", () => {
 
         expect(res.statusCode).toEqual(200);
 
-        const data = res.body as components["schemas"]["Recipe"][];
+        const data =
+            res.body as paths["/books/{bookId}/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
 
         const recipeIdsInBook = recipesInBook.map((r) => r.recipeId);
         const recipeIdsNotInBook = recipesNotInBook.map((r) => r.recipeId);
 
         expect(data).toBeDefined();
-        expect(data.length).toEqual(recipesInBook.length);
+        expect(data.recipes.length).toEqual(recipesInBook.length);
         expect(
-            data.every(({ recipeId }) => recipeIdsInBook.includes(recipeId)),
+            data.recipes.every(({ recipeId }) =>
+                recipeIdsInBook.includes(recipeId),
+            ),
         ).toBe(true);
         expect(
-            data.every(
+            data.recipes.every(
                 ({ recipeId }) => !recipeIdsNotInBook.includes(recipeId),
             ),
         ).toBe(true);

@@ -41,6 +41,8 @@ type KnownEntities =
     | "meal"
     | "planner meal"
     | "planner member"
+    | "recipe"
+    | "recipe rating"
     | "planner"
     | "resource"
     | "user";

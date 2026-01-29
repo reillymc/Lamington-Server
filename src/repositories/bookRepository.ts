@@ -10,7 +10,7 @@ type BookUserStatus = "O" | "A" | "M" | "P" | "B";
 
 type MemberItem = {
     userId: ContentMember["userId"];
-    status?: BookUserStatus;
+    status: BookUserStatus | undefined;
 };
 
 type ReadFilters = {
@@ -32,12 +32,12 @@ type BaseResponse = {
         userId: User["userId"];
         firstName: User["firstName"];
     };
-    status?: BookUserStatus;
+    status: BookUserStatus | undefined;
 };
 
-export type ReadAllResponse = {
+type ReadAllResponse = {
     userId: User["userId"];
-    filter?: ReadFilters;
+    filter: ReadFilters | undefined;
     books: ReadonlyArray<BaseResponse>;
 };
 
@@ -54,7 +54,7 @@ type VerifyPermissionsRequest = {
 
 type VerifyPermissionsResponse = {
     userId: User["userId"];
-    status?: BookUserStatus | ReadonlyArray<BookUserStatus>;
+    status: BookUserStatus | ReadonlyArray<BookUserStatus>;
     books: ReadonlyArray<{
         bookId: Book["bookId"];
         hasPermissions: boolean;
@@ -94,7 +94,7 @@ type ReadRequest = {
     }>;
 };
 
-export type ReadResponse = {
+type ReadResponse = {
     userId: User["userId"];
     books: ReadonlyArray<BaseResponse>;
 };
@@ -116,7 +116,7 @@ type SaveRecipesRequest = {
     }>;
 };
 
-export type SaveRecipesResponse = {
+type SaveRecipesResponse = {
     bookId: Book["bookId"];
     recipes: ReadonlyArray<{
         recipeId: Recipe["recipeId"];
@@ -137,10 +137,10 @@ type RemoveRecipesResponse = {
 
 type SaveMembersRequest = {
     bookId: Book["bookId"];
-    members?: ReadonlyArray<SaveMemberRequest>;
+    members: ReadonlyArray<SaveMemberRequest> | undefined;
 };
 
-export type SaveMembersResponse = {
+type SaveMembersResponse = {
     bookId: Book["bookId"];
     members: ReadonlyArray<MemberItem>;
 };

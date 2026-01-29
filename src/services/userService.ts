@@ -1,12 +1,6 @@
 import bcrypt from "bcrypt";
 import { v4 as Uuid } from "uuid";
 import { UniqueViolationError } from "../repositories/common/errors.ts";
-import type {
-    CreateUserPayload,
-    UserCredentials,
-    UserDirectoryEntry,
-    UserProfile,
-} from "../repositories/userRepository.ts";
 import { type components, UserStatus } from "../routes/spec/index.ts";
 import {
     CreatedDataFetchError,
@@ -38,19 +32,23 @@ export interface UserService {
 
     getAll(
         userId: string,
-        status?: UserStatus,
-    ): Promise<ReadonlyArray<UserDirectoryEntry>>;
-    getProfile(userId: string): Promise<UserProfile>;
-    readCredentials(
-        filter: { email: string } | { userId: string },
-    ): Promise<ReadonlyArray<UserCredentials>>;
+        status?: components["schemas"]["UserStatus"],
+    ): Promise<ReadonlyArray<components["schemas"]["User"]>>;
+    getProfile(userId: string): Promise<components["schemas"]["User"]>;
+    readCredentials(filter: { email: string } | { userId: string }): Promise<
+        ReadonlyArray<{
+            userId: string;
+            email: string;
+            password: string;
+            status: components["schemas"]["UserStatus"];
+        }>
+    >;
 
-    login(credentials: {
-        email: string;
-        password: string;
-    }): Promise<components["schemas"]["AuthResponse"]>;
+    login(
+        credentials: components["schemas"]["AuthLogin"],
+    ): Promise<components["schemas"]["AuthResponse"]>;
     register(
-        user: Omit<CreateUserPayload, "status">,
+        user: components["schemas"]["AuthRegister"],
     ): Promise<components["schemas"]["AuthRegisterResponse"]>;
 }
 

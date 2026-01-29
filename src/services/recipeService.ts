@@ -1,193 +1,147 @@
-import type {
-    ReadAllRequest,
-    ReadAllResponse,
-    ReadResponse,
-    SaveRatingResponse,
-} from "../repositories/recipeRepository.ts";
-import type {
-    DeleteRecipeRequest,
-    GetRecipeRequest,
-    PostRecipeRatingRequest,
-    PostRecipeRequest,
-    PostRecipeRequestBody,
-    PutRecipeRequest,
-    PutRecipeRequestBody,
-} from "../routes/spec/recipe.ts";
-import {
-    BisectOnValidPartialItems,
-    EnsureDefinedArray,
-} from "../utils/index.ts";
+import type { components } from "../routes/spec/index.ts";
 
-import { AppError } from "./logging.ts";
+import {
+    CreatedDataFetchError,
+    NotFoundError,
+    UpdatedDataFetchError,
+} from "./logging.ts";
 import type { CreateService } from "./service.ts";
 
 export interface RecipeService {
     get: (
         userId: string,
-        params: GetRecipeRequest,
-    ) => Promise<ReadResponse["recipes"][number]>;
+        recipeId: string,
+    ) => Promise<components["schemas"]["Recipe"]>;
     getAll: (
         userId: string,
-        params: Omit<ReadAllRequest, "userId">,
-    ) => Promise<ReadAllResponse>;
+        page?: number,
+        search?: string,
+        sort?: components["schemas"]["RecipeSortFields"],
+        order?: components["schemas"]["Order"],
+        owner?: string,
+        tags?: ReadonlyArray<string>,
+    ) => Promise<{
+        recipes: ReadonlyArray<components["schemas"]["Recipe"]>;
+        nextPage?: number;
+    }>;
     create: (
         userId: string,
-        request: PostRecipeRequest["data"],
-    ) => Promise<ReadResponse["recipes"]>;
+        request: components["schemas"]["RecipeCreate"],
+    ) => Promise<components["schemas"]["Recipe"]>;
     update: (
         userId: string,
-        request: PutRecipeRequest["data"],
-    ) => Promise<ReadResponse["recipes"]>;
+        recipeId: string,
+        request: components["schemas"]["RecipeUpdate"],
+    ) => Promise<components["schemas"]["Recipe"]>;
     saveRating: (
         userId: string,
-        request: PostRecipeRatingRequest,
-    ) => Promise<SaveRatingResponse["ratings"][number]>;
-    delete: (userId: string, request: DeleteRecipeRequest) => Promise<boolean>;
+        recipeId: string,
+        rating: number,
+    ) => Promise<{ rating: number }>;
+    delete: (userId: string, recipeId: string) => Promise<void>;
 }
 
 export const createRecipeService: CreateService<
     RecipeService,
     "recipeRepository"
 > = (database, { recipeRepository }) => ({
-    getAll: async (userId, params) =>
-        recipeRepository.readAll(database, { ...params, userId }),
-    get: async (userId, params) => {
+    getAll: async (userId, page, search, sort, order, owner, tags) => {
+        const { recipes, nextPage } = await recipeRepository.readAll(database, {
+            userId,
+            page,
+            sort,
+            order,
+            filter: {
+                name: search,
+                owner,
+                tags: tags?.map((tagId) => ({ tagId })),
+            },
+        });
+        return { recipes, nextPage };
+    },
+    get: async (userId, recipeId) => {
         const { recipes } = await recipeRepository.read(database, {
             userId,
-            recipes: [params],
+            recipes: [{ recipeId }],
         });
         const [recipe] = recipes;
 
         if (!recipe) {
-            throw new AppError({ status: 404, message: "Recipe not found" });
+            throw new NotFoundError("recipe", recipeId);
         }
 
         return recipe;
     },
     create: (userId, request) =>
         database.transaction(async (trx) => {
-            const [validRecipes, invalidRecipes] =
-                validateCreateRecipeBody(request);
-
-            if (!validRecipes.length || invalidRecipes.length) {
-                throw new AppError({
-                    status: 400,
-                    code: "INSUFFICIENT_DATA",
-                    message: "Insufficient data to create recipe.",
-                });
-            }
-
             const { recipes } = await recipeRepository.create(trx, {
                 userId,
-                recipes: validRecipes,
+                recipes: [request],
             });
-            return recipes;
-        }),
-    update: (userId, request) =>
-        database.transaction(async (trx) => {
-            const [validRecipes, invalidRecipes] =
-                validateUpdateRecipeBody(request);
-
-            if (!validRecipes.length || invalidRecipes.length) {
-                throw new AppError({
-                    status: 400,
-                    code: "INSUFFICIENT_DATA",
-                    message: "Insufficient data to update recipe.",
-                });
+            const [recipe] = recipes;
+            if (!recipe) {
+                throw new CreatedDataFetchError("recipe");
             }
-
+            return recipe;
+        }),
+    update: (userId, recipeId, request) =>
+        database.transaction(async (trx) => {
             const permissions = await recipeRepository.verifyPermissions(trx, {
                 userId,
-                recipes: validRecipes,
+                recipes: [{ recipeId }],
             });
             const missingPermissions = permissions.recipes.some(
                 ({ hasPermissions }) => !hasPermissions,
             );
 
             if (missingPermissions) {
-                throw new AppError({
-                    status: 403,
-                    code: "RECIPE_NO_PERMISSIONS",
-                    message: "You do not have permissions to edit this recipe.",
-                });
+                throw new NotFoundError("recipe", recipeId);
             }
 
             const { recipes } = await recipeRepository.update(trx, {
                 userId,
-                recipes: validRecipes,
+                recipes: [{ ...request, recipeId }],
             });
-            return recipes;
+            const [recipe] = recipes;
+            if (!recipe) {
+                throw new UpdatedDataFetchError("recipe", recipeId);
+            }
+            return recipe;
         }),
-    delete: (userId, request) =>
+    delete: (userId, recipeId) =>
         database.transaction(async (trx) => {
             const permissions = await recipeRepository.verifyPermissions(trx, {
                 userId,
-                recipes: [request],
+                recipes: [{ recipeId }],
             });
             const missingPermissions = permissions.recipes.some(
                 ({ hasPermissions }) => !hasPermissions,
             );
 
             if (missingPermissions) {
-                throw new AppError({
-                    status: 404,
-                    message: `Cannot find recipe to delete`,
-                });
+                throw new NotFoundError("recipe", recipeId);
             }
 
             const { count } = await recipeRepository.delete(trx, {
-                recipes: [request],
+                recipes: [{ recipeId }],
             });
 
             if (count !== 1) {
-                throw new AppError({
-                    status: 500,
-                    message: `Failed to delete recipe`,
-                });
+                throw new NotFoundError("recipe", recipeId);
             }
-
-            return true;
         }),
-    saveRating: async (userId, request) => {
-        // TODO: move validation to middleware
-        if (request.rating === undefined) {
-            throw new AppError({ status: 400, message: "No rating provided" });
-        }
-
+    saveRating: async (userId, recipeId, ratingValue) => {
         const {
             ratings: [rating],
         } = await recipeRepository.saveRating(database, {
             userId,
-            ratings: [{ recipeId: request.recipeId, rating: request.rating }],
+            ratings: [{ recipeId, rating: ratingValue }],
         });
 
         if (!rating) {
-            throw new AppError({
-                status: 500,
-                message: "Failed to save rating",
-            });
+            throw new UpdatedDataFetchError("recipe rating", recipeId);
         }
 
-        return rating;
+        return { rating: rating.rating };
     },
 });
-
-const validateCreateRecipeBody = (data: PostRecipeRequestBody["data"]) => {
-    const filteredData = EnsureDefinedArray(data);
-
-    return BisectOnValidPartialItems(filteredData, (item) => {
-        if (!item.name) return;
-
-        return { ...item, name: item.name };
-    });
-};
-
-const validateUpdateRecipeBody = (data: PutRecipeRequestBody["data"]) => {
-    const filteredData = EnsureDefinedArray(data);
-
-    return BisectOnValidPartialItems(filteredData, ({ recipeId, ...item }) => {
-        if (!recipeId) return;
-
-        return { ...item, recipeId };
-    });
-};

@@ -264,13 +264,13 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
     update: async (db, { userId, lists }) => {
         for (const l of lists) {
             const updateData = buildUpdateRecord(l, listColumns, {
-                color: {
-                    target: "customisations",
-                    transform: (color) => ({ color }),
-                },
-                icon: {
-                    target: "customisations",
-                    transform: (icon) => ({ icon }),
+                customisations: ({ color, icon }) => {
+                    if (color === undefined && icon === undefined)
+                        return undefined;
+                    return {
+                        ...(color !== undefined ? { color } : {}),
+                        ...(icon !== undefined ? { icon } : {}),
+                    };
                 },
             });
 

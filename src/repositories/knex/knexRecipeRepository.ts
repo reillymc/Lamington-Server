@@ -43,7 +43,6 @@ import {
     type User,
     user,
 } from "../../database/index.ts";
-import type { RecipeMethod } from "../../routes/spec/recipe.ts";
 import {
     EnsureArray,
     ObjectFromEntries,
@@ -108,7 +107,7 @@ export const RecipeAttachmentActions = {
 };
 const ContentTagsRequestToRows = (
     contentId: string,
-    tags: Array<{ tagId: string }>,
+    tags: ReadonlyArray<{ tagId: string }>,
 ): ContentTag[] => tags.map(({ tagId }) => ({ contentId, tagId }));
 
 const readTags = (
@@ -131,7 +130,7 @@ const saveTags = (
     db: KnexDatabase,
     request: CreateQuery<{
         recipeId: Recipe["recipeId"];
-        tags: Array<Pick<ContentTag, "tagId">>;
+        tags: ReadonlyArray<Pick<ContentTag, "tagId">>;
     }>,
 ) =>
     ContentTagActions.save(
@@ -159,7 +158,9 @@ const readStepsByRecipeId = async (db: KnexDatabase, recipeId: string) =>
  */
 const saveRecipeStepRows = async (
     db: KnexDatabase,
-    params: Pick<Recipe, "recipeId"> & { recipeSteps: RecipeStep[] },
+    params: Pick<Recipe, "recipeId"> & {
+        recipeSteps: ReadonlyArray<RecipeStep>;
+    },
 ) => {
     const deleteExcessRows = async (
         recipeId: string,
@@ -170,7 +171,7 @@ const saveRecipeStepRows = async (
             .whereNotIn("id", retainedStepIds)
             .del();
 
-    const insertRows = async (recipeSteps: RecipeStep[]) =>
+    const insertRows = async (recipeSteps: ReadonlyArray<RecipeStep>) =>
         db<RecipeStep>(lamington.recipeStep)
             .insert(recipeSteps)
             .onConflict(["recipeId", "id"])
@@ -468,8 +469,9 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
     db,
     { userId, recipes },
 ) => {
-    const response: Awaited<ReturnType<RecipeRepository["read"]>>["recipes"] =
-        [];
+    const response: Awaited<
+        ReturnType<RecipeRepository["read"]>
+    >["recipes"][number][] = [];
 
     // TODO: remove loop and use requests keyed by recipe id for sub-queries
     for (const { recipeId } of recipes) {
@@ -499,7 +501,9 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
         response.push({
             ...formatRecipe(recipe),
             rating: {
-                average: parseFloat(recipe[ratingAverageName]),
+                average: recipe[ratingAverageName]
+                    ? parseFloat(recipe[ratingAverageName])
+                    : undefined,
                 personal: toUndefined(recipe[ratingPersonalName]),
             },
             ingredients: recipeIngredientRowsToResponse({
@@ -508,7 +512,12 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
             }),
             method: recipeStepRowsToResponse({ method, sections }),
             tags: ContentTagRowsToResponse(tags),
-            photo: heroAttachment,
+            photo: heroAttachment
+                ? {
+                      attachmentId: heroAttachment.attachmentId,
+                      uri: heroAttachment.uri,
+                  }
+                : undefined,
         });
     }
 
@@ -601,6 +610,28 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                 .merge();
         }
 
+        const recipesAttachments = recipesToCreate.map(
+            ({ recipeId, photo }) => ({
+                recipeId,
+                attachments: photo
+                    ? [
+                          {
+                              attachmentId: photo.attachmentId,
+                              displayType: "hero" as const,
+                              displayOrder: 0,
+                          },
+                      ]
+                    : [],
+            }),
+        );
+        for (const { recipeId, attachments } of recipesAttachments) {
+            if (attachments.length)
+                await RecipeAttachmentActions.save(db, {
+                    recipeId,
+                    attachments,
+                });
+        }
+
         const results = await read(db, { userId, recipes: recipesToCreate });
 
         return { userId, recipes: results.recipes };
@@ -678,6 +709,26 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                 .insert(recipeRatingRows)
                 .onConflict(["recipeId", "raterId"])
                 .merge();
+        }
+
+        const recipesAttachments = recipes.map(({ recipeId, photo }) => ({
+            recipeId,
+            attachments: photo
+                ? [
+                      {
+                          attachmentId: photo.attachmentId,
+                          displayType: "hero" as const,
+                          displayOrder: 0,
+                      },
+                  ]
+                : [],
+        }));
+        for (const { recipeId, attachments } of recipesAttachments) {
+            if (attachments.length)
+                await RecipeAttachmentActions.save(db, {
+                    recipeId,
+                    attachments,
+                });
         }
 
         const results = await read(db, { userId, recipes });
@@ -798,8 +849,12 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                     ...recipe
                 }) => ({
                     ...formatRecipe(recipe),
-                    ratingAverage: parseFloat(ratingAverage),
-                    ratingPersonal: toUndefined(ratingPersonal),
+                    rating: {
+                        average: ratingAverage
+                            ? parseFloat(ratingAverage)
+                            : undefined,
+                        personal: toUndefined(ratingPersonal),
+                    },
                     tags: ContentTagRowsToResponse(
                         recipeCategoriesList.filter(
                             (cat) =>
@@ -807,12 +862,10 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                                 cat.recipeId === recipe.recipeId,
                         ),
                     ),
-                    attachments: heroAttachmentId
+                    photo: heroAttachmentId
                         ? {
-                              hero: {
-                                  attachmentId: heroAttachmentId,
-                                  uri: heroAttachmentUri,
-                              },
+                              attachmentId: heroAttachmentId,
+                              uri: heroAttachmentUri,
                           }
                         : undefined,
                 }),
@@ -961,12 +1014,12 @@ export const recipeMethodRequestToRows = ({
     method,
 }: {
     recipeId: string;
-    method?: RecipeMethod;
-}): RecipeStep[] | undefined => {
+    method?: ReadonlyArray<any>;
+}): ReadonlyArray<RecipeStep> | undefined => {
     if (!method?.length) return;
 
     return method.flatMap(({ sectionId, items }) =>
-        items.map(
+        (items as any[]).map(
             ({ id, description }, index): RecipeStep => ({
                 id,
                 recipeId,
@@ -987,10 +1040,19 @@ const recipeIngredientRowsToResponse = ({
         .map(({ sectionId, name, description }) => ({
             sectionId,
             name,
-            description,
+            description: toUndefined(description),
             items: ingredients
                 .filter((ingredient: any) => ingredient.sectionId === sectionId)
-                .sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0)),
+                .sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0))
+                .map((ingredient: any) => ({
+                    ...ingredient,
+                    description: toUndefined(ingredient.description),
+                    subrecipeId: toUndefined(ingredient.subrecipeId),
+                    multiplier: toUndefined(ingredient.multiplier),
+                    unit: toUndefined(ingredient.unit),
+                    amount: toUndefined(ingredient.amount),
+                    ingredientId: toUndefined(ingredient.ingredientId),
+                })),
         }))
         .filter(({ items, name }) =>
             name === DefaultSection ? true : items.length,
@@ -1005,10 +1067,14 @@ const recipeStepRowsToResponse = ({ sections, method }: any): any => {
         .map(({ sectionId, name, description }) => ({
             sectionId,
             name,
-            description,
+            description: toUndefined(description),
             items: method
                 .filter((method: any) => method.sectionId === sectionId)
-                .sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0)),
+                .sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0))
+                .map((step: any) => ({
+                    ...step,
+                    description: toUndefined(step.description),
+                })),
         }))
         .filter(({ items, name }) =>
             name === DefaultSection ? true : items.length,

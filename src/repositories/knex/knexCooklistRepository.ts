@@ -156,7 +156,7 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
     updateMeals: async (db, { meals }) => {
         for (const meal of meals) {
             const updateData = buildUpdateRecord(meal, plannerMealColumns, {
-                course: "meal",
+                meal: ({ course }) => course,
             });
 
             if (updateData) {
