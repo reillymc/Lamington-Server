@@ -9,6 +9,12 @@ tags:
     description: Meal planning operations
   - name: Books
     description: Book operations
+  - name: Attachments
+    description: Attachment operations
+  - name: Tags
+    description: Tag operations
+  - name: Assets
+    description: Asset operations
   - name: Extractor
     description: Recipe extraction operations
   - name: Planners
@@ -28,6 +34,69 @@ tags:
 security:
   - bearerAuth: []
 paths:
+  /attachments/image:
+    post:
+      tags:
+        - Attachments
+      summary: Upload an image
+      operationId: postAttachmentImage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageAttachment"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /assets/ingredients.json:
+    get:
+      tags:
+        - Assets
+      summary: Get preset ingredients
+      operationId: getPresetIngredients
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /tags:
+    get:
+      tags:
+        - Tags
+      summary: Get all tags
+      operationId: getTags
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TagGroup"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
   /recipes:
     get:
       tags:
@@ -1833,6 +1902,27 @@ components:
           type: string
       required:
         - error
+    Tag:
+      type: object
+      properties:
+        tagId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - tagId
+        - name
+    TagGroup:
+      allOf:
+        - $ref: "#/components/schemas/Tag"
+        - type: object
+          properties:
+            tags:
+              type: array
+              items:
+                $ref: "#/components/schemas/Tag"
     User:
       type: object
       properties:

@@ -47,6 +47,7 @@ const config: LamingtonConfig = {
         awsRegion: process.env.AWS_REGION,
         awsBucketName: process.env.AWS_BUCKET_NAME,
         path: process.env.ATTACHMENT_PATH ?? "prod",
+        localUploadDirectory: "uploads",
     },
 } as const;
 
@@ -63,6 +64,7 @@ export interface LamingtonConfig {
     };
     attachments: {
         storageService: "local" | "s3";
+        localUploadDirectory: string;
         path: string;
         awsAccessKeyId: string | undefined;
         awsSecretAccessKey: string | undefined;

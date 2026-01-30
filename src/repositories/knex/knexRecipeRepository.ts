@@ -120,8 +120,10 @@ const readTags = (
         db,
         EnsureArray(request).map(({ recipeId }) => recipeId),
     ).then((response) =>
-        response.map(({ contentId, ...rest }) => ({
+        response.map(({ contentId, parentId, name, ...rest }) => ({
             recipeId: contentId,
+            parentId: toUndefined(parentId),
+            name: toUndefined(name),
             ...rest,
         })),
     );

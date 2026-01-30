@@ -2,11 +2,11 @@ import { existsSync } from "node:fs";
 import { mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-
-import { uploadDirectory } from "../../routes/spec/index.ts";
+import config from "../../config.ts";
 import type { AttachmentService } from "./attachmentService.ts";
 
-const getLocalPath = (filePath: string) => `${uploadDirectory}/${filePath}`;
+const getLocalPath = (filePath: string) =>
+    `${config.attachments.localUploadDirectory}/${filePath}`;
 
 const storeLocal = async (file: Buffer, filePath: string) => {
     const localPath = getLocalPath(filePath);

@@ -5,6 +5,7 @@ import type { ListService } from "./listService.ts";
 import type { MealService } from "./mealService.ts";
 import type { PlannerService } from "./plannerService.ts";
 import type { RecipeService } from "./recipeService.ts";
+import type { TagService } from "./tagService.ts";
 import type { UserService } from "./userService.ts";
 
 export { printConfig } from "./console.ts";
@@ -19,5 +20,6 @@ export type AppServices = {
     mealService: MealService;
     plannerService: PlannerService;
     recipeService: RecipeService;
+    tagService: TagService;
     userService: UserService;
 };

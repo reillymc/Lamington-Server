@@ -6,13 +6,10 @@ import request from "supertest";
 import { setupApp } from "../../src/app.ts";
 import type { AttachmentActions } from "../../src/controllers/attachment.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
-import type { PostImageAttachmentResponse } from "../../src/routes/spec/index.ts";
+import type { components } from "../../src/routes/spec/index.ts";
 import type { AttachmentService } from "../../src/services/attachment/attachmentService.ts";
 import { readAllAttachments } from "../helpers/attachment.ts";
-import {
-    AttachmentEndpoint,
-    PrepareAuthenticatedUser,
-} from "../helpers/index.ts";
+import { PrepareAuthenticatedUser } from "../helpers/index.ts";
 
 const MockSuccessfulAttachmentService: AttachmentService = {
     put: async () => true,
@@ -37,7 +34,7 @@ after(async () => {
     await db.destroy();
 });
 
-describe("post", () => {
+describe("Upload an image", () => {
     let database: KnexDatabase;
     let app: Express;
 
@@ -56,8 +53,8 @@ describe("post", () => {
 
     it("should require authentication", async () => {
         const res = await request(app)
-            .get(AttachmentEndpoint.postImage)
-            .attach("file", "tests/testAttachment.jpg");
+            .post("/v1/attachments/image")
+            .attach("image", "tests/testAttachment.jpg");
 
         expect(res.statusCode).toEqual(401);
     });
@@ -65,31 +62,29 @@ describe("post", () => {
     it("should fail when no file is provided", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app)
-            .post(AttachmentEndpoint.postImage)
-            .set(token);
+        const res = await request(app).post("/v1/attachments/image").set(token);
 
-        expect(res.statusCode).toEqual(400);
+        expect(res.statusCode).toEqual(415);
     });
 
     it("should upload valid image", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
-            .post(AttachmentEndpoint.postImage)
+            .post("/v1/attachments/image")
             .set(token)
-            .attach("photo", "tests/testAttachment.jpg");
+            .attach("image", "tests/testAttachment.jpg");
 
         expect(res.statusCode).toEqual(200);
 
-        const { data } = res.body as PostImageAttachmentResponse;
+        const data = res.body as components["schemas"]["ImageAttachment"];
 
-        expect(data!.attachmentId).toBeTruthy();
-        expect(data!.uri).toBeTruthy();
+        expect(data.attachmentId).toBeTruthy();
+        expect(data.uri).toBeTruthy();
 
         const attachmentReadResponse = await readAllAttachments(database);
         expect(attachmentReadResponse).toHaveLength(1);
-        expect(data!.attachmentId).toEqual(
+        expect(data.attachmentId).toEqual(
             attachmentReadResponse[0]!.attachmentId,
         );
     });
@@ -102,9 +97,9 @@ describe("post", () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
-            .post(AttachmentEndpoint.postImage)
+            .post("/v1/attachments/image")
             .set(token)
-            .attach("photo", "tests/testAttachment.jpg");
+            .attach("image", "tests/testAttachment.jpg");
 
         expect(res.statusCode).toEqual(500);
 
@@ -127,9 +122,9 @@ describe("post", () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
-            .post(AttachmentEndpoint.postImage)
+            .post("/v1/attachments/image")
             .set(token)
-            .attach("photo", "tests/testAttachment.jpg");
+            .attach("image", "tests/testAttachment.jpg");
 
         expect(res.statusCode).toEqual(500);
 

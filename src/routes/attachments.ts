@@ -1,34 +1,38 @@
 import express from "express";
 import { v4 } from "uuid";
 import type { AppDependencies } from "../appDependencies.ts";
+import config from "../config.ts";
 import type { KnexDatabase } from "../database/index.ts";
-import { uploadImageMiddleware } from "../middleware/index.ts";
 import {
     compressImage,
     constructAttachmentPath,
 } from "../services/attachment/helper.ts";
 import { InsufficientDataError, UnknownError } from "../services/index.ts";
-import {
-    AttachmentEndpoint,
-    type PostImageAttachmentRequestParams,
-    type PostImageAttachmentResponse,
-} from "./spec/index.ts";
+import type { paths, routes } from "./spec/index.ts";
 
 export const createAttachmentsRouter = ({
     attachmentService,
     attachmentActions,
     database,
-}: AppDependencies) => {
-    const router = express.Router();
-
-    // upload image
-    router.post<PostImageAttachmentRequestParams, PostImageAttachmentResponse>(
-        AttachmentEndpoint.postImage,
-        uploadImageMiddleware,
-        async ({ file, session }, res, next) => {
+}: AppDependencies) =>
+    express
+        .Router()
+        .post<
+            routes,
+            paths["/attachments/image"]["post"]["parameters"]["path"],
+            paths["/attachments/image"]["post"]["responses"]["200"]["content"]["application/json"],
+            paths["/attachments/image"]["post"]["requestBody"]["content"]["multipart/form-data"],
+            paths["/attachments/image"]["post"]["parameters"]["query"]
+        >("/attachments/image", async ({ session, files }, res, next) => {
             const { userId } = session;
 
-            if (!file || !userId) {
+            if (!Array.isArray(files)) {
+                return next(new InsufficientDataError("attachment"));
+            }
+
+            const file = files?.find((f) => f.fieldname === "image");
+
+            if (!file) {
                 return next(new InsufficientDataError("attachment"));
             }
 
@@ -63,15 +67,13 @@ export const createAttachmentsRouter = ({
                     if (!result) {
                         throw new Error("Failed to upload image");
                     }
-                    return res.json({
-                        error: false,
-                        data: attachmentEntry,
-                    });
+                    return res.status(200).json(attachmentEntry);
                 });
             } catch (e: unknown) {
                 next(new UnknownError(e));
             }
-        },
-    );
-    return router;
-};
+        })
+        .use(
+            "/attachments/uploads",
+            express.static(config.attachments.localUploadDirectory),
+        );
