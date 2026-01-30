@@ -1,9 +1,9 @@
 import { expect } from "expect";
 import { v4 as uuid } from "uuid";
-import { TagActions } from "../../src/controllers/index.ts";
 import type { RecipeServings } from "../../src/database/definitions/recipe.ts";
 import type { RecipeIngredientAmount } from "../../src/database/definitions/recipeIngredient.ts";
 import type { KnexDatabase } from "../../src/database/index.ts";
+import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import type { components } from "../../src/routes/spec/schema.ts";
 import { Undefined } from "../../src/utils/index.ts";
 import { randomBoolean, randomNumber } from "./data.ts";
@@ -111,8 +111,8 @@ export const createRandomRecipeTags = async (database: KnexDatabase) => {
         )
         .filter(Undefined);
 
-    await TagActions.save(database, parentTags);
-    await TagActions.save(database, childTags);
+    await KnexTagRepository.create(database, parentTags);
+    await KnexTagRepository.create(database, childTags);
 
     return childTags;
 };

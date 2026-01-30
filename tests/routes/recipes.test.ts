@@ -5,12 +5,9 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import { setupApp } from "../../src/app.ts";
-import { TagActions } from "../../src/controllers/index.ts";
-import db, {
-    type KnexDatabase,
-    type ServiceParamsDi,
-} from "../../src/database/index.ts";
+import db, { type KnexDatabase } from "../../src/database/index.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
+import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import type { components, paths } from "../../src/routes/spec/index.ts";
 import { randomElement } from "../../src/utils/index.ts";
 import {
@@ -446,31 +443,29 @@ describe("Get recipes", () => {
     it("should respect category filtering", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const parentTag = {
+        const [parentTag] = await KnexTagRepository.create(database, {
             tagId: uuid(),
             name: uuid(),
             description: uuid(),
-        } satisfies ServiceParamsDi<TagActions, "save">;
+        });
 
-        const tags = Array.from({
-            length: randomNumber(TEST_ITEM_COUNT, TEST_ITEM_COUNT / 2),
-        }).map(
-            () =>
-                ({
-                    parentId: parentTag.tagId,
-                    tagId: uuid(),
-                    name: uuid(),
-                    description: uuid(),
-                }) satisfies ServiceParamsDi<TagActions, "save">,
+        const tags = await KnexTagRepository.create(
+            database,
+            Array.from({
+                length: randomNumber(TEST_ITEM_COUNT, TEST_ITEM_COUNT / 2),
+            }).map(() => ({
+                parentId: parentTag!.tagId,
+                tagId: uuid(),
+                name: uuid(),
+                description: uuid(),
+            })),
         );
 
         const tagsToFilterBy = {
-            [parentTag.tagId]: tags
+            [parentTag!.tagId]: tags
                 .slice(0, randomNumber(tags.length / 2))
                 .map(({ tagId }) => tagId),
         };
-
-        await TagActions.save(database, [parentTag, ...tags]);
 
         const { recipes } = await KnexRecipeRepository.create(database, {
             userId: user.userId,
@@ -485,7 +480,7 @@ describe("Get recipes", () => {
         const res = await request(app)
             .get("/v1/recipes")
             .query({
-                tags: tagsToFilterBy[parentTag.tagId],
+                tags: tagsToFilterBy[parentTag!.tagId],
             })
             .set(token);
 
@@ -495,10 +490,10 @@ describe("Get recipes", () => {
             res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
 
         const expectedRecipeIds = recipes
-            .filter((r) =>
-                Object.values(r.tags ?? {}).some((tagGroup) =>
+            .filter(({ tags }) =>
+                Object.values(tags ?? {}).some((tagGroup) =>
                     (tagGroup.tags ?? []).some((t) =>
-                        (tagsToFilterBy[parentTag.tagId] ?? []).includes(
+                        (tagsToFilterBy[parentTag!.tagId] ?? []).includes(
                             t.tagId,
                         ),
                     ),
@@ -613,7 +608,7 @@ describe("Get recipes", () => {
     //     };
 
     //     await IngredientActions.save(database, ingredients);
-    //     await TagActions.save(database, [parentTag, ...tags]);
+    //     await KnexTagRepository.create(database, [parentTag, ...tags]);
 
     //     const { recipes } = await KnexRecipeRepository.create(database, {
     //         userId: user.userId,

@@ -1,5 +1,3 @@
-import { TagActions } from "../controllers/index.ts";
-import type { KnexDatabase } from "../database/index.ts";
 import type { components } from "../routes/spec/index.ts";
 import { toUndefined } from "../utils/index.ts";
 import type { CreateService } from "./service.ts";
@@ -8,11 +6,12 @@ export interface TagService {
     getAll: () => Promise<ReadonlyArray<components["schemas"]["TagGroup"]>>;
 }
 
-export const createTagService: CreateService<TagService, "bookRepository"> = (
+export const createTagService: CreateService<TagService, "tagRepository"> = (
     database,
+    { tagRepository },
 ) => ({
     getAll: async () => {
-        const result = await TagActions.readAll(database as KnexDatabase);
+        const result = await tagRepository.readAll(database, undefined);
 
         const parents = result.filter((row) => row.parentId === null);
         const children = result.filter((row) => row.parentId !== null);

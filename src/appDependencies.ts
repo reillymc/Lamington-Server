@@ -1,6 +1,7 @@
 import config from "./config.ts";
 import { AttachmentActions } from "./controllers/attachment.ts";
 import type { Database, KnexDatabase } from "./database/index.ts";
+import db from "./database/index.ts";
 import type { AppRepositories } from "./repositories/index.ts";
 import { KnexBookRepository } from "./repositories/knex/knexBookRepository.ts";
 import { KnexCookListRepository } from "./repositories/knex/knexCooklistRepository.ts";
@@ -8,6 +9,7 @@ import { KnexListRepository } from "./repositories/knex/knexListRepository.ts";
 import { KnexMealRepository } from "./repositories/knex/knexMealRepository.ts";
 import { KnexPlannerRepository } from "./repositories/knex/knexPlannerRepository.ts";
 import { KnexRecipeRepository } from "./repositories/knex/knexRecipeRepository.ts";
+import { KnexTagRepository } from "./repositories/knex/knexTagRepository.ts";
 import { KnexUserRepository } from "./repositories/knex/knexUserRepository.ts";
 import {
     type AttachmentService,
@@ -22,6 +24,7 @@ import { createListService } from "./services/listService.ts";
 import { createMealService } from "./services/mealService.ts";
 import { createPlannerService } from "./services/plannerService.ts";
 import { createRecipeService } from "./services/recipeService.ts";
+import { createTagService } from "./services/tagService.ts";
 import { createUserService } from "./services/userService.ts";
 
 export const DefaultAppRepositories: AppRepositories<KnexDatabase> = {
@@ -32,6 +35,7 @@ export const DefaultAppRepositories: AppRepositories<KnexDatabase> = {
     plannerRepository: KnexPlannerRepository,
     recipeRepository: KnexRecipeRepository,
     userRepository: KnexUserRepository,
+    tagRepository: KnexTagRepository,
 };
 
 export type ServiceDependencies<T extends Database = Database> =
@@ -65,6 +69,10 @@ export const DefaultAppServices = (database: Database): AppServices => ({
         database,
         DefaultAppRepositories as ServiceDependencies,
     ),
+    tagService: createTagService(
+        database,
+        DefaultAppRepositories as ServiceDependencies,
+    ),
     userService: createUserService(
         database,
         DefaultAppRepositories as ServiceDependencies,
@@ -80,7 +88,7 @@ export type AppDependencies<T extends Database = Database> = {
 };
 
 export const DefaultAppDependencies = (
-    database: Database,
+    database: Database = db,
 ): AppDependencies => ({
     services: DefaultAppServices(database),
     repositories: DefaultAppRepositories as AppRepositories,

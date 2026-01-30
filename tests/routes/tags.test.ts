@@ -5,8 +5,8 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import { setupApp } from "../../src/app.ts";
-import { TagActions } from "../../src/controllers/index.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
+import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
 
@@ -38,7 +38,7 @@ describe("Get all tags", () => {
         const parentTagId = uuid();
         const childTagId = uuid();
 
-        const p = await TagActions.save(database, [
+        await KnexTagRepository.create(database, [
             {
                 tagId: parentTagId,
                 name: "Parent Tag",
