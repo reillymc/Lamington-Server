@@ -1,32 +1,8 @@
 import type { Knex } from "knex";
 import { hashPassword } from "../../../services/password.ts";
-import type { Book } from "../../definitions/book.ts";
-import type { BookRecipe } from "../../definitions/bookRecipe.ts";
-import type { Content } from "../../definitions/content.ts";
-import {
-    type ContentTag,
-    type Ingredient,
-    type List,
-    type ListItem,
-    lamington,
-    type Meal,
-    type Planner,
-    type Tag,
-    type User,
-} from "../../definitions/index.ts";
-import type { Recipe } from "../../definitions/recipe.ts";
-import type { RecipeIngredient } from "../../definitions/recipeIngredient.ts";
-import type { RecipeRating } from "../../definitions/recipeRating.ts";
-import type { RecipeSection } from "../../definitions/recipeSection.ts";
-import type { RecipeStep } from "../../definitions/recipeStep.ts";
-import { clearDatabase } from "../helpers.ts";
 
 export const seed = async (knex: Knex): Promise<void> => {
-    // Delete ALL existing entries
-    await clearDatabase(knex);
-
-    // Inserts seed entries
-    await knex<User>(lamington.user).insert([
+    await knex("user").insert([
         {
             userId: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             email: "test",
@@ -56,7 +32,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ]);
 
-    await knex<Tag>(lamington.tag).insert([
+    await knex("tag").insert([
         {
             tagId: "038e3305-b679-4822-bc57-6e6fda8eb766",
             name: "Dietary",
@@ -434,13 +410,13 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ];
 
-    await knex<Content>(lamington.content).insert(
+    await knex("content").insert(
         books.map(({ bookId, createdBy }) => ({
             contentId: bookId,
             createdBy,
         })),
     );
-    await knex<Book>(lamington.book).insert(
+    await knex("book").insert(
         books.map(({ bookId, name, description }) => ({
             bookId,
             name,
@@ -511,13 +487,13 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ];
 
-    await knex<Content>(lamington.content).insert(
+    await knex("content").insert(
         ingredients.map(({ ingredientId, createdBy }) => ({
             contentId: ingredientId,
             createdBy,
         })),
     );
-    await knex<Ingredient>(lamington.ingredient).insert(
+    await knex("ingredient").insert(
         ingredients.map(({ ingredientId, name }) => ({
             ingredientId,
             name,
@@ -557,14 +533,14 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ] as const;
 
-    await knex<Content>(lamington.content).insert(
+    await knex("content").insert(
         recipes.map(({ recipeId, createdBy }) => ({
             contentId: recipeId,
             createdBy,
         })),
     );
 
-    await knex<Recipe>(lamington.recipe).insert(
+    await knex("recipe").insert(
         recipes.map(
             ({
                 recipeId,
@@ -590,14 +566,14 @@ export const seed = async (knex: Knex): Promise<void> => {
         ),
     );
 
-    await knex<BookRecipe>(lamington.bookRecipe).insert([
+    await knex("bookRecipe").insert([
         {
             bookId: "b7a49a84-f39a-44b0-a8db-fc3d12a23a38",
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
         },
     ]);
 
-    await knex<RecipeRating>(lamington.recipeRating).insert([
+    await knex("recipeRating").insert([
         {
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             raterId: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
@@ -610,7 +586,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ]);
 
-    await knex<ContentTag>(lamington.contentTag).insert([
+    await knex("contentTag").insert([
         {
             contentId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             tagId: "46839022-4057-4722-b2c0-0f376b5ad2f9",
@@ -637,7 +613,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ]);
 
-    await knex<RecipeSection>(lamington.recipeSection).insert([
+    await knex("recipeSection").insert([
         {
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             sectionId: "444b8e22-ed15-425f-accc-ba7a52082a30",
@@ -664,7 +640,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ]);
 
-    await knex<RecipeIngredient>(lamington.recipeIngredient).insert([
+    await knex("recipeIngredient").insert([
         {
             id: "15fed8ab-3554-4a81-ad80-82f36eb3267e",
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
@@ -739,7 +715,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ]);
 
-    await knex<RecipeStep>(lamington.recipeStep).insert([
+    await knex("recipeStep").insert([
         {
             id: "04e951b8-23c0-49f6-9d90-f7c8fff1511f",
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
@@ -820,14 +796,14 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ];
 
-    await knex<Content>(lamington.content).insert(
+    await knex("content").insert(
         lists.map(({ listId, createdBy }) => ({
             contentId: listId,
             createdBy,
         })),
     );
 
-    await knex<List>(lamington.list).insert(
+    await knex("list").insert(
         lists.map(({ listId, name, description }) => ({
             listId,
             name,
@@ -908,14 +884,14 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ];
 
-    await knex<Content>(lamington.content).insert(
+    await knex("content").insert(
         listItems.map(({ itemId, createdBy }) => ({
             contentId: itemId,
             createdBy,
         })),
     );
 
-    await knex<ListItem>(lamington.listItem).insert(
+    await knex("listItem").insert(
         listItems.map(
             ({
                 listId,
@@ -948,14 +924,14 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ];
 
-    await knex<Content>(lamington.content).insert(
+    await knex("content").insert(
         planners.map(({ plannerId, createdBy }) => ({
             contentId: plannerId,
             createdBy,
         })),
     );
 
-    await knex<Planner>(lamington.planner).insert(
+    await knex("planner").insert(
         planners.map(({ plannerId, name, description }) => ({
             plannerId,
             name,
@@ -1101,14 +1077,14 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ];
 
-    await knex<Content>(lamington.content).insert(
+    await knex("content").insert(
         plannerMeals.map(({ mealId, createdBy }) => ({
             contentId: mealId,
             createdBy,
         })),
     );
 
-    await knex<Meal>(lamington.plannerMeal).insert(
+    await knex("plannerMeal").insert(
         plannerMeals.map(
             ({
                 mealId,

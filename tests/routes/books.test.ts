@@ -5,7 +5,8 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import { setupApp } from "../../src/app.ts";
-import db, { type KnexDatabase } from "../../src/database/index.ts";
+import db from "../../src/database/index.ts";
+import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import type { components, paths } from "../../src/routes/spec/index.ts";

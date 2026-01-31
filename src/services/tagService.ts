@@ -1,5 +1,4 @@
 import type { components } from "../routes/spec/index.ts";
-import { toUndefined } from "../utils/index.ts";
 import type { CreateService } from "./service.ts";
 
 export interface TagService {
@@ -13,8 +12,8 @@ export const createTagService: CreateService<TagService, "tagRepository"> = (
     getAll: async () => {
         const result = await tagRepository.readAll(database, undefined);
 
-        const parents = result.filter((row) => row.parentId === null);
-        const children = result.filter((row) => row.parentId !== null);
+        const parents = result.filter((row) => row.parentId === undefined);
+        const children = result.filter((row) => row.parentId !== undefined);
 
         const childrenMap = children.reduce(
             (acc, child) => {
@@ -29,14 +28,8 @@ export const createTagService: CreateService<TagService, "tagRepository"> = (
         );
 
         return parents.map((parent) => ({
-            tagId: parent.tagId,
-            name: parent.name,
-            description: toUndefined(parent.description),
-            tags: childrenMap[parent.tagId]?.map((child) => ({
-                tagId: child.tagId,
-                name: child.name,
-                description: toUndefined(child.description),
-            })),
+            ...parent,
+            tags: childrenMap[parent.tagId],
         }));
     },
 });

@@ -1,17 +1,15 @@
-import {
-    type ContentMember,
-    contentMember,
-} from "../../../database/definitions/contentMember.ts";
+import { EnsureArray } from "../../../utils/index.ts";
+import type { ContentMember } from "../../temp.ts";
+import type { User } from "../../userRepository.ts";
+import type { KnexDatabase } from "../knex.ts";
 import {
     type CreateQuery,
-    type KnexDatabase,
+    contentMember,
     lamington,
     type ReadQuery,
     type ReadResponse,
-    type User,
     user,
-} from "../../../database/index.ts";
-import { EnsureArray } from "../../../utils/index.ts";
+} from "../spec/index.ts";
 
 export type ContentMemberStatus = "O" | "A" | "M" | "P" | "B";
 

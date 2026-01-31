@@ -1,8 +1,6 @@
 import { expect } from "expect";
 import { v4 as uuid } from "uuid";
-import type { RecipeServings } from "../../src/database/definitions/recipe.ts";
-import type { RecipeIngredientAmount } from "../../src/database/definitions/recipeIngredient.ts";
-import type { KnexDatabase } from "../../src/database/index.ts";
+import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import type { components } from "../../src/routes/spec/schema.ts";
 import { Undefined } from "../../src/utils/index.ts";
@@ -13,7 +11,7 @@ const generateRandomAmount = [
         ({
             representation: "number",
             value: randomNumber(1, 100).toString(),
-        }) satisfies RecipeIngredientAmount,
+        }) satisfies components["schemas"]["ItemAmount"],
     () =>
         ({
             representation: "range",
@@ -21,7 +19,7 @@ const generateRandomAmount = [
                 randomNumber(1, 100).toString(),
                 randomNumber(1, 100).toString(),
             ],
-        }) satisfies RecipeIngredientAmount,
+        }) satisfies components["schemas"]["ItemAmount"],
     () =>
         ({
             representation: "fraction",
@@ -30,7 +28,7 @@ const generateRandomAmount = [
                 randomNumber(1, 100).toString(),
                 randomNumber(1, 100).toString(),
             ],
-        }) satisfies RecipeIngredientAmount,
+        }) satisfies components["schemas"]["ItemAmount"],
 ][randomNumber(0, 2)]!;
 
 export const generateRandomRecipeIngredientSections =
@@ -118,8 +116,8 @@ export const createRandomRecipeTags = async (database: KnexDatabase) => {
 };
 
 export const assertRecipeServingsAreEqual = (
-    servings1: RecipeServings | string | undefined,
-    servings2: RecipeServings | string | undefined,
+    servings1: components["schemas"]["Servings"] | string | undefined,
+    servings2: components["schemas"]["Servings"] | string | undefined,
 ) => {
     if (!(servings1 && !!servings2) || (!servings2 && !!servings1))
         throw new Error("Serving parameter undefined");

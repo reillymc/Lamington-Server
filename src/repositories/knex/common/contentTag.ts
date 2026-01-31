@@ -1,14 +1,8 @@
-import type { Content } from "../../../database/definitions/content.ts";
-import {
-    type ContentTag,
-    type CreateQuery,
-    contentTag,
-    type KnexDatabase,
-    lamington,
-    type Tag,
-    tag,
-} from "../../../database/index.ts";
 import { EnsureArray } from "../../../utils/index.ts";
+import type { Tag } from "../../tagRepository.ts";
+import type { Content, ContentTag } from "../../temp.ts";
+import type { KnexDatabase } from "../knex.ts";
+import { type CreateQuery, contentTag, lamington, tag } from "../spec/index.ts";
 
 /**
  * Delete ContentTags from list of content tags

@@ -1,25 +1,22 @@
-import { attachment } from "../../database/definitions/attachment.ts";
-import { content } from "../../database/definitions/content.ts";
-import { contentAttachment } from "../../database/definitions/contentAttachment.ts";
-import { contentMember } from "../../database/definitions/contentMember.ts";
-import {
-    plannerMeal,
-    plannerMealColumns,
-} from "../../database/definitions/meal.ts";
-import {
-    type Planner,
-    planner,
-    plannerColumns,
-} from "../../database/definitions/planner.ts";
-import { user } from "../../database/definitions/user.ts";
-import { type KnexDatabase, lamington } from "../../database/index.ts";
-import { EnsureArray, toUndefined, Undefined } from "../../utils/index.ts";
+import { EnsureArray, Undefined } from "../../utils/index.ts";
 import { ForeignKeyViolationError } from "../common/errors.ts";
 import type { PlannerRepository } from "../plannerRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
 import { ContentMemberActions } from "./common/contentMember.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
 import { isForeignKeyViolation } from "./common/postgresErrors.ts";
+import { toUndefined } from "./common/toUndefined.ts";
+import type { KnexDatabase } from "./knex.ts";
+import {
+    attachment,
+    content,
+    contentAttachment,
+    contentMember,
+    lamington,
+    planner,
+    plannerMeal,
+    user,
+} from "./spec/index.ts";
 
 // type SavePlannerMemberRequest = CreateQuery<{
 //     plannerId: Planner["plannerId"];
@@ -172,9 +169,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
         const statuses = EnsureArray(status);
         const memberStatuses = statuses.filter((s) => s !== "O");
 
-        const plannerOwners: Array<Pick<Planner, "plannerId">> = await db(
-            lamington.planner,
-        )
+        const plannerOwners: any[] = await db(lamington.planner)
             .select(planner.plannerId)
             .leftJoin(lamington.content, content.contentId, planner.plannerId)
             .whereIn(
@@ -316,7 +311,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
     },
     updateMeals: async (db, { plannerId, meals }) => {
         for (const meal of meals) {
-            const updateData = buildUpdateRecord(meal, plannerMealColumns, {
+            const updateData = buildUpdateRecord(meal, plannerMeal, {
                 meal: ({ course }) => course,
             });
 
@@ -429,7 +424,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
     },
     update: async (db, { userId, planners }) => {
         for (const p of planners) {
-            const updateData = buildUpdateRecord(p, plannerColumns, {
+            const updateData = buildUpdateRecord(p, planner, {
                 customisations: ({ color }) => {
                     return color !== undefined ? { color } : undefined;
                 },

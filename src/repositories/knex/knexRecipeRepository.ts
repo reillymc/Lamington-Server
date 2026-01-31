@@ -1,55 +1,46 @@
 import {
-    type Attachment,
-    attachment,
-} from "../../database/definitions/attachment.ts";
-import { bookRecipe } from "../../database/definitions/bookRecipe.ts";
-import { type Content, content } from "../../database/definitions/content.ts";
-import {
-    type ContentAttachment,
-    contentAttachment,
-} from "../../database/definitions/contentAttachment.ts";
-import { type Recipe, recipe } from "../../database/definitions/recipe.ts";
-import {
-    type RecipeIngredient,
-    recipeIngredient,
-} from "../../database/definitions/recipeIngredient.ts";
-import {
-    type RecipeRating,
-    recipeRating,
-} from "../../database/definitions/recipeRating.ts";
-import {
-    DefaultSection,
-    type RecipeSection,
-} from "../../database/definitions/recipeSection.ts";
-import {
-    type RecipeStep,
-    recipeStep,
-} from "../../database/definitions/recipeStep.ts";
-import {
-    type ContentTag,
-    type CreateQuery,
-    type CreateResponse,
-    contentTag,
-    type Ingredient,
-    ingredient,
-    type KnexDatabase,
-    lamington,
-    PAGE_SIZE,
-    type User,
-    user,
-} from "../../database/index.ts";
-import {
     EnsureArray,
     ObjectFromEntries,
-    toUndefined,
     Undefined,
 } from "../../utils/index.ts";
-import type { RecipeRepository } from "../recipeRepository.ts";
+import type { Attachment } from "../attachmentRepository.ts";
+import type {
+    Ingredient,
+    Recipe,
+    RecipeIngredient,
+    RecipeRating,
+    RecipeRepository,
+    RecipeSection,
+    RecipeStep,
+} from "../recipeRepository.ts";
+import type { Content, ContentAttachment, ContentTag } from "../temp.ts";
+import type { User } from "../userRepository.ts";
 import {
     ContentAttachmentActions,
     type CreateContentAttachmentOptions,
 } from "./common/contentAttachment.ts";
 import { ContentTagActions } from "./common/contentTag.ts";
+import { toUndefined } from "./common/toUndefined.ts";
+import type { KnexDatabase } from "./knex.ts";
+import {
+    attachment,
+    bookRecipe,
+    type CreateQuery,
+    type CreateResponse,
+    content,
+    contentAttachment,
+    contentTag,
+    ingredient,
+    lamington,
+    PAGE_SIZE,
+    recipe,
+    recipeIngredient,
+    recipeRating,
+    recipeStep,
+    user,
+} from "./spec/index.ts";
+
+const DefaultSection = "default";
 
 type SaveRecipeAttachmentRequest = CreateQuery<{
     recipeId: Recipe["recipeId"];

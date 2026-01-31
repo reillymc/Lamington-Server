@@ -4,9 +4,10 @@ import type { Express } from "express";
 import request from "supertest";
 
 import { setupApp } from "../../src/app.ts";
-import db, { type KnexDatabase } from "../../src/database/index.ts";
+import db from "../../src/database/index.ts";
 import type { AttachmentRepository } from "../../src/repositories/attachmentRepository.ts";
 import type { FileRepository } from "../../src/repositories/fileRepository.ts";
+import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { readAllAttachments } from "../helpers/attachment.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";

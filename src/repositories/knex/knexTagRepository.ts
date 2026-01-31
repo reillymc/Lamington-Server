@@ -1,16 +1,25 @@
-import { tag } from "../../database/definitions/tag.ts";
-import { type KnexDatabase, lamington } from "../../database/index.ts";
 import { EnsureArray } from "../../utils/index.ts";
 import type { TagRepository } from "../tagRepository.ts";
+import { toUndefined } from "./common/toUndefined.ts";
+import type { KnexDatabase } from "./knex.ts";
+import { lamington, tag } from "./spec/index.ts";
 
 export const KnexTagRepository: TagRepository<KnexDatabase> = {
-    readAll: (db) =>
-        db(lamington.tag).select(
+    readAll: async (db) => {
+        const result = await db(lamington.tag).select(
             tag.tagId,
             tag.parentId,
             tag.name,
             tag.description,
-        ),
+        );
+
+        return result.map((tag) => ({
+            tagId: tag.tagId,
+            parentId: toUndefined(tag.parentId),
+            name: tag.name,
+            description: toUndefined(tag.description),
+        }));
+    },
     create: async (db, params) =>
         db(lamington.tag)
             .insert(

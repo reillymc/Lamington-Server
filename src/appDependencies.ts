@@ -1,8 +1,8 @@
 import config from "./config.ts";
-import db, { type Database } from "./database/index.ts";
+import db from "./database/index.ts";
 
 import { DiskFileRepository } from "./repositories/disk/diskFileRepository.ts";
-import type { AppRepositories } from "./repositories/index.ts";
+import type { AppRepositories, Database } from "./repositories/index.ts";
 import { KnexAttachmentRepository } from "./repositories/knex/knexAttachmentRepository.ts";
 import { KnexBookRepository } from "./repositories/knex/knexBookRepository.ts";
 import { KnexCookListRepository } from "./repositories/knex/knexCooklistRepository.ts";

@@ -1,9 +1,11 @@
 import express from "express";
 import { validationMiddleware } from "../middleware/validator.ts";
-import type { CreateRoute } from "./route.ts";
+import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
-export const createAuthRouter: CreateRoute<"userService"> = ({ userService }) =>
+export const createAuthRouter: CreateRouter<"userService"> = ({
+    userService,
+}) =>
     express
         .Router()
         .post<

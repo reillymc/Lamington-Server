@@ -1,10 +1,10 @@
-import { user, userColumns } from "../../database/definitions/user.ts";
-import { type KnexDatabase, lamington } from "../../database/index.ts";
 import { EnsureArray, Undefined } from "../../utils/index.ts";
 import { UniqueViolationError } from "../common/errors.ts";
 import type { UserRepository } from "../userRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
 import { isUniqueViolation } from "./common/postgresErrors.ts";
+import type { KnexDatabase } from "./knex.ts";
+import { lamington, user } from "./spec/index.ts";
 
 export const KnexUserRepository: UserRepository<KnexDatabase> = {
     read: async (db, { users }) => {
@@ -137,7 +137,7 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
     },
     update: async (db, { users }) => {
         for (const u of users) {
-            const updateData = buildUpdateRecord(u, userColumns);
+            const updateData = buildUpdateRecord(u, user);
 
             if (updateData) {
                 await db(lamington.user)

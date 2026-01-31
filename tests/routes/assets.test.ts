@@ -4,7 +4,8 @@ import type { Express } from "express";
 import request from "supertest";
 
 import { setupApp } from "../../src/app.ts";
-import db, { type KnexDatabase } from "../../src/database/index.ts";
+import db from "../../src/database/index.ts";
+import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
 
 after(async () => {

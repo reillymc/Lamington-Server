@@ -1,6 +1,13 @@
-import type { Attachment } from "../database/definitions/attachment.ts";
-import type { Database, User } from "../database/index.ts";
-import type { RepositoryService } from "./repository.ts";
+import type { Database, RepositoryService } from "./repository.ts";
+import type { User } from "./userRepository.ts";
+
+export interface Attachment {
+    attachmentId: string;
+    uri: string;
+    createdBy: string;
+    createdAt: string;
+    updatedAt: string;
+}
 
 type CreateRequest = {
     userId: User["userId"];

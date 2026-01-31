@@ -11,19 +11,19 @@ import { createAttachmentsRouter } from "./attachments.ts";
 import { createAuthRouter } from "./auth.ts";
 import { createBookRouter } from "./books.ts";
 import { createCooklistRouter } from "./cookLists.ts";
-import { default as docsRouter } from "./docs.ts";
+import { createDocsRouter } from "./docs.ts";
 import { createExtractorRouter } from "./extractor.ts";
-import { default as healthRouter } from "./health.ts";
+import { createHealthRouter } from "./health.ts";
 import { createListRouter } from "./lists.ts";
 import { createMealRouter } from "./meals.ts";
 import { createPlannerRouter } from "./planners.ts";
 import { createProfileRouter } from "./profile.ts";
 import { createRecipeRouter } from "./recipes.ts";
-import type { CreateRoute } from "./route.ts";
+import type { CreateRouter } from "./route.ts";
 import { createTagsRouter } from "./tags.ts";
 import { createUserRouter } from "./users.ts";
 
-export const createAppRouter: CreateRoute<
+export const createAppRouter: CreateRouter<
     | "userService"
     | "attachmentService"
     | "bookService"
@@ -38,7 +38,7 @@ export const createAppRouter: CreateRoute<
     express
         .Router()
         .use(loggerMiddleware)
-        .use("/health", healthRouter)
+        .use("/health", createHealthRouter({}))
         .use(
             "/v1",
             express
@@ -59,6 +59,6 @@ export const createAppRouter: CreateRoute<
                 .use(createTagsRouter(services))
                 .use(createUserRouter(services)),
         )
-        .use("/", docsRouter)
+        .use("/", createDocsRouter({}))
         .use(notFoundMiddleware)
         .use(errorMiddleware);

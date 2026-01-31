@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import config from "../config.ts";
-import type { Attachment } from "../database/definitions/attachment.ts";
+import type { components } from "../routes/spec/schema.js";
 import { CreatedDataFetchError, InsufficientDataError } from "./logging.ts";
 import type { CreateService } from "./service.ts";
 
@@ -29,7 +29,7 @@ export interface AttachmentService {
     create: (
         userId: string,
         file: { buffer: Buffer } | undefined,
-    ) => Promise<Attachment>;
+    ) => Promise<components["schemas"]["ImageAttachment"]>;
 }
 
 export const createAttachmentService: CreateService<

@@ -1,14 +1,105 @@
-import type { Attachment } from "../database/definitions/attachment.ts";
-import type { Book } from "../database/definitions/book.ts";
-import type { Content } from "../database/definitions/content.ts";
-import type { Recipe } from "../database/definitions/recipe.ts";
-import type { RecipeIngredient } from "../database/definitions/recipeIngredient.ts";
-import type { RecipeRating } from "../database/definitions/recipeRating.ts";
-import type { RecipeStep } from "../database/definitions/recipeStep.ts";
-import type { Database, Ingredient, Tag, User } from "../database/index.ts";
-import type { RepositoryService } from "./repository.ts";
+import type { Attachment } from "./attachmentRepository.ts";
+import type { Database, RepositoryService } from "./repository.ts";
+import type { Tag } from "./tagRepository.ts";
+import type { Content } from "./temp.ts";
+import type { User } from "./userRepository.ts";
 
-// TODO: clean up extraneous exports after migration to openapi spec at service layer is complete
+export interface RecipeStep {
+    id: string;
+    recipeId: string;
+    sectionId: string | undefined;
+    index: number;
+    description: string | undefined;
+}
+
+type NumberValue = { representation: "number"; value: string };
+type RangeValue = { representation: "range"; value: [string, string] };
+type FractionValue = {
+    representation: "fraction";
+    value: [string, string, string];
+};
+
+export interface RecipeSection {
+    recipeId: string;
+    sectionId: string;
+    index: number;
+    name: string;
+    description: string | undefined;
+}
+
+/**
+ * RecipeIngredient
+ *
+ * Contains the mapping for each of the recipe's ingredients to the Ingredient item, with additional
+ * information stored in the properties.
+ */
+export interface RecipeIngredient {
+    id: string;
+    recipeId: string;
+    sectionId: string;
+
+    /**
+     * Used when linking an ingredient item
+     */
+    ingredientId?: string;
+
+    /**
+     * Used when linking another recipe as an ingredient
+     */
+    subrecipeId?: string;
+    index?: number;
+    unit?: string;
+
+    /**
+     * JSON stringified object containing the amount of the ingredient, as type number, fraction
+     * or range with its representation explicitly denoted.
+     * TODO: Define this type correctly like other new json types
+     */
+    amount?: RecipeIngredientAmount;
+    multiplier?: number;
+    description?: string;
+}
+
+type RecipeServingsV1 = {
+    unit: string;
+    count: RangeValue | NumberValue;
+};
+
+type RecipeServings = RecipeServingsV1;
+
+/**
+ * Recipe
+ */
+export interface Recipe {
+    recipeId: Content["contentId"];
+    name: string;
+    source: string | null;
+    servings: RecipeServings | null;
+    prepTime: number | null;
+    cookTime: number | null;
+    nutritionalInformation: string | null;
+    summary: string | null;
+    tips: string | null;
+    public: boolean;
+    timesCooked: number | null;
+}
+
+type RecipeIngredientAmountV1 = RangeValue | NumberValue | FractionValue;
+
+type RecipeIngredientAmount = RecipeIngredientAmountV1;
+
+export interface RecipeRating {
+    recipeId: string;
+    raterId: string;
+    rating: number;
+}
+
+export interface Ingredient {
+    ingredientId: string;
+    name: string;
+    description: string | undefined;
+}
+
 type SortKeys<TKeys> = keyof TKeys;
 type Pagination = number;
 
@@ -48,7 +139,7 @@ type ReadFilters = {
     name?: Recipe["name"];
     owner?: Content["createdBy"];
     tags?: ReadonlyArray<{ tagId: Tag["tagId"] }>;
-    books?: ReadonlyArray<{ bookId: Book["bookId"] }>;
+    books?: ReadonlyArray<{ bookId: string }>;
     ingredients?: ReadonlyArray<{ name: Ingredient["name"] }>;
 };
 

@@ -1,8 +1,8 @@
 import express from "express";
-import type { CreateRoute } from "./route.ts";
+import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
-export const createTagsRouter: CreateRoute<"tagService"> = ({ tagService }) =>
+export const createTagsRouter: CreateRouter<"tagService"> = ({ tagService }) =>
     express
         .Router()
         .get<

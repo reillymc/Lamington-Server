@@ -1,11 +1,25 @@
-import type { Tag } from "../database/definitions/tag.ts";
-import type { Database } from "../database/index.ts";
-import type { RepositoryBulkService, RepositoryService } from "./repository.ts";
+import type {
+    Database,
+    RepositoryBulkService,
+    RepositoryService,
+} from "./repository.ts";
+
+export interface Tag {
+    tagId: string;
+    name: string;
+    description: string | null;
+    parentId: string | null;
+}
 
 type ReadRequest = undefined;
 type ReadResponse = ReadonlyArray<Tag>;
 
-type CreateRequest = Tag;
+type CreateRequest = {
+    tagId: Tag["tagId"];
+    name: Tag["name"];
+    description?: Tag["description"];
+    parentId?: Tag["parentId"];
+};
 type CreateResponse = Tag;
 
 export interface TagRepository<TDatabase extends Database = Database> {

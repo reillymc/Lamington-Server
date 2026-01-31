@@ -1,9 +1,9 @@
 import express from "express";
 import config from "../config.ts";
-import type { CreateRoute } from "./route.ts";
+import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
-export const createAttachmentsRouter: CreateRoute<"attachmentService"> = ({
+export const createAttachmentsRouter: CreateRouter<"attachmentService"> = ({
     attachmentService,
 }) =>
     express

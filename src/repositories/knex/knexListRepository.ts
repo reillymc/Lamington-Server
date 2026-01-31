@@ -1,23 +1,20 @@
-import { content } from "../../database/definitions/content.ts";
-import { contentMember } from "../../database/definitions/contentMember.ts";
-import {
-    type List,
-    list,
-    listColumns,
-} from "../../database/definitions/list.ts";
-import {
-    listItem,
-    listItemColumns,
-} from "../../database/definitions/listItem.ts";
-import { user } from "../../database/definitions/user.ts";
-import { type KnexDatabase, lamington } from "../../database/index.ts";
-import { EnsureArray, toUndefined } from "../../utils/index.ts";
+import { EnsureArray } from "../../utils/index.ts";
 import { ForeignKeyViolationError } from "../common/errors.ts";
 import type { ListRepository } from "../listRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
 import { ContentMemberActions } from "./common/contentMember.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
 import { isForeignKeyViolation } from "./common/postgresErrors.ts";
+import { toUndefined } from "./common/toUndefined.ts";
+import type { KnexDatabase } from "./knex.ts";
+import {
+    content,
+    contentMember,
+    lamington,
+    list,
+    listItem,
+    user,
+} from "./spec/index.ts";
 
 // export type SaveListMemberRequest = CreateQuery<{
 //     listId: List["listId"];
@@ -161,7 +158,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
         const statuses = EnsureArray(status);
         const memberStatuses = statuses.filter((s) => s !== "O");
 
-        const listOwners: Array<Pick<List, "listId">> = await db(lamington.list)
+        const listOwners: any[] = await db(lamington.list)
             .select(list.listId)
             .leftJoin(lamington.content, content.contentId, list.listId)
             .whereIn(
@@ -263,7 +260,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
     },
     update: async (db, { userId, lists }) => {
         for (const l of lists) {
-            const updateData = buildUpdateRecord(l, listColumns, {
+            const updateData = buildUpdateRecord(l, list, {
                 customisations: ({ color, icon }) => {
                     if (color === undefined && icon === undefined)
                         return undefined;
@@ -361,7 +358,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
     },
     updateItems: async (db, { userId, listId, items }) => {
         for (const item of items) {
-            const updateData = buildUpdateRecord(item, listItemColumns);
+            const updateData = buildUpdateRecord(item, listItem);
             if (updateData) {
                 await db(lamington.listItem)
                     .where(listItem.itemId, item.itemId)

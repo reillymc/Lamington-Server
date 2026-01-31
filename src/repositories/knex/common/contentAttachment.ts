@@ -1,19 +1,15 @@
+import { EnsureArray, Undefined } from "../../../utils/index.ts";
+import type { Attachment } from "../../attachmentRepository.ts";
+import type { ContentAttachment } from "../../temp.ts";
+import type { KnexDatabase } from "../knex.ts";
 import {
-    type Attachment,
     attachment,
-} from "../../../database/definitions/attachment.ts";
-import {
-    type ContentAttachment,
-    contentAttachment,
-} from "../../../database/definitions/contentAttachment.ts";
-import {
     type CreateQuery,
-    type KnexDatabase,
+    contentAttachment,
     lamington,
     type ReadQuery,
     type ReadResponse,
-} from "../../../database/index.ts";
-import { EnsureArray, Undefined } from "../../../utils/index.ts";
+} from "../spec/index.ts";
 
 export type SaveContentAttachmentRequest = Pick<
     ContentAttachment,

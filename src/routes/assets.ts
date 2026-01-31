@@ -1,5 +1,5 @@
 import express from "express";
-import type { CreateRoute } from "./route.ts";
+import type { CreateRouter } from "./route.ts";
 
-export const createAssetsRouter: CreateRoute = () =>
+export const createAssetsRouter: CreateRouter = () =>
     express.Router().use("/assets", express.static("assets"));

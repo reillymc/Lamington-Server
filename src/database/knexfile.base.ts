@@ -6,6 +6,10 @@ const config: Knex.Config = {
         tableName: "knex_migrations",
         directory: "./migrations",
     },
+    pool: {
+        min: 2,
+        max: 10,
+    },
 };
 
 export default config;

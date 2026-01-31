@@ -1,7 +1,18 @@
-import type { Database, User } from "../database/index.ts";
-import type { RepositoryService } from "./repository.ts";
+import type { Database, RepositoryService } from "./repository.ts";
 
 type UserStatus = "O" | "A" | "M" | "P" | "B";
+
+export type User = {
+    userId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    password: string;
+    createdAt: string;
+    updatedAt: string;
+    status: string;
+    preferences: string | null;
+};
 
 export type UserProfile = {
     userId: User["userId"];
