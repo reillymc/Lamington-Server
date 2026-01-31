@@ -11,8 +11,8 @@ const config: Knex.Config = {
         password: process.env.DB_TEST_PASSWORD,
     },
     pool: {
-        min: 0,
-        max: 1,
+        min: 2,
+        max: 10,
     },
 };
 

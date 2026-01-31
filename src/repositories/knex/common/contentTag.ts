@@ -1,4 +1,4 @@
-import type { Content } from "../../database/definitions/content.ts";
+import type { Content } from "../../../database/definitions/content.ts";
 import {
     type ContentTag,
     type CreateQuery,
@@ -7,8 +7,8 @@ import {
     lamington,
     type Tag,
     tag,
-} from "../../database/index.ts";
-import { EnsureArray } from "../../utils/index.ts";
+} from "../../../database/index.ts";
+import { EnsureArray } from "../../../utils/index.ts";
 
 /**
  * Delete ContentTags from list of content tags

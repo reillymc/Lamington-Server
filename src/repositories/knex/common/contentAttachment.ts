@@ -1,19 +1,19 @@
 import {
     type Attachment,
     attachment,
-} from "../../database/definitions/attachment.ts";
+} from "../../../database/definitions/attachment.ts";
 import {
     type ContentAttachment,
     contentAttachment,
-} from "../../database/definitions/contentAttachment.ts";
+} from "../../../database/definitions/contentAttachment.ts";
 import {
     type CreateQuery,
     type KnexDatabase,
     lamington,
     type ReadQuery,
     type ReadResponse,
-} from "../../database/index.ts";
-import { EnsureArray, Undefined } from "../../utils/index.ts";
+} from "../../../database/index.ts";
+import { EnsureArray, Undefined } from "../../../utils/index.ts";
 
 export type SaveContentAttachmentRequest = Pick<
     ContentAttachment,

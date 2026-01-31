@@ -1,9 +1,4 @@
 import {
-    ContentAttachmentActions,
-    type CreateContentAttachmentOptions,
-} from "../../controllers/content/contentAttachment.ts";
-import { ContentTagActions } from "../../controllers/content/contentTag.ts";
-import {
     type Attachment,
     attachment,
 } from "../../database/definitions/attachment.ts";
@@ -50,6 +45,11 @@ import {
     Undefined,
 } from "../../utils/index.ts";
 import type { RecipeRepository } from "../recipeRepository.ts";
+import {
+    ContentAttachmentActions,
+    type CreateContentAttachmentOptions,
+} from "./common/contentAttachment.ts";
+import { ContentTagActions } from "./common/contentTag.ts";
 
 type SaveRecipeAttachmentRequest = CreateQuery<{
     recipeId: Recipe["recipeId"];

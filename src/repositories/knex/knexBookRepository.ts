@@ -1,4 +1,3 @@
-import { ContentMemberActions } from "../../controllers/index.ts";
 import {
     type Book,
     book,
@@ -11,6 +10,7 @@ import { type KnexDatabase, lamington, user } from "../../database/index.ts";
 import { EnsureArray, toUndefined } from "../../utils/index.ts";
 import type { BookRepository } from "../bookRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
+import { ContentMemberActions } from "./common/contentMember.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
 
 const formatBook = (

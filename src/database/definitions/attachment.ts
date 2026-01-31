@@ -14,10 +14,17 @@ export interface Attachment {
     updatedAt: string;
 }
 
-export const attachment = {
-    attachmentId: `${lamington.attachment}.attachmentId`,
-    uri: `${lamington.attachment}.uri`,
-    createdBy: `${lamington.attachment}.createdBy`,
-    createdAt: `${lamington.attachment}.createdAt`,
-    updatedAt: `${lamington.attachment}.updatedAt`,
-} as const satisfies Table<Attachment>;
+export const attachmentColumns = [
+    "attachmentId",
+    "uri",
+    "createdBy",
+    "createdAt",
+    "updatedAt",
+] as const satisfies (keyof Attachment)[];
+
+export const attachment = Object.fromEntries(
+    attachmentColumns.map((column) => [
+        column,
+        `${lamington.attachment}.${column}`,
+    ]),
+) as Table<Attachment>;

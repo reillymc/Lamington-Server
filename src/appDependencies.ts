@@ -1,8 +1,9 @@
 import config from "./config.ts";
-import { AttachmentActions } from "./controllers/attachment.ts";
-import type { Database, KnexDatabase } from "./database/index.ts";
-import db from "./database/index.ts";
+import db, { type Database } from "./database/index.ts";
+
+import { DiskFileRepository } from "./repositories/disk/diskFileRepository.ts";
 import type { AppRepositories } from "./repositories/index.ts";
+import { KnexAttachmentRepository } from "./repositories/knex/knexAttachmentRepository.ts";
 import { KnexBookRepository } from "./repositories/knex/knexBookRepository.ts";
 import { KnexCookListRepository } from "./repositories/knex/knexCooklistRepository.ts";
 import { KnexListRepository } from "./repositories/knex/knexListRepository.ts";
@@ -11,11 +12,9 @@ import { KnexPlannerRepository } from "./repositories/knex/knexPlannerRepository
 import { KnexRecipeRepository } from "./repositories/knex/knexRecipeRepository.ts";
 import { KnexTagRepository } from "./repositories/knex/knexTagRepository.ts";
 import { KnexUserRepository } from "./repositories/knex/knexUserRepository.ts";
-import {
-    type AttachmentService,
-    LocalAttachmentService,
-    S3AttachmentService,
-} from "./services/attachment/index.ts";
+import { S3FileRepository } from "./repositories/s3/s3FileRepository.ts";
+
+import { createAttachmentService } from "./services/attachmentService.ts";
 import { createBookService } from "./services/bookService.ts";
 import { createContentExtractionService } from "./services/contentExtractionService.ts";
 import { createCooklistService } from "./services/cooklistService.ts";
@@ -27,7 +26,8 @@ import { createRecipeService } from "./services/recipeService.ts";
 import { createTagService } from "./services/tagService.ts";
 import { createUserService } from "./services/userService.ts";
 
-export const DefaultAppRepositories: AppRepositories<KnexDatabase> = {
+// biome-ignore lint/suspicious/noExplicitAny: hypothetically support any db types
+export const DefaultAppRepositories: AppRepositories<any> = {
     bookRepository: KnexBookRepository,
     cooklistRepository: KnexCookListRepository,
     listRepository: KnexListRepository,
@@ -36,87 +36,35 @@ export const DefaultAppRepositories: AppRepositories<KnexDatabase> = {
     recipeRepository: KnexRecipeRepository,
     userRepository: KnexUserRepository,
     tagRepository: KnexTagRepository,
-};
-
-export type ServiceDependencies<T extends Database = Database> =
-    AppRepositories<T> & {
-        database: Database;
-    };
-
-export const DefaultAppServices = (database: Database): AppServices => ({
-    bookService: createBookService(
-        database,
-        DefaultAppRepositories as ServiceDependencies,
-    ),
-    contentExtractionService: createContentExtractionService(),
-    cooklistService: createCooklistService(
-        database,
-        DefaultAppRepositories as ServiceDependencies,
-    ),
-    listService: createListService(
-        database,
-        DefaultAppRepositories as ServiceDependencies,
-    ),
-    mealService: createMealService(
-        database,
-        DefaultAppRepositories as ServiceDependencies,
-    ),
-    plannerService: createPlannerService(
-        database,
-        DefaultAppRepositories as ServiceDependencies,
-    ),
-    recipeService: createRecipeService(
-        database,
-        DefaultAppRepositories as ServiceDependencies,
-    ),
-    tagService: createTagService(
-        database,
-        DefaultAppRepositories as ServiceDependencies,
-    ),
-    userService: createUserService(
-        database,
-        DefaultAppRepositories as ServiceDependencies,
-    ),
-});
-
-export type AppDependencies<T extends Database = Database> = {
-    services: AppServices;
-    repositories: AppRepositories<T>;
-    attachmentService: AttachmentService;
-    attachmentActions: AttachmentActions;
-    database: Database;
-};
-
-export const DefaultAppDependencies = (
-    database: Database = db,
-): AppDependencies => ({
-    services: DefaultAppServices(database),
-    repositories: DefaultAppRepositories as AppRepositories,
-    attachmentService:
+    attachmentRepository: KnexAttachmentRepository,
+    fileRepository:
         config.attachments.storageService === "local"
-            ? LocalAttachmentService
-            : S3AttachmentService,
-    attachmentActions: AttachmentActions,
-    database,
-});
+            ? DiskFileRepository
+            : S3FileRepository,
+};
 
-export type PartialAppDependencies<T extends Database = Database> = Partial<{
-    services: Partial<AppServices>;
-    repositories: Partial<AppRepositories<T>>;
-    attachmentService: AttachmentService;
-    attachmentActions: AttachmentActions;
-    database: Database;
-}>;
+export const DefaultAppServices = (
+    database: Database = db,
+    repositoriesOverrides: Partial<AppRepositories> = {},
+): AppServices => {
+    const repositories = {
+        ...DefaultAppRepositories,
+        ...repositoriesOverrides,
+    };
+    return {
+        attachmentService: createAttachmentService(database, repositories),
+        bookService: createBookService(database, repositories),
+        contentExtractionService: createContentExtractionService(),
+        cooklistService: createCooklistService(database, repositories),
+        listService: createListService(database, repositories),
+        mealService: createMealService(database, repositories),
+        plannerService: createPlannerService(database, repositories),
+        recipeService: createRecipeService(database, repositories),
+        tagService: createTagService(database, repositories),
+        userService: createUserService(database, repositories),
+    };
+};
 
-export const MergeAppDependencies = <T extends Database = Database>(
-    defaults: AppDependencies<T>,
-    overrides: PartialAppDependencies = {},
-): AppDependencies<T> => ({
-    services: { ...defaults.services, ...overrides.services },
-    repositories: { ...defaults.repositories, ...overrides.repositories },
-    attachmentService:
-        overrides.attachmentService ?? defaults.attachmentService,
-    attachmentActions:
-        overrides.attachmentActions ?? defaults.attachmentActions,
-    database: overrides.database ?? defaults.database,
-});
+export type AppDependencies = AppServices;
+
+export type PartialAppDependencies = Partial<AppDependencies>;

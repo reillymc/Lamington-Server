@@ -2,7 +2,7 @@ import { setupApp } from "./app.ts";
 import config from "./config.ts";
 import { logger, printConfig } from "./services/index.ts";
 
-const app = setupApp();
+const app = setupApp({});
 
 app.listen(config.app.port, () => {
     printConfig(config);

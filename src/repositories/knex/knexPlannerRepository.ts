@@ -1,4 +1,3 @@
-import { ContentMemberActions } from "../../controllers/index.ts";
 import { attachment } from "../../database/definitions/attachment.ts";
 import { content } from "../../database/definitions/content.ts";
 import { contentAttachment } from "../../database/definitions/contentAttachment.ts";
@@ -18,6 +17,7 @@ import { EnsureArray, toUndefined, Undefined } from "../../utils/index.ts";
 import { ForeignKeyViolationError } from "../common/errors.ts";
 import type { PlannerRepository } from "../plannerRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
+import { ContentMemberActions } from "./common/contentMember.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
 import { isForeignKeyViolation } from "./common/postgresErrors.ts";
 

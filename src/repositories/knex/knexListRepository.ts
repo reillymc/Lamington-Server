@@ -1,4 +1,3 @@
-import { ContentMemberActions } from "../../controllers/index.ts";
 import { content } from "../../database/definitions/content.ts";
 import { contentMember } from "../../database/definitions/contentMember.ts";
 import {
@@ -16,6 +15,7 @@ import { EnsureArray, toUndefined } from "../../utils/index.ts";
 import { ForeignKeyViolationError } from "../common/errors.ts";
 import type { ListRepository } from "../listRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
+import { ContentMemberActions } from "./common/contentMember.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
 import { isForeignKeyViolation } from "./common/postgresErrors.ts";
 

@@ -4,28 +4,28 @@ import type { Express } from "express";
 import request from "supertest";
 
 import { setupApp } from "../../src/app.ts";
-import type { AttachmentActions } from "../../src/controllers/attachment.ts";
 import db, { type KnexDatabase } from "../../src/database/index.ts";
+import type { AttachmentRepository } from "../../src/repositories/attachmentRepository.ts";
+import type { FileRepository } from "../../src/repositories/fileRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
-import type { AttachmentService } from "../../src/services/attachment/attachmentService.ts";
 import { readAllAttachments } from "../helpers/attachment.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
 
-const MockSuccessfulAttachmentService: AttachmentService = {
-    put: async () => true,
-    delete: async () => true,
+const MockSuccessfulFileRepository: FileRepository = {
+    create: mock.fn(async () => true),
+    delete: mock.fn(async () => true),
 };
 
-const MockFailingAttachmentService: AttachmentService = {
-    put: async () => false,
-    delete: async () => false,
+const MockFailingFileRepository: FileRepository = {
+    create: mock.fn(async () => false),
+    delete: mock.fn(async () => false),
 };
 
-const MockFailingAttachmentActions: AttachmentActions = {
-    read: async () => {
+const MockFailingAttachmentRepository: AttachmentRepository = {
+    create: async () => {
         throw "Mock Error";
     },
-    save: async () => {
+    update: async () => {
         throw "Mock Error";
     },
 };
@@ -42,7 +42,7 @@ describe("Upload an image", () => {
         database = await db.transaction();
         app = setupApp({
             database,
-            attachmentService: MockSuccessfulAttachmentService,
+            repositories: { fileRepository: MockSuccessfulFileRepository },
         });
     });
 
@@ -92,7 +92,7 @@ describe("Upload an image", () => {
     it("should not save to db when upload fails", async () => {
         app = setupApp({
             database,
-            attachmentService: MockFailingAttachmentService,
+            repositories: { fileRepository: MockFailingFileRepository },
         });
         const [token] = await PrepareAuthenticatedUser(database);
 
@@ -109,13 +109,15 @@ describe("Upload an image", () => {
     });
 
     it("should not upload when save to db fails", async () => {
-        const mockPut = mock.fn(async () => true);
+        const mockCreate = mock.fn(async () => true);
         app = setupApp({
             database,
-            attachmentActions: MockFailingAttachmentActions,
-            attachmentService: {
-                ...MockSuccessfulAttachmentService,
-                put: mockPut,
+            repositories: {
+                attachmentRepository: MockFailingAttachmentRepository,
+                fileRepository: {
+                    ...MockSuccessfulFileRepository,
+                    create: mockCreate,
+                },
             },
         });
 
@@ -128,6 +130,6 @@ describe("Upload an image", () => {
 
         expect(res.statusCode).toEqual(500);
 
-        expect(mockPut.mock.callCount()).toEqual(0);
+        expect(mockCreate.mock.callCount()).toEqual(0);
     });
 });

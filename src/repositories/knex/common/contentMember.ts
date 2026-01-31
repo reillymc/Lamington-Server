@@ -1,7 +1,7 @@
 import {
     type ContentMember,
     contentMember,
-} from "../../database/definitions/contentMember.ts";
+} from "../../../database/definitions/contentMember.ts";
 import {
     type CreateQuery,
     type KnexDatabase,
@@ -10,8 +10,8 @@ import {
     type ReadResponse,
     type User,
     user,
-} from "../../database/index.ts";
-import { EnsureArray } from "../../utils/index.ts";
+} from "../../../database/index.ts";
+import { EnsureArray } from "../../../utils/index.ts";
 
 export type ContentMemberStatus = "O" | "A" | "M" | "P" | "B";
 
