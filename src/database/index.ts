@@ -1,4 +1,4 @@
-import knex, { type Knex } from "knex";
+import knex from "knex";
 import development from "./knexfile.development.ts";
 import production from "./knexfile.production.ts";
 import test from "./knexfile.testing.ts";
@@ -17,13 +17,3 @@ const selectDatabaseConfig = () => {
 const db = knex(selectDatabaseConfig());
 
 export default db;
-
-export * from "./definitions/index.ts";
-
-export type KnexDatabase = Knex.Transaction;
-
-export interface Database {
-    transaction<T>(
-        transactionScope: (trx: Database) => Promise<T> | undefined,
-    ): Promise<T>;
-}

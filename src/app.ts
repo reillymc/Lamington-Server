@@ -1,63 +1,35 @@
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
+
 import {
-    DefaultAppDependencies,
-    MergeAppDependencies,
+    DefaultAppServices,
     type PartialAppDependencies,
 } from "./appDependencies.ts";
-import config from "./config.ts";
-import db from "./database/index.ts";
-import {
-    errorMiddleware,
-    loggerMiddleware,
-    notFoundMiddleware,
-} from "./middleware/index.ts";
-import { createAppRouter, docsRouter, healthRouter } from "./routes/index.ts";
-import { attachmentEndpoint, uploadDirectory } from "./routes/spec/index.ts";
+import type { AppRepositories, Database } from "./repositories/index.ts";
+import { createAppRouter } from "./routes/index.ts";
 
-export const setupApp = (dependencies?: PartialAppDependencies) => {
-    const app = express();
+interface AppParams {
+    database?: Database;
+    services?: PartialAppDependencies;
+    repositories?: Partial<AppRepositories>;
+}
 
-    const database = dependencies?.database ?? db;
-
-    const appDependencies = MergeAppDependencies(
-        DefaultAppDependencies(database),
-        dependencies,
-    );
-
-    // app setup
-    app.use(express.json());
-    app.use(express.urlencoded({ extended: false }));
-    app.use(cors());
-    app.use(
-        helmet({
-            contentSecurityPolicy: { directives: { defaultSrc: ["'self'"] } },
-        }),
-    );
-
-    // logging
-    app.use(loggerMiddleware);
-
-    // routers
-    if (
-        config.attachments.storageService === "local" ||
-        process.env.NODE_ENV !== "production"
-    ) {
-        app.use(
-            `/v1${attachmentEndpoint}/${uploadDirectory}`,
-            express.static(uploadDirectory),
+export const setupApp = ({ database, repositories, services }: AppParams) =>
+    express()
+        .use(express.json())
+        .use(express.urlencoded({ extended: false }))
+        .use(cors())
+        .use(
+            helmet({
+                contentSecurityPolicy: {
+                    directives: { defaultSrc: ["'self'"] },
+                },
+            }),
+        )
+        .use(
+            createAppRouter({
+                ...DefaultAppServices(database, repositories),
+                ...services,
+            }),
         );
-    }
-    app.use("/v1/", createAppRouter(appDependencies));
-    app.use("/health", healthRouter);
-    app.use("/", docsRouter);
-
-    // Catch 404 and forward to error handler
-    app.use(notFoundMiddleware);
-
-    // error handler
-    app.use(errorMiddleware);
-
-    return app;
-};

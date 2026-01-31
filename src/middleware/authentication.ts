@@ -10,7 +10,7 @@ const { jwtSecret } = config.authentication;
 
 type UserStatus = components["schemas"]["UserStatus"];
 
-export const getStatus = (
+const getStatus = (
     status: string | undefined,
     isOwner?: boolean,
 ): UserStatus | undefined => {

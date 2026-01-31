@@ -1,13 +1,55 @@
-import type { Content } from "../database/definitions/content.ts";
-import type { ContentMember } from "../database/definitions/contentMember.ts";
-import type { List } from "../database/definitions/list.ts";
-import type { ListItem } from "../database/definitions/listItem.ts";
-import type { Database, User } from "../database/index.ts";
-import type { RepositoryBulkService, RepositoryService } from "./repository.ts";
+import type {
+    Database,
+    RepositoryBulkService,
+    RepositoryService,
+} from "./repository.ts";
+import type { Content, ContentMember } from "./temp.ts";
+import type { User } from "./userRepository.ts";
 
 type ListUserStatus = "O" | "A" | "M" | "P" | "B";
 type ListIcon =
     `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17}`;
+
+type NumberValue = { representation: "number"; value: string };
+type RangeValue = { representation: "range"; value: [string, string] };
+type FractionValue = {
+    representation: "fraction";
+    value: [string, string, string];
+};
+
+type ListItemIngredientAmountV1 = RangeValue | NumberValue | FractionValue;
+
+type ListItemIngredientAmount = ListItemIngredientAmountV1;
+
+type ListCustomisationsV1 = {
+    icon: string;
+};
+
+type ListCustomisations = ListCustomisationsV1;
+
+/**
+ * List
+ */
+type List = {
+    listId: string;
+    name: string;
+    customisations: ListCustomisations | null;
+    description: string | null;
+};
+
+/**
+ * ListItem
+ */
+interface ListItem {
+    itemId: string;
+    listId: string;
+    name: string;
+    completed: boolean;
+    ingredientId: string | null;
+    unit: string | null;
+    amount: ListItemIngredientAmount | null;
+    notes: string | null;
+}
 
 type VerifyPermissionsRequest = {
     userId: User["userId"];

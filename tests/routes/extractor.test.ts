@@ -3,7 +3,8 @@ import { expect } from "expect";
 import request from "supertest";
 import { v4 } from "uuid";
 import { setupApp } from "../../src/app.ts";
-import db, { type KnexDatabase } from "../../src/database/index.ts";
+import db from "../../src/database/index.ts";
+import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { ContentExtractionService } from "../../src/services/contentExtractionService.ts";
 import { PrepareAuthenticatedUser, randomNumber } from "../helpers/index.ts";
 

@@ -1,9 +1,8 @@
 import type { Knex } from "knex";
-import { lamington, type Tag } from "../../definitions/index.ts";
 
 // Default tags
 export const seed = async (knex: Knex): Promise<void> => {
-    await knex<Tag>(lamington.tag)
+    await knex("tag")
         .insert([
             {
                 tagId: "038e3305-b679-4822-bc57-6e6fda8eb766",

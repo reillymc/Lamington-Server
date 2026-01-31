@@ -1,11 +1,15 @@
-import { attachment } from "../../database/definitions/attachment.ts";
-import { content } from "../../database/definitions/content.ts";
-import { contentAttachment } from "../../database/definitions/contentAttachment.ts";
-import { plannerMeal } from "../../database/definitions/meal.ts";
-import { type KnexDatabase, lamington, user } from "../../database/index.ts";
-import { toUndefined } from "../../utils/index.ts";
 import type { MealRepository } from "../mealRepository.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
+import { toUndefined } from "./common/toUndefined.ts";
+import type { KnexDatabase } from "./knex.ts";
+import {
+    attachment,
+    content,
+    contentAttachment,
+    lamington,
+    plannerMeal,
+    user,
+} from "./spec/index.ts";
 
 export const KnexMealRepository: MealRepository<KnexDatabase> = {
     read: async (db, { userId, meals }) => {

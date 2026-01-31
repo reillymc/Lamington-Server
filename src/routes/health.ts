@@ -1,9 +1,7 @@
 import express from "express";
+import type { CreateRouter } from "./route.ts";
 
-const router = express.Router();
-
-router.get("/", (_req, res) => {
-    res.status(204).send();
-});
-
-export default router;
+export const createHealthRouter: CreateRouter = () =>
+    express.Router().get("/", (_req, res) => {
+        res.status(204).send();
+    });

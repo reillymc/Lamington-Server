@@ -10,10 +10,6 @@ const config: Knex.Config = {
         user: process.env.DB_TEST_USER,
         password: process.env.DB_TEST_PASSWORD,
     },
-    pool: {
-        min: 0,
-        max: 1,
-    },
 };
 
 export default config;

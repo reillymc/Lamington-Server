@@ -1,17 +1,18 @@
-import { ContentMemberActions } from "../../controllers/index.ts";
-import {
-    type Book,
-    book,
-    bookColumns,
-} from "../../database/definitions/book.ts";
-import { bookRecipe } from "../../database/definitions/bookRecipe.ts";
-import { type Content, content } from "../../database/definitions/content.ts";
-import { contentMember } from "../../database/definitions/contentMember.ts";
-import { type KnexDatabase, lamington, user } from "../../database/index.ts";
-import { EnsureArray, toUndefined } from "../../utils/index.ts";
+import { EnsureArray } from "../../utils/index.ts";
 import type { BookRepository } from "../bookRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
+import { ContentMemberActions } from "./common/contentMember.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
+import { toUndefined } from "./common/toUndefined.ts";
+import type { KnexDatabase } from "./knex.ts";
+import {
+    book,
+    bookRecipe,
+    content,
+    contentMember,
+    lamington,
+    user,
+} from "./spec/index.ts";
 
 const formatBook = (
     book: any,
@@ -53,25 +54,6 @@ const readMembers: BookRepository<KnexDatabase>["readMembers"] = async (
     }));
 };
 
-// TODO: refactor UI to separate members from edit page. Set members will no longer be required, as adds and removes will be used instead. Remove members from read/save services
-const setMembers: BookRepository<KnexDatabase>["saveMembers"] = (db, request) =>
-    ContentMemberActions.save(
-        db,
-        EnsureArray(request).map(({ bookId, members }) => ({
-            contentId: bookId,
-            members,
-        })),
-        { trimNotIn: true },
-    ).then((response) =>
-        response.map(({ contentId, members }) => ({
-            bookId: contentId,
-            members: members.map(({ status, ...rest }) => ({
-                ...rest,
-                status: toUndefined(status),
-            })),
-        })),
-    );
-
 const read: BookRepository<KnexDatabase>["read"] = async (
     db,
     { books, userId },
@@ -108,7 +90,7 @@ const read: BookRepository<KnexDatabase>["read"] = async (
 
 export const KnexBookRepository: BookRepository<KnexDatabase> = {
     create: async (db, { userId, books }) => {
-        const newContent = await db<Content>(lamington.content)
+        const newContent = await db(lamington.content)
             .insert(books.map(() => ({ createdBy: userId })))
             .returning("contentId");
 
@@ -117,7 +99,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
             bookId: contentId,
         }));
 
-        await db<Book>(lamington.book).insert(
+        await db(lamington.book).insert(
             booksToCreate.map(
                 ({
                     name,
@@ -138,7 +120,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
     },
     update: async (db, { userId, books }) => {
         for (const b of books) {
-            const updateData = buildUpdateRecord(b, bookColumns, {
+            const updateData = buildUpdateRecord(b, book, {
                 customisations: ({ color, icon }) => {
                     if (color === undefined && icon === undefined)
                         return undefined;
@@ -162,7 +144,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         const statuses = EnsureArray(status);
         const memberStatuses = statuses.filter((s) => s !== "O");
 
-        const bookOwners: Array<Pick<Book, "bookId">> = await db(lamington.book)
+        const bookOwners: any[] = await db(lamington.book)
             .select(book.bookId)
             .leftJoin(lamington.content, content.contentId, book.bookId)
             .whereIn(

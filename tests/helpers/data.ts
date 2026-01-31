@@ -8,3 +8,7 @@ export const randomNumber = (max = 10, min = 1) =>
 export const randomBoolean = () => Math.random() > 0.5;
 
 export const TEST_ITEM_COUNT = 25;
+
+export const randomElement = <T>(
+    array: Array<T> | ReadonlyArray<T>,
+): T | undefined => array[Math.floor(Math.random() * array.length)];

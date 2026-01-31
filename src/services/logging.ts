@@ -178,7 +178,7 @@ const AccessLogFileTransport = new transports.DailyRotateFile({
 });
 
 const ConsoleLogTransport =
-    process.env.NODE_ENV === "development"
+    process.env.NODE_ENV !== "production"
         ? new transports.Console({
               level: "http",
               format: format.combine(format.colorize(), format.simple()),
@@ -192,23 +192,3 @@ export const logger = createLogger({
         ConsoleLogTransport,
     ].filter(Undefined),
 });
-
-export const MessageAction = {
-    Create: "creating",
-    Query: "querying",
-    Read: "reading",
-    Update: "updating",
-    Delete: "deleting",
-    Save: "saving",
-} as const;
-
-export type MessageAction = typeof MessageAction;
-
-interface UserMessage {
-    entity: string;
-    subEntity?: string;
-    action: MessageAction | string;
-}
-
-export const userMessage = ({ action, entity, subEntity }: UserMessage) =>
-    `An error occurred when ${action} your ${entity}${subEntity ? ` ${subEntity}` : ""}`;

@@ -1,8 +1,11 @@
 import express from "express";
-import type { CreateRoute } from "./route.ts";
+import { validationMiddleware } from "../middleware/validator.ts";
+import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
-export const createAuthRouter: CreateRoute<"userService"> = ({ userService }) =>
+export const createAuthRouter: CreateRouter<"userService"> = ({
+    userService,
+}) =>
     express
         .Router()
         .post<
@@ -11,7 +14,7 @@ export const createAuthRouter: CreateRoute<"userService"> = ({ userService }) =>
             paths["/auth/register"]["post"]["responses"]["200"]["content"]["application/json"],
             paths["/auth/register"]["post"]["requestBody"]["content"]["application/json"],
             paths["/auth/register"]["post"]["parameters"]["query"]
-        >("/auth/register", async ({ body }, res) => {
+        >("/auth/register", ...validationMiddleware, async ({ body }, res) => {
             const response = await userService.register(body);
             return res.status(200).json(response);
         })
@@ -21,7 +24,7 @@ export const createAuthRouter: CreateRoute<"userService"> = ({ userService }) =>
             paths["/auth/login"]["post"]["responses"]["200"]["content"]["application/json"],
             paths["/auth/login"]["post"]["requestBody"]["content"]["application/json"],
             paths["/auth/login"]["post"]["parameters"]["query"]
-        >("/auth/login", async ({ body }, res) => {
+        >("/auth/login", ...validationMiddleware, async ({ body }, res) => {
             const response = await userService.login(body);
             return res.status(200).json(response);
         });

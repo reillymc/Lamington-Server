@@ -1,15 +1,16 @@
-import { attachment } from "../../database/definitions/attachment.ts";
-import { content } from "../../database/definitions/content.ts";
-import { contentAttachment } from "../../database/definitions/contentAttachment.ts";
-import {
-    plannerMeal,
-    plannerMealColumns,
-} from "../../database/definitions/meal.ts";
-import { user } from "../../database/definitions/user.ts";
-import { type KnexDatabase, lamington } from "../../database/index.ts";
-import { toUndefined, Undefined } from "../../utils/index.ts";
+import { Undefined } from "../../utils/index.ts";
 import type { CookListRepository } from "../cooklistRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
+import { toUndefined } from "./common/toUndefined.ts";
+import type { KnexDatabase } from "./knex.ts";
+import {
+    attachment,
+    content,
+    contentAttachment,
+    lamington,
+    plannerMeal,
+    user,
+} from "./spec/index.ts";
 
 const formatCookListMeal = (
     meal: any,
@@ -155,7 +156,7 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
     },
     updateMeals: async (db, { meals }) => {
         for (const meal of meals) {
-            const updateData = buildUpdateRecord(meal, plannerMealColumns, {
+            const updateData = buildUpdateRecord(meal, plannerMeal, {
                 meal: ({ course }) => course,
             });
 

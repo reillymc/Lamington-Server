@@ -1,55 +1,45 @@
 import {
-    ContentAttachmentActions,
-    type CreateContentAttachmentOptions,
-} from "../../controllers/content/contentAttachment.ts";
-import { ContentTagActions } from "../../controllers/content/contentTag.ts";
-import {
-    type Attachment,
-    attachment,
-} from "../../database/definitions/attachment.ts";
-import { bookRecipe } from "../../database/definitions/bookRecipe.ts";
-import { type Content, content } from "../../database/definitions/content.ts";
-import {
-    type ContentAttachment,
-    contentAttachment,
-} from "../../database/definitions/contentAttachment.ts";
-import { type Recipe, recipe } from "../../database/definitions/recipe.ts";
-import {
-    type RecipeIngredient,
-    recipeIngredient,
-} from "../../database/definitions/recipeIngredient.ts";
-import {
-    type RecipeRating,
-    recipeRating,
-} from "../../database/definitions/recipeRating.ts";
-import {
-    DefaultSection,
-    type RecipeSection,
-} from "../../database/definitions/recipeSection.ts";
-import {
-    type RecipeStep,
-    recipeStep,
-} from "../../database/definitions/recipeStep.ts";
-import {
-    type ContentTag,
-    type CreateQuery,
-    type CreateResponse,
-    contentTag,
-    type Ingredient,
-    ingredient,
-    type KnexDatabase,
-    lamington,
-    PAGE_SIZE,
-    type User,
-    user,
-} from "../../database/index.ts";
-import {
     EnsureArray,
     ObjectFromEntries,
-    toUndefined,
     Undefined,
 } from "../../utils/index.ts";
-import type { RecipeRepository } from "../recipeRepository.ts";
+import type { Attachment } from "../attachmentRepository.ts";
+import type {
+    Recipe,
+    RecipeIngredient,
+    RecipeRating,
+    RecipeRepository,
+    RecipeSection,
+    RecipeStep,
+} from "../recipeRepository.ts";
+import type { Content, ContentAttachment, ContentTag } from "../temp.ts";
+import type { User } from "../userRepository.ts";
+import {
+    ContentAttachmentActions,
+    type CreateContentAttachmentOptions,
+} from "./common/contentAttachment.ts";
+import { ContentTagActions } from "./common/contentTag.ts";
+import { toUndefined } from "./common/toUndefined.ts";
+import type { KnexDatabase } from "./knex.ts";
+import {
+    attachment,
+    bookRecipe,
+    type CreateQuery,
+    type CreateResponse,
+    content,
+    contentAttachment,
+    contentTag,
+    ingredient,
+    lamington,
+    PAGE_SIZE,
+    recipe,
+    recipeIngredient,
+    recipeRating,
+    recipeStep,
+    user,
+} from "./spec/index.ts";
+
+const DefaultSection = "default";
 
 type SaveRecipeAttachmentRequest = CreateQuery<{
     recipeId: Recipe["recipeId"];
@@ -75,7 +65,7 @@ type ReadRecipeAttachmentsResponse = {
     recipeId: Recipe["recipeId"];
 };
 
-export const RecipeAttachmentActions = {
+const RecipeAttachmentActions = {
     read: (
         db: KnexDatabase,
         request: ReadRecipeAttachmentsRequest,
@@ -120,8 +110,10 @@ const readTags = (
         db,
         EnsureArray(request).map(({ recipeId }) => recipeId),
     ).then((response) =>
-        response.map(({ contentId, ...rest }) => ({
+        response.map(({ contentId, parentId, name, ...rest }) => ({
             recipeId: contentId,
+            parentId: toUndefined(parentId),
+            name: toUndefined(name),
             ...rest,
         })),
     );
@@ -897,7 +889,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
     },
 };
 
-export const recipeSectionRequestToRows = ({
+const recipeSectionRequestToRows = ({
     recipeId,
     ingredients = [],
     method = [],
@@ -941,41 +933,7 @@ export const recipeSectionRequestToRows = ({
     return uniqueSections;
 };
 
-export const ingredientsRequestToRows = ({
-    owner,
-    ingredients,
-}: Parameters<RecipeRepository["create"]>["1"]["recipes"][number] & {
-    owner: string;
-}):
-    | Array<Partial<Ingredient & { createdBy: Content["createdBy"] }>>
-    | undefined => {
-    if (!ingredients?.length) return;
-
-    return ingredients
-        .flatMap(({ items }) => items)
-        .map(
-            ({
-                ingredientId,
-                name,
-                ...item
-            }):
-                | (Ingredient & { createdBy: Content["createdBy"] })
-                | undefined => {
-                if (!ingredientId || !name) return undefined;
-
-                return {
-                    ingredientId,
-                    name,
-                    ...item,
-                    description: undefined,
-                    createdBy: owner,
-                };
-            },
-        )
-        .filter(Undefined);
-};
-
-export const recipeIngredientsRequestToRows = ({
+const recipeIngredientsRequestToRows = ({
     recipeId,
     ingredients,
 }: Parameters<RecipeRepository["update"]>["1"]["recipes"][number]):
@@ -1004,7 +962,7 @@ export const recipeIngredientsRequestToRows = ({
     );
 };
 
-export const recipeMethodRequestToRows = ({
+const recipeMethodRequestToRows = ({
     recipeId,
     method,
 }: {

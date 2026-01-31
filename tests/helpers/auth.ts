@@ -1,4 +1,4 @@
-import type { KnexDatabase } from "../../src/database/index.ts";
+import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { createToken } from "../../src/services/index.ts";
 import { CreateUsers } from "./database.ts";

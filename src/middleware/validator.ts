@@ -1,8 +1,25 @@
-import type { RequestHandler } from "express";
+import path from "node:path";
+import type { Request, RequestHandler } from "express";
 import * as OpenApiValidator from "express-openapi-validator";
+import multer, { type FileFilterCallback } from "multer";
 import { ValidationError } from "../services/logging.ts";
 
-export const openApiValidatorMiddlewares = OpenApiValidator.middleware({
+const acceptedExtensions = [".jpg", ".jpeg", ".png"];
+const acceptedMimeTypes = ["image/jpg", "image/jpeg", "image/png"];
+
+const fileFilter = (
+    _req: Request,
+    file: Express.Multer.File,
+    callback: FileFilterCallback,
+) => {
+    const extension = path.extname(file.originalname ?? "").toLowerCase();
+    const validFile =
+        acceptedExtensions.includes(extension) ||
+        acceptedMimeTypes.includes(file.mimetype);
+    callback(null, validFile);
+};
+
+const openApiValidatorMiddlewares = OpenApiValidator.middleware({
     apiSpec: "./openapi.yaml",
     validateRequests: {
         allErrors: process.env.NODE_ENV !== "production",
@@ -19,17 +36,24 @@ export const openApiValidatorMiddlewares = OpenApiValidator.middleware({
         allErrors: process.env.NODE_ENV !== "production",
         removeAdditional: true,
     },
+    fileUploader: {
+        storage: multer.memoryStorage(),
+        fileFilter,
+        limits: {},
+    },
 });
 
-export const validationMiddleware: RequestHandler[] =
-    openApiValidatorMiddlewares.map(
-        (middleware): RequestHandler =>
-            async (req, res, next) => {
-                await middleware(req, res, (error) => {
-                    if (error) {
-                        return next(new ValidationError(error));
-                    }
-                    next();
-                });
-            },
-    );
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI middleware incompatible with strictly typed routes
+type Handler = RequestHandler<any, any, unknown, any>;
+
+export const validationMiddleware: Handler[] = openApiValidatorMiddlewares.map(
+    (middleware): Handler =>
+        async (req, res, next) => {
+            await middleware(req, res, (error) => {
+                if (error) {
+                    return next(new ValidationError(error));
+                }
+                next();
+            });
+        },
+);

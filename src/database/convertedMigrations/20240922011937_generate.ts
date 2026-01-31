@@ -1,7 +1,6 @@
 import type { Knex } from "knex";
 import { v4 } from "uuid";
 import { hashPassword } from "../../services/userService.ts";
-import { lamington, type User } from "../definitions/index.ts";
 
 export async function up(knex: Knex): Promise<void> {
     if (process.env.NODE_ENV !== "production") {
@@ -15,7 +14,7 @@ export async function up(knex: Knex): Promise<void> {
         throw new Error("NO ADMINISTRATOR ACCOUNT DETAILS PROVIDED");
     }
 
-    await knex<User>(lamington.user)
+    await knex("user")
         .insert([
             {
                 userId: v4(),
