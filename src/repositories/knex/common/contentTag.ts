@@ -85,7 +85,7 @@ const updateRows = async (
     return [];
 };
 
-export type TagReadByContentIdResults = ReadonlyArray<
+type TagReadByContentIdResults = ReadonlyArray<
     ContentTag & Pick<Tag, "parentId" | "name">
 >;
 

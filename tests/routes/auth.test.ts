@@ -8,7 +8,7 @@ import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
-import { comparePassword } from "../../src/services/password.ts";
+import { comparePassword } from "../../src/services/userService.ts";
 import { CreateUsers } from "../helpers/index.ts";
 
 after(async () => {

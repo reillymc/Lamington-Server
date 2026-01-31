@@ -11,16 +11,16 @@ import {
     user,
 } from "../spec/index.ts";
 
-export type ContentMemberStatus = "O" | "A" | "M" | "P" | "B";
+type ContentMemberStatus = "O" | "A" | "M" | "P" | "B";
 
-export type SaveContentMemberRequest = Pick<ContentMember, "contentId"> & {
+type SaveContentMemberRequest = Pick<ContentMember, "contentId"> & {
     members?: ReadonlyArray<{
         userId: ContentMember["userId"];
         status?: ContentMemberStatus;
     }>;
 };
 
-export type SaveContentMemberResponse = Pick<ContentMember, "contentId"> & {
+type SaveContentMemberResponse = Pick<ContentMember, "contentId"> & {
     members: Array<{
         userId: ContentMember["userId"];
         status: ContentMemberStatus | null;
@@ -41,7 +41,7 @@ const parseStatus = (status?: string): ContentMemberStatus | undefined => {
     }
 };
 
-export interface CreateContentMemberOptions {
+interface CreateContentMemberOptions {
     trimNotIn?: boolean;
 }
 
@@ -99,11 +99,11 @@ const saveContentMembers = async (
     }));
 };
 
-export type DeleteContentMemberParams = Pick<ContentMember, "contentId"> & {
+type DeleteContentMemberParams = Pick<ContentMember, "contentId"> & {
     members: ReadonlyArray<{ userId: ContentMember["userId"] }>;
 };
 
-export type DeleteContentMemberResponse = Pick<ContentMember, "contentId"> & {
+type DeleteContentMemberResponse = Pick<ContentMember, "contentId"> & {
     count: number;
 };
 

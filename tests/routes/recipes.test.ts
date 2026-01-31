@@ -10,7 +10,6 @@ import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import type { components, paths } from "../../src/routes/spec/index.ts";
-import { randomElement } from "../../src/utils/index.ts";
 import {
     assertRecipeServingsAreEqual,
     assertRecipeTagsAreEqual,
@@ -21,6 +20,7 @@ import {
     generateRandomRecipeServings,
     PrepareAuthenticatedUser,
     randomBoolean,
+    randomElement,
     randomNumber,
     TEST_ITEM_COUNT,
 } from "../helpers/index.ts";

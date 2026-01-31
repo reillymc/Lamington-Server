@@ -29,7 +29,7 @@ export type Table<T extends ReadonlyArray<string> = []> = Required<{
     [key in T[number]]: string;
 }>;
 
-export const table = <T extends ReadonlyArray<string>>(
+const table = <T extends ReadonlyArray<string>>(
     table: lamington[keyof lamington],
     columns: T,
 ) =>
@@ -107,7 +107,7 @@ export const listItem = table(lamington.listItem, [
     "notes",
 ] as const);
 
-export const contentNote = table(lamington.contentNote, [
+const _contentNote = table(lamington.contentNote, [
     "contentId",
     "authorId",
     "title",
@@ -169,7 +169,7 @@ export const recipeRating = table(lamington.recipeRating, [
     "rating",
 ] as const);
 
-export const recipeSection = table(lamington.recipeSection, [
+const _recipeSection = table(lamington.recipeSection, [
     "recipeId",
     "sectionId",
     "index",
@@ -208,27 +208,9 @@ export const user = table(lamington.user, [
 export type ReadQuery<T> = T | Array<T>;
 
 export type ReadResponse<T> = Promise<Array<T>>;
-export type ReadRequest<
-    T extends {},
-    K extends keyof T = never,
-    C extends Record<string, unknown> = {},
-> = ({ [P in K]: T[P] } & C) | Array<{ [P in K]: T[P] } & C>;
 
 export type CreateQuery<T> = T | Array<T>;
 
 export type CreateResponse<T> = Promise<Array<T>>;
-
-export type ServiceParamsDi<
-    T extends Record<string, any>,
-    K extends keyof T,
-> = Exclude<Parameters<T[K]>[1], any[]>;
-export type ServiceResponse<
-    T extends Record<string, any>,
-    K extends keyof T,
-> = Awaited<ReturnType<T[K]>> extends {
-    result: Array<any>;
-}
-    ? Awaited<ReturnType<T[K]>>["result"][number]
-    : Awaited<ReturnType<T[K]>>[number];
 
 export const PAGE_SIZE = config.app.pageSize;

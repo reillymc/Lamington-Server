@@ -27,7 +27,7 @@ import { createTagService } from "./services/tagService.ts";
 import { createUserService } from "./services/userService.ts";
 
 // biome-ignore lint/suspicious/noExplicitAny: hypothetically support any db types
-export const DefaultAppRepositories: AppRepositories<any> = {
+const DefaultAppRepositories: AppRepositories<any> = {
     bookRepository: KnexBookRepository,
     cooklistRepository: KnexCookListRepository,
     listRepository: KnexListRepository,

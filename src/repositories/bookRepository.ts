@@ -23,7 +23,7 @@ type BookColor = `variant${1 | 2 | 3 | 4 | 5}`;
 /**
  * Book
  */
-export interface Book {
+interface Book {
     bookId: string;
     name: string;
     description: string | null;

@@ -14,7 +14,7 @@ export type User = {
     preferences: string | null;
 };
 
-export type UserProfile = {
+type UserProfile = {
     userId: User["userId"];
     email: User["email"];
     firstName: User["firstName"];
@@ -22,11 +22,11 @@ export type UserProfile = {
     status: UserStatus;
 };
 
-export type UserDirectoryEntry = UserProfile & {
+type UserDirectoryEntry = UserProfile & {
     createdAt: User["createdAt"];
 };
 
-export type UserCredentials = {
+type UserCredentials = {
     userId: User["userId"];
     email: User["email"];
     password: User["password"];
@@ -61,7 +61,7 @@ type ReadCredentialsResponse = {
     users: ReadonlyArray<UserCredentials>;
 };
 
-export type CreateUserPayload = {
+type CreateUserPayload = {
     email: User["email"];
     firstName: User["firstName"];
     lastName: User["lastName"];

@@ -54,25 +54,6 @@ const readMembers: BookRepository<KnexDatabase>["readMembers"] = async (
     }));
 };
 
-// TODO: refactor UI to separate members from edit page. Set members will no longer be required, as adds and removes will be used instead. Remove members from read/save services
-const setMembers: BookRepository<KnexDatabase>["saveMembers"] = (db, request) =>
-    ContentMemberActions.save(
-        db,
-        EnsureArray(request).map(({ bookId, members }) => ({
-            contentId: bookId,
-            members,
-        })),
-        { trimNotIn: true },
-    ).then((response) =>
-        response.map(({ contentId, members }) => ({
-            bookId: contentId,
-            members: members.map(({ status, ...rest }) => ({
-                ...rest,
-                status: toUndefined(status),
-            })),
-        })),
-    );
-
 const read: BookRepository<KnexDatabase>["read"] = async (
     db,
     { books, userId },

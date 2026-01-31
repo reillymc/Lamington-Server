@@ -1,5 +1,5 @@
 import type { Knex } from "knex";
-import { hashPassword } from "../../../services/password.ts";
+import { hashPassword } from "../../../services/userService.ts";
 
 export const seed = async (knex: Knex): Promise<void> => {
     await knex("user").insert([

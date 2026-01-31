@@ -11,10 +11,7 @@ import {
     type ReadResponse,
 } from "../spec/index.ts";
 
-export type SaveContentAttachmentRequest = Pick<
-    ContentAttachment,
-    "contentId"
-> & {
+type SaveContentAttachmentRequest = Pick<ContentAttachment, "contentId"> & {
     attachments?: Array<{
         attachmentId: ContentAttachment["attachmentId"];
         displayType: ContentAttachment["displayType"];

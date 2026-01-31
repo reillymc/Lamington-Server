@@ -7,7 +7,7 @@ import { ValidationError } from "../services/logging.ts";
 const acceptedExtensions = [".jpg", ".jpeg", ".png"];
 const acceptedMimeTypes = ["image/jpg", "image/jpeg", "image/png"];
 
-export const fileFilter = (
+const fileFilter = (
     _req: Request,
     file: Express.Multer.File,
     callback: FileFilterCallback,
@@ -19,7 +19,7 @@ export const fileFilter = (
     callback(null, validFile);
 };
 
-export const openApiValidatorMiddlewares = OpenApiValidator.middleware({
+const openApiValidatorMiddlewares = OpenApiValidator.middleware({
     apiSpec: "./openapi.yaml",
     validateRequests: {
         allErrors: process.env.NODE_ENV !== "production",

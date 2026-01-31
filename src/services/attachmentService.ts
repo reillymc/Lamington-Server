@@ -4,7 +4,7 @@ import type { components } from "../routes/spec/schema.js";
 import { CreatedDataFetchError, InsufficientDataError } from "./logging.ts";
 import type { CreateService } from "./service.ts";
 
-export const compressImage = (file: Buffer) =>
+const compressImage = (file: Buffer) =>
     sharp(file)
         .toFormat("jpeg", { mozjpeg: true, quality: 60 })
         .resize({ width: 2048, height: 2048, fit: "inside" })
@@ -12,18 +12,11 @@ export const compressImage = (file: Buffer) =>
         .withMetadata()
         .toBuffer();
 
-export const constructAttachmentPath = (
-    userId: string,
-    attachmentId: string,
-) => {
+const constructAttachmentPath = (userId: string, attachmentId: string) => {
     const uploadPath = `${config.attachments.path}/${userId}/${attachmentId}`;
     const uri = `${config.attachments.storageService}:${uploadPath}`;
     return { uri, uploadPath };
 };
-
-export interface StorageService {
-    put: (buffer: Buffer, path: string) => Promise<boolean>;
-}
 
 export interface AttachmentService {
     create: (

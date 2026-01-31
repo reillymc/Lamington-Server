@@ -94,7 +94,7 @@ export interface RecipeRating {
     rating: number;
 }
 
-export interface Ingredient {
+interface Ingredient {
     ingredientId: string;
     name: string;
     description: string | undefined;

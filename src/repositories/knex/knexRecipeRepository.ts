@@ -5,7 +5,6 @@ import {
 } from "../../utils/index.ts";
 import type { Attachment } from "../attachmentRepository.ts";
 import type {
-    Ingredient,
     Recipe,
     RecipeIngredient,
     RecipeRating,
@@ -66,7 +65,7 @@ type ReadRecipeAttachmentsResponse = {
     recipeId: Recipe["recipeId"];
 };
 
-export const RecipeAttachmentActions = {
+const RecipeAttachmentActions = {
     read: (
         db: KnexDatabase,
         request: ReadRecipeAttachmentsRequest,
@@ -890,7 +889,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
     },
 };
 
-export const recipeSectionRequestToRows = ({
+const recipeSectionRequestToRows = ({
     recipeId,
     ingredients = [],
     method = [],
@@ -934,41 +933,7 @@ export const recipeSectionRequestToRows = ({
     return uniqueSections;
 };
 
-export const ingredientsRequestToRows = ({
-    owner,
-    ingredients,
-}: Parameters<RecipeRepository["create"]>["1"]["recipes"][number] & {
-    owner: string;
-}):
-    | Array<Partial<Ingredient & { createdBy: Content["createdBy"] }>>
-    | undefined => {
-    if (!ingredients?.length) return;
-
-    return ingredients
-        .flatMap(({ items }) => items)
-        .map(
-            ({
-                ingredientId,
-                name,
-                ...item
-            }):
-                | (Ingredient & { createdBy: Content["createdBy"] })
-                | undefined => {
-                if (!ingredientId || !name) return undefined;
-
-                return {
-                    ingredientId,
-                    name,
-                    ...item,
-                    description: undefined,
-                    createdBy: owner,
-                };
-            },
-        )
-        .filter(Undefined);
-};
-
-export const recipeIngredientsRequestToRows = ({
+const recipeIngredientsRequestToRows = ({
     recipeId,
     ingredients,
 }: Parameters<RecipeRepository["update"]>["1"]["recipes"][number]):
@@ -997,7 +962,7 @@ export const recipeIngredientsRequestToRows = ({
     );
 };
 
-export const recipeMethodRequestToRows = ({
+const recipeMethodRequestToRows = ({
     recipeId,
     method,
 }: {

@@ -10,27 +10,27 @@ type ListUserStatus = "O" | "A" | "M" | "P" | "B";
 type ListIcon =
     `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17}`;
 
-export type NumberValue = { representation: "number"; value: string };
-export type RangeValue = { representation: "range"; value: [string, string] };
-export type FractionValue = {
+type NumberValue = { representation: "number"; value: string };
+type RangeValue = { representation: "range"; value: [string, string] };
+type FractionValue = {
     representation: "fraction";
     value: [string, string, string];
 };
 
 type ListItemIngredientAmountV1 = RangeValue | NumberValue | FractionValue;
 
-export type ListItemIngredientAmount = ListItemIngredientAmountV1;
+type ListItemIngredientAmount = ListItemIngredientAmountV1;
 
 type ListCustomisationsV1 = {
     icon: string;
 };
 
-export type ListCustomisations = ListCustomisationsV1;
+type ListCustomisations = ListCustomisationsV1;
 
 /**
  * List
  */
-export type List = {
+type List = {
     listId: string;
     name: string;
     customisations: ListCustomisations | null;
@@ -40,7 +40,7 @@ export type List = {
 /**
  * ListItem
  */
-export interface ListItem {
+interface ListItem {
     itemId: string;
     listId: string;
     name: string;

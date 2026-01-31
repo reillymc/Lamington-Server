@@ -17,7 +17,7 @@ export const createAttachmentsRouter: CreateRouter<"attachmentService"> = ({
         >("/attachments/image", async ({ session, files }, res) => {
             const file = Array.isArray(files)
                 ? files?.find((f) => f.fieldname === "image")
-                : files?.["image"]?.[0];
+                : files?.image?.[0];
 
             const attachmentEntry = await attachmentService.create(
                 session.userId,
