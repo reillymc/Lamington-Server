@@ -38,8 +38,7 @@ describe("Get preset ingredients", () => {
 
         expect(res.statusCode).toEqual(200);
 
-        const { data } = res.body;
-        expect(Array.isArray(data)).toBe(true);
-        expect(data.length).toBeGreaterThan(0);
+        expect(Array.isArray(res.body)).toBe(true);
+        expect(res.body.length).toBeGreaterThan(0);
     });
 });

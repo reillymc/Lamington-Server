@@ -134,3 +134,24 @@ describe("Upload an image", () => {
         expect(mockCreate.mock.callCount()).toEqual(0);
     });
 });
+
+describe("Get an image", () => {
+    let database: KnexDatabase;
+    let app: Express;
+
+    beforeEach(async () => {
+        database = await db.transaction();
+        app = setupApp({ database });
+    });
+
+    afterEach(async () => {
+        await database.rollback();
+    });
+
+    it("should require authentication", async () => {
+        const res = await request(app).get(
+            "/v1/attachments/image/test/test/test",
+        );
+        expect(res.statusCode).toEqual(401);
+    });
+});

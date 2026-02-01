@@ -27,6 +27,6 @@ export const createAttachmentsRouter: CreateRouter<"attachmentService"> = ({
             return res.status(200).json(attachmentEntry);
         })
         .use(
-            "/attachments/uploads",
+            "/attachments/image" satisfies routes,
             express.static(config.attachments.localUploadDirectory),
         );
