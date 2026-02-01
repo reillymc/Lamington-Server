@@ -14,6 +14,7 @@ import type {
 } from "../recipeRepository.ts";
 import type { Content, ContentAttachment, ContentTag } from "../temp.ts";
 import type { User } from "../userRepository.ts";
+import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
 import {
     ContentAttachmentActions,
     type CreateContentAttachmentOptions,
@@ -624,24 +625,15 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
         return { userId, recipes: results.recipes };
     },
     update: async (db, { userId, recipes }) => {
-        await db<Recipe>(lamington.recipe)
-            .insert(
-                recipes.map((recipe) => ({
-                    name: recipe.name,
-                    public: recipe.public,
-                    recipeId: recipe.recipeId,
-                    cookTime: recipe.cookTime,
-                    nutritionalInformation: recipe.nutritionalInformation,
-                    prepTime: recipe.prepTime,
-                    servings: recipe.servings,
-                    source: recipe.source,
-                    summary: recipe.summary,
-                    timesCooked: recipe.timesCooked,
-                    tips: recipe.tips,
-                })),
-            )
-            .onConflict("recipeId")
-            .merge();
+        for (const r of recipes) {
+            const updateData = buildUpdateRecord(r, recipe);
+
+            if (updateData) {
+                await db(lamington.recipe)
+                    .where(recipe.recipeId, r.recipeId)
+                    .update(updateData);
+            }
+        }
 
         const recipesSections = recipes.map((recipeItem) => ({
             recipeId: recipeItem.recipeId,
@@ -698,24 +690,28 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                 .merge();
         }
 
-        const recipesAttachments = recipes.map(({ recipeId, photo }) => ({
-            recipeId,
-            attachments: photo
-                ? [
-                      {
-                          attachmentId: photo.attachmentId,
-                          displayType: "hero" as const,
-                          displayOrder: 0,
-                      },
-                  ]
-                : [],
-        }));
-        for (const { recipeId, attachments } of recipesAttachments) {
-            if (attachments.length)
-                await RecipeAttachmentActions.save(db, {
-                    recipeId,
-                    attachments,
-                });
+        for (const { recipeId, photo } of recipes) {
+            if (photo !== undefined) {
+                await db(lamington.contentAttachment)
+                    .where({
+                        [contentAttachment.contentId]: recipeId,
+                        [contentAttachment.displayType]: "hero",
+                    })
+                    .delete();
+
+                if (photo) {
+                    await RecipeAttachmentActions.save(db, {
+                        recipeId,
+                        attachments: [
+                            {
+                                attachmentId: photo.attachmentId,
+                                displayType: "hero" as const,
+                                displayOrder: 0,
+                            },
+                        ],
+                    });
+                }
+            }
         }
 
         const results = await read(db, { userId, recipes });
@@ -896,24 +892,22 @@ const recipeSectionRequestToRows = ({
 }: Parameters<RecipeRepository["update"]>["1"]["recipes"][number] & {
     recipeId: string;
 }): Array<RecipeSection> | undefined => {
-    const ingSectionRequests: Array<RecipeSection> = ingredients.map(
-        ({ sectionId, name, description }, index) => ({
+    const ingSectionRequests: Array<RecipeSection> =
+        ingredients?.map(({ sectionId, name, description }, index) => ({
             sectionId,
             recipeId,
             name,
             description,
             index,
-        }),
-    );
-    const methodSectionRequests: Array<RecipeSection> = method.map(
-        ({ sectionId, name, description }, index) => ({
+        })) ?? [];
+    const methodSectionRequests: Array<RecipeSection> =
+        method?.map(({ sectionId, name, description }, index) => ({
             sectionId,
             recipeId,
             name,
             description,
             index,
-        }),
-    );
+        })) ?? [];
 
     const sectionRequests = [...ingSectionRequests, ...methodSectionRequests];
 
@@ -967,7 +961,7 @@ const recipeMethodRequestToRows = ({
     method,
 }: {
     recipeId: string;
-    method?: ReadonlyArray<any>;
+    method?: ReadonlyArray<any> | null;
 }): ReadonlyArray<RecipeStep> | undefined => {
     if (!method?.length) return;
 

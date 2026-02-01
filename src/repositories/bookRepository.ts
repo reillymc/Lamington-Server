@@ -4,7 +4,7 @@ import type {
     RepositoryBulkService,
     RepositoryService,
 } from "./repository.ts";
-import type { Content, ContentMember } from "./temp.ts";
+import type { ContentMember } from "./temp.ts";
 import type { User } from "./userRepository.ts";
 
 // TODO: clean up extraneous exports after migration to openapi spec at service layer is complete
@@ -34,13 +34,8 @@ type MemberItem = {
     status: BookUserStatus | undefined;
 };
 
-type ReadFilters = {
-    owner?: Content["createdBy"];
-};
-
 type ReadAllRequest = {
     userId: User["userId"];
-    filter?: ReadFilters;
 };
 
 type BaseResponse = {
@@ -58,7 +53,6 @@ type BaseResponse = {
 
 type ReadAllResponse = {
     userId: User["userId"];
-    filter: ReadFilters | undefined;
     books: ReadonlyArray<BaseResponse>;
 };
 

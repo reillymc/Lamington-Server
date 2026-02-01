@@ -10,12 +10,7 @@ const { jwtSecret } = config.authentication;
 
 type UserStatus = components["schemas"]["UserStatus"];
 
-const getStatus = (
-    status: string | undefined,
-    isOwner?: boolean,
-): UserStatus | undefined => {
-    if (isOwner) return "O";
-
+const getStatus = (status: string | undefined): UserStatus | undefined => {
     switch (status) {
         case "A":
         case "M":

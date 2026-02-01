@@ -80,7 +80,7 @@ export interface Recipe {
     nutritionalInformation: string | null;
     summary: string | null;
     tips: string | null;
-    public: boolean;
+    public: boolean | null;
     timesCooked: number | null;
 }
 
@@ -206,11 +206,13 @@ type RecipePayload = {
     summary?: Recipe["summary"];
     timesCooked?: Recipe["timesCooked"];
     tips?: Recipe["tips"];
-    rating?: RecipeRating["rating"];
-    ingredients?: ReadonlyArray<SaveSectionRequest<SaveIngredientItemRequest>>;
-    method?: ReadonlyArray<SaveSectionRequest<SaveMethodStepRequest>>;
-    tags?: ReadonlyArray<SaveTagRequest>;
-    photo?: { attachmentId: Attachment["attachmentId"] };
+    rating?: RecipeRating["rating"] | null;
+    ingredients?: ReadonlyArray<
+        SaveSectionRequest<SaveIngredientItemRequest>
+    > | null;
+    method?: ReadonlyArray<SaveSectionRequest<SaveMethodStepRequest>> | null;
+    tags?: ReadonlyArray<SaveTagRequest> | null;
+    photo?: { attachmentId: Attachment["attachmentId"] } | null;
 };
 
 type CreateRequest = {

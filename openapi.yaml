@@ -2878,39 +2878,67 @@ components:
         name:
           type: string
         source:
-          type: string
+          type:
+            - string
+            - "null"
         ingredients:
-          type: array
+          type:
+            - array
+            - "null"
           items:
             $ref: "#/components/schemas/RecipeSectionIngredient"
         method:
-          type: array
+          type:
+            - array
+            - "null"
           items:
             $ref: "#/components/schemas/RecipeSectionMethod"
         summary:
-          type: string
+          type:
+            - string
+            - "null"
         tips:
-          type: string
+          type:
+            - string
+            - "null"
         rating:
-          type: number
+          type:
+            - number
+            - "null"
         nutritionalInformation:
-          type: string
+          type:
+            - string
+            - "null"
         tags:
-          type: array
+          type:
+            - array
+            - "null"
           items:
             $ref: "#/components/schemas/RecipeTagRef"
         cookTime:
-          type: integer
+          type:
+            - integer
+            - "null"
         prepTime:
-          type: integer
+          type:
+            - integer
+            - "null"
         servings:
-          $ref: "#/components/schemas/Servings"
+          oneOf:
+            - $ref: "#/components/schemas/Servings"
+            - type: "null"
         public:
-          type: boolean
+          type:
+            - boolean
+            - "null"
         timesCooked:
-          type: integer
+          type:
+            - integer
+            - "null"
         photo:
-          type: object
+          type:
+            - object
+            - "null"
           properties:
             attachmentId:
               $ref: "#/components/schemas/Uuid"

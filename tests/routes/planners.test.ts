@@ -7,6 +7,7 @@ import { v4 as uuid } from "uuid";
 import { setupApp } from "../../src/app.ts";
 import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
+import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
 import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
@@ -976,6 +977,13 @@ describe("Add a meal to a planner", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
         const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{ uri: uuid() }],
+        });
+
+        const {
             planners: [planner],
         } = await KnexPlannerRepository.create(database, {
             userId: user.userId,
@@ -988,6 +996,7 @@ describe("Add a meal to a planner", () => {
             course: randomCourse(),
             year: randomYear(),
             description: uuid(),
+            heroImage: attachment!.attachmentId,
         } satisfies components["schemas"]["PlannerMealCreate"];
 
         const res = await request(app)
@@ -1006,6 +1015,10 @@ describe("Add a meal to a planner", () => {
         expect(returnedMeal!.course).toEqual(mealData.course);
         expect(returnedMeal!.description).toEqual(mealData.description);
         expect(returnedMeal!.owner.userId).toEqual(user.userId);
+        expect(returnedMeal!.heroImage!.attachmentId).toEqual(
+            mealData.heroImage,
+        );
+        expect(returnedMeal!.heroImage!.uri).toEqual(attachment!.uri);
 
         const { meals: savedMeals } = await KnexPlannerRepository.readAllMeals(
             database,
@@ -1024,6 +1037,8 @@ describe("Add a meal to a planner", () => {
         expect(savedMeal!.month).toEqual(mealData.month);
         expect(savedMeal!.year).toEqual(mealData.year);
         expect(savedMeal!.course).toEqual(mealData.course);
+        expect(savedMeal!.heroImage!.attachmentId).toEqual(mealData.heroImage);
+        expect(savedMeal!.heroImage!.uri).toEqual(attachment!.uri);
     });
 
     it("should create a planner meal with a recipe", async () => {
@@ -1421,6 +1436,13 @@ describe("Update a meal in a planner", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
         const {
+            attachments: [originalAttachment, updatedAttachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{ uri: uuid() }, { uri: uuid() }],
+        });
+
+        const {
             planners: [planner],
         } = await KnexPlannerRepository.create(database, {
             userId: user.userId,
@@ -1439,6 +1461,7 @@ describe("Update a meal in a planner", () => {
                     course: "breakfast",
                     year: 2023,
                     description: "Initial Description",
+                    heroImage: originalAttachment!.attachmentId,
                 },
             ],
         });
@@ -1450,6 +1473,7 @@ describe("Update a meal in a planner", () => {
             month: 11,
             year: 2024,
             source: "Updated Source",
+            heroImage: updatedAttachment!.attachmentId,
         } satisfies components["schemas"]["PlannerMealUpdate"];
 
         const res = await request(app)
@@ -1466,6 +1490,10 @@ describe("Update a meal in a planner", () => {
         expect(returnedMeal.month).toEqual(updateData.month);
         expect(returnedMeal.year).toEqual(updateData.year);
         expect(returnedMeal.source).toEqual(updateData.source);
+        expect(returnedMeal.heroImage!.attachmentId).toEqual(
+            updateData.heroImage,
+        );
+        expect(returnedMeal.heroImage!.uri).toEqual(updatedAttachment!.uri);
 
         const { meals: plannerMeals } =
             await KnexPlannerRepository.readAllMeals(database, {
@@ -1482,10 +1510,21 @@ describe("Update a meal in a planner", () => {
         expect(savedMeal!.month).toEqual(updateData.month);
         expect(savedMeal!.year).toEqual(updateData.year);
         expect(savedMeal!.source).toEqual(updateData.source);
+        expect(savedMeal!.heroImage!.attachmentId).toEqual(
+            updateData.heroImage,
+        );
+        expect(savedMeal!.heroImage!.uri).toEqual(updatedAttachment!.uri);
     });
 
     it("should clear optional fields when set to null", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{ uri: uuid() }],
+        });
 
         const {
             planners: [planner],
@@ -1515,6 +1554,7 @@ describe("Update a meal in a planner", () => {
                     description: "Initial Description",
                     recipeId: recipe!.recipeId,
                     source: "Initial Source",
+                    heroImage: attachment!.attachmentId,
                 },
             ],
         });
@@ -1522,13 +1562,19 @@ describe("Update a meal in a planner", () => {
         const res = await request(app)
             .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
             .set(token)
-            .send({ description: null, source: null, recipeId: null });
+            .send({
+                description: null,
+                source: null,
+                recipeId: null,
+                heroImage: null,
+            });
 
         expect(res.statusCode).toEqual(200);
         const returnedMeal = res.body as components["schemas"]["PlannerMeal"];
         expect(returnedMeal.description).toBeUndefined();
         expect(returnedMeal.source).toBeUndefined();
         expect(returnedMeal.recipeId).toBeUndefined();
+        expect(returnedMeal.heroImage).toBeUndefined();
     });
 
     it("should fail to update a cooklist meal via planner endpoint", async () => {

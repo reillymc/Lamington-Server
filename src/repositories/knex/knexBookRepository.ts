@@ -173,7 +173,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
             })),
         };
     },
-    readAll: async (db, { userId, filter }) => {
+    readAll: async (db, { userId }) => {
         const bookList: any[] = await db(lamington.book)
             .select(
                 book.bookId,
@@ -192,16 +192,10 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
                     idColumn: book.bookId,
                     allowedStatuses: ["A", "M", "P"],
                 }),
-            )
-            .modify((qb) => {
-                if (filter?.owner) {
-                    qb.where({ [content.createdBy]: filter.owner });
-                }
-            });
+            );
 
         return {
             userId,
-            filter,
             books: bookList.map(formatBook),
         };
     },
