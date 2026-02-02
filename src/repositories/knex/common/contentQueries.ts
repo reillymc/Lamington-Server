@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
 import { EnsureArray } from "../../../utils/index.ts";
-import { content, contentMember, lamington } from "../spec/index.ts";
+import { ContentMemberTable, ContentTable, lamington } from "../spec/index.ts";
 
 interface WithContentReadPermissionsParams {
     userId: string;
@@ -21,14 +21,14 @@ export const withContentReadPermissions =
     ) => {
         const owners =
             ownerColumns === undefined
-                ? [content.createdBy]
+                ? [ContentTable.createdBy]
                 : EnsureArray(ownerColumns);
 
         query
             .leftJoin(lamington.contentMember, (join) =>
                 join
-                    .on(idColumn, "=", contentMember.contentId)
-                    .andOnVal(contentMember.userId, "=", userId),
+                    .on(idColumn, "=", ContentMemberTable.contentId)
+                    .andOnVal(ContentMemberTable.userId, "=", userId),
             )
             .where((b) => {
                 let hasCondition = false;
@@ -36,8 +36,8 @@ export const withContentReadPermissions =
                 if (statuses.length > 0) {
                     b.orWhere((sub) =>
                         sub
-                            .whereNotNull(contentMember.userId)
-                            .whereIn(contentMember.status, statuses),
+                            .whereNotNull(ContentMemberTable.userId)
+                            .whereIn(ContentMemberTable.status, statuses),
                     );
                     hasCondition = true;
                 }

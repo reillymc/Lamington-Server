@@ -3,12 +3,12 @@ import type { ContentMember } from "../../temp.ts";
 import type { User } from "../../userRepository.ts";
 import type { KnexDatabase } from "../knex.ts";
 import {
+    ContentMemberTable,
     type CreateQuery,
-    contentMember,
     lamington,
     type ReadQuery,
     type ReadResponse,
-    user,
+    UserTable,
 } from "../spec/index.ts";
 
 type ContentMemberStatus = "O" | "A" | "M" | "P" | "B";
@@ -165,14 +165,14 @@ const readContentMembers = async (
 
     const query = await db<ContentMember>(lamington.contentMember)
         .select(
-            contentMember.contentId,
-            contentMember.userId,
-            contentMember.status,
-            user.firstName,
-            user.lastName,
+            ContentMemberTable.contentId,
+            ContentMemberTable.userId,
+            ContentMemberTable.status,
+            UserTable.firstName,
+            UserTable.lastName,
         )
-        .whereIn(contentMember.contentId, entityIds)
-        .leftJoin(lamington.user, contentMember.userId, user.userId);
+        .whereIn(ContentMemberTable.contentId, entityIds)
+        .leftJoin(lamington.user, ContentMemberTable.userId, UserTable.userId);
 
     return query.map((row) => ({ ...row, status: parseStatus(row.status) }));
 };

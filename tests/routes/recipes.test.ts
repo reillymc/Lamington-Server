@@ -1113,6 +1113,5 @@ describe("Rate a recipe", () => {
      * removing steps
      * saving tags
      * removing tags
-     * photo upload
      */
 });

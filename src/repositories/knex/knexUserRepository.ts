@@ -4,21 +4,21 @@ import type { UserRepository } from "../userRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
 import { isUniqueViolation } from "./common/postgresErrors.ts";
 import type { KnexDatabase } from "./knex.ts";
-import { lamington, user } from "./spec/index.ts";
+import { lamington, UserTable } from "./spec/index.ts";
 
 export const KnexUserRepository: UserRepository<KnexDatabase> = {
     read: async (db, { users }) => {
         const userIds = users.map((u) => u.userId);
         const result = await db(lamington.user)
             .select(
-                user.userId,
-                user.email,
-                user.firstName,
-                user.lastName,
-                user.status,
-                user.createdAt,
+                UserTable.userId,
+                UserTable.email,
+                UserTable.firstName,
+                UserTable.lastName,
+                UserTable.status,
+                UserTable.createdAt,
             )
-            .whereIn(user.userId, userIds);
+            .whereIn(UserTable.userId, userIds);
 
         return {
             users: result.map((u) => ({
@@ -33,18 +33,18 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
     },
     readAll: async (db, { filter }) => {
         const query = db(lamington.user).select(
-            user.userId,
-            user.firstName,
-            user.lastName,
-            user.email,
-            user.status,
-            user.createdAt,
+            UserTable.userId,
+            UserTable.firstName,
+            UserTable.lastName,
+            UserTable.email,
+            UserTable.status,
+            UserTable.createdAt,
         );
 
         if (filter?.status) {
-            query.whereIn(user.status, EnsureArray(filter.status));
+            query.whereIn(UserTable.status, EnsureArray(filter.status));
         } else {
-            query.whereNotIn(user.status, ["P", "B"]);
+            query.whereNotIn(UserTable.status, ["P", "B"]);
         }
 
         const result = await query;
@@ -74,17 +74,19 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
 
         const result = await db(lamington.user)
             .select(
-                user.userId,
-                user.firstName,
-                user.lastName,
-                user.email,
-                user.status,
-                user.createdAt,
-                user.password,
+                UserTable.userId,
+                UserTable.firstName,
+                UserTable.lastName,
+                UserTable.email,
+                UserTable.status,
+                UserTable.createdAt,
+                UserTable.password,
             )
             .where((builder) => {
-                if (emails.length > 0) builder.orWhereIn(user.email, emails);
-                if (userIds.length > 0) builder.orWhereIn(user.userId, userIds);
+                if (emails.length > 0)
+                    builder.orWhereIn(UserTable.email, emails);
+                if (userIds.length > 0)
+                    builder.orWhereIn(UserTable.userId, userIds);
             });
 
         return {
@@ -137,19 +139,19 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
     },
     update: async (db, { users }) => {
         for (const u of users) {
-            const updateData = buildUpdateRecord(u, user);
+            const updateData = buildUpdateRecord(u, UserTable);
 
             if (updateData) {
                 await db(lamington.user)
-                    .where(user.userId, u.userId)
+                    .where(UserTable.userId, u.userId)
                     .update(updateData);
             }
         }
 
         const userIds = users.map((u) => u.userId);
         const updatedUsers = await db(lamington.user)
-            .select([user.userId, user.status])
-            .whereIn(user.userId, userIds);
+            .select([UserTable.userId, UserTable.status])
+            .whereIn(UserTable.userId, userIds);
 
         return {
             users: updatedUsers,
@@ -158,15 +160,15 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
     delete: async (db, { users }) => {
         const userIds = users.map((u) => u.userId);
         const count = await db(lamington.user)
-            .whereIn(user.userId, userIds)
+            .whereIn(UserTable.userId, userIds)
             .delete();
         return { count };
     },
     verifyPermissions: async (db, { userId, status }) => {
         const statuses = EnsureArray(status);
         const result = await db(lamington.user)
-            .select(user.status)
-            .where(user.userId, userId)
+            .select(UserTable.status)
+            .where(UserTable.userId, userId)
             .first();
 
         return {

@@ -2,7 +2,12 @@ import { EnsureArray } from "../../../utils/index.ts";
 import type { Tag } from "../../tagRepository.ts";
 import type { Content, ContentTag } from "../../temp.ts";
 import type { KnexDatabase } from "../knex.ts";
-import { type CreateQuery, contentTag, lamington, tag } from "../spec/index.ts";
+import {
+    ContentTagTable,
+    type CreateQuery,
+    lamington,
+    TagTable,
+} from "../spec/index.ts";
 
 /**
  * Delete ContentTags from list of content tags
@@ -101,24 +106,38 @@ const readByContentId = async (
     const contentIdList = Array.isArray(contentIds) ? contentIds : [contentIds];
 
     return db(lamington.tag)
-        .select(contentTag.tagId, tag.parentId, tag.name, contentTag.contentId)
-        .whereIn(contentTag.contentId, contentIdList)
-        .leftJoin(lamington.contentTag, contentTag.tagId, tag.tagId)
+        .select(
+            ContentTagTable.tagId,
+            TagTable.parentId,
+            TagTable.name,
+            ContentTagTable.contentId,
+        )
+        .whereIn(ContentTagTable.contentId, contentIdList)
+        .leftJoin(lamington.contentTag, ContentTagTable.tagId, TagTable.tagId)
         .union((qb) =>
             qb
-                .select(tag.tagId, tag.parentId, tag.name, contentTag.contentId)
-                .leftJoin(lamington.contentTag, contentTag.tagId, tag.tagId)
+                .select(
+                    TagTable.tagId,
+                    TagTable.parentId,
+                    TagTable.name,
+                    ContentTagTable.contentId,
+                )
+                .leftJoin(
+                    lamington.contentTag,
+                    ContentTagTable.tagId,
+                    TagTable.tagId,
+                )
                 .from(lamington.tag)
                 .whereIn(
-                    tag.tagId,
+                    TagTable.tagId,
                     db
-                        .select(tag.parentId)
+                        .select(TagTable.parentId)
                         .from(lamington.tag)
-                        .whereIn(contentTag.contentId, contentIdList)
+                        .whereIn(ContentTagTable.contentId, contentIdList)
                         .leftJoin(
                             lamington.contentTag,
-                            contentTag.tagId,
-                            tag.tagId,
+                            ContentTagTable.tagId,
+                            TagTable.tagId,
                         ),
                 ),
         );

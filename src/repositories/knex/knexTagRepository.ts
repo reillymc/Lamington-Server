@@ -2,15 +2,15 @@ import { EnsureArray } from "../../utils/index.ts";
 import type { TagRepository } from "../tagRepository.ts";
 import { toUndefined } from "./common/toUndefined.ts";
 import type { KnexDatabase } from "./knex.ts";
-import { lamington, tag } from "./spec/index.ts";
+import { lamington, TagTable } from "./spec/index.ts";
 
 export const KnexTagRepository: TagRepository<KnexDatabase> = {
     readAll: async (db) => {
         const result = await db(lamington.tag).select(
-            tag.tagId,
-            tag.parentId,
-            tag.name,
-            tag.description,
+            TagTable.tagId,
+            TagTable.parentId,
+            TagTable.name,
+            TagTable.description,
         );
 
         return result.map((tag) => ({
@@ -32,5 +32,10 @@ export const KnexTagRepository: TagRepository<KnexDatabase> = {
                     }),
                 ),
             )
-            .returning([tag.tagId, tag.parentId, tag.name, tag.description]),
+            .returning([
+                TagTable.tagId,
+                TagTable.parentId,
+                TagTable.name,
+                TagTable.description,
+            ]),
 };

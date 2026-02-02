@@ -3,9 +3,9 @@ import type { Attachment } from "../../attachmentRepository.ts";
 import type { ContentAttachment } from "../../temp.ts";
 import type { KnexDatabase } from "../knex.ts";
 import {
-    attachment,
+    AttachmentTable,
+    ContentAttachmentTable,
     type CreateQuery,
-    contentAttachment,
     lamington,
     type ReadQuery,
     type ReadResponse,
@@ -46,7 +46,7 @@ const saveContentAttachments = async (
             )
                 .where({ contentId })
                 .whereNotIn(
-                    contentAttachment.attachmentId,
+                    ContentAttachmentTable.attachmentId,
                     data
                         .map(({ attachmentId }) => attachmentId)
                         .filter(Undefined),
@@ -78,19 +78,19 @@ const readContentAttachments = async (
 
     const query = db<GetContentAttachmentsResponse>(lamington.contentAttachment)
         .select(
-            contentAttachment.contentId,
-            contentAttachment.attachmentId,
-            attachment.createdBy,
-            contentAttachment.displayId,
-            contentAttachment.displayOrder,
-            contentAttachment.displayType,
-            attachment.uri,
+            ContentAttachmentTable.contentId,
+            ContentAttachmentTable.attachmentId,
+            AttachmentTable.createdBy,
+            ContentAttachmentTable.displayId,
+            ContentAttachmentTable.displayOrder,
+            ContentAttachmentTable.displayType,
+            AttachmentTable.uri,
         )
-        .whereIn(contentAttachment.contentId, entityIds)
+        .whereIn(ContentAttachmentTable.contentId, entityIds)
         .leftJoin(
             lamington.attachment,
-            contentAttachment.attachmentId,
-            attachment.attachmentId,
+            ContentAttachmentTable.attachmentId,
+            AttachmentTable.attachmentId,
         );
 
     return query;

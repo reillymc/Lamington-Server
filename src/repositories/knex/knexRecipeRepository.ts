@@ -23,21 +23,21 @@ import { ContentTagActions } from "./common/contentTag.ts";
 import { toUndefined } from "./common/toUndefined.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
-    attachment,
-    bookRecipe,
+    AttachmentTable,
+    BookRecipeTable,
+    ContentAttachmentTable,
+    ContentTable,
+    ContentTagTable,
     type CreateQuery,
     type CreateResponse,
-    content,
-    contentAttachment,
-    contentTag,
-    ingredient,
+    IngredientTable,
     lamington,
     PAGE_SIZE,
-    recipe,
-    recipeIngredient,
-    recipeRating,
-    recipeStep,
-    user,
+    RecipeIngredientTable,
+    RecipeRatingTable,
+    RecipeStepTable,
+    RecipeTable,
+    UserTable,
 } from "./spec/index.ts";
 
 const DefaultSection = "default";
@@ -136,12 +136,12 @@ const saveTags = (
 
 const readStepsByRecipeId = async (db: KnexDatabase, recipeId: string) =>
     db<RecipeStep>(lamington.recipeStep)
-        .where({ [recipeStep.recipeId]: recipeId })
+        .where({ [RecipeStepTable.recipeId]: recipeId })
         .select(
-            recipeStep.id,
-            recipeStep.sectionId,
-            recipeStep.index,
-            recipeStep.description,
+            RecipeStepTable.id,
+            RecipeStepTable.sectionId,
+            RecipeStepTable.index,
+            RecipeStepTable.description,
         );
 
 /**
@@ -187,29 +187,29 @@ const queryRecipeIngredientsByRecipeId = async (
     { recipeId }: Pick<Recipe, "recipeId">,
 ) => {
     const data = await db(lamington.recipeIngredient)
-        .where({ [recipeIngredient.recipeId]: recipeId })
+        .where({ [RecipeIngredientTable.recipeId]: recipeId })
         .select(
-            recipeIngredient.id,
-            recipeIngredient.ingredientId,
-            recipeIngredient.subrecipeId,
-            `${recipe.name} as recipeName`,
-            `${ingredient.name} as ingredientName`,
-            recipeIngredient.sectionId,
-            recipeIngredient.index,
-            recipeIngredient.description,
-            recipeIngredient.unit,
-            recipeIngredient.amount,
-            recipeIngredient.multiplier,
+            RecipeIngredientTable.id,
+            RecipeIngredientTable.ingredientId,
+            RecipeIngredientTable.subrecipeId,
+            `${RecipeTable.name} as recipeName`,
+            `${IngredientTable.name} as ingredientName`,
+            RecipeIngredientTable.sectionId,
+            RecipeIngredientTable.index,
+            RecipeIngredientTable.description,
+            RecipeIngredientTable.unit,
+            RecipeIngredientTable.amount,
+            RecipeIngredientTable.multiplier,
         )
         .leftJoin(
             lamington.ingredient,
-            recipeIngredient.ingredientId,
-            ingredient.ingredientId,
+            RecipeIngredientTable.ingredientId,
+            IngredientTable.ingredientId,
         )
         .leftJoin(
             lamington.recipe,
-            recipeIngredient.subrecipeId,
-            recipe.recipeId,
+            RecipeIngredientTable.subrecipeId,
+            RecipeTable.recipeId,
         );
 
     const result = data.map(({ recipeName, ingredientName, ...rest }) => ({
@@ -331,45 +331,53 @@ const ratingAverageName = "rating_average";
 
 const RecipeBase = (db: KnexDatabase, userId: string) => {
     const ratingsSubquery = db(lamington.recipeRating)
-        .select(recipeRating.recipeId)
-        .avg({ rating_average: recipeRating.rating })
-        .groupBy(recipeRating.recipeId)
+        .select(RecipeRatingTable.recipeId)
+        .avg({ rating_average: RecipeRatingTable.rating })
+        .groupBy(RecipeRatingTable.recipeId)
         .as("avg_ratings");
 
     return db(lamington.recipe)
         .select(
-            recipe.recipeId,
-            recipe.name,
-            recipe.timesCooked,
-            recipe.cookTime,
-            recipe.prepTime,
-            recipe.public,
-            content.createdBy,
-            db.ref(user.firstName).as("createdByName"),
+            RecipeTable.recipeId,
+            RecipeTable.name,
+            RecipeTable.timesCooked,
+            RecipeTable.cookTime,
+            RecipeTable.prepTime,
+            RecipeTable.public,
+            ContentTable.createdBy,
+            db.ref(UserTable.firstName).as("createdByName"),
             db.ref("avg_ratings.rating_average"),
             db(lamington.recipeRating)
-                .select(recipeRating.rating)
+                .select(RecipeRatingTable.rating)
                 .whereRaw('"recipe_rating"."recipeId" = "recipe"."recipeId"')
-                .andWhere(recipeRating.raterId, userId)
+                .andWhere(RecipeRatingTable.raterId, userId)
                 .first()
                 .as("rating_personal"),
-            db.ref(contentAttachment.attachmentId).as("heroAttachmentId"),
-            db.ref(attachment.uri).as("heroAttachmentUri"),
+            db.ref(ContentAttachmentTable.attachmentId).as("heroAttachmentId"),
+            db.ref(AttachmentTable.uri).as("heroAttachmentUri"),
         )
-        .leftJoin(lamington.content, recipe.recipeId, content.contentId)
-        .leftJoin(lamington.user, content.createdBy, user.userId)
-        .leftJoin(ratingsSubquery, recipe.recipeId, "avg_ratings.recipeId")
+        .leftJoin(
+            lamington.content,
+            RecipeTable.recipeId,
+            ContentTable.contentId,
+        )
+        .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
+        .leftJoin(ratingsSubquery, RecipeTable.recipeId, "avg_ratings.recipeId")
         .leftJoin(lamington.contentAttachment, (join) => {
-            join.on(contentAttachment.contentId, "=", recipe.recipeId).andOn(
-                contentAttachment.displayType,
+            join.on(
+                ContentAttachmentTable.contentId,
+                "=",
+                RecipeTable.recipeId,
+            ).andOn(
+                ContentAttachmentTable.displayType,
                 "=",
                 db.raw("?", ["hero"]),
             );
         })
         .leftJoin(
             lamington.attachment,
-            contentAttachment.attachmentId,
-            attachment.attachmentId,
+            ContentAttachmentTable.attachmentId,
+            AttachmentTable.attachmentId,
         );
 };
 
@@ -401,14 +409,14 @@ const getFullRecipe = async (
     userId: string,
 ): Promise<GetFullRecipeResults> => {
     const ratingsSubquery = db(lamington.recipeRating)
-        .select(recipeRating.recipeId)
-        .avg({ rating_average: recipeRating.rating })
-        .groupBy(recipeRating.recipeId)
+        .select(RecipeRatingTable.recipeId)
+        .avg({ rating_average: RecipeRatingTable.rating })
+        .groupBy(RecipeRatingTable.recipeId)
         .as("avg_ratings");
 
     const query = db(lamington.recipe)
         .select(
-            recipe.recipeId,
+            RecipeTable.recipeId,
             "name",
             "source",
             "servings",
@@ -419,22 +427,26 @@ const getFullRecipe = async (
             "public",
             "timesCooked",
             "nutritionalInformation",
-            content.createdBy,
-            content.createdAt,
-            content.updatedAt,
-            db.ref(user.firstName).as("createdByName"),
+            ContentTable.createdBy,
+            ContentTable.createdAt,
+            ContentTable.updatedAt,
+            db.ref(UserTable.firstName).as("createdByName"),
             db.ref("avg_ratings.rating_average"),
             db(lamington.recipeRating)
-                .select(recipeRating.rating)
+                .select(RecipeRatingTable.rating)
                 .whereRaw('"recipe_rating"."recipeId" = "recipe"."recipeId"')
-                .andWhere(recipeRating.raterId, userId)
+                .andWhere(RecipeRatingTable.raterId, userId)
                 .first()
                 .as("rating_personal"),
         )
-        .leftJoin(lamington.content, recipe.recipeId, content.contentId)
-        .leftJoin(lamington.user, content.createdBy, user.userId)
-        .leftJoin(ratingsSubquery, recipe.recipeId, "avg_ratings.recipeId")
-        .where(recipe.recipeId, recipeId)
+        .leftJoin(
+            lamington.content,
+            RecipeTable.recipeId,
+            ContentTable.contentId,
+        )
+        .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
+        .leftJoin(ratingsSubquery, RecipeTable.recipeId, "avg_ratings.recipeId")
+        .where(RecipeTable.recipeId, recipeId)
         .first();
 
     return query;
@@ -626,11 +638,11 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
     },
     update: async (db, { userId, recipes }) => {
         for (const r of recipes) {
-            const updateData = buildUpdateRecord(r, recipe);
+            const updateData = buildUpdateRecord(r, RecipeTable);
 
             if (updateData) {
                 await db(lamington.recipe)
-                    .where(recipe.recipeId, r.recipeId)
+                    .where(RecipeTable.recipeId, r.recipeId)
                     .update(updateData);
             }
         }
@@ -694,8 +706,8 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             if (photo !== undefined) {
                 await db(lamington.contentAttachment)
                     .where({
-                        [contentAttachment.contentId]: recipeId,
-                        [contentAttachment.displayType]: "hero",
+                        [ContentAttachmentTable.contentId]: recipeId,
+                        [ContentAttachmentTable.displayType]: "hero",
                     })
                     .delete();
 
@@ -721,10 +733,14 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
     verifyPermissions: async (db, { userId, recipes }) => {
         const recipeOwners = await db(lamington.recipe)
             .select("recipeId", "createdBy")
-            .leftJoin(lamington.content, content.contentId, recipe.recipeId)
-            .where({ [content.createdBy]: userId })
+            .leftJoin(
+                lamington.content,
+                ContentTable.contentId,
+                RecipeTable.recipeId,
+            )
+            .where({ [ContentTable.createdBy]: userId })
             .whereIn(
-                recipe.recipeId,
+                RecipeTable.recipeId,
                 recipes.map(({ recipeId }) => recipeId),
             );
 
@@ -745,36 +761,42 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
         { userId, order, page = 1, sort = "name", filter = {} },
     ) => {
         const sortColumn = {
-            name: recipe.name,
+            name: RecipeTable.name,
             ratingPersonal: ratingPersonalName,
             ratingAverage: ratingAverageName,
-            cookTime: recipe.cookTime,
+            cookTime: RecipeTable.cookTime,
         }[sort];
 
         const query = RecipeBase(db, userId)
             .where((builder) => {
                 if (!filter.name) return;
-                return builder.where(recipe.name, "ILIKE", `%${filter.name}%`);
+                return builder.where(
+                    RecipeTable.name,
+                    "ILIKE",
+                    `%${filter.name}%`,
+                );
             })
 
             .where((builder) => {
                 builder
-                    .where({ [content.createdBy]: userId })
-                    .orWhere({ [recipe.public]: true });
+                    .where({ [ContentTable.createdBy]: userId })
+                    .orWhere({ [RecipeTable.public]: true });
 
                 if (!filter.owner) return builder;
 
-                return builder.andWhere({ [content.createdBy]: filter.owner });
+                return builder.andWhere({
+                    [ContentTable.createdBy]: filter.owner,
+                });
             })
             .where((builder) => {
                 if (!filter.tags?.length) return;
                 return builder.whereIn(
-                    recipe.recipeId,
+                    RecipeTable.recipeId,
                     db
-                        .select(contentTag.contentId)
+                        .select(ContentTagTable.contentId)
                         .from(lamington.contentTag)
                         .whereIn(
-                            contentTag.tagId,
+                            ContentTagTable.tagId,
                             filter.tags.map(({ tagId }) => tagId),
                         ),
                 );
@@ -784,16 +806,16 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             //     return builder.whereIn(
             //         recipe.recipeId,
             //         db
-            //             .select(recipeIngredient.recipeId)
+            //             .select(recipeIngredientTable.recipeId)
             //             .from(lamington.recipeIngredient)
             //             .whereIn(
-            //                 recipeIngredient.description,
+            //                 recipeIngredientTable.description,
             //                 filter.ingredients.map(({ name }) => name)
             //             )
-            //             .groupBy(recipeIngredient.recipeId)
+            //             .groupBy(recipeIngredientTable.recipeId)
             //     );
             // })
-            .orderBy([{ column: sortColumn, order }, recipe.recipeId])
+            .orderBy([{ column: sortColumn, order }, RecipeTable.recipeId])
             .limit(PAGE_SIZE + 1)
             .offset((page - 1) * PAGE_SIZE);
 
@@ -801,11 +823,11 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             query
                 .leftJoin(
                     lamington.bookRecipe,
-                    recipe.recipeId,
-                    bookRecipe.recipeId,
+                    RecipeTable.recipeId,
+                    BookRecipeTable.recipeId,
                 )
                 .whereIn(
-                    bookRecipe.bookId,
+                    BookRecipeTable.bookId,
                     filter.books.map(({ bookId }) => bookId),
                 );
         }
@@ -859,7 +881,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
     delete: async (db, { recipes }) => {
         const count = await db(lamington.content)
             .whereIn(
-                content.contentId,
+                ContentTable.contentId,
                 recipes.map(({ recipeId }) => recipeId),
             )
             .delete();

@@ -41,13 +41,6 @@ describe("Authentication Middleware", () => {
         next = mock.fn();
     });
 
-    it("should skip authentication for /auth routes", () => {
-        req.url = "/auth/login";
-        authenticationMiddleware(req, res, next);
-        assert.strictEqual(next.mock.calls.length, 1);
-        assert.strictEqual(next.mock.calls[0]!.arguments.length, 0);
-    });
-
     it("should throw UnauthorizedError if no token provided", () => {
         authenticationMiddleware(req, res, next);
         assert.strictEqual(next.mock.calls.length, 1);

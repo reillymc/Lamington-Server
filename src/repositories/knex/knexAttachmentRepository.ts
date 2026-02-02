@@ -2,7 +2,7 @@ import { EnsureArray } from "../../utils/index.ts";
 import type { AttachmentRepository } from "../attachmentRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
 import type { KnexDatabase } from "./knex.ts";
-import { attachment, lamington } from "./spec/index.ts";
+import { AttachmentTable, lamington } from "./spec/index.ts";
 
 export const KnexAttachmentRepository: AttachmentRepository<KnexDatabase> = {
     create: async (db, { userId, attachments }) => {
@@ -19,18 +19,24 @@ export const KnexAttachmentRepository: AttachmentRepository<KnexDatabase> = {
     },
     update: async (db, { userId, attachments }) => {
         for (const attachmentItem of attachments) {
-            const updateData = buildUpdateRecord(attachmentItem, attachment);
+            const updateData = buildUpdateRecord(
+                attachmentItem,
+                AttachmentTable,
+            );
 
             if (updateData) {
                 await db(lamington.attachment)
-                    .where(attachment.attachmentId, attachmentItem.attachmentId)
+                    .where(
+                        AttachmentTable.attachmentId,
+                        attachmentItem.attachmentId,
+                    )
                     .update(updateData);
             }
         }
 
         const results = await db(lamington.attachment)
             .whereIn(
-                attachment.attachmentId,
+                AttachmentTable.attachmentId,
                 attachments.map(({ attachmentId }) => attachmentId),
             )
             .select("*");

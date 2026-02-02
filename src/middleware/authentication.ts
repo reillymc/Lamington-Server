@@ -34,11 +34,6 @@ export const createAuthenticationMiddleware: CreateMiddleware<"userService"> =
             return next(new UnknownError("No authentication secret found"));
         }
 
-        // TODO remove route check when rest of routes are converted adn can be properly sequenced
-        if (req.url.startsWith("/auth")) {
-            return next();
-        }
-
         var token = req.headers.authorization;
         if (!token) {
             return next(new UnauthorizedError());

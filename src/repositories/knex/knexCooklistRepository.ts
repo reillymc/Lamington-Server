@@ -4,12 +4,12 @@ import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
 import { toUndefined } from "./common/toUndefined.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
-    attachment,
-    content,
-    contentAttachment,
+    AttachmentTable,
+    ContentAttachmentTable,
+    ContentTable,
     lamington,
-    plannerMeal,
-    user,
+    PlannerMealTable,
+    UserTable,
 } from "./spec/index.ts";
 
 const formatCookListMeal = (
@@ -39,36 +39,44 @@ const formatCookListMeal = (
 const readByIds = async (db: KnexDatabase, mealIds: string[]) => {
     const result = await db(lamington.plannerMeal)
         .select(
-            plannerMeal.mealId,
-            plannerMeal.meal,
-            plannerMeal.description,
-            plannerMeal.source,
-            plannerMeal.sequence,
-            plannerMeal.recipeId,
-            plannerMeal.notes,
-            content.createdBy,
-            user.firstName,
-            db.ref(contentAttachment.attachmentId).as("heroAttachmentId"),
-            db.ref(attachment.uri).as("heroAttachmentUri"),
+            PlannerMealTable.mealId,
+            PlannerMealTable.meal,
+            PlannerMealTable.description,
+            PlannerMealTable.source,
+            PlannerMealTable.sequence,
+            PlannerMealTable.recipeId,
+            PlannerMealTable.notes,
+            ContentTable.createdBy,
+            UserTable.firstName,
+            db.ref(ContentAttachmentTable.attachmentId).as("heroAttachmentId"),
+            db.ref(AttachmentTable.uri).as("heroAttachmentUri"),
         )
-        .leftJoin(lamington.content, plannerMeal.mealId, content.contentId)
-        .leftJoin(lamington.user, content.createdBy, user.userId)
+        .leftJoin(
+            lamington.content,
+            PlannerMealTable.mealId,
+            ContentTable.contentId,
+        )
+        .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
         .leftJoin(lamington.contentAttachment, (join) => {
-            join.on(contentAttachment.contentId, "=", plannerMeal.mealId).andOn(
-                contentAttachment.displayType,
+            join.on(
+                ContentAttachmentTable.contentId,
+                "=",
+                PlannerMealTable.mealId,
+            ).andOn(
+                ContentAttachmentTable.displayType,
                 "=",
                 db.raw("?", ["hero"]),
             );
         })
         .leftJoin(
             lamington.attachment,
-            contentAttachment.attachmentId,
-            attachment.attachmentId,
+            ContentAttachmentTable.attachmentId,
+            AttachmentTable.attachmentId,
         )
-        .whereIn(plannerMeal.mealId, mealIds)
-        .whereNull(plannerMeal.plannerId)
-        .whereNull(plannerMeal.year)
-        .whereNull(plannerMeal.month);
+        .whereIn(PlannerMealTable.mealId, mealIds)
+        .whereNull(PlannerMealTable.plannerId)
+        .whereNull(PlannerMealTable.year)
+        .whereNull(PlannerMealTable.month);
 
     return { meals: result.map(formatCookListMeal) };
 };
@@ -77,36 +85,46 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
     readAllMeals: async (db, { userId }) => {
         const result = await db(lamington.plannerMeal)
             .select(
-                plannerMeal.mealId,
-                plannerMeal.meal,
-                plannerMeal.description,
-                plannerMeal.source,
-                plannerMeal.sequence,
-                plannerMeal.recipeId,
-                plannerMeal.notes,
-                content.createdBy,
-                user.firstName,
-                db.ref(contentAttachment.attachmentId).as("heroAttachmentId"),
-                db.ref(attachment.uri).as("heroAttachmentUri"),
+                PlannerMealTable.mealId,
+                PlannerMealTable.meal,
+                PlannerMealTable.description,
+                PlannerMealTable.source,
+                PlannerMealTable.sequence,
+                PlannerMealTable.recipeId,
+                PlannerMealTable.notes,
+                ContentTable.createdBy,
+                UserTable.firstName,
+                db
+                    .ref(ContentAttachmentTable.attachmentId)
+                    .as("heroAttachmentId"),
+                db.ref(AttachmentTable.uri).as("heroAttachmentUri"),
             )
-            .leftJoin(lamington.content, plannerMeal.mealId, content.contentId)
-            .leftJoin(lamington.user, content.createdBy, user.userId)
+            .leftJoin(
+                lamington.content,
+                PlannerMealTable.mealId,
+                ContentTable.contentId,
+            )
+            .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
             .leftJoin(lamington.contentAttachment, (join) =>
                 join
-                    .on(contentAttachment.contentId, "=", plannerMeal.mealId)
+                    .on(
+                        ContentAttachmentTable.contentId,
+                        "=",
+                        PlannerMealTable.mealId,
+                    )
                     .andOn(
-                        contentAttachment.displayType,
+                        ContentAttachmentTable.displayType,
                         "=",
                         db.raw("?", ["hero"]),
                     ),
             )
             .leftJoin(
                 lamington.attachment,
-                contentAttachment.attachmentId,
-                attachment.attachmentId,
+                ContentAttachmentTable.attachmentId,
+                AttachmentTable.attachmentId,
             )
-            .where(content.createdBy, userId)
-            .whereNull(plannerMeal.plannerId);
+            .where(ContentTable.createdBy, userId)
+            .whereNull(PlannerMealTable.plannerId);
 
         return { meals: result.map(formatCookListMeal) };
     },
@@ -156,21 +174,21 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
     },
     updateMeals: async (db, { meals }) => {
         for (const meal of meals) {
-            const updateData = buildUpdateRecord(meal, plannerMeal, {
+            const updateData = buildUpdateRecord(meal, PlannerMealTable, {
                 meal: ({ course }) => course,
             });
 
             if (updateData) {
                 await db(lamington.plannerMeal)
-                    .where(plannerMeal.mealId, meal.mealId)
+                    .where(PlannerMealTable.mealId, meal.mealId)
                     .update(updateData);
             }
 
             if (meal.heroImage !== undefined) {
                 await db(lamington.contentAttachment)
                     .where({
-                        [contentAttachment.contentId]: meal.mealId,
-                        [contentAttachment.displayType]: "hero",
+                        [ContentAttachmentTable.contentId]: meal.mealId,
+                        [ContentAttachmentTable.displayType]: "hero",
                     })
                     .delete();
 
@@ -191,7 +209,7 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
     deleteMeals: async (db, { meals }) => {
         const count = await db(lamington.content)
             .whereIn(
-                content.contentId,
+                ContentTable.contentId,
                 meals.map((m) => m.mealId),
             )
             .delete();
@@ -199,14 +217,18 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
     },
     verifyMealPermissions: async (db, { userId, meals }) => {
         const mealOwners = await db(lamington.plannerMeal)
-            .select(plannerMeal.mealId, content.createdBy)
-            .leftJoin(lamington.content, content.contentId, plannerMeal.mealId)
+            .select(PlannerMealTable.mealId, ContentTable.createdBy)
+            .leftJoin(
+                lamington.content,
+                ContentTable.contentId,
+                PlannerMealTable.mealId,
+            )
             .where({
-                [content.createdBy]: userId,
-                [plannerMeal.plannerId]: null,
+                [ContentTable.createdBy]: userId,
+                [PlannerMealTable.plannerId]: null,
             })
             .whereIn(
-                plannerMeal.mealId,
+                PlannerMealTable.mealId,
                 meals.map(({ mealId }) => mealId),
             );
 

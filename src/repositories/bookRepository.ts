@@ -7,7 +7,6 @@ import type {
 import type { ContentMember } from "./temp.ts";
 import type { User } from "./userRepository.ts";
 
-// TODO: clean up extraneous exports after migration to openapi spec at service layer is complete
 type BookUserStatus = "O" | "A" | "M" | "P" | "B";
 type BookIcon = `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10}`;
 
