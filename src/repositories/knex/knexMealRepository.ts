@@ -1,11 +1,15 @@
-import { attachment } from "../../database/definitions/attachment.ts";
-import { content } from "../../database/definitions/content.ts";
-import { contentAttachment } from "../../database/definitions/contentAttachment.ts";
-import { plannerMeal } from "../../database/definitions/meal.ts";
-import { type KnexDatabase, lamington, user } from "../../database/index.ts";
-import { toUndefined } from "../../utils/index.ts";
 import type { MealRepository } from "../mealRepository.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
+import { toUndefined } from "./common/toUndefined.ts";
+import type { KnexDatabase } from "./knex.ts";
+import {
+    AttachmentTable,
+    ContentAttachmentTable,
+    ContentTable,
+    lamington,
+    PlannerMealTable,
+    UserTable,
+} from "./spec/index.ts";
 
 export const KnexMealRepository: MealRepository<KnexDatabase> = {
     read: async (db, { userId, meals }) => {
@@ -14,36 +18,42 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
 
         const result: any[] = await db(lamington.plannerMeal)
             .select(
-                plannerMeal.mealId,
-                plannerMeal.plannerId,
-                plannerMeal.year,
-                plannerMeal.month,
-                plannerMeal.dayOfMonth,
-                plannerMeal.meal,
-                plannerMeal.description,
-                plannerMeal.source,
-                plannerMeal.sequence,
-                plannerMeal.recipeId,
-                plannerMeal.notes,
-                content.createdBy,
-                user.firstName,
-                db.ref(contentAttachment.attachmentId).as("heroAttachmentId"),
-                db.ref(attachment.uri).as("heroAttachmentUri"),
+                PlannerMealTable.mealId,
+                PlannerMealTable.plannerId,
+                PlannerMealTable.year,
+                PlannerMealTable.month,
+                PlannerMealTable.dayOfMonth,
+                PlannerMealTable.meal,
+                PlannerMealTable.description,
+                PlannerMealTable.source,
+                PlannerMealTable.sequence,
+                PlannerMealTable.recipeId,
+                PlannerMealTable.notes,
+                ContentTable.createdBy,
+                UserTable.firstName,
+                db
+                    .ref(ContentAttachmentTable.attachmentId)
+                    .as("heroAttachmentId"),
+                db.ref(AttachmentTable.uri).as("heroAttachmentUri"),
             )
-            .whereIn(plannerMeal.mealId, mealIds)
-            .leftJoin(lamington.content, plannerMeal.mealId, content.contentId)
-            .leftJoin(lamington.user, content.createdBy, user.userId)
+            .whereIn(PlannerMealTable.mealId, mealIds)
+            .leftJoin(
+                lamington.content,
+                PlannerMealTable.mealId,
+                ContentTable.contentId,
+            )
+            .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
             .leftJoin(
                 `${lamington.content} as ${plannerContentAlias}`,
-                plannerMeal.plannerId,
+                PlannerMealTable.plannerId,
                 `${plannerContentAlias}.contentId`,
             )
             .modify(
                 withContentReadPermissions({
                     userId,
-                    idColumn: plannerMeal.plannerId,
+                    idColumn: PlannerMealTable.plannerId,
                     ownerColumns: [
-                        content.createdBy,
+                        ContentTable.createdBy,
                         `${plannerContentAlias}.createdBy`,
                     ],
                     allowedStatuses: ["A", "M", "O"],
@@ -51,17 +61,21 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
             )
             .leftJoin(lamington.contentAttachment, (join) =>
                 join
-                    .on(contentAttachment.contentId, "=", plannerMeal.mealId)
+                    .on(
+                        ContentAttachmentTable.contentId,
+                        "=",
+                        PlannerMealTable.mealId,
+                    )
                     .andOn(
-                        contentAttachment.displayType,
+                        ContentAttachmentTable.displayType,
                         "=",
                         db.raw("?", ["hero"]),
                     ),
             )
             .leftJoin(
                 lamington.attachment,
-                contentAttachment.attachmentId,
-                attachment.attachmentId,
+                ContentAttachmentTable.attachmentId,
+                AttachmentTable.attachmentId,
             );
 
         return {

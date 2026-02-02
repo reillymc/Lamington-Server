@@ -1,9 +1,20 @@
-import type { Database, User } from "../database/index.ts";
-import type { RepositoryService } from "./repository.ts";
+import type { Database, RepositoryService } from "./repository.ts";
 
 type UserStatus = "O" | "A" | "M" | "P" | "B";
 
-export type UserProfile = {
+export type User = {
+    userId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    password: string;
+    createdAt: string;
+    updatedAt: string;
+    status: string;
+    preferences: string | null;
+};
+
+type UserProfile = {
     userId: User["userId"];
     email: User["email"];
     firstName: User["firstName"];
@@ -11,11 +22,11 @@ export type UserProfile = {
     status: UserStatus;
 };
 
-export type UserDirectoryEntry = UserProfile & {
+type UserDirectoryEntry = UserProfile & {
     createdAt: User["createdAt"];
 };
 
-export type UserCredentials = {
+type UserCredentials = {
     userId: User["userId"];
     email: User["email"];
     password: User["password"];
@@ -50,7 +61,7 @@ type ReadCredentialsResponse = {
     users: ReadonlyArray<UserCredentials>;
 };
 
-export type CreateUserPayload = {
+type CreateUserPayload = {
     email: User["email"];
     firstName: User["firstName"];
     lastName: User["lastName"];

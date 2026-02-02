@@ -10,10 +10,6 @@ const config: Knex.Config = {
         user: process.env.DB_DEV_USER,
         password: process.env.DB_DEV_PASSWORD,
     },
-    pool: {
-        min: 2,
-        max: 10,
-    },
     seeds: {
         directory: "./seeds/development",
     },

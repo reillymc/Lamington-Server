@@ -1,10 +1,12 @@
 import express from "express";
 
 import { EnsureArray } from "../utils/index.ts";
-import type { CreateRoute } from "./route.ts";
+import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
-export const createListRouter: CreateRoute<"listService"> = ({ listService }) =>
+export const createListRouter: CreateRouter<"listService"> = ({
+    listService,
+}) =>
     express
         .Router()
         .get<

@@ -5,7 +5,9 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import { setupApp } from "../../src/app.ts";
-import db, { type KnexDatabase } from "../../src/database/index.ts";
+import db from "../../src/database/index.ts";
+import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
+import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
 import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
@@ -46,12 +48,20 @@ describe("Add meal to cook list", () => {
     it("should create a new meal", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{ uri: uuid() }],
+        });
+
         const meals = Array.from({ length: randomNumber(5, 1) }).map(
             (_, i) => ({
                 description: uuid(),
                 course: randomCourse(),
                 sequence: i + 1,
                 source: uuid(),
+                heroImage: attachment!.attachmentId,
             }),
         ) satisfies components["schemas"]["CookListMealCreate"][];
 
@@ -78,6 +88,10 @@ describe("Add meal to cook list", () => {
             expect(meal.owner.userId).toEqual(user.userId);
             expect(meal.source).toEqual(expectedMeal!.source);
             expect(meal.recipeId).toEqual(undefined);
+            expect(meal.heroImage!.attachmentId).toEqual(
+                expectedMeal!.heroImage,
+            );
+            expect(meal.heroImage!.uri).toEqual(attachment!.uri);
         });
     });
 
@@ -204,6 +218,13 @@ describe("Update meal in cook list", () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
         const {
+            attachments: [originalAttachment, updatedAttachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{ uri: uuid() }, { uri: uuid() }],
+        });
+
+        const {
             recipes: [recipe],
         } = await KnexRecipeRepository.create(database, {
             userId: user.userId,
@@ -220,6 +241,7 @@ describe("Update meal in cook list", () => {
                     course: randomCourse(),
                     sequence: randomNumber(),
                     source: uuid(),
+                    heroImage: originalAttachment!.attachmentId,
                 },
             ],
         });
@@ -229,6 +251,7 @@ describe("Update meal in cook list", () => {
             description: uuid(),
             sequence: randomNumber(),
             source: uuid(),
+            heroImage: updatedAttachment!.attachmentId,
         } satisfies components["schemas"]["CookListMealUpdate"];
 
         const res = await request(app)
@@ -254,10 +277,21 @@ describe("Update meal in cook list", () => {
         expect(updatedMeal!.owner.userId).toEqual(user.userId);
         expect(updatedMeal!.source).toEqual(mealUpdate.source);
         expect(updatedMeal!.recipeId).toEqual(mealUpdate.recipeId);
+        expect(updatedMeal!.heroImage!.attachmentId).toEqual(
+            mealUpdate.heroImage,
+        );
+        expect(updatedMeal!.heroImage!.uri).toEqual(updatedAttachment!.uri);
     });
 
     it("should clear optional fields when set to null", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{ uri: uuid() }],
+        });
 
         const {
             recipes: [recipe],
@@ -277,6 +311,7 @@ describe("Update meal in cook list", () => {
                     sequence: 1,
                     source: uuid(),
                     recipeId: recipe!.recipeId,
+                    heroImage: attachment!.attachmentId,
                 },
             ],
         });
@@ -289,6 +324,7 @@ describe("Update meal in cook list", () => {
                 sequence: null,
                 source: null,
                 recipeId: null,
+                heroImage: null,
             });
 
         expect(res.statusCode).toEqual(200);
@@ -297,6 +333,7 @@ describe("Update meal in cook list", () => {
         expect(updatedMeal.sequence).toBeUndefined();
         expect(updatedMeal.source).toBeUndefined();
         expect(updatedMeal.recipeId).toBeUndefined();
+        expect(updatedMeal.heroImage).toBeUndefined();
     });
 
     it("should fail to update a meal belonging to another user", async () => {

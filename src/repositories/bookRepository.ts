@@ -1,28 +1,40 @@
-import type { Book } from "../database/definitions/book.ts";
-import type { Content } from "../database/definitions/content.ts";
-import type { ContentMember } from "../database/definitions/contentMember.ts";
-import type { Recipe } from "../database/definitions/recipe.ts";
-import type { Database, User } from "../database/index.ts";
-import type { RepositoryBulkService, RepositoryService } from "./repository.ts";
+import type { Recipe } from "./recipeRepository.ts";
+import type {
+    Database,
+    RepositoryBulkService,
+    RepositoryService,
+} from "./repository.ts";
+import type { ContentMember } from "./temp.ts";
+import type { User } from "./userRepository.ts";
 
-// TODO: clean up extraneous exports after migration to openapi spec at service layer is complete
 type BookUserStatus = "O" | "A" | "M" | "P" | "B";
 type BookIcon = `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10}`;
 
 type BookColor = `variant${1 | 2 | 3 | 4 | 5}`;
+
+// type BookCustomisationsV1 = {
+//     color: string;
+//     icon: BookUserStatus;
+// };
+
+// type BookCustomisations = BookCustomisationsV1;
+
+/**
+ * Book
+ */
+interface Book {
+    bookId: string;
+    name: string;
+    description: string | null;
+}
 
 type MemberItem = {
     userId: ContentMember["userId"];
     status: BookUserStatus | undefined;
 };
 
-type ReadFilters = {
-    owner?: Content["createdBy"];
-};
-
 type ReadAllRequest = {
     userId: User["userId"];
-    filter?: ReadFilters;
 };
 
 type BaseResponse = {
@@ -40,7 +52,6 @@ type BaseResponse = {
 
 type ReadAllResponse = {
     userId: User["userId"];
-    filter: ReadFilters | undefined;
     books: ReadonlyArray<BaseResponse>;
 };
 

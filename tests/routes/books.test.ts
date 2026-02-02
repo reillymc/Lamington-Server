@@ -5,7 +5,8 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 
 import { setupApp } from "../../src/app.ts";
-import db, { type KnexDatabase } from "../../src/database/index.ts";
+import db from "../../src/database/index.ts";
+import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import type { components, paths } from "../../src/routes/spec/index.ts";
@@ -1202,6 +1203,67 @@ describe("Accept book invitation", () => {
 
         expect(bookMembers!.members.length).toEqual(1);
         expect(bookMembers!.members[0]!.status).toEqual("M");
+    });
+
+    it("should return 404 if user is not a member of the book", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [bookOwner] = await CreateUsers(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: bookOwner!.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/books/${book!.bookId}/invite/accept`)
+            .set(token)
+            .send();
+
+        expect(res.statusCode).toEqual(404);
+    });
+
+    it("should return 404 if user status is not pending (M, A, B) or is owner", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [bookOwner] = await CreateUsers(database);
+
+        const statuses = ["M", "A", "B"] as const;
+
+        for (const status of statuses) {
+            const {
+                books: [book],
+            } = await KnexBookRepository.create(database, {
+                userId: bookOwner!.userId,
+                books: [{ name: uuid() }],
+            });
+
+            await KnexBookRepository.saveMembers(database, {
+                bookId: book!.bookId,
+                members: [{ userId: user.userId, status }],
+            });
+
+            const res = await request(app)
+                .post(`/v1/books/${book!.bookId}/invite/accept`)
+                .set(token)
+                .send();
+
+            expect(res.statusCode).toEqual(404);
+        }
+
+        const {
+            books: [ownBook],
+        } = await KnexBookRepository.create(database, {
+            userId: user.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const resOwner = await request(app)
+            .post(`/v1/books/${ownBook!.bookId}/invite/accept`)
+            .set(token)
+            .send();
+
+        expect(resOwner.statusCode).toEqual(404);
     });
 });
 

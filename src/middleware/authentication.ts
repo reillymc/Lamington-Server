@@ -10,12 +10,7 @@ const { jwtSecret } = config.authentication;
 
 type UserStatus = components["schemas"]["UserStatus"];
 
-export const getStatus = (
-    status: string | undefined,
-    isOwner?: boolean,
-): UserStatus | undefined => {
-    if (isOwner) return "O";
-
+const getStatus = (status: string | undefined): UserStatus | undefined => {
     switch (status) {
         case "A":
         case "M":
@@ -37,11 +32,6 @@ export const createAuthenticationMiddleware: CreateMiddleware<"userService"> =
     (req, _res, next) => {
         if (!jwtSecret) {
             return next(new UnknownError("No authentication secret found"));
-        }
-
-        // TODO remove route check when rest of routes are converted adn can be properly sequenced
-        if (req.url.startsWith("/auth")) {
-            return next();
         }
 
         var token = req.headers.authorization;

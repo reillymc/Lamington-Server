@@ -9,6 +9,12 @@ tags:
     description: Meal planning operations
   - name: Books
     description: Book operations
+  - name: Attachments
+    description: Attachment operations
+  - name: Tags
+    description: Tag operations
+  - name: Assets
+    description: Asset operations
   - name: Extractor
     description: Recipe extraction operations
   - name: Planners
@@ -28,6 +34,107 @@ tags:
 security:
   - bearerAuth: []
 paths:
+  /attachments/image:
+    post:
+      tags:
+        - Attachments
+      summary: Upload an image
+      operationId: postAttachmentImage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - image
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageAttachment"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /attachments/image/{attachmentPath}/{userId}/{attachmentId}:
+    parameters:
+      - name: attachmentPath
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Attachments
+      summary: Get an image
+      operationId: getAttachmentImage
+      responses:
+        200:
+          description: Successful response
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /assets/ingredients.json:
+    get:
+      tags:
+        - Assets
+      summary: Get preset ingredients
+      operationId: getPresetIngredients
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /tags:
+    get:
+      tags:
+        - Tags
+      summary: Get all tags
+      operationId: getTags
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TagGroup"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
   /recipes:
     get:
       tags:
@@ -1833,6 +1940,27 @@ components:
           type: string
       required:
         - error
+    Tag:
+      type: object
+      properties:
+        tagId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - tagId
+        - name
+    TagGroup:
+      allOf:
+        - $ref: "#/components/schemas/Tag"
+        - type: object
+          properties:
+            tags:
+              type: array
+              items:
+                $ref: "#/components/schemas/Tag"
     User:
       type: object
       properties:
@@ -2180,7 +2308,7 @@ components:
         - variant15
         - variant16
         - variant17
-    ListItemAmount:
+    ItemAmount:
       oneOf:
         - $ref: "#/components/schemas/AmountFraction"
         - $ref: "#/components/schemas/AmountRange"
@@ -2243,7 +2371,7 @@ components:
         unit:
           type: string
         amount:
-          $ref: "#/components/schemas/ListItemAmount"
+          $ref: "#/components/schemas/ItemAmount"
         notes:
           type: string
       required:
@@ -2263,7 +2391,7 @@ components:
         unit:
           type: string
         amount:
-          $ref: "#/components/schemas/ListItemAmount"
+          $ref: "#/components/schemas/ItemAmount"
         notes:
           type: string
       required:
@@ -2286,7 +2414,7 @@ components:
             - "null"
         amount:
           oneOf:
-            - $ref: "#/components/schemas/ListItemAmount"
+            - $ref: "#/components/schemas/ItemAmount"
             - type: "null"
         notes:
           type:
@@ -2681,7 +2809,7 @@ components:
         subrecipeId:
           $ref: "#/components/schemas/Uuid"
         amount:
-          $ref: "#/components/schemas/ListItemAmount"
+          $ref: "#/components/schemas/ItemAmount"
         description:
           type: string
         unit:
@@ -2788,39 +2916,67 @@ components:
         name:
           type: string
         source:
-          type: string
+          type:
+            - string
+            - "null"
         ingredients:
-          type: array
+          type:
+            - array
+            - "null"
           items:
             $ref: "#/components/schemas/RecipeSectionIngredient"
         method:
-          type: array
+          type:
+            - array
+            - "null"
           items:
             $ref: "#/components/schemas/RecipeSectionMethod"
         summary:
-          type: string
+          type:
+            - string
+            - "null"
         tips:
-          type: string
+          type:
+            - string
+            - "null"
         rating:
-          type: number
+          type:
+            - number
+            - "null"
         nutritionalInformation:
-          type: string
+          type:
+            - string
+            - "null"
         tags:
-          type: array
+          type:
+            - array
+            - "null"
           items:
             $ref: "#/components/schemas/RecipeTagRef"
         cookTime:
-          type: integer
+          type:
+            - integer
+            - "null"
         prepTime:
-          type: integer
+          type:
+            - integer
+            - "null"
         servings:
-          $ref: "#/components/schemas/Servings"
+          oneOf:
+            - $ref: "#/components/schemas/Servings"
+            - type: "null"
         public:
-          type: boolean
+          type:
+            - boolean
+            - "null"
         timesCooked:
-          type: integer
+          type:
+            - integer
+            - "null"
         photo:
-          type: object
+          type:
+            - object
+            - "null"
           properties:
             attachmentId:
               $ref: "#/components/schemas/Uuid"

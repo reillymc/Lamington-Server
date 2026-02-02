@@ -1,8 +1,10 @@
 import express from "express";
-import type { CreateRoute } from "./route.ts";
+import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
-export const createUserRouter: CreateRoute<"userService"> = ({ userService }) =>
+export const createUserRouter: CreateRouter<"userService"> = ({
+    userService,
+}) =>
     express
         .Router()
         .get<

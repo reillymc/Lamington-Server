@@ -1,9 +1,12 @@
-import type { Attachment } from "../database/definitions/attachment.ts";
-import type { Content } from "../database/definitions/content.ts";
-import type { ContentMember } from "../database/definitions/contentMember.ts";
-import type { Planner } from "../database/definitions/planner.ts";
-import type { Database, Meal, User } from "../database/index.ts";
-import type { RepositoryBulkService, RepositoryService } from "./repository.ts";
+import type { Attachment } from "./attachmentRepository.ts";
+import type { Meal } from "./mealRepository.ts";
+import type {
+    Database,
+    RepositoryBulkService,
+    RepositoryService,
+} from "./repository.ts";
+import type { Content, ContentMember } from "./temp.ts";
+import type { User } from "./userRepository.ts";
 
 type PlannerUserStatus = "O" | "A" | "M" | "P" | "B";
 type PlannerColor = `variant${1 | 2 | 3 | 4 | 5}`;
@@ -16,6 +19,12 @@ type PlannerMealCourse =
     | "drink"
     | "component"
     | "side";
+
+interface Planner {
+    plannerId: string;
+    name: string;
+    description: string | null;
+}
 
 type VerifyPermissionsRequest = {
     userId: User["userId"];

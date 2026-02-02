@@ -4,31 +4,29 @@ import type { Express } from "express";
 import request from "supertest";
 
 import { setupApp } from "../../src/app.ts";
-import type { AttachmentActions } from "../../src/controllers/attachment.ts";
-import db, { type KnexDatabase } from "../../src/database/index.ts";
-import type { PostImageAttachmentResponse } from "../../src/routes/spec/index.ts";
-import type { AttachmentService } from "../../src/services/attachment/attachmentService.ts";
+import db from "../../src/database/index.ts";
+import type { AttachmentRepository } from "../../src/repositories/attachmentRepository.ts";
+import type { FileRepository } from "../../src/repositories/fileRepository.ts";
+import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
+import type { components } from "../../src/routes/spec/index.ts";
 import { readAllAttachments } from "../helpers/attachment.ts";
-import {
-    AttachmentEndpoint,
-    PrepareAuthenticatedUser,
-} from "../helpers/index.ts";
+import { PrepareAuthenticatedUser } from "../helpers/index.ts";
 
-const MockSuccessfulAttachmentService: AttachmentService = {
-    put: async () => true,
-    delete: async () => true,
+const MockSuccessfulFileRepository: FileRepository = {
+    create: mock.fn(async () => true),
+    delete: mock.fn(async () => true),
 };
 
-const MockFailingAttachmentService: AttachmentService = {
-    put: async () => false,
-    delete: async () => false,
+const MockFailingFileRepository: FileRepository = {
+    create: mock.fn(async () => false),
+    delete: mock.fn(async () => false),
 };
 
-const MockFailingAttachmentActions: AttachmentActions = {
-    read: async () => {
+const MockFailingAttachmentRepository: AttachmentRepository = {
+    create: async () => {
         throw "Mock Error";
     },
-    save: async () => {
+    update: async () => {
         throw "Mock Error";
     },
 };
@@ -37,7 +35,7 @@ after(async () => {
     await db.destroy();
 });
 
-describe("post", () => {
+describe("Upload an image", () => {
     let database: KnexDatabase;
     let app: Express;
 
@@ -45,7 +43,7 @@ describe("post", () => {
         database = await db.transaction();
         app = setupApp({
             database,
-            attachmentService: MockSuccessfulAttachmentService,
+            repositories: { fileRepository: MockSuccessfulFileRepository },
         });
     });
 
@@ -56,8 +54,8 @@ describe("post", () => {
 
     it("should require authentication", async () => {
         const res = await request(app)
-            .get(AttachmentEndpoint.postImage)
-            .attach("file", "tests/testAttachment.jpg");
+            .post("/v1/attachments/image")
+            .attach("image", "tests/testAttachment.jpg");
 
         expect(res.statusCode).toEqual(401);
     });
@@ -65,31 +63,29 @@ describe("post", () => {
     it("should fail when no file is provided", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app)
-            .post(AttachmentEndpoint.postImage)
-            .set(token);
+        const res = await request(app).post("/v1/attachments/image").set(token);
 
-        expect(res.statusCode).toEqual(400);
+        expect(res.statusCode).toEqual(415);
     });
 
     it("should upload valid image", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
-            .post(AttachmentEndpoint.postImage)
+            .post("/v1/attachments/image")
             .set(token)
-            .attach("photo", "tests/testAttachment.jpg");
+            .attach("image", "tests/testAttachment.jpg");
 
         expect(res.statusCode).toEqual(200);
 
-        const { data } = res.body as PostImageAttachmentResponse;
+        const data = res.body as components["schemas"]["ImageAttachment"];
 
-        expect(data!.attachmentId).toBeTruthy();
-        expect(data!.uri).toBeTruthy();
+        expect(data.attachmentId).toBeTruthy();
+        expect(data.uri).toBeTruthy();
 
         const attachmentReadResponse = await readAllAttachments(database);
         expect(attachmentReadResponse).toHaveLength(1);
-        expect(data!.attachmentId).toEqual(
+        expect(data.attachmentId).toEqual(
             attachmentReadResponse[0]!.attachmentId,
         );
     });
@@ -97,14 +93,14 @@ describe("post", () => {
     it("should not save to db when upload fails", async () => {
         app = setupApp({
             database,
-            attachmentService: MockFailingAttachmentService,
+            repositories: { fileRepository: MockFailingFileRepository },
         });
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
-            .post(AttachmentEndpoint.postImage)
+            .post("/v1/attachments/image")
             .set(token)
-            .attach("photo", "tests/testAttachment.jpg");
+            .attach("image", "tests/testAttachment.jpg");
 
         expect(res.statusCode).toEqual(500);
 
@@ -114,25 +110,48 @@ describe("post", () => {
     });
 
     it("should not upload when save to db fails", async () => {
-        const mockPut = mock.fn(async () => true);
+        const mockCreate = mock.fn(async () => true);
         app = setupApp({
             database,
-            attachmentActions: MockFailingAttachmentActions,
-            attachmentService: {
-                ...MockSuccessfulAttachmentService,
-                put: mockPut,
+            repositories: {
+                attachmentRepository: MockFailingAttachmentRepository,
+                fileRepository: {
+                    ...MockSuccessfulFileRepository,
+                    create: mockCreate,
+                },
             },
         });
 
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
-            .post(AttachmentEndpoint.postImage)
+            .post("/v1/attachments/image")
             .set(token)
-            .attach("photo", "tests/testAttachment.jpg");
+            .attach("image", "tests/testAttachment.jpg");
 
         expect(res.statusCode).toEqual(500);
 
-        expect(mockPut.mock.callCount()).toEqual(0);
+        expect(mockCreate.mock.callCount()).toEqual(0);
+    });
+});
+
+describe("Get an image", () => {
+    let database: KnexDatabase;
+    let app: Express;
+
+    beforeEach(async () => {
+        database = await db.transaction();
+        app = setupApp({ database });
+    });
+
+    afterEach(async () => {
+        await database.rollback();
+    });
+
+    it("should require authentication", async () => {
+        const res = await request(app).get(
+            "/v1/attachments/image/test/test/test",
+        );
+        expect(res.statusCode).toEqual(401);
     });
 });

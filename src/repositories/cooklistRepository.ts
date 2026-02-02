@@ -1,7 +1,7 @@
-import type { Attachment } from "../database/definitions/attachment.ts";
-import type { Meal } from "../database/definitions/meal.ts";
-import type { Database, User } from "../database/index.ts";
-import type { RepositoryService } from "./repository.ts";
+import type { Attachment } from "./attachmentRepository.ts";
+import type { Meal } from "./mealRepository.ts";
+import type { Database, RepositoryService } from "./repository.ts";
+import type { User } from "./userRepository.ts";
 
 type CookListMealCourse =
     | "breakfast"

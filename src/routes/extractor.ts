@@ -1,10 +1,10 @@
 import express from "express";
-import type { CreateRoute } from "./route.ts";
+import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
-export const createExtractorRouter: CreateRoute<"contentExtractionService"> = ({
-    contentExtractionService,
-}) =>
+export const createExtractorRouter: CreateRouter<
+    "contentExtractionService"
+> = ({ contentExtractionService }) =>
     express
         .Router()
         .get<
