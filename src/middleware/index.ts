@@ -1,13 +1,11 @@
-import type { RateLimiter } from "./rateLimiters.ts";
-import type { Validator } from "./validator.ts";
-
-export * from "./error.ts";
-export { loggerMiddleware } from "./logger.ts";
-export * from "./notFound.ts";
+import type { Middleware } from "./middleware.ts";
 
 export type AppMiddleware = {
-    rateLimiterLoose: RateLimiter[];
-    rateLimiterControlled: RateLimiter[];
-    rateLimiterRestrictive: RateLimiter[];
-    validator: Validator[];
+    rateLimiterLoose: Middleware[];
+    rateLimiterControlled: Middleware[];
+    rateLimiterRestrictive: Middleware[];
+    validator: Middleware[];
+    errorHandler: Middleware[];
+    logger: Middleware[];
+    notFound: Middleware[];
 };

@@ -1,9 +1,4 @@
 import express from "express";
-import {
-    errorMiddleware,
-    loggerMiddleware,
-    notFoundMiddleware,
-} from "../middleware/index.ts";
 import { createAssetsRouter } from "./assets.ts";
 import { createAttachmentsRouter } from "./attachments.ts";
 import { createAuthRouter } from "./auth.ts";
@@ -36,11 +31,14 @@ export const createAppRouter: CreateRouter<
     | "rateLimiterLoose"
     | "rateLimiterRestrictive"
     | "validator"
+    | "logger"
+    | "errorHandler"
+    | "notFound"
 > = (services, middleware) =>
     express
         .Router()
-        .use(loggerMiddleware)
-        .use("/health", createHealthRouter({}))
+        .use(middleware.logger)
+        .use("/health", createHealthRouter())
         .use(
             "/v1",
             express
@@ -48,7 +46,7 @@ export const createAppRouter: CreateRouter<
                 .use(middleware.rateLimiterLoose)
                 .use(middleware.validator)
                 .use(createAuthRouter(services, middleware))
-                .use(createAssetsRouter({}))
+                .use(createAssetsRouter())
                 .use(createAttachmentsRouter(services, middleware))
                 .use(createBookRouter(services))
                 .use(createCooklistRouter(services))
@@ -61,6 +59,6 @@ export const createAppRouter: CreateRouter<
                 .use(createTagsRouter(services))
                 .use(createUserRouter(services)),
         )
-        .use("/", createDocsRouter({}))
-        .use(notFoundMiddleware)
-        .use(errorMiddleware);
+        .use("/", createDocsRouter())
+        .use(middleware.notFound)
+        .use(middleware.errorHandler);

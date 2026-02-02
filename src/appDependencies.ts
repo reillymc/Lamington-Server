@@ -1,6 +1,9 @@
 import config from "./config.ts";
 import db from "./database/index.ts";
+import { createErrorHandlerMiddleware } from "./middleware/errorHandler.ts";
 import type { AppMiddleware } from "./middleware/index.ts";
+import { createLoggerMiddleware } from "./middleware/logger.ts";
+import { createNotFoundMiddleware } from "./middleware/notFound.ts";
 import {
     createRateLimiterControlled,
     createRateLimiterLoose,
@@ -76,6 +79,9 @@ export const DefaultAppMiddleware = (): AppMiddleware => ({
     rateLimiterLoose: createRateLimiterLoose(),
     rateLimiterRestrictive: createRateLimiterRestrictive(),
     validator: createValidatorMiddleware(),
+    errorHandler: createErrorHandlerMiddleware(),
+    logger: createLoggerMiddleware(),
+    notFound: createNotFoundMiddleware(),
 });
 
 export type AppDependencies = {

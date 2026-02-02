@@ -1,11 +1,8 @@
-import type { RequestHandler } from "express";
-
 import { NotFoundError } from "../services/index.ts";
+import type { CreateMiddleware } from "./middleware.ts";
 
-export const notFoundMiddleware: RequestHandler = (
-    _request,
-    _response,
-    next,
-) => {
-    next(new NotFoundError("resource"));
-};
+export const createNotFoundMiddleware: CreateMiddleware = () => [
+    (_request, _response, next) => {
+        next(new NotFoundError("resource"));
+    },
+];

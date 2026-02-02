@@ -1,10 +1,7 @@
-import type { RequestHandler } from "express";
 import rateLimit from "express-rate-limit";
+import type { CreateMiddleware } from "./middleware.ts";
 
-// biome-ignore lint/suspicious/noExplicitAny: any is needed to pass through openapi validated route types
-export type RateLimiter = RequestHandler<any, any, any, any>;
-
-export const createRateLimiterLoose = (): RateLimiter[] => [
+export const createRateLimiterLoose: CreateMiddleware = () => [
     rateLimit({
         windowMs: 15 * 60 * 1000, // 15 minutes
         limit: 100,
@@ -14,7 +11,7 @@ export const createRateLimiterLoose = (): RateLimiter[] => [
     }),
 ];
 
-export const createRateLimiterControlled = (): RateLimiter[] => [
+export const createRateLimiterControlled: CreateMiddleware = () => [
     rateLimit({
         windowMs: 15 * 60 * 1000, // 15 minutes
         limit: 20,
@@ -24,7 +21,7 @@ export const createRateLimiterControlled = (): RateLimiter[] => [
     }),
 ];
 
-export const createRateLimiterRestrictive = (): RateLimiter[] => [
+export const createRateLimiterRestrictive: CreateMiddleware = () => [
     rateLimit({
         windowMs: 15 * 60 * 1000, // 15 minutes
         limit: 5,

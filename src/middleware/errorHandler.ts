@@ -1,13 +1,13 @@
 import type { ErrorRequestHandler } from "express";
-
 import {
     AppError,
     logger,
     UnauthorizedError,
     ValidationError,
 } from "../services/index.ts";
+import type { CreateMiddleware, Middleware } from "./middleware.ts";
 
-export const errorMiddleware: ErrorRequestHandler = (
+const errorHandler: ErrorRequestHandler = (
     error: unknown,
     request,
     response,
@@ -55,3 +55,7 @@ export const errorMiddleware: ErrorRequestHandler = (
 
     return response.status(status).json({ error: true, message });
 };
+
+export const createErrorHandlerMiddleware: CreateMiddleware = () => [
+    errorHandler as unknown as Middleware,
+];

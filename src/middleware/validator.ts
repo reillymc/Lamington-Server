@@ -1,10 +1,11 @@
 import path from "node:path";
-import type { Request, RequestHandler } from "express";
+import type { Request } from "express";
 import * as OpenApiValidator from "express-openapi-validator";
 import jwt from "jsonwebtoken";
 import multer, { type FileFilterCallback } from "multer";
 import { UnauthorizedError, verifyAccessToken } from "../services/index.ts";
 import { ValidationError } from "../services/logging.ts";
+import type { CreateMiddleware, Middleware } from "./middleware.ts";
 
 const { JsonWebTokenError, NotBeforeError, TokenExpiredError } = jwt;
 
@@ -78,12 +79,9 @@ const openApiValidatorMiddlewares = OpenApiValidator.middleware({
     },
 });
 
-// biome-ignore lint/suspicious/noExplicitAny: OpenAPI middleware incompatible with strictly typed routes
-export type Validator = RequestHandler<any, any, unknown, any>;
-
-export const createValidatorMiddleware = (): Validator[] =>
+export const createValidatorMiddleware: CreateMiddleware = () =>
     openApiValidatorMiddlewares.map(
-        (middleware): Validator =>
+        (middleware): Middleware =>
             async (req, res, next) => {
                 await middleware(req, res, (error) => {
                     if (error) {
