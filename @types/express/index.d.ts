@@ -1,13 +1,21 @@
-import type { AuthData } from "../../src/services/token.ts";
+import type { components } from "../../src/routes/spec/schema.js";
+
+type UserStatus = components["schemas"]["UserStatus"];
 
 declare module "express" {
     interface Request {
-        session: AuthData;
+        session: {
+            userId: string;
+            status: UserStatus;
+        };
     }
 }
 
 declare module "express-serve-static-core" {
     interface Request {
-        session: AuthData;
+        session: {
+            userId: string;
+            status: UserStatus;
+        };
     }
 }

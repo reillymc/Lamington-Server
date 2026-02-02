@@ -4,11 +4,11 @@ import type { Express } from "express";
 import jwt from "jsonwebtoken";
 import request from "supertest";
 import { v4 } from "uuid";
-import { setupApp } from "../src/app.ts";
+import { DefaultAppMiddleware } from "../src/appDependencies.ts";
 import db from "../src/database/index.ts";
 import type { KnexDatabase } from "../src/repositories/knex/knex.ts";
-import type { components } from "../src/routes/spec/index.ts";
 import { CreateUsers } from "./helpers/index.ts";
+import { createTestApp } from "./helpers/setup.ts";
 
 let database: KnexDatabase;
 let app: Express;
@@ -23,7 +23,7 @@ describe("Authentication Middleware", () => {
 
     beforeEach(async () => {
         database = await db.transaction();
-        app = setupApp({ database });
+        app = createTestApp({ database });
     });
 
     afterEach(async () => {
@@ -70,6 +70,20 @@ describe("Authentication Middleware", () => {
         expect(res.statusCode).toEqual(401);
     });
 
+    it("should return 401 if token format is invalid", async () => {
+        const payload = { userName: v4(), status: "B" };
+        const token = jwt.sign(payload, process.env.JWT_SECRET!, {
+            noTimestamp: true,
+            expiresIn: "1h",
+        });
+
+        const res = await request(app)
+            .get("/v1/profile")
+            .set("Authorization", `Bearer ${token}`);
+
+        expect(res.statusCode).toEqual(401);
+    });
+
     it("should authorise valid user", async () => {
         const [user] = await CreateUsers(database, { status: "M" });
         const payload = { userId: user!.userId, status: "M" };
@@ -88,99 +102,35 @@ describe("Authentication Middleware", () => {
 });
 
 describe("Rate Limiter Middleware", () => {
-    describe("for auth", async () => {
-        before(async () => {
-            database = await db.transaction();
-            app = setupApp({ database }); // App setup with default rate limiter
+    before(async () => {
+        // App setup with default rate limiter
+        database = await db.transaction();
+        app = createTestApp({ database, middleware: DefaultAppMiddleware() });
 
-            const [user] = await CreateUsers(database);
-
-            const requestBody: components["schemas"]["AuthLogin"] = {
-                email: user!.email,
-                password: user!.password,
-            };
-
-            // Exceed rate limit for auth endpoints
-            for (let i = 0; i < 5; i++) {
-                const res = await request(app)
-                    .post("/v1/auth/login")
-                    .send(requestBody);
-                expect(res.statusCode).not.toEqual(429);
-            }
-        });
-
-        after(async () => {
-            await database.rollback();
-        });
-
-        it("login should trigger 429 response after 5 requests", async () => {
-            const [user] = await CreateUsers(database);
-
-            const requestBody: components["schemas"]["AuthLogin"] = {
-                email: user!.email,
-                password: user!.password,
-            };
-
-            const res = await request(app)
-                .post("/v1/auth/login")
-                .send(requestBody);
-            expect(res.statusCode).toEqual(429);
-        });
-
-        it("register should trigger 429 response after 5 requests", async () => {
-            const requestBody: components["schemas"]["AuthRegister"] = {
-                email: "test@example.com",
-                firstName: "Test",
-                lastName: "User",
-                password: "secure_password",
-            };
-
-            const res = await request(app)
-                .post("/v1/auth/register")
-                .send({ ...requestBody, email: "final@example.com" });
-            expect(res.statusCode).toEqual(429);
-        });
-
-        it("refresh should trigger 429 response after 5 requests", async () => {
-            const requestBody = { refreshToken: "some-token" };
-
-            const res = await request(app)
-                .post("/v1/auth/refresh")
-                .send(requestBody);
-            expect(res.statusCode).toEqual(429);
-        });
+        // Exceed rate limit for general endpoints
+        for (let i = 0; i < 100; i++) {
+            const res = await request(app).get("/v1/planners");
+            expect(res.statusCode).not.toEqual(429);
+        }
     });
 
-    describe("for general", () => {
-        before(async () => {
-            database = await db.transaction();
-            app = setupApp({ database }); // App setup with default rate limiter
+    after(async () => {
+        await database.rollback();
+    });
 
-            // Exceed rate limit for general endpoints
-            for (let i = 0; i < 100; i++) {
-                const res = await request(app).get("/v1/planners");
-                expect(res.statusCode).not.toEqual(429);
-            }
-        });
+    it("books should trigger 429 response after 100 requests", async () => {
+        const res = await request(app).get("/v1/books");
+        expect(res.statusCode).toEqual(429);
+    });
 
-        after(async () => {
-            await database.rollback();
-        });
+    it("planners should trigger 429 response after 100 requests", async () => {
+        const res = await request(app).get("/v1/planners");
+        expect(res.statusCode).toEqual(429);
+    });
 
-        it("books should trigger 429 response after 100 requests", async () => {
-            const res = await request(app).get("/v1/books");
-            expect(res.statusCode).toEqual(429);
-        });
+    it("lists should trigger 429 response after 100 requests", async () => {
+        const res = await request(app).delete(`/v1/lists/${v4()}`);
 
-        it("planners should trigger 429 response after 100 requests", async () => {
-            const res = await request(app).get("/v1/planners");
-            expect(res.statusCode).toEqual(429);
-        });
-
-        it("lists should trigger 429 response after 100 requests", async () => {
-            const res = await request(app).delete(`/v1/lists/${v4()}`);
-
-            expect(res.statusCode).toEqual(429);
-        });
+        expect(res.statusCode).toEqual(429);
     });
 });

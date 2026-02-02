@@ -3,7 +3,6 @@ import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { v4 } from "uuid";
-import { setupApp } from "../../src/app.ts";
 import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { ContentExtractionService } from "../../src/services/contentExtractionService.ts";
@@ -14,7 +13,8 @@ let database: KnexDatabase;
 let app: Express;
 
 beforeEach(async () => {
-    [app, database] = await createTestApp();
+    database = await db.transaction();
+    app = createTestApp({ database });
 });
 
 afterEach(async () => {
@@ -41,7 +41,7 @@ describe("Extract recipe metadata", () => {
             }),
         );
 
-        const app = setupApp({
+        app = createTestApp({
             database,
             services: {
                 contentExtractionService: {
@@ -79,7 +79,7 @@ describe("Extract recipe metadata", () => {
             },
         );
 
-        const app = setupApp({
+        app = createTestApp({
             database,
             services: {
                 contentExtractionService: {
@@ -102,7 +102,6 @@ describe("Extract recipe metadata", () => {
 
 describe("Extract full recipe", () => {
     it("should require authentication", async () => {
-        const app = setupApp({ database });
         const res = await request(app).get("/v1/extractor/recipe");
         expect(res.statusCode).toEqual(401);
     });
@@ -126,7 +125,7 @@ describe("Extract full recipe", () => {
                 mockRecipe,
         );
 
-        const app = setupApp({
+        app = createTestApp({
             database,
             services: {
                 contentExtractionService: {
@@ -157,7 +156,7 @@ describe("Extract full recipe", () => {
             },
         );
 
-        const app = setupApp({
+        app = createTestApp({
             database,
             services: {
                 contentExtractionService: {

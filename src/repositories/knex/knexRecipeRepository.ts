@@ -15,10 +15,7 @@ import type {
 import type { Content, ContentAttachment, ContentTag } from "../temp.ts";
 import type { User } from "../userRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
-import {
-    ContentAttachmentActions,
-    type CreateContentAttachmentOptions,
-} from "./common/contentAttachment.ts";
+import { ContentAttachmentActions } from "./common/contentAttachment.ts";
 import { ContentTagActions } from "./common/contentTag.ts";
 import { toUndefined } from "./common/toUndefined.ts";
 import type { KnexDatabase } from "./knex.ts";
@@ -82,18 +79,13 @@ const RecipeAttachmentActions = {
                 ...rest,
             })),
         ),
-    save: (
-        db: KnexDatabase,
-        request: SaveRecipeAttachmentRequest,
-        options?: CreateContentAttachmentOptions,
-    ) =>
+    save: (db: KnexDatabase, request: SaveRecipeAttachmentRequest) =>
         ContentAttachmentActions.save(
             db,
             EnsureArray(request).map(({ recipeId, attachments }) => ({
                 contentId: recipeId,
                 attachments,
             })),
-            options,
         ),
 };
 const ContentTagsRequestToRows = (

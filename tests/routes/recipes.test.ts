@@ -29,7 +29,8 @@ let database: KnexDatabase;
 let app: Express;
 
 beforeEach(async () => {
-    [app, database] = await createTestApp();
+    database = await db.transaction();
+    app = createTestApp({ database });
 });
 
 afterEach(async () => {

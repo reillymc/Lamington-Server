@@ -3,6 +3,7 @@ import { expect } from "expect";
 import type { Express } from "express";
 import jwt from "jsonwebtoken";
 import request from "supertest";
+import { DefaultAppMiddleware } from "../../src/appDependencies.ts";
 import config from "../../src/config.ts";
 import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
@@ -18,7 +19,8 @@ let database: KnexDatabase;
 let app: Express;
 
 beforeEach(async () => {
-    [app, database] = await createTestApp();
+    database = await db.transaction();
+    app = createTestApp({ database });
 });
 
 afterEach(async () => {
@@ -30,6 +32,29 @@ after(async () => {
 });
 
 describe("Login a user", () => {
+    it("login respect restrictive rate limit", async () => {
+        // Setup app without test rate limiter overrides
+        app = createTestApp({ database, middleware: DefaultAppMiddleware() });
+
+        const [user] = await CreateUsers(database);
+
+        const requestBody: components["schemas"]["AuthLogin"] = {
+            email: user!.email,
+            password: user!.password,
+        };
+
+        // Exceed rate limit
+        for (let i = 0; i < 5; i++) {
+            const res = await request(app)
+                .post("/v1/auth/login")
+                .send(requestBody);
+            expect(res.statusCode).not.toEqual(429);
+        }
+
+        const res = await request(app).post("/v1/auth/login").send(requestBody);
+        expect(res.statusCode).toEqual(429);
+    });
+
     it("should fail login with invalid email", async () => {
         const [user] = await CreateUsers(database);
 
@@ -126,6 +151,31 @@ describe("Login a user", () => {
 });
 
 describe("Register a new user", () => {
+    it("login respect restrictive rate limit", async () => {
+        // Setup app without test rate limiter overrides
+        app = createTestApp({ database, middleware: DefaultAppMiddleware() });
+
+        const requestBody: components["schemas"]["AuthRegister"] = {
+            email: "test@example.com",
+            firstName: "Test",
+            lastName: "User",
+            password: "secure_password",
+        };
+
+        // Exceed rate limit
+        for (let i = 0; i < 5; i++) {
+            const res = await request(app)
+                .post("/v1/auth/register")
+                .send(requestBody);
+            expect(res.statusCode).not.toEqual(429);
+        }
+
+        const res = await request(app)
+            .post("/v1/auth/register")
+            .send({ ...requestBody, email: "final@example.com" });
+        expect(res.statusCode).toEqual(429);
+    });
+
     it("should fail register missing password", async () => {
         const requestBody: Partial<components["schemas"]["AuthRegister"]> = {
             email: "user@email.com",
@@ -283,6 +333,26 @@ describe("Refresh authentication token", () => {
             expiresIn: "5m",
         });
     };
+
+    it("login respect restrictive rate limit", async () => {
+        // Setup app without test rate limiter overrides
+        app = createTestApp({ database, middleware: DefaultAppMiddleware() });
+
+        const requestBody = { refreshToken: "some-token" };
+
+        // Exceed rate limit
+        for (let i = 0; i < 5; i++) {
+            const res = await request(app)
+                .post("/v1/auth/refresh")
+                .send(requestBody);
+            expect(res.statusCode).not.toEqual(429);
+        }
+
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send(requestBody);
+        expect(res.statusCode).toEqual(429);
+    });
 
     it("should refresh tokens with a valid refresh token", async () => {
         const [user] = await CreateUsers(database);

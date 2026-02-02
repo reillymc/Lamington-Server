@@ -63,6 +63,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /attachments/image/{attachmentPath}/{userId}/{attachmentId}:
@@ -99,6 +101,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         404:
           $ref: "#/components/responses/NotFound"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /assets/ingredients.json:
@@ -116,6 +120,8 @@ paths:
                 type: array
                 items:
                   type: string
+        429:
+          $ref: "#/components/responses/TooManyRequests"
   /tags:
     get:
       tags:
@@ -133,6 +139,8 @@ paths:
                   $ref: "#/components/schemas/TagGroup"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /recipes:
@@ -186,6 +194,8 @@ paths:
                   - recipes
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -210,6 +220,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /recipes/{recipeId}:
@@ -235,6 +247,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     patch:
@@ -261,6 +275,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -275,6 +291,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /recipes/{recipeId}/rating:
@@ -318,6 +336,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books:
@@ -337,6 +357,8 @@ paths:
                   $ref: "#/components/schemas/Book"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -361,6 +383,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}:
@@ -386,6 +410,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     patch:
@@ -412,6 +438,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -426,6 +454,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/recipes:
@@ -477,6 +507,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -506,6 +538,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/recipes/{recipeId}:
@@ -532,6 +566,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/members:
@@ -559,6 +595,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -581,6 +619,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/members/{userId}:
@@ -619,6 +659,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -633,6 +675,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/invite/accept:
@@ -656,6 +700,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/invite/decline:
@@ -679,6 +725,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/leave:
@@ -702,6 +750,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /auth/register:

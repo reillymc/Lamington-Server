@@ -41,37 +41,12 @@ const parseStatus = (status?: string): ContentMemberStatus | undefined => {
     }
 };
 
-interface CreateContentMemberOptions {
-    trimNotIn?: boolean;
-}
-
 const saveContentMembers = async (
     db: KnexDatabase,
     saveRequests: CreateQuery<SaveContentMemberRequest>,
-    options?: CreateContentMemberOptions,
 ): Promise<SaveContentMemberResponse[]> => {
     const requests = EnsureArray(saveRequests);
     if (!requests.length) return [];
-
-    if (options?.trimNotIn) {
-        await db<ContentMember>(lamington.contentMember)
-            .where((builder) => {
-                for (const { contentId, members = [] } of requests) {
-                    const userIdsToKeep = members.map((m) => m.userId);
-                    // If a book has no members to keep, all its members should be deleted.
-                    if (userIdsToKeep.length === 0) {
-                        builder.orWhere({ contentId });
-                    } else {
-                        builder.orWhere((b) =>
-                            b
-                                .where({ contentId })
-                                .whereNotIn("userId", userIdsToKeep),
-                        );
-                    }
-                }
-            })
-            .delete();
-    }
 
     const allMembersToSave = requests.flatMap(({ contentId, members = [] }) =>
         members.map(({ userId, status }) => ({ contentId, userId, status })),

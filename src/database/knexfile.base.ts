@@ -7,8 +7,7 @@ const config: Knex.Config = {
         directory: "./migrations",
     },
     pool: {
-        min: 2,
-        max: 10,
+        min: 0,
     },
 };
 

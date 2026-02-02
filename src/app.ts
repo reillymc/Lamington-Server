@@ -1,7 +1,6 @@
 import compression from "compression";
 import cors from "cors";
 import express from "express";
-import { middleware } from "express-openapi-validator";
 import helmet from "helmet";
 import { DefaultAppMiddleware, DefaultAppServices } from "./appDependencies.ts";
 import config from "./config.ts";
@@ -11,13 +10,18 @@ import { createAppRouter } from "./routes/index.ts";
 import type { AppServices } from "./services/index.ts";
 
 export interface AppParams {
-    database?: Database;
+    database: Database;
     repositories?: Partial<AppRepositories>;
     services?: Partial<AppServices>;
     middleware?: Partial<AppMiddleware>;
 }
 
-export const setupApp = ({ database, repositories, services }: AppParams) =>
+export const setupApp = ({
+    database,
+    repositories,
+    services,
+    middleware,
+}: AppParams) =>
     express()
         .use(express.json())
         .use(express.urlencoded({ extended: false }))

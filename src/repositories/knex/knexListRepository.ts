@@ -523,9 +523,6 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
                 contentId: listId,
                 members,
             })),
-            {
-                trimNotIn: false,
-            },
         ).then((response) =>
             response.map(({ contentId, members }) => ({
                 listId: contentId,

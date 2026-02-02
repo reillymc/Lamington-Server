@@ -33,6 +33,5 @@ export const createAttachmentsRouter: CreateRouter<
         )
         .use(
             "/attachments/image" satisfies routes,
-            middleware.rateLimiterControlled,
             express.static(config.attachments.localUploadDirectory),
         );

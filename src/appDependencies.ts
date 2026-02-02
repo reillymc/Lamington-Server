@@ -88,5 +88,3 @@ export type AppDependencies = {
     middleware: AppMiddleware;
     services: AppServices;
 };
-
-export type PartialAppDependencies = Partial<AppDependencies>;

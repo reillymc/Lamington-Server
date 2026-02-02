@@ -1,5 +1,5 @@
+import type { Request } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
-
 import config from "../config.ts";
 import type { components } from "../routes/spec/schema.js";
 import { UnauthorizedError, UnknownError } from "./logging.ts";
@@ -13,17 +13,12 @@ const {
 
 type UserStatus = components["schemas"]["UserStatus"];
 
-export interface AuthData {
-    userId: string;
-    status: UserStatus;
-}
-
 export const createAccessToken = (userId: string, status: UserStatus) => {
     if (!jwtSecret) {
         throw new UnknownError("No authentication secret found");
     }
 
-    const payload: AuthData = { userId, status };
+    const payload: Request["session"] = { userId, status };
     return jwt.sign(payload, jwtSecret, {
         noTimestamp: true,
         expiresIn: jwtAccessExpiration as any,
@@ -32,7 +27,7 @@ export const createAccessToken = (userId: string, status: UserStatus) => {
 
 const isAccessToken = (
     decoded: string | undefined | JwtPayload,
-): decoded is AuthData => {
+): decoded is Request["session"] => {
     if (decoded === undefined || typeof decoded === "string") return false;
 
     if ("userId" in decoded) return true;
@@ -51,10 +46,6 @@ export const verifyAccessToken = (token: string | undefined) => {
     }
 
     const decoded = jwt.verify(token, jwtSecret);
-
-    if (typeof decoded === "string") {
-        throw new UnauthorizedError("Invalid Token Structure");
-    }
 
     if (!isAccessToken(decoded)) {
         throw new UnauthorizedError("Invalid Token Structure");

@@ -1,8 +1,9 @@
 import { setupApp } from "./app.ts";
 import config from "./config.ts";
+import db from "./database/index.ts";
 import { logger, printConfig } from "./services/index.ts";
 
-const app = setupApp({});
+const app = setupApp({ database: db });
 
 const server = app.listen(config.app.port, () => {
     printConfig(config);
