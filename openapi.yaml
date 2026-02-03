@@ -67,6 +67,32 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
+  /attachments/image/{filename}:
+    parameters:
+      - name: filename
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Attachments
+      summary: Get an image
+      operationId: getAttachmentImage
+      responses:
+        200:
+          description: Successful response
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/InternalServerError"
   /attachments/image/{attachmentPath}/{userId}/{attachmentId}:
     parameters:
       - name: attachmentPath
@@ -2235,12 +2261,14 @@ components:
           type: string
         source:
           type: string
+          maxLength: 255
         sequence:
           type: integer
         recipeId:
           $ref: "#/components/schemas/Uuid"
         notes:
           type: string
+          maxLength: 255
       dependentRequired:
         plannerId:
           - year
@@ -2559,6 +2587,7 @@ components:
           $ref: "#/components/schemas/ItemAmount"
         notes:
           type: string
+          maxLength: 255
       required:
         - itemId
         - name
@@ -2569,16 +2598,20 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         completed:
           type: boolean
         ingredientId:
           type: string
         unit:
           type: string
+          maxLength: 50
         amount:
           $ref: "#/components/schemas/ItemAmount"
         notes:
           type: string
+          maxLength: 255
       required:
         - name
       unevaluatedProperties: false
@@ -2587,6 +2620,8 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         completed:
           type: boolean
         ingredientId:
@@ -2597,6 +2632,7 @@ components:
           type:
             - string
             - "null"
+          maxLength: 50
         amount:
           oneOf:
             - $ref: "#/components/schemas/ItemAmount"
@@ -2605,6 +2641,7 @@ components:
           type:
             - string
             - "null"
+          maxLength: 255
       unevaluatedProperties: false
     List:
       type: object
@@ -2642,8 +2679,12 @@ components:
           $ref: "#/components/schemas/Uuid"
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         description:
           type: string
+          minLength: 1
+          maxLength: 255
         icon:
           $ref: "#/components/schemas/ListIcon"
       required:
@@ -2654,10 +2695,14 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         description:
           type:
             - string
             - "null"
+          minLength: 1
+          maxLength: 255
         icon:
           $ref: "#/components/schemas/ListIcon"
       unevaluatedProperties: false
@@ -2759,6 +2804,7 @@ components:
           type: string
         source:
           type: string
+          maxLength: 255
         ingredients:
           type: array
           items:
@@ -2841,10 +2887,13 @@ components:
         email:
           type: string
           format: email
+          maxLength: 255
         firstName:
           type: string
+          maxLength: 255
         lastName:
           type: string
+          maxLength: 255
         password:
           $ref: "#/components/schemas/Password"
       required:
@@ -2960,8 +3009,12 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         description:
           type: string
+          minLength: 1
+          maxLength: 255
         color:
           $ref: "#/components/schemas/BookColor"
         icon:
@@ -3001,12 +3054,15 @@ components:
           $ref: "#/components/schemas/ItemAmount"
         description:
           type: string
+          maxLength: 255
         unit:
           type: string
+          maxLength: 50
         multiplier:
           type: number
         name:
           type: string
+          maxLength: 255
       required:
         - id
     RecipeSectionIngredient:
@@ -3016,8 +3072,10 @@ components:
           $ref: "#/components/schemas/Uuid"
         name:
           type: string
+          maxLength: 255
         description:
           type: string
+          maxLength: 255
         items:
           type: array
           items:
@@ -3033,6 +3091,7 @@ components:
           $ref: "#/components/schemas/Uuid"
         description:
           type: string
+          maxLength: 4096
       required:
         - id
     RecipeSectionMethod:
@@ -3042,8 +3101,10 @@ components:
           $ref: "#/components/schemas/Uuid"
         name:
           type: string
+          maxLength: 255
         description:
           type: string
+          maxLength: 255
         items:
           type: array
           items:
@@ -3057,8 +3118,11 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         source:
           type: string
+          maxLength: 255
         ingredients:
           type: array
           items:
@@ -3069,8 +3133,10 @@ components:
             $ref: "#/components/schemas/RecipeSectionMethod"
         summary:
           type: string
+          maxLength: 4096
         tips:
           type: string
+          maxLength: 4096
         rating:
           type: number
         tags:
@@ -3087,6 +3153,7 @@ components:
           type: boolean
         nutritionalInformation:
           type: string
+          maxLength: 4096
         timesCooked:
           type: integer
         photo:
@@ -3104,10 +3171,13 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         source:
           type:
             - string
             - "null"
+          maxLength: 255
         ingredients:
           type:
             - array
@@ -3124,10 +3194,12 @@ components:
           type:
             - string
             - "null"
+          maxLength: 4096
         tips:
           type:
             - string
             - "null"
+          maxLength: 4096
         rating:
           type:
             - number
@@ -3136,6 +3208,7 @@ components:
           type:
             - string
             - "null"
+          maxLength: 4096
         tags:
           type:
             - array
@@ -3177,8 +3250,14 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         description:
-          type: string
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 255
         color:
           $ref: "#/components/schemas/BookColor"
         icon:

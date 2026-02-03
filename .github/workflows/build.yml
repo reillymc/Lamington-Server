@@ -154,7 +154,7 @@ jobs:
             -e ADMIN_ACCOUNT_NAME=admin@lamington.example \
             -e ADMIN_ACCOUNT_PASSWORD=password \
             -e JWT_SECRET=test-secret-key \
-            -e JWT_REFRESH_SECRET=different_secret
+            -e JWT_REFRESH_SECRET=different_secret \
             lamington:ci
 
       - name: Verify healthcheck
