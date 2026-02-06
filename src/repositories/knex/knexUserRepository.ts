@@ -119,17 +119,7 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
                 .insert(usersToCreate)
                 .returning("*");
 
-            return {
-                users: createdUsers.map((u) => ({
-                    userId: u.userId,
-                    firstName: u.firstName,
-                    lastName: u.lastName,
-                    email: u.email,
-                    status: u.status,
-                    createdAt: u.createdAt,
-                    password: u.password,
-                })),
-            };
+            return { users: createdUsers };
         } catch (error) {
             if (isUniqueViolation(error)) {
                 throw new UniqueViolationError(error);

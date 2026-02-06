@@ -3,35 +3,35 @@ import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
-
-import { setupApp } from "../../src/app.ts";
 import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
+import { createTestApp } from "../helpers/setup.ts";
 
 const randomIcon = () =>
     (["variant1", "variant2", "variant3"] as const)[
         Math.floor(Math.random() * 3)
     ];
 
+let database: KnexDatabase;
+let app: Express;
+
+beforeEach(async () => {
+    database = await db.transaction();
+    app = createTestApp({ database });
+});
+
+afterEach(async () => {
+    await database.rollback();
+});
+
 after(async () => {
     await db.destroy();
 });
 
 describe("Get user lists", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
     it("should require authentication", async () => {
         const res = await request(app).get("/v1/lists");
         expect(res.statusCode).toEqual(401);
@@ -138,18 +138,6 @@ describe("Get user lists", () => {
 });
 
 describe("Create a list", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).post("/v1/lists");
         expect(res.statusCode).toEqual(401);
@@ -204,18 +192,6 @@ describe("Create a list", () => {
 });
 
 describe("Get a list", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).get(`/v1/lists/${uuid()}`);
         expect(res.statusCode).toEqual(401);
@@ -327,18 +303,6 @@ describe("Get a list", () => {
 });
 
 describe("Update a list", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).patch(`/v1/lists/${uuid()}`);
         expect(res.statusCode).toEqual(401);
@@ -464,18 +428,6 @@ describe("Update a list", () => {
 });
 
 describe("Delete a list", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).delete(`/v1/lists/${uuid()}`);
         expect(res.statusCode).toEqual(401);
@@ -553,18 +505,6 @@ describe("Delete a list", () => {
 });
 
 describe("Get list items", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).get(`/v1/lists/${uuid()}/items`);
         expect(res.statusCode).toEqual(401);
@@ -664,18 +604,6 @@ describe("Get list items", () => {
 });
 
 describe("Add item to list", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).post(`/v1/lists/${uuid()}/items`);
         expect(res.statusCode).toEqual(401);
@@ -831,18 +759,6 @@ describe("Add item to list", () => {
 });
 
 describe("Update list item", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).patch(
             `/v1/lists/${uuid()}/items/${uuid()}`,
@@ -1060,18 +976,6 @@ describe("Update list item", () => {
 });
 
 describe("Delete list item", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).delete(
             `/v1/lists/${uuid()}/items/${uuid()}`,
@@ -1211,18 +1115,6 @@ describe("Delete list item", () => {
 });
 
 describe("Get list members", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).get(`/v1/lists/${uuid()}/members`);
         expect(res.statusCode).toEqual(401);
@@ -1281,18 +1173,6 @@ describe("Get list members", () => {
 });
 
 describe("Invite member to list", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).post(`/v1/lists/${uuid()}/members`);
         expect(res.statusCode).toEqual(401);
@@ -1420,18 +1300,6 @@ describe("Invite member to list", () => {
 });
 
 describe("Update list member", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).patch(
             `/v1/lists/${uuid()}/members/${uuid()}`,
@@ -1609,18 +1477,6 @@ describe("Update list member", () => {
 });
 
 describe("Remove member from list", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).delete(
             `/v1/lists/${uuid()}/members/${uuid()}`,
@@ -1689,18 +1545,6 @@ describe("Remove member from list", () => {
 });
 
 describe("Accept list invitation", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).post(
             `/v1/lists/${uuid()}/invite/accept`,
@@ -1764,18 +1608,6 @@ describe("Accept list invitation", () => {
 });
 
 describe("Decline list invitation", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).post(
             `/v1/lists/${uuid()}/invite/decline`,
@@ -1839,18 +1671,6 @@ describe("Decline list invitation", () => {
 });
 
 describe("Leave list", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).post(`/v1/lists/${uuid()}/leave`);
         expect(res.statusCode).toEqual(401);
@@ -1927,18 +1747,6 @@ describe("Leave list", () => {
 });
 
 describe("Move list items to another list", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).post(`/v1/lists/${uuid()}/items/move`);
         expect(res.statusCode).toEqual(401);

@@ -1,4 +1,4 @@
-import { EnsureArray, Undefined } from "../../../utils/index.ts";
+import { EnsureArray } from "../../../utils/index.ts";
 import type { Attachment } from "../../attachmentRepository.ts";
 import type { ContentAttachment } from "../../temp.ts";
 import type { KnexDatabase } from "../knex.ts";
@@ -20,14 +20,9 @@ type SaveContentAttachmentRequest = Pick<ContentAttachment, "contentId"> & {
     }>;
 };
 
-export interface CreateContentAttachmentOptions {
-    trimNotIn?: boolean;
-}
-
 const saveContentAttachments = async (
     db: KnexDatabase,
     saveRequests: CreateQuery<SaveContentAttachmentRequest>,
-    options?: CreateContentAttachmentOptions,
 ) => {
     for (const { attachments = [], contentId } of EnsureArray(saveRequests)) {
         const data = attachments.map(
@@ -39,20 +34,6 @@ const saveContentAttachments = async (
                 contentId,
             }),
         );
-
-        if (options?.trimNotIn) {
-            const _res = await db<ContentAttachment>(
-                lamington.contentAttachment,
-            )
-                .where({ contentId })
-                .whereNotIn(
-                    ContentAttachmentTable.attachmentId,
-                    data
-                        .map(({ attachmentId }) => attachmentId)
-                        .filter(Undefined),
-                )
-                .delete();
-        }
 
         if (!data.length) return;
 

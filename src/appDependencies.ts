@@ -1,6 +1,15 @@
 import config from "./config.ts";
 import db from "./database/index.ts";
-
+import { createErrorHandlerMiddleware } from "./middleware/errorHandler.ts";
+import type { AppMiddleware } from "./middleware/index.ts";
+import { createLoggerMiddleware } from "./middleware/logger.ts";
+import { createNotFoundMiddleware } from "./middleware/notFound.ts";
+import {
+    createRateLimiterControlled,
+    createRateLimiterLoose,
+    createRateLimiterRestrictive,
+} from "./middleware/rateLimiters.ts";
+import { createValidatorMiddleware } from "./middleware/validator.ts";
 import { DiskFileRepository } from "./repositories/disk/diskFileRepository.ts";
 import type { AppRepositories, Database } from "./repositories/index.ts";
 import { KnexAttachmentRepository } from "./repositories/knex/knexAttachmentRepository.ts";
@@ -65,6 +74,17 @@ export const DefaultAppServices = (
     };
 };
 
-export type AppDependencies = AppServices;
+export const DefaultAppMiddleware = (): AppMiddleware => ({
+    rateLimiterControlled: createRateLimiterControlled(),
+    rateLimiterLoose: createRateLimiterLoose(),
+    rateLimiterRestrictive: createRateLimiterRestrictive(),
+    validator: createValidatorMiddleware(),
+    errorHandler: createErrorHandlerMiddleware(),
+    logger: createLoggerMiddleware(),
+    notFound: createNotFoundMiddleware(),
+});
 
-export type PartialAppDependencies = Partial<AppDependencies>;
+export type AppDependencies = {
+    middleware: AppMiddleware;
+    services: AppServices;
+};

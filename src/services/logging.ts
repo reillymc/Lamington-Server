@@ -115,11 +115,12 @@ export class InvalidOperationError extends AppError {
 }
 
 export class UnauthorizedError extends AppError {
-    constructor(reason?: string) {
+    constructor(reason?: string, innerError?: unknown) {
         super({
             status: 401,
             code: "UNAUTHORIZED",
             message: reason,
+            innerError,
         });
     }
 }

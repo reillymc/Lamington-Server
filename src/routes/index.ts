@@ -1,11 +1,4 @@
 import express from "express";
-import {
-    createAuthenticationMiddleware,
-    errorMiddleware,
-    loggerMiddleware,
-    notFoundMiddleware,
-} from "../middleware/index.ts";
-import { validationMiddleware } from "../middleware/validator.ts";
 import { createAssetsRouter } from "./assets.ts";
 import { createAttachmentsRouter } from "./attachments.ts";
 import { createAuthRouter } from "./auth.ts";
@@ -33,21 +26,28 @@ export const createAppRouter: CreateRouter<
     | "mealService"
     | "plannerService"
     | "recipeService"
-    | "tagService"
-> = (services) =>
+    | "tagService",
+    | "rateLimiterControlled"
+    | "rateLimiterLoose"
+    | "rateLimiterRestrictive"
+    | "validator"
+    | "logger"
+    | "errorHandler"
+    | "notFound"
+> = (services, middleware) =>
     express
         .Router()
-        .use(loggerMiddleware)
-        .use("/health", createHealthRouter({}))
+        .use(middleware.logger)
+        .use("/health", createHealthRouter())
         .use(
             "/v1",
             express
                 .Router()
-                .use(createAuthRouter(services))
-                .use(createAuthenticationMiddleware(services))
-                .use(validationMiddleware)
-                .use(createAssetsRouter({}))
-                .use(createAttachmentsRouter(services))
+                .use(middleware.rateLimiterLoose)
+                .use(middleware.validator)
+                .use(createAuthRouter(services, middleware))
+                .use(createAssetsRouter())
+                .use(createAttachmentsRouter(services, middleware))
                 .use(createBookRouter(services))
                 .use(createCooklistRouter(services))
                 .use(createExtractorRouter(services))
@@ -59,6 +59,6 @@ export const createAppRouter: CreateRouter<
                 .use(createTagsRouter(services))
                 .use(createUserRouter(services)),
         )
-        .use("/", createDocsRouter({}))
-        .use(notFoundMiddleware)
-        .use(errorMiddleware);
+        .use("/", createDocsRouter())
+        .use(middleware.notFound)
+        .use(middleware.errorHandler);

@@ -2,8 +2,7 @@ import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
-
-import { setupApp } from "../../src/app.ts";
+import { DefaultAppMiddleware } from "../../src/appDependencies.ts";
 import db from "../../src/database/index.ts";
 import type { AttachmentRepository } from "../../src/repositories/attachmentRepository.ts";
 import type { FileRepository } from "../../src/repositories/fileRepository.ts";
@@ -11,6 +10,7 @@ import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { readAllAttachments } from "../helpers/attachment.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
+import { createTestApp } from "../helpers/setup.ts";
 
 const MockSuccessfulFileRepository: FileRepository = {
     create: mock.fn(async () => true),
@@ -31,24 +31,27 @@ const MockFailingAttachmentRepository: AttachmentRepository = {
     },
 };
 
+let database: KnexDatabase;
+let app: Express;
+
+beforeEach(async () => {
+    database = await db.transaction();
+    app = createTestApp({
+        database,
+        repositories: { fileRepository: MockSuccessfulFileRepository },
+    });
+});
+
+afterEach(async () => {
+    await database.rollback();
+});
+
 after(async () => {
     await db.destroy();
 });
 
 describe("Upload an image", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({
-            database,
-            repositories: { fileRepository: MockSuccessfulFileRepository },
-        });
-    });
-
     afterEach(async () => {
-        await database.rollback();
         mock.reset();
     });
 
@@ -58,6 +61,34 @@ describe("Upload an image", () => {
             .attach("image", "tests/testAttachment.jpg");
 
         expect(res.statusCode).toEqual(401);
+    });
+
+    it("should respect controlled rate limit", async () => {
+        // Setup app without test rate limiter overrides
+        app = createTestApp({
+            database,
+            repositories: { fileRepository: MockSuccessfulFileRepository },
+            middleware: DefaultAppMiddleware(),
+        });
+
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        // Exceed rate limit
+        for (let i = 0; i < 20; i++) {
+            const res = await request(app)
+                .post("/v1/attachments/image")
+                .set(token)
+                .attach("image", "tests/testAttachment.jpg");
+
+            expect(res.statusCode).not.toEqual(429);
+        }
+
+        const res = await request(app)
+            .post("/v1/attachments/image")
+            .set(token)
+            .attach("image", "tests/testAttachment.jpg");
+
+        expect(res.statusCode).toEqual(429);
     });
 
     it("should fail when no file is provided", async () => {
@@ -91,10 +122,11 @@ describe("Upload an image", () => {
     });
 
     it("should not save to db when upload fails", async () => {
-        app = setupApp({
+        app = createTestApp({
             database,
             repositories: { fileRepository: MockFailingFileRepository },
         });
+
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
@@ -111,7 +143,8 @@ describe("Upload an image", () => {
 
     it("should not upload when save to db fails", async () => {
         const mockCreate = mock.fn(async () => true);
-        app = setupApp({
+
+        app = createTestApp({
             database,
             repositories: {
                 attachmentRepository: MockFailingAttachmentRepository,
@@ -136,18 +169,6 @@ describe("Upload an image", () => {
 });
 
 describe("Get an image", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = setupApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
     it("should require authentication", async () => {
         const res = await request(app).get(
             "/v1/attachments/image/test/test/test",

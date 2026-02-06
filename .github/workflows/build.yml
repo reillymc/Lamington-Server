@@ -50,7 +50,7 @@ jobs:
       DB_TEST_NAME: lamingtondb
       DB_PORT: 5432
       JWT_SECRET: test-secret-key
-      JWT_EXPIRATION: 365d
+      JWT_REFRESH_SECRET: different_secret
     services:
       postgres:
         image: postgres:16.4
@@ -154,6 +154,7 @@ jobs:
             -e ADMIN_ACCOUNT_NAME=admin@lamington.example \
             -e ADMIN_ACCOUNT_PASSWORD=password \
             -e JWT_SECRET=test-secret-key \
+            -e JWT_REFRESH_SECRET=different_secret \
             lamington:ci
 
       - name: Verify healthcheck

@@ -5,6 +5,8 @@ info:
 servers:
   - url: http://localhost:3000/v1
 tags:
+  - name: Auth
+    description: Authentication operations
   - name: Meals
     description: Meal planning operations
   - name: Books
@@ -29,8 +31,6 @@ tags:
     description: User management operations
   - name: Profile
     description: User profile operations
-  - name: Auth
-    description: Authentication operations
 security:
   - bearerAuth: []
 paths:
@@ -63,6 +63,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /attachments/image/{attachmentPath}/{userId}/{attachmentId}:
@@ -99,6 +101,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         404:
           $ref: "#/components/responses/NotFound"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /assets/ingredients.json:
@@ -116,6 +120,8 @@ paths:
                 type: array
                 items:
                   type: string
+        429:
+          $ref: "#/components/responses/TooManyRequests"
   /tags:
     get:
       tags:
@@ -133,6 +139,8 @@ paths:
                   $ref: "#/components/schemas/TagGroup"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /recipes:
@@ -186,6 +194,8 @@ paths:
                   - recipes
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -210,6 +220,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /recipes/{recipeId}:
@@ -235,6 +247,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     patch:
@@ -261,6 +275,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -275,6 +291,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /recipes/{recipeId}/rating:
@@ -318,6 +336,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books:
@@ -337,6 +357,8 @@ paths:
                   $ref: "#/components/schemas/Book"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -361,6 +383,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}:
@@ -386,6 +410,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     patch:
@@ -412,6 +438,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -426,6 +454,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/recipes:
@@ -477,6 +507,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -506,6 +538,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/recipes/{recipeId}:
@@ -532,6 +566,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/members:
@@ -559,6 +595,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -581,6 +619,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/members/{userId}:
@@ -619,6 +659,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -633,6 +675,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/invite/accept:
@@ -656,6 +700,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/invite/decline:
@@ -679,6 +725,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /books/{bookId}/leave:
@@ -702,6 +750,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /auth/register:
@@ -710,6 +760,7 @@ paths:
         - Auth
       summary: Register a new user
       operationId: registerUser
+      security: []
       requestBody:
         required: true
         content:
@@ -727,6 +778,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /auth/login:
@@ -735,6 +788,7 @@ paths:
         - Auth
       summary: Login a user
       operationId: loginUser
+      security: []
       requestBody:
         required: true
         content:
@@ -750,6 +804,39 @@ paths:
                 $ref: "#/components/schemas/AuthResponse"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Refresh authentication token
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+              required:
+                - refreshToken
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /cooklist/meals:
@@ -769,6 +856,8 @@ paths:
                   $ref: "#/components/schemas/CookListMeal"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -801,6 +890,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /cooklist/meals/{mealId}:
@@ -822,6 +913,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     patch:
@@ -848,6 +941,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /meals/{mealId}:
@@ -873,6 +968,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners:
@@ -892,6 +989,8 @@ paths:
                   $ref: "#/components/schemas/Planner"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -916,6 +1015,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}:
@@ -943,6 +1044,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     patch:
@@ -967,6 +1070,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -981,6 +1086,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/meals:
@@ -1022,6 +1129,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/meals/{year}/{month}:
@@ -1059,6 +1168,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/meals/{mealId}:
@@ -1097,6 +1208,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -1113,6 +1226,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/members:
@@ -1140,6 +1255,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -1162,6 +1279,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/members/{userId}:
@@ -1190,6 +1309,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     patch:
@@ -1216,6 +1337,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/invite/accept:
@@ -1239,6 +1362,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/invite/decline:
@@ -1262,6 +1387,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /planners/{plannerId}/leave:
@@ -1285,6 +1412,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists:
@@ -1304,6 +1433,8 @@ paths:
                   $ref: "#/components/schemas/ListSummary"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -1328,6 +1459,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}:
@@ -1353,6 +1486,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     patch:
@@ -1377,6 +1512,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -1391,6 +1528,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/items:
@@ -1418,6 +1557,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -1450,6 +1591,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/items/{itemId}:
@@ -1486,6 +1629,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -1502,6 +1647,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/items/move:
@@ -1550,6 +1697,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         404:
           $ref: "#/components/responses/NotFound"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/members:
@@ -1577,6 +1726,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -1599,6 +1750,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         404:
           $ref: "#/components/responses/NotFound"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/members/{userId}:
@@ -1637,6 +1790,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -1651,6 +1806,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/invite/accept:
@@ -1672,6 +1829,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/invite/decline:
@@ -1693,6 +1852,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /lists/{listId}/leave:
@@ -1714,6 +1875,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /extractor/recipeMetadata:
@@ -1740,6 +1903,8 @@ paths:
                 $ref: "#/components/schemas/ExtractedRecipeMetadata"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /extractor/recipe:
@@ -1766,6 +1931,8 @@ paths:
                 $ref: "#/components/schemas/ExtractedRecipe"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /profile:
@@ -1783,6 +1950,8 @@ paths:
                 $ref: "#/components/schemas/User"
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
     delete:
@@ -1795,6 +1964,8 @@ paths:
           description: No Content
         401:
           $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /users:
@@ -1823,6 +1994,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         403:
           $ref: "#/components/responses/Forbidden"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /users/{userId}:
@@ -1844,6 +2017,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         403:
           $ref: "#/components/responses/Forbidden"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /users/{userId}/approve:
@@ -1867,6 +2042,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         404:
           $ref: "#/components/responses/NotFound"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
   /users/{userId}/blacklist:
@@ -1890,6 +2067,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         404:
           $ref: "#/components/responses/NotFound"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
 components:
@@ -1919,6 +2098,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     Forbidden:
       description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    TooManyRequests:
+      description: Too Many Requests
       content:
         application/json:
           schema:
@@ -2050,12 +2235,14 @@ components:
           type: string
         source:
           type: string
+          maxLength: 255
         sequence:
           type: integer
         recipeId:
           $ref: "#/components/schemas/Uuid"
         notes:
           type: string
+          maxLength: 255
       dependentRequired:
         plannerId:
           - year
@@ -2374,6 +2561,7 @@ components:
           $ref: "#/components/schemas/ItemAmount"
         notes:
           type: string
+          maxLength: 255
       required:
         - itemId
         - name
@@ -2384,16 +2572,20 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         completed:
           type: boolean
         ingredientId:
           type: string
         unit:
           type: string
+          maxLength: 50
         amount:
           $ref: "#/components/schemas/ItemAmount"
         notes:
           type: string
+          maxLength: 255
       required:
         - name
       unevaluatedProperties: false
@@ -2402,6 +2594,8 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         completed:
           type: boolean
         ingredientId:
@@ -2412,6 +2606,7 @@ components:
           type:
             - string
             - "null"
+          maxLength: 50
         amount:
           oneOf:
             - $ref: "#/components/schemas/ItemAmount"
@@ -2420,6 +2615,7 @@ components:
           type:
             - string
             - "null"
+          maxLength: 255
       unevaluatedProperties: false
     List:
       type: object
@@ -2457,8 +2653,12 @@ components:
           $ref: "#/components/schemas/Uuid"
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         description:
           type: string
+          minLength: 1
+          maxLength: 255
         icon:
           $ref: "#/components/schemas/ListIcon"
       required:
@@ -2469,10 +2669,14 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         description:
           type:
             - string
             - "null"
+          minLength: 1
+          maxLength: 255
         icon:
           $ref: "#/components/schemas/ListIcon"
       unevaluatedProperties: false
@@ -2574,6 +2778,7 @@ components:
           type: string
         source:
           type: string
+          maxLength: 255
         ingredients:
           type: array
           items:
@@ -2646,18 +2851,25 @@ components:
       required:
         - attachmentId
         - uri
+    Password:
+      type: string
+      minLength: 12
+      maxLength: 128
     AuthRegister:
       type: object
       properties:
         email:
           type: string
           format: email
+          maxLength: 255
         firstName:
           type: string
+          maxLength: 255
         lastName:
           type: string
+          maxLength: 255
         password:
-          type: string
+          $ref: "#/components/schemas/Password"
       required:
         - email
         - firstName
@@ -2670,7 +2882,7 @@ components:
           type: string
           format: email
         password:
-          type: string
+          $ref: "#/components/schemas/Password"
       required:
         - email
         - password
@@ -2680,13 +2892,13 @@ components:
         authorization:
           type: object
           properties:
-            token:
+            access:
               type: string
-            tokenType:
+            refresh:
               type: string
           required:
-            - token
-            - tokenType
+            - access
+            - refresh
         user:
           type: object
           properties:
@@ -2771,8 +2983,12 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         description:
           type: string
+          minLength: 1
+          maxLength: 255
         color:
           $ref: "#/components/schemas/BookColor"
         icon:
@@ -2812,12 +3028,15 @@ components:
           $ref: "#/components/schemas/ItemAmount"
         description:
           type: string
+          maxLength: 255
         unit:
           type: string
+          maxLength: 50
         multiplier:
           type: number
         name:
           type: string
+          maxLength: 255
       required:
         - id
     RecipeSectionIngredient:
@@ -2827,8 +3046,10 @@ components:
           $ref: "#/components/schemas/Uuid"
         name:
           type: string
+          maxLength: 255
         description:
           type: string
+          maxLength: 255
         items:
           type: array
           items:
@@ -2844,6 +3065,7 @@ components:
           $ref: "#/components/schemas/Uuid"
         description:
           type: string
+          maxLength: 4096
       required:
         - id
     RecipeSectionMethod:
@@ -2853,8 +3075,10 @@ components:
           $ref: "#/components/schemas/Uuid"
         name:
           type: string
+          maxLength: 255
         description:
           type: string
+          maxLength: 255
         items:
           type: array
           items:
@@ -2868,8 +3092,11 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         source:
           type: string
+          maxLength: 255
         ingredients:
           type: array
           items:
@@ -2880,8 +3107,10 @@ components:
             $ref: "#/components/schemas/RecipeSectionMethod"
         summary:
           type: string
+          maxLength: 4096
         tips:
           type: string
+          maxLength: 4096
         rating:
           type: number
         tags:
@@ -2898,6 +3127,7 @@ components:
           type: boolean
         nutritionalInformation:
           type: string
+          maxLength: 4096
         timesCooked:
           type: integer
         photo:
@@ -2915,10 +3145,13 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         source:
           type:
             - string
             - "null"
+          maxLength: 255
         ingredients:
           type:
             - array
@@ -2935,10 +3168,12 @@ components:
           type:
             - string
             - "null"
+          maxLength: 4096
         tips:
           type:
             - string
             - "null"
+          maxLength: 4096
         rating:
           type:
             - number
@@ -2947,6 +3182,7 @@ components:
           type:
             - string
             - "null"
+          maxLength: 4096
         tags:
           type:
             - array
@@ -2988,8 +3224,14 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
         description:
-          type: string
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 255
         color:
           $ref: "#/components/schemas/BookColor"
         icon:

@@ -1,6 +1,6 @@
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { components } from "../../src/routes/spec/index.ts";
-import { createToken } from "../../src/services/index.ts";
+import { createAccessToken } from "../../src/services/index.ts";
 import { CreateUsers } from "./database.ts";
 
 export const PrepareAuthenticatedUser = async (
@@ -9,7 +9,7 @@ export const PrepareAuthenticatedUser = async (
 ) => {
     const [user] = await CreateUsers(database, { status });
 
-    const token = createToken(user!.userId);
+    const token = createAccessToken(user!.userId, status);
 
     return [{ Authorization: `Bearer ${token}` }, user!] as const;
 };

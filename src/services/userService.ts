@@ -4,11 +4,13 @@ import { UniqueViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
 import {
     CreatedDataFetchError,
-    createToken,
+    createAccessToken,
+    createRefreshToken,
     InvalidOperationError,
     NotFoundError,
     PermissionError,
     UnauthorizedError,
+    verifyRefreshToken,
 } from "./index.ts";
 import type { CreateService } from "./service.ts";
 
@@ -50,6 +52,9 @@ export interface UserService {
     register(
         user: components["schemas"]["AuthRegister"],
     ): Promise<components["schemas"]["AuthRegisterResponse"]>;
+    refresh(
+        refreshToken: string,
+    ): Promise<components["schemas"]["AuthResponse"]>;
 }
 
 export const createUserService: CreateService<
@@ -328,17 +333,21 @@ export const createUserService: CreateService<
         }
 
         const userPending = user.status === "P";
-        const token = !userPending ? createToken(user.userId) : undefined;
-        const message = userPending ? "Account is pending approval" : undefined;
+        const userBlacklisted = user.status === "B";
 
         return {
-            authorization: token ? { token, tokenType: "Bearer" } : undefined,
+            authorization: !userBlacklisted
+                ? {
+                      access: createAccessToken(user.userId, user.status),
+                      refresh: createRefreshToken(user.userId),
+                  }
+                : undefined,
             user: {
                 userId: user.userId,
                 email: user.email,
                 status: user.status,
             },
-            message,
+            message: userPending ? "Account is pending approval" : undefined,
         };
     },
     readCredentials: async (filter) => {
@@ -346,5 +355,38 @@ export const createUserService: CreateService<
             users: [filter],
         });
         return users;
+    },
+    refresh: async (refreshToken) => {
+        let userId: string;
+        try {
+            const decoded = verifyRefreshToken(refreshToken);
+            userId = decoded.userId;
+        } catch (error) {
+            throw new UnauthorizedError("Invalid Refresh Token", error);
+        }
+
+        const {
+            users: [user],
+        } = await userRepository.read(database, { users: [{ userId }] });
+
+        if (!user) {
+            throw new UnauthorizedError("User not found");
+        }
+
+        if (user.status === "B" || user.status === "P") {
+            throw new UnauthorizedError("User account access denied");
+        }
+
+        return {
+            authorization: {
+                access: createAccessToken(user.userId, user.status),
+                refresh: createRefreshToken(user.userId),
+            },
+            user: {
+                userId: user.userId,
+                email: user.email,
+                status: user.status,
+            },
+        };
     },
 });

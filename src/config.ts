@@ -32,11 +32,13 @@ const config: LamingtonConfig = {
         logDetail: parseLogLevel(process.env.LOG_LEVEL),
         pageSize: parseInt(process.env.PAGE_SIZE ?? "50", 10),
         externalHost: process.env.EXTERNAL_HOST,
+        allowedOrigin: process.env.CORS_ALLOWED_ORIGIN,
     },
     authentication: {
         jwtSecret: process.env.JWT_SECRET,
-        // TODO: handle string to ms.StringValue | number safely
-        jwtExpiration: process.env.JWT_EXPIRATION,
+        jwtAccessExpiration: process.env.JWT_ACCESS_EXPIRATION ?? "15m",
+        jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
+        jwtRefreshExpiration: process.env.JWT_REFRESH_EXPIRATION ?? "7d",
     },
     attachments: {
         storageService: parseAttachmentStorage(
@@ -57,10 +59,13 @@ export interface LamingtonConfig {
         logDetail: "tiny" | "short" | "dev";
         pageSize: number;
         externalHost: string | undefined;
+        allowedOrigin: string | undefined;
     };
     authentication: {
         jwtSecret: string | undefined;
-        jwtExpiration: string | undefined;
+        jwtAccessExpiration: string;
+        jwtRefreshSecret: string | undefined;
+        jwtRefreshExpiration: string;
     };
     attachments: {
         storageService: "local" | "s3";

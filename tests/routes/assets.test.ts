@@ -2,11 +2,10 @@ import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
-
-import { setupApp } from "../../src/app.ts";
 import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
+import { createTestApp } from "../helpers/setup.ts";
 
 after(async () => {
     await db.destroy();
@@ -18,7 +17,7 @@ describe("Get preset ingredients", () => {
 
     beforeEach(async () => {
         database = await db.transaction();
-        app = setupApp({ database });
+        app = createTestApp({ database });
     });
 
     afterEach(async () => {

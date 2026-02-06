@@ -1,9 +1,11 @@
-import type { RequestHandler } from "express";
 import morgan from "morgan";
 import { logger } from "../services/index.ts";
+import type { CreateMiddleware } from "./middleware.ts";
 
-export const loggerMiddleware: RequestHandler = morgan("dev", {
-    stream: {
-        write: (message) => logger.http(message.trim()),
-    },
-});
+export const createLoggerMiddleware: CreateMiddleware = () => [
+    morgan("dev", {
+        stream: {
+            write: (message) => logger.http(message.trim()),
+        },
+    }),
+];

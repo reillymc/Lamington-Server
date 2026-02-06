@@ -532,9 +532,6 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
                 contentId: plannerId,
                 members,
             })),
-            {
-                trimNotIn: false,
-            },
         ).then((response) =>
             response.map(({ contentId, members }) => ({
                 plannerId: contentId,
