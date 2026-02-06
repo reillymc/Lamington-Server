@@ -44,12 +44,13 @@ describe("Login a user", () => {
         };
 
         // Exceed rate limit
-        for (let i = 0; i < 5; i++) {
-            const res = await request(app)
-                .post("/v1/auth/login")
-                .send(requestBody);
-            expect(res.statusCode).not.toEqual(429);
-        }
+        const responses = await Promise.all(
+            Array.from({ length: 5 }).map(() =>
+                request(app).post("/v1/auth/login").send(requestBody),
+            ),
+        );
+
+        responses.map(({ statusCode }) => expect(statusCode).not.toEqual(429));
 
         const res = await request(app).post("/v1/auth/login").send(requestBody);
         expect(res.statusCode).toEqual(429);
@@ -163,12 +164,13 @@ describe("Register a new user", () => {
         };
 
         // Exceed rate limit
-        for (let i = 0; i < 5; i++) {
-            const res = await request(app)
-                .post("/v1/auth/register")
-                .send(requestBody);
-            expect(res.statusCode).not.toEqual(429);
-        }
+        const responses = await Promise.all(
+            Array.from({ length: 5 }).map(() =>
+                request(app).post("/v1/auth/register").send(requestBody),
+            ),
+        );
+
+        responses.map(({ statusCode }) => expect(statusCode).not.toEqual(429));
 
         const res = await request(app)
             .post("/v1/auth/register")
@@ -341,12 +343,13 @@ describe("Refresh authentication token", () => {
         const requestBody = { refreshToken: "some-token" };
 
         // Exceed rate limit
-        for (let i = 0; i < 5; i++) {
-            const res = await request(app)
-                .post("/v1/auth/refresh")
-                .send(requestBody);
-            expect(res.statusCode).not.toEqual(429);
-        }
+        const responses = await Promise.all(
+            Array.from({ length: 5 }).map(() =>
+                request(app).post("/v1/auth/refresh").send(requestBody),
+            ),
+        );
+
+        responses.map(({ statusCode }) => expect(statusCode).not.toEqual(429));
 
         const res = await request(app)
             .post("/v1/auth/refresh")

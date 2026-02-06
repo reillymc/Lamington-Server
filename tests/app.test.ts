@@ -108,10 +108,11 @@ describe("Rate Limiter Middleware", () => {
         app = createTestApp({ database, middleware: DefaultAppMiddleware() });
 
         // Exceed rate limit for general endpoints
-        for (let i = 0; i < 100; i++) {
-            const res = await request(app).get("/v1/planners");
-            expect(res.statusCode).not.toEqual(429);
-        }
+        const responses = await Promise.all(
+            Array.from({ length: 100 }).map(() => request(app).get("/v1")),
+        );
+
+        responses.map(({ statusCode }) => expect(statusCode).not.toEqual(429));
     });
 
     after(async () => {

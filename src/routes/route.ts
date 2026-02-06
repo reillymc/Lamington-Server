@@ -1,14 +1,15 @@
 import type { Router } from "express";
-import type { AppDependencies } from "../appDependencies.ts";
+import type { AppMiddleware } from "../middleware/index.ts";
+import type { AppServices } from "../services/index.ts";
 
 export type CreateRouter<
-    KServices extends keyof AppDependencies["services"] = never,
-    KLimiters extends keyof AppDependencies["middleware"] = never,
+    KServices extends keyof AppServices = never,
+    KLimiters extends keyof AppMiddleware = never,
 > = [KServices] extends [never]
     ? () => Router
     : [KLimiters] extends [never]
-      ? (services: Pick<AppDependencies["services"], KServices>) => Router
+      ? (services: Pick<AppServices, KServices>) => Router
       : (
-            services: Pick<AppDependencies["services"], KServices>,
-            limiters: Pick<AppDependencies["middleware"], KLimiters>,
+            services: Pick<AppServices, KServices>,
+            limiters: Pick<AppMiddleware, KLimiters>,
         ) => Router;

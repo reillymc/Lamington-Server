@@ -83,8 +83,3 @@ export const DefaultAppMiddleware = (): AppMiddleware => ({
     logger: createLoggerMiddleware(),
     notFound: createNotFoundMiddleware(),
 });
-
-export type AppDependencies = {
-    middleware: AppMiddleware;
-    services: AppServices;
-};
