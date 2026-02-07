@@ -166,7 +166,7 @@ type ReadMembersResponse = {
 
 type SaveMembersRequest = {
     listId: List["listId"];
-    members?: ReadonlyArray<MemberSaveItem>;
+    members: ReadonlyArray<MemberSaveItem>;
 };
 
 type SaveMembersResponse = {
@@ -176,7 +176,7 @@ type SaveMembersResponse = {
 
 type UpdateMembersRequest = {
     listId: List["listId"];
-    members?: ReadonlyArray<MemberSaveItem>;
+    members: ReadonlyArray<MemberSaveItem>;
 };
 
 type UpdateMembersResponse = {

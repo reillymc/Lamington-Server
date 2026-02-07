@@ -1,32 +1,22 @@
 import { EnsureArray } from "../../../utils/index.ts";
+import { ForeignKeyViolationError } from "../../common/errors.ts";
 import type { ContentMember } from "../../temp.ts";
-import type { User } from "../../userRepository.ts";
 import type { KnexDatabase } from "../knex.ts";
-import {
-    ContentMemberTable,
-    type CreateQuery,
-    lamington,
-    type ReadQuery,
-    type ReadResponse,
-    UserTable,
-} from "../spec/index.ts";
+import { ContentMemberTable, lamington, UserTable } from "../spec/index.ts";
+import type { DynamicallyKeyedObject } from "./common.ts";
+import { isForeignKeyViolation } from "./postgresErrors.ts";
+import { toUndefined } from "./toUndefined.ts";
 
-type ContentMemberStatus = "O" | "A" | "M" | "P" | "B";
-
-type SaveContentMemberRequest = Pick<ContentMember, "contentId"> & {
-    members?: ReadonlyArray<{
-        userId: ContentMember["userId"];
-        status?: ContentMemberStatus;
-    }>;
+type MemberSaveItem = {
+    userId: ContentMember["userId"];
+    status?: ContentMemberStatus;
 };
 
-type SaveContentMemberResponse = Pick<ContentMember, "contentId"> & {
-    members: Array<{
-        userId: ContentMember["userId"];
-        status: ContentMemberStatus | null;
-        firstName: string;
-    }>;
+type MemberDeleteItem = {
+    userId: ContentMember["userId"];
 };
+
+export type ContentMemberStatus = "O" | "A" | "M" | "P" | "B";
 
 const parseStatus = (status?: string): ContentMemberStatus | undefined => {
     switch (status) {
@@ -41,121 +31,154 @@ const parseStatus = (status?: string): ContentMemberStatus | undefined => {
     }
 };
 
-const saveContentMembers = async (
-    db: KnexDatabase,
-    saveRequests: CreateQuery<SaveContentMemberRequest>,
-): Promise<SaveContentMemberResponse[]> => {
-    const requests = EnsureArray(saveRequests);
-    if (!requests.length) return [];
+export const createReadMembers =
+    <TableId extends "bookId" | "listId" | "plannerId">(idKey: TableId) =>
+    async (
+        db: KnexDatabase,
+        request:
+            | DynamicallyKeyedObject<TableId>
+            | ReadonlyArray<DynamicallyKeyedObject<TableId>>,
+    ) => {
+        const requests = EnsureArray(request);
+        const entityIds = requests.map((req) => req[idKey]);
 
-    const allMembersToSave = requests.flatMap(({ contentId, members = [] }) =>
-        members.map(({ userId, status }) => ({ contentId, userId, status })),
-    );
+        const rows = await db<ContentMember>(lamington.contentMember)
+            .select(
+                ContentMemberTable.contentId,
+                ContentMemberTable.userId,
+                ContentMemberTable.status,
+                UserTable.firstName,
+                UserTable.lastName,
+            )
+            .whereIn(ContentMemberTable.contentId, entityIds)
+            .leftJoin(
+                lamington.user,
+                ContentMemberTable.userId,
+                UserTable.userId,
+            );
 
-    if (allMembersToSave.length) {
-        // Batch insert/update all members in a single query.
-        await db<ContentMember>(lamington.contentMember)
-            .insert(allMembersToSave)
-            .onConflict(["contentId", "userId"])
-            .merge(["status"]);
-    }
+        const allMembers = rows.map((row) => ({
+            ...row,
+            status: parseStatus(row.status),
+        }));
 
-    const savedMembers = await readContentMembers(
-        db,
-        requests.map(({ contentId }) => ({ contentId })),
-    );
-
-    // Group the results back by contentId to match the response format.
-    return requests.map(({ contentId }) => ({
-        contentId,
-        members: savedMembers
-            .filter((m) => m.contentId === contentId)
-            .map(({ contentId: _, ...member }) => member),
-    }));
-};
-
-type DeleteContentMemberParams = Pick<ContentMember, "contentId"> & {
-    members: ReadonlyArray<{ userId: ContentMember["userId"] }>;
-};
-
-type DeleteContentMemberResponse = Pick<ContentMember, "contentId"> & {
-    count: number;
-};
-
-const deleteContentMembers = async (
-    db: KnexDatabase,
-    params: CreateQuery<DeleteContentMemberParams>,
-): Promise<DeleteContentMemberResponse[]> => {
-    const requests = EnsureArray(params);
-    const validRequests = requests.filter(
-        (r) => r.members && r.members.length > 0,
-    );
-    if (!validRequests.length) return [];
-
-    const deletedContentIds = await db<ContentMember>(lamington.contentMember)
-        .where((builder) => {
-            for (const { contentId, members } of validRequests) {
-                if (!members.length) continue;
-
-                builder.orWhere((b) =>
-                    b.where({ contentId }).whereIn(
-                        "userId",
-                        members.map((m) => m.userId),
-                    ),
-                );
-            }
-        })
-        .delete()
-        .returning("contentId");
-
-    const counts = deletedContentIds.reduce<Record<string, number>>(
-        (acc, { contentId }) => {
-            acc[contentId] = (acc[contentId] || 0) + 1;
+        const membersByContentId = allMembers.reduce<
+            Record<string, typeof allMembers>
+        >((acc, member) => {
+            acc[member.contentId] = [...(acc[member.contentId] ?? []), member];
             return acc;
-        },
-        {},
-    );
+        }, {});
 
-    return requests.map(({ contentId }) => ({
-        contentId,
-        count: counts[contentId] ?? 0,
-    }));
+        return requests.map((req) => ({
+            ...req,
+            members: (membersByContentId[req[idKey]] ?? []).map(
+                ({ contentId, status, ...rest }) => ({
+                    ...rest,
+                    status: toUndefined(status),
+                }),
+            ),
+        }));
+    };
+
+export const createSaveMembers = <
+    TableId extends "bookId" | "listId" | "plannerId",
+>(
+    idKey: TableId,
+) => {
+    const readMembers = createReadMembers(idKey);
+
+    return async (
+        db: KnexDatabase,
+        request:
+            | DynamicallyKeyedObject<
+                  TableId,
+                  { members: ReadonlyArray<MemberSaveItem> }
+              >
+            | ReadonlyArray<
+                  DynamicallyKeyedObject<
+                      TableId,
+                      { members: ReadonlyArray<MemberSaveItem> }
+                  >
+              >,
+    ) => {
+        try {
+            const requests = EnsureArray(request);
+            if (!requests.length) return [];
+
+            const allMembersToSave = requests.flatMap((req) => {
+                const contentId = req[idKey];
+                return (req.members || []).map(({ userId, status }) => ({
+                    contentId,
+                    userId,
+                    status,
+                }));
+            });
+
+            if (allMembersToSave.length) {
+                await db<ContentMember>(lamington.contentMember)
+                    .insert(allMembersToSave)
+                    .onConflict(["contentId", "userId"])
+                    .merge(["status"]);
+            }
+
+            return readMembers(db, request);
+        } catch (error) {
+            if (isForeignKeyViolation(error)) {
+                throw new ForeignKeyViolationError(error);
+            }
+            throw error;
+        }
+    };
 };
 
-interface GetContentMembersParams {
-    contentId: string;
-}
+export const createRemoveMembers =
+    <TableId extends "bookId" | "listId" | "plannerId">(idKey: TableId) =>
+    async (
+        db: KnexDatabase,
+        request:
+            | DynamicallyKeyedObject<
+                  TableId,
+                  { members: ReadonlyArray<MemberDeleteItem> }
+              >
+            | ReadonlyArray<
+                  DynamicallyKeyedObject<
+                      TableId,
+                      { members: ReadonlyArray<MemberDeleteItem> }
+                  >
+              >,
+    ) => {
+        const requests = EnsureArray(request);
 
-type GetContentMembersResponse = {
-    contentId: ContentMember["contentId"];
-    userId: ContentMember["userId"];
-    status: ContentMemberStatus;
-} & Pick<User, "firstName" | "lastName">;
-
-const readContentMembers = async (
-    db: KnexDatabase,
-    params: ReadQuery<GetContentMembersParams>,
-): ReadResponse<GetContentMembersResponse> => {
-    const entityIds = EnsureArray(params).map(({ contentId }) => contentId);
-
-    const query = await db<ContentMember>(lamington.contentMember)
-        .select(
-            ContentMemberTable.contentId,
-            ContentMemberTable.userId,
-            ContentMemberTable.status,
-            UserTable.firstName,
-            UserTable.lastName,
+        const deletedContentIds = await db<ContentMember>(
+            lamington.contentMember,
         )
-        .whereIn(ContentMemberTable.contentId, entityIds)
-        .leftJoin(lamington.user, ContentMemberTable.userId, UserTable.userId);
+            .where((builder) => {
+                for (const req of requests) {
+                    const contentId = req[idKey];
+                    const members = req.members;
+                    if (!members.length) continue;
 
-    return query.map((row) => ({ ...row, status: parseStatus(row.status) }));
-};
+                    builder.orWhere((b) =>
+                        b.where({ contentId }).whereIn(
+                            "userId",
+                            members.map((m) => m.userId),
+                        ),
+                    );
+                }
+            })
+            .delete()
+            .returning("contentId");
 
-export const ContentMemberActions = {
-    delete: deleteContentMembers,
-    read: readContentMembers,
-    save: saveContentMembers,
-};
+        const counts = deletedContentIds.reduce<Record<string, number>>(
+            (acc, { contentId }) => {
+                acc[contentId] = (acc[contentId] || 0) + 1;
+                return acc;
+            },
+            {},
+        );
 
-export type ContentMemberActions = typeof ContentMemberActions;
+        return requests.map(({ members, ...req }) => {
+            const contentId = req[idKey];
+            return { ...req, count: counts[contentId] ?? 0 };
+        });
+    };

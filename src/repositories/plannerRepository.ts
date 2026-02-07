@@ -233,7 +233,7 @@ type ReadMembersResponse = {
 
 type SaveMembersRequest = {
     plannerId: Planner["plannerId"];
-    members?: ReadonlyArray<MemberSaveItem>;
+    members: ReadonlyArray<MemberSaveItem>;
 };
 
 type SaveMembersResponse = {
@@ -243,7 +243,7 @@ type SaveMembersResponse = {
 
 type UpdateMembersRequest = {
     plannerId: Planner["plannerId"];
-    members?: ReadonlyArray<MemberSaveItem>;
+    members: ReadonlyArray<MemberSaveItem>;
 };
 
 type UpdateMembersResponse = {

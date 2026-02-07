@@ -151,7 +151,7 @@ type RemoveRecipesResponse = {
 
 type SaveMembersRequest = {
     bookId: Book["bookId"];
-    members: ReadonlyArray<SaveMemberRequest> | undefined;
+    members: ReadonlyArray<SaveMemberRequest>;
 };
 
 type SaveMembersResponse = {

@@ -1,7 +1,12 @@
 import { EnsureArray } from "../../utils/index.ts";
 import type { BookRepository } from "../bookRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
-import { ContentMemberActions } from "./common/contentMember.ts";
+import {
+    createReadMembers,
+    createRemoveMembers,
+    createSaveMembers,
+} from "./common/contentMember.ts";
+import { createVerifyPermissions } from "./common/contentPermissions.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
 import { toUndefined } from "./common/toUndefined.ts";
 import type { KnexDatabase } from "./knex.ts";
@@ -28,31 +33,6 @@ const formatBook = (
     },
     status: book.status ?? "O",
 });
-
-const readMembers: BookRepository<KnexDatabase>["readMembers"] = async (
-    db,
-    request,
-) => {
-    const requests = EnsureArray(request);
-    const allMembers = await ContentMemberActions.read(
-        db,
-        requests.map(({ bookId }) => ({ contentId: bookId })),
-    );
-
-    const membersByBookId = allMembers.reduce<
-        Record<string, typeof allMembers>
-    >((acc, member) => {
-        acc[member.contentId] = [...(acc[member.contentId] ?? []), member];
-        return acc;
-    }, {});
-
-    return requests.map(({ bookId }) => ({
-        bookId,
-        members: (membersByBookId[bookId] ?? []).map(
-            ({ contentId, ...rest }) => rest,
-        ),
-    }));
-};
 
 const read: BookRepository<KnexDatabase>["read"] = async (
     db,
@@ -139,43 +119,6 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         }
 
         return read(db, { userId, books });
-    },
-    verifyPermissions: async (db, { userId, status, books }) => {
-        const statuses = EnsureArray(status);
-        const memberStatuses = statuses.filter((s) => s !== "O");
-
-        const bookOwners: any[] = await db(lamington.book)
-            .select(BookTable.bookId)
-            .leftJoin(
-                lamington.content,
-                ContentTable.contentId,
-                BookTable.bookId,
-            )
-            .whereIn(
-                BookTable.bookId,
-                books.map(({ bookId }) => bookId),
-            )
-            .modify(
-                withContentReadPermissions({
-                    userId,
-                    idColumn: BookTable.bookId,
-                    allowedStatuses: memberStatuses,
-                    ownerColumns: statuses.includes("O") ? undefined : [],
-                }),
-            );
-
-        const permissionMap = Object.fromEntries(
-            bookOwners.map(({ bookId }) => [bookId, true]),
-        );
-
-        return {
-            userId,
-            status,
-            books: books.map(({ bookId }) => ({
-                bookId,
-                hasPermissions: permissionMap[bookId] ?? false,
-            })),
-        };
     },
     readAll: async (db, { userId }) => {
         const bookList: any[] = await db(lamington.book)
@@ -273,34 +216,12 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
             count: countsByBookId[bookId] || 0,
         }));
     },
-    saveMembers: (db, request) =>
-        ContentMemberActions.save(
-            db,
-            EnsureArray(request).map(({ bookId, members }) => ({
-                contentId: bookId,
-                members,
-            })),
-        ).then((response) =>
-            response.map(({ contentId, members }) => ({
-                bookId: contentId,
-                members: members.map(({ status, ...rest }) => ({
-                    ...rest,
-                    status: toUndefined(status),
-                })),
-            })),
-        ),
-    removeMembers: (db, request) =>
-        ContentMemberActions.delete(
-            db,
-            EnsureArray(request).map(({ bookId, members }) => ({
-                contentId: bookId,
-                members,
-            })),
-        ).then((response) =>
-            response.map(({ contentId, ...rest }) => ({
-                bookId: contentId,
-                ...rest,
-            })),
-        ),
-    readMembers,
+    readMembers: createReadMembers("bookId"),
+    saveMembers: createSaveMembers("bookId"),
+    removeMembers: createRemoveMembers("bookId"),
+    verifyPermissions: createVerifyPermissions(
+        "bookId",
+        "books",
+        lamington.book,
+    ),
 };

@@ -1,10 +1,13 @@
 import { EnsureArray } from "../../utils/index.ts";
-import { ForeignKeyViolationError } from "../common/errors.ts";
 import type { ListRepository } from "../listRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
-import { ContentMemberActions } from "./common/contentMember.ts";
+import {
+    createReadMembers,
+    createRemoveMembers,
+    createSaveMembers,
+} from "./common/contentMember.ts";
+import { createVerifyPermissions } from "./common/contentPermissions.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
-import { isForeignKeyViolation } from "./common/postgresErrors.ts";
 import { toUndefined } from "./common/toUndefined.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
@@ -158,43 +161,6 @@ const read: ListRepository<KnexDatabase>["read"] = async (
 };
 
 export const KnexListRepository: ListRepository<KnexDatabase> = {
-    verifyPermissions: async (db, { userId, status, lists }) => {
-        const statuses = EnsureArray(status);
-        const memberStatuses = statuses.filter((s) => s !== "O");
-
-        const listOwners: any[] = await db(lamington.list)
-            .select(ListTable.listId)
-            .leftJoin(
-                lamington.content,
-                ContentTable.contentId,
-                ListTable.listId,
-            )
-            .whereIn(
-                ListTable.listId,
-                lists.map(({ listId }) => listId),
-            )
-            .modify(
-                withContentReadPermissions({
-                    userId,
-                    idColumn: ListTable.listId,
-                    allowedStatuses: memberStatuses,
-                    ownerColumns: statuses.includes("O") ? undefined : [],
-                }),
-            );
-
-        const permissionMap = Object.fromEntries(
-            listOwners.map((l) => [l.listId, true]),
-        );
-
-        return {
-            userId,
-            status,
-            lists: lists.map(({ listId }) => ({
-                listId,
-                hasPermissions: permissionMap[listId] ?? false,
-            })),
-        };
-    },
     read,
     readItems: async (db, { userId, listId, items }) => {
         const result = await readItemsByIds(
@@ -469,80 +435,13 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
             updatedAt: toUndefined(resultMap.get(listId)),
         }));
     },
-    readMembers: async (db, request) => {
-        const requests = EnsureArray(request);
-        const allMembers = await ContentMemberActions.read(
-            db,
-            requests.map(({ listId }) => ({ contentId: listId })),
-        );
-
-        const membersByListId = allMembers.reduce<
-            Record<string, typeof allMembers>
-        >((acc, member) => {
-            acc[member.contentId] = [...(acc[member.contentId] ?? []), member];
-            return acc;
-        }, {});
-
-        return requests.map(({ listId }) => ({
-            listId,
-            members: (membersByListId[listId] ?? []).map(
-                ({ contentId, status, ...rest }) => ({
-                    ...rest,
-                    status: toUndefined(status),
-                }),
-            ),
-        }));
-    },
-    saveMembers: async (db, request) => {
-        try {
-            const response = await ContentMemberActions.save(
-                db,
-                EnsureArray(request).map(({ listId, members }) => ({
-                    contentId: listId,
-                    members,
-                })),
-            );
-            return response.map(({ contentId, members }) => ({
-                listId: contentId,
-                members: members.map(({ status, ...rest }) => ({
-                    ...rest,
-                    status: toUndefined(status),
-                })),
-            }));
-        } catch (error) {
-            if (isForeignKeyViolation(error)) {
-                throw new ForeignKeyViolationError(error);
-            }
-            throw error;
-        }
-    },
-    updateMembers: (db, params) =>
-        ContentMemberActions.save(
-            db,
-            EnsureArray(params).map(({ listId, members }) => ({
-                contentId: listId,
-                members,
-            })),
-        ).then((response) =>
-            response.map(({ contentId, members }) => ({
-                listId: contentId,
-                members: members.map(({ status, ...rest }) => ({
-                    ...rest,
-                    status: toUndefined(status),
-                })),
-            })),
-        ),
-    removeMembers: (db, request) =>
-        ContentMemberActions.delete(
-            db,
-            EnsureArray(request).map(({ listId, members }) => ({
-                contentId: listId,
-                members,
-            })),
-        ).then((response) =>
-            response.map(({ contentId, ...rest }) => ({
-                listId: contentId,
-                ...rest,
-            })),
-        ),
+    readMembers: createReadMembers("listId"),
+    saveMembers: createSaveMembers("listId"),
+    updateMembers: createSaveMembers("listId"),
+    removeMembers: createRemoveMembers("listId"),
+    verifyPermissions: createVerifyPermissions(
+        "listId",
+        "lists",
+        lamington.list,
+    ),
 };

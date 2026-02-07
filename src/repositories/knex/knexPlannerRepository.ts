@@ -1,10 +1,13 @@
-import { EnsureArray, Undefined } from "../../utils/index.ts";
-import { ForeignKeyViolationError } from "../common/errors.ts";
+import { Undefined } from "../../utils/index.ts";
 import type { PlannerRepository } from "../plannerRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
-import { ContentMemberActions } from "./common/contentMember.ts";
+import {
+    createReadMembers,
+    createRemoveMembers,
+    createSaveMembers,
+} from "./common/contentMember.ts";
+import { createVerifyPermissions } from "./common/contentPermissions.ts";
 import { withContentReadPermissions } from "./common/contentQueries.ts";
-import { isForeignKeyViolation } from "./common/postgresErrors.ts";
 import { toUndefined } from "./common/toUndefined.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
@@ -177,43 +180,6 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (
 };
 
 export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
-    verifyPermissions: async (db, { userId, status, planners }) => {
-        const statuses = EnsureArray(status);
-        const memberStatuses = statuses.filter((s) => s !== "O");
-
-        const plannerOwners: any[] = await db(lamington.planner)
-            .select(PlannerTable.plannerId)
-            .leftJoin(
-                lamington.content,
-                ContentTable.contentId,
-                PlannerTable.plannerId,
-            )
-            .whereIn(
-                PlannerTable.plannerId,
-                planners.map(({ plannerId }) => plannerId),
-            )
-            .modify(
-                withContentReadPermissions({
-                    userId,
-                    idColumn: PlannerTable.plannerId,
-                    allowedStatuses: memberStatuses,
-                    ownerColumns: statuses.includes("O") ? undefined : [],
-                }),
-            );
-
-        const permissionMap = Object.fromEntries(
-            plannerOwners.map((p) => [p.plannerId, true]),
-        );
-
-        return {
-            userId,
-            status,
-            planners: planners.map(({ plannerId }) => ({
-                plannerId,
-                hasPermissions: permissionMap[plannerId] ?? false,
-            })),
-        };
-    },
     readAllMeals: async (db, { userId, filter }) => {
         const plannerContentAlias = "plannerContent";
 
@@ -478,80 +444,13 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
             .delete();
         return { count };
     },
-    readMembers: async (db, request) => {
-        const requests = EnsureArray(request);
-        const allMembers = await ContentMemberActions.read(
-            db,
-            requests.map(({ plannerId }) => ({ contentId: plannerId })),
-        );
-
-        const membersByPlannerId = allMembers.reduce<
-            Record<string, typeof allMembers>
-        >((acc, member) => {
-            acc[member.contentId] = [...(acc[member.contentId] ?? []), member];
-            return acc;
-        }, {});
-
-        return requests.map(({ plannerId }) => ({
-            plannerId,
-            members: (membersByPlannerId[plannerId] ?? []).map(
-                ({ contentId, status, ...rest }) => ({
-                    ...rest,
-                    status: toUndefined(status),
-                }),
-            ),
-        }));
-    },
-    saveMembers: async (db, request) => {
-        try {
-            const response = await ContentMemberActions.save(
-                db,
-                EnsureArray(request).map(({ plannerId, members }) => ({
-                    contentId: plannerId,
-                    members,
-                })),
-            );
-            return response.map(({ contentId, members }) => ({
-                plannerId: contentId,
-                members: members.map(({ status, ...rest }) => ({
-                    ...rest,
-                    status: toUndefined(status),
-                })),
-            }));
-        } catch (error) {
-            if (isForeignKeyViolation(error)) {
-                throw new ForeignKeyViolationError(error);
-            }
-            throw error;
-        }
-    },
-    updateMembers: (db, params) =>
-        ContentMemberActions.save(
-            db,
-            EnsureArray(params).map(({ plannerId, members }) => ({
-                contentId: plannerId,
-                members,
-            })),
-        ).then((response) =>
-            response.map(({ contentId, members }) => ({
-                plannerId: contentId,
-                members: members.map(({ status, ...rest }) => ({
-                    ...rest,
-                    status: toUndefined(status),
-                })),
-            })),
-        ),
-    removeMembers: (db, request) =>
-        ContentMemberActions.delete(
-            db,
-            EnsureArray(request).map(({ plannerId, members }) => ({
-                contentId: plannerId,
-                members,
-            })),
-        ).then((response) =>
-            response.map(({ contentId, ...rest }) => ({
-                plannerId: contentId,
-                ...rest,
-            })),
-        ),
+    readMembers: createReadMembers("plannerId"),
+    saveMembers: createSaveMembers("plannerId"),
+    updateMembers: createSaveMembers("plannerId"),
+    removeMembers: createRemoveMembers("plannerId"),
+    verifyPermissions: createVerifyPermissions(
+        "plannerId",
+        "planners",
+        lamington.planner,
+    ),
 };
