@@ -32,7 +32,10 @@ const bearerAuthValidator = (request: Request): boolean => {
         if (e instanceof NotBeforeError) {
             throw new UnauthorizedError("Token Not Active");
         }
-        throw e;
+        if (e instanceof UnauthorizedError) {
+            throw e;
+        }
+        throw new UnauthorizedError("Access Denied", e);
     }
 };
 

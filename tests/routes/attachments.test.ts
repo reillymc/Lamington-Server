@@ -58,7 +58,7 @@ describe("Upload an image", () => {
     it("should require authentication", async () => {
         const res = await request(app)
             .post("/v1/attachments/image")
-            .attach("image", "tests/testAttachment.jpg");
+            .attach("image", Buffer.from("fake"), "test.jpg");
 
         expect(res.statusCode).toEqual(401);
     });
@@ -74,19 +74,21 @@ describe("Upload an image", () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
         // Exceed rate limit
-        for (let i = 0; i < 20; i++) {
-            const res = await request(app)
-                .post("/v1/attachments/image")
-                .set(token)
-                .attach("image", "tests/testAttachment.jpg");
+        const responses = await Promise.all(
+            Array.from({ length: 20 }).map(() =>
+                request(app)
+                    .post("/v1/attachments/image")
+                    .set(token)
+                    .attach("image", Buffer.from("fake"), "test.jpg"),
+            ),
+        );
 
-            expect(res.statusCode).not.toEqual(429);
-        }
+        responses.map(({ statusCode }) => expect(statusCode).not.toEqual(429));
 
         const res = await request(app)
             .post("/v1/attachments/image")
             .set(token)
-            .attach("image", "tests/testAttachment.jpg");
+            .attach("image", Buffer.from("fake"), "test.jpg");
 
         expect(res.statusCode).toEqual(429);
     });
@@ -132,7 +134,7 @@ describe("Upload an image", () => {
         const res = await request(app)
             .post("/v1/attachments/image")
             .set(token)
-            .attach("image", "tests/testAttachment.jpg");
+            .attach("image", Buffer.from("fake"), "test.jpg");
 
         expect(res.statusCode).toEqual(500);
 
@@ -160,7 +162,7 @@ describe("Upload an image", () => {
         const res = await request(app)
             .post("/v1/attachments/image")
             .set(token)
-            .attach("image", "tests/testAttachment.jpg");
+            .attach("image", Buffer.from("fake"), "test.jpg");
 
         expect(res.statusCode).toEqual(500);
 
