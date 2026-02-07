@@ -152,7 +152,7 @@ describe("Login a user", () => {
 });
 
 describe("Register a new user", () => {
-    it("login respect restrictive rate limit", async () => {
+    it("should respect restrictive rate limit", async () => {
         // Setup app without test rate limiter overrides
         app = createTestApp({ database, middleware: DefaultAppMiddleware() });
 
@@ -336,7 +336,7 @@ describe("Refresh authentication token", () => {
         });
     };
 
-    it("login respect restrictive rate limit", async () => {
+    it("should respect general rate limit", async () => {
         // Setup app without test rate limiter overrides
         app = createTestApp({ database, middleware: DefaultAppMiddleware() });
 
@@ -344,7 +344,7 @@ describe("Refresh authentication token", () => {
 
         // Exceed rate limit
         const responses = await Promise.all(
-            Array.from({ length: 5 }).map(() =>
+            Array.from({ length: 100 }).map(() =>
                 request(app).post("/v1/auth/refresh").send(requestBody),
             ),
         );
