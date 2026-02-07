@@ -1,6 +1,7 @@
 import { EnsureArray } from "../../utils/index.ts";
 import type { ListRepository } from "../listRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
+import { createDeleteContent } from "./common/content.ts";
 import {
     createReadMembers,
     createRemoveMembers,
@@ -258,15 +259,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
 
         return read(db, { userId, lists });
     },
-    delete: async (db, params) => {
-        const count = await db(lamington.content)
-            .whereIn(
-                ContentTable.contentId,
-                params.lists.map(({ listId }) => listId),
-            )
-            .delete();
-        return { count };
-    },
+    delete: createDeleteContent("lists", "listId"),
     readAllItems: async (db, { userId, filter }) => {
         const listContentAlias = "listContent";
         const result = await db(lamington.listItem)

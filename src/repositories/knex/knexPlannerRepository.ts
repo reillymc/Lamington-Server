@@ -1,6 +1,7 @@
 import { Undefined } from "../../utils/index.ts";
 import type { PlannerRepository } from "../plannerRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
+import { createDeleteContent } from "./common/content.ts";
 import {
     createReadMembers,
     createRemoveMembers,
@@ -435,15 +436,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
 
         return read(db, { userId, planners });
     },
-    delete: async (db, params) => {
-        const count = await db(lamington.content)
-            .whereIn(
-                ContentTable.contentId,
-                params.planners.map(({ plannerId }) => plannerId),
-            )
-            .delete();
-        return { count };
-    },
+    delete: createDeleteContent("planners", "plannerId"),
     readMembers: createReadMembers("plannerId"),
     saveMembers: createSaveMembers("plannerId"),
     updateMembers: createSaveMembers("plannerId"),

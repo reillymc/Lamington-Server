@@ -8,8 +8,8 @@ import { withContentReadPermissions } from "./contentQueries.ts";
 
 export const createVerifyPermissions =
     <
-        TableId extends "bookId" | "listId" | "plannerId",
-        CollectionKey extends "books" | "lists" | "planners",
+        TableId extends "bookId" | "listId" | "plannerId" | "recipeId",
+        CollectionKey extends "books" | "lists" | "planners" | "recipes",
     >(
         idKey: TableId,
         collectionKey: CollectionKey,
@@ -79,6 +79,7 @@ export const createVerifyPermissions =
 
         return {
             ...params,
+            status: params.status ?? [],
             ...dynamicObject,
         };
     };

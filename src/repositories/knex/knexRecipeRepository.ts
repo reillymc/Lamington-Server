@@ -15,7 +15,9 @@ import type {
 import type { Content, ContentAttachment, ContentTag } from "../temp.ts";
 import type { User } from "../userRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
+import { createDeleteContent } from "./common/content.ts";
 import { ContentAttachmentActions } from "./common/contentAttachment.ts";
+import { createVerifyPermissions } from "./common/contentPermissions.ts";
 import { ContentTagActions } from "./common/contentTag.ts";
 import { toUndefined } from "./common/toUndefined.ts";
 import type { KnexDatabase } from "./knex.ts";
@@ -722,32 +724,11 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
 
         return { userId, recipes: results.recipes };
     },
-    verifyPermissions: async (db, { userId, recipes }) => {
-        const recipeOwners = await db(lamington.recipe)
-            .select("recipeId", "createdBy")
-            .leftJoin(
-                lamington.content,
-                ContentTable.contentId,
-                RecipeTable.recipeId,
-            )
-            .where({ [ContentTable.createdBy]: userId })
-            .whereIn(
-                RecipeTable.recipeId,
-                recipes.map(({ recipeId }) => recipeId),
-            );
-
-        const permissionMap = Object.fromEntries(
-            recipeOwners.map((recipe) => [recipe.recipeId, true]),
-        );
-
-        return {
-            userId,
-            recipes: recipes.map(({ recipeId }) => ({
-                recipeId,
-                hasPermissions: permissionMap[recipeId] ?? false,
-            })),
-        };
-    },
+    verifyPermissions: createVerifyPermissions(
+        "recipeId",
+        "recipes",
+        lamington.recipe,
+    ),
     readAll: async (
         db,
         { userId, order, page = 1, sort = "name", filter = {} },
@@ -870,15 +851,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
         };
     },
     read,
-    delete: async (db, { recipes }) => {
-        const count = await db(lamington.content)
-            .whereIn(
-                ContentTable.contentId,
-                recipes.map(({ recipeId }) => recipeId),
-            )
-            .delete();
-        return { count };
-    },
+    delete: createDeleteContent("recipes", "recipeId"),
     saveRating: async (db, { userId, ratings }) => {
         const savedRatings = await db<RecipeRating>(lamington.recipeRating)
             .insert(

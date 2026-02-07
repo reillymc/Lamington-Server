@@ -1,6 +1,7 @@
 import { EnsureArray } from "../../utils/index.ts";
 import type { BookRepository } from "../bookRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
+import { createDeleteContent } from "./common/content.ts";
 import {
     createReadMembers,
     createRemoveMembers,
@@ -151,15 +152,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         };
     },
     read,
-    delete: async (db, params) => {
-        const count = await db(lamington.content)
-            .whereIn(
-                ContentTable.contentId,
-                params.books.map(({ bookId }) => bookId),
-            )
-            .delete();
-        return { count };
-    },
+    delete: createDeleteContent("books", "bookId"),
     saveRecipes: async (db, request) => {
         const allBookRecipes = EnsureArray(request).flatMap(
             ({ bookId, recipes }) =>

@@ -89,6 +89,7 @@ export const createRecipeService: CreateService<
             const permissions = await recipeRepository.verifyPermissions(trx, {
                 userId,
                 recipes: [{ recipeId }],
+                status: "O",
             });
             const missingPermissions = permissions.recipes.some(
                 ({ hasPermissions }) => !hasPermissions,
@@ -113,6 +114,7 @@ export const createRecipeService: CreateService<
             const permissions = await recipeRepository.verifyPermissions(trx, {
                 userId,
                 recipes: [{ recipeId }],
+                status: "O",
             });
             const missingPermissions = permissions.recipes.some(
                 ({ hasPermissions }) => !hasPermissions,

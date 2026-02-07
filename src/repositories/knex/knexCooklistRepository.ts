@@ -1,6 +1,7 @@
 import { Undefined } from "../../utils/index.ts";
 import type { CookListRepository } from "../cooklistRepository.ts";
 import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
+import { createDeleteContent } from "./common/content.ts";
 import { toUndefined } from "./common/toUndefined.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
@@ -206,15 +207,7 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
             meals.map((m) => m.mealId),
         );
     },
-    deleteMeals: async (db, { meals }) => {
-        const count = await db(lamington.content)
-            .whereIn(
-                ContentTable.contentId,
-                meals.map((m) => m.mealId),
-            )
-            .delete();
-        return { count };
-    },
+    deleteMeals: createDeleteContent("meals", "mealId"),
     verifyMealPermissions: async (db, { userId, meals }) => {
         const mealOwners = await db(lamington.plannerMeal)
             .select(PlannerMealTable.mealId, ContentTable.createdBy)
