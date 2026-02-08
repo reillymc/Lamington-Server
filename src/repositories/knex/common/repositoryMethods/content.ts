@@ -1,12 +1,12 @@
-import { EnsureArray } from "../../../utils/index.ts";
-import type { User } from "../../userRepository.ts";
-import type { KnexDatabase } from "../knex.ts";
-import { ContentTable, lamington } from "../spec/index.ts";
-import type { DynamicallyKeyedObject } from "./common.ts";
+import { EnsureArray } from "../../../../utils/index.ts";
+import type { User } from "../../../userRepository.ts";
+import type { KnexDatabase } from "../../knex.ts";
+import { ContentTable, lamington } from "../../spec/index.ts";
+import type { DynamicallyKeyedObject } from "../common.ts";
+import { withContentReadPermissions } from "../queryBuilders/withContentReadPermissions.ts";
 import type { ContentMemberStatus } from "./contentMember.ts";
-import { withContentReadPermissions } from "./contentQueries.ts";
 
-export const createVerifyPermissions =
+export const createVerifyContentPermissions =
     <
         TableId extends "bookId" | "listId" | "plannerId" | "recipeId",
         CollectionKey extends "books" | "lists" | "planners" | "recipes",
@@ -82,4 +82,23 @@ export const createVerifyPermissions =
             status: params.status ?? [],
             ...dynamicObject,
         };
+    };
+
+export const createDeleteContent =
+    <CollectionKey extends string, IdKey extends string>(
+        collectionKey: CollectionKey,
+        idKey: IdKey,
+    ) =>
+    async (
+        db: KnexDatabase,
+        request: Record<CollectionKey, ReadonlyArray<Record<IdKey, string>>>,
+    ) => {
+        const items = request[collectionKey];
+        const count = await db(lamington.content)
+            .whereIn(
+                ContentTable.contentId,
+                items.map((item) => item[idKey]),
+            )
+            .delete();
+        return { count };
     };

@@ -14,12 +14,14 @@ import type {
 } from "../recipeRepository.ts";
 import type { Content, ContentAttachment, ContentTag } from "../temp.ts";
 import type { User } from "../userRepository.ts";
-import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
-import { createDeleteContent } from "./common/content.ts";
 import { ContentAttachmentActions } from "./common/contentAttachment.ts";
-import { createVerifyPermissions } from "./common/contentPermissions.ts";
 import { ContentTagActions } from "./common/contentTag.ts";
-import { toUndefined } from "./common/toUndefined.ts";
+import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
+import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
+import {
+    createDeleteContent,
+    createVerifyContentPermissions,
+} from "./common/repositoryMethods/content.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     AttachmentTable,
@@ -724,7 +726,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
 
         return { userId, recipes: results.recipes };
     },
-    verifyPermissions: createVerifyPermissions(
+    verifyPermissions: createVerifyContentPermissions(
         "recipeId",
         "recipes",
         lamington.recipe,

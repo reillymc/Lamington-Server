@@ -1,15 +1,17 @@
 import { EnsureArray } from "../../utils/index.ts";
 import type { ListRepository } from "../listRepository.ts";
-import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
-import { createDeleteContent } from "./common/content.ts";
+import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
+import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
+import { withContentReadPermissions } from "./common/queryBuilders/withContentReadPermissions.ts";
+import {
+    createDeleteContent,
+    createVerifyContentPermissions,
+} from "./common/repositoryMethods/content.ts";
 import {
     createReadMembers,
     createRemoveMembers,
     createSaveMembers,
-} from "./common/contentMember.ts";
-import { createVerifyPermissions } from "./common/contentPermissions.ts";
-import { withContentReadPermissions } from "./common/contentQueries.ts";
-import { toUndefined } from "./common/toUndefined.ts";
+} from "./common/repositoryMethods/contentMember.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     ContentMemberTable,
@@ -19,39 +21,6 @@ import {
     lamington,
     UserTable,
 } from "./spec/index.ts";
-
-// export type SaveListMemberRequest = CreateQuery<{
-//     listId: List["listId"];
-//     members?: Array<{ userId: ContentMember["userId"]; status?: ContentMemberStatus }>;
-// }>;
-
-// type DeleteListMemberRequest = CreateQuery<{
-//     listId: List["listId"];
-//     userId: ContentMember["userId"];
-// }>;
-
-// type ReadListMembersRequest = CreateQuery<{
-//     listId: List["listId"];
-// }>;
-
-// export const ListMemberActions = {
-//     delete: (request: DeleteListMemberRequest) =>
-//         ContentMemberActions.delete(
-//             db as KnexDatabase,
-//             EnsureArray(request).map(({ listId, userId }) => ({ contentId: listId, members: [{ userId }] }))
-//         ),
-//     read: (request: ReadListMembersRequest) =>
-//         ContentMemberActions.read(
-//             db as KnexDatabase,
-//             EnsureArray(request).map(({ listId }) => ({ contentId: listId }))
-//         ).then(response => response.map(({ contentId, ...rest }) => ({ listId: contentId, ...rest }))),
-//     save: (request: SaveListMemberRequest, options?: CreateContentMemberOptions) =>
-//         ContentMemberActions.save(
-//             db as KnexDatabase,
-//             EnsureArray(request).map(({ listId, members }) => ({ contentId: listId, members })),
-//             options
-//         ),
-// };
 
 const formatListItem = (
     item: any,
@@ -432,7 +401,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
     saveMembers: createSaveMembers("listId"),
     updateMembers: createSaveMembers("listId"),
     removeMembers: createRemoveMembers("listId"),
-    verifyPermissions: createVerifyPermissions(
+    verifyPermissions: createVerifyContentPermissions(
         "listId",
         "lists",
         lamington.list,

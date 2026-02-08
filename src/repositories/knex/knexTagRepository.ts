@@ -1,6 +1,6 @@
 import { EnsureArray } from "../../utils/index.ts";
 import type { TagRepository } from "../tagRepository.ts";
-import { toUndefined } from "./common/toUndefined.ts";
+import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import type { KnexDatabase } from "./knex.ts";
 import { lamington, TagTable } from "./spec/index.ts";
 

@@ -1,8 +1,8 @@
 import { Undefined } from "../../utils/index.ts";
 import type { CookListRepository } from "../cooklistRepository.ts";
-import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
-import { createDeleteContent } from "./common/content.ts";
-import { toUndefined } from "./common/toUndefined.ts";
+import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
+import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
+import { createDeleteContent } from "./common/repositoryMethods/content.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     AttachmentTable,

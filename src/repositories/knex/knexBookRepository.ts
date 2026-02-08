@@ -1,15 +1,17 @@
 import { EnsureArray } from "../../utils/index.ts";
 import type { BookRepository } from "../bookRepository.ts";
-import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
-import { createDeleteContent } from "./common/content.ts";
+import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
+import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
+import { withContentReadPermissions } from "./common/queryBuilders/withContentReadPermissions.ts";
+import {
+    createDeleteContent,
+    createVerifyContentPermissions,
+} from "./common/repositoryMethods/content.ts";
 import {
     createReadMembers,
     createRemoveMembers,
     createSaveMembers,
-} from "./common/contentMember.ts";
-import { createVerifyPermissions } from "./common/contentPermissions.ts";
-import { withContentReadPermissions } from "./common/contentQueries.ts";
-import { toUndefined } from "./common/toUndefined.ts";
+} from "./common/repositoryMethods/contentMember.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     BookRecipeTable,
@@ -212,7 +214,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
     readMembers: createReadMembers("bookId"),
     saveMembers: createSaveMembers("bookId"),
     removeMembers: createRemoveMembers("bookId"),
-    verifyPermissions: createVerifyPermissions(
+    verifyPermissions: createVerifyContentPermissions(
         "bookId",
         "books",
         lamington.book,

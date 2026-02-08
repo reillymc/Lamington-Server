@@ -1,15 +1,17 @@
 import { Undefined } from "../../utils/index.ts";
 import type { PlannerRepository } from "../plannerRepository.ts";
-import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
-import { createDeleteContent } from "./common/content.ts";
+import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
+import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
+import { withContentReadPermissions } from "./common/queryBuilders/withContentReadPermissions.ts";
+import {
+    createDeleteContent,
+    createVerifyContentPermissions,
+} from "./common/repositoryMethods/content.ts";
 import {
     createReadMembers,
     createRemoveMembers,
     createSaveMembers,
-} from "./common/contentMember.ts";
-import { createVerifyPermissions } from "./common/contentPermissions.ts";
-import { withContentReadPermissions } from "./common/contentQueries.ts";
-import { toUndefined } from "./common/toUndefined.ts";
+} from "./common/repositoryMethods/contentMember.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     AttachmentTable,
@@ -441,7 +443,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
     saveMembers: createSaveMembers("plannerId"),
     updateMembers: createSaveMembers("plannerId"),
     removeMembers: createRemoveMembers("plannerId"),
-    verifyPermissions: createVerifyPermissions(
+    verifyPermissions: createVerifyContentPermissions(
         "plannerId",
         "planners",
         lamington.planner,

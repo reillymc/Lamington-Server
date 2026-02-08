@@ -1,7 +1,7 @@
 import { EnsureArray, Undefined } from "../../utils/index.ts";
 import { UniqueViolationError } from "../common/errors.ts";
 import type { UserRepository } from "../userRepository.ts";
-import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
+import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { isUniqueViolation } from "./common/postgresErrors.ts";
 import type { KnexDatabase } from "./knex.ts";
 import { lamington, UserTable } from "./spec/index.ts";

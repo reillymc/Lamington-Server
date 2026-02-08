@@ -1,6 +1,10 @@
 import type { Knex } from "knex";
-import { EnsureArray } from "../../../utils/index.ts";
-import { ContentMemberTable, ContentTable, lamington } from "../spec/index.ts";
+import { EnsureArray } from "../../../../utils/index.ts";
+import {
+    ContentMemberTable,
+    ContentTable,
+    lamington,
+} from "../../spec/index.ts";
 
 interface WithContentReadPermissionsParams {
     userId: string;

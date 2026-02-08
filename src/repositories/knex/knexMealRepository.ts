@@ -1,6 +1,6 @@
 import type { MealRepository } from "../mealRepository.ts";
-import { withContentReadPermissions } from "./common/contentQueries.ts";
-import { toUndefined } from "./common/toUndefined.ts";
+import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
+import { withContentReadPermissions } from "./common/queryBuilders/withContentReadPermissions.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     AttachmentTable,
