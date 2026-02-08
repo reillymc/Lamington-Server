@@ -1,4 +1,3 @@
-import { Undefined } from "../../utils/index.ts";
 import type { PlannerRepository } from "../plannerRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
@@ -7,6 +6,7 @@ import {
     createDeleteContent,
     createVerifyContentPermissions,
 } from "./common/repositoryMethods/content.ts";
+import { HeroAttachmentActions } from "./common/repositoryMethods/contentAttachment.ts";
 import {
     createReadMembers,
     createRemoveMembers,
@@ -23,39 +23,6 @@ import {
     PlannerTable,
     UserTable,
 } from "./spec/index.ts";
-
-// type SavePlannerMemberRequest = CreateQuery<{
-//     plannerId: Planner["plannerId"];
-//     members?: Array<{ userId: ContentMember["userId"]; status?: ContentMemberStatus }>;
-// }>;
-
-// type DeletePlannerMemberRequest = CreateQuery<{
-//     plannerId: Planner["plannerId"];
-//     userId: ContentMember["userId"];
-// }>;
-
-// type ReadPlannerMembersRequest = CreateQuery<{
-//     plannerId: Planner["plannerId"];
-// }>;
-
-// export const PlannerMemberActions = {
-//     delete: (request: DeletePlannerMemberRequest) =>
-//         ContentMemberActions.delete(
-//             db as KnexDatabase,
-//             EnsureArray(request).map(({ plannerId, userId }) => ({ contentId: plannerId, members: [{ userId }] }))
-//         ),
-//     read: (request: ReadPlannerMembersRequest) =>
-//         ContentMemberActions.read(
-//             db as KnexDatabase,
-//             EnsureArray(request).map(({ plannerId }) => ({ contentId: plannerId }))
-//         ).then(response => response.map(({ contentId, ...rest }) => ({ plannerId: contentId, ...rest }))),
-//     save: (request: SavePlannerMemberRequest, options?: CreateContentMemberOptions) =>
-//         ContentMemberActions.save(
-//             db as KnexDatabase,
-//             EnsureArray(request).map(({ plannerId, members }) => ({ contentId: plannerId, members })),
-//             options
-//         ),
-// };
 
 const formatPlannerMeal = (
     meal: any,
@@ -279,22 +246,13 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
             })),
         );
 
-        const attachments = mealsToCreate
-            .map(({ mealId, heroImage }) => {
-                if (heroImage) {
-                    return {
-                        contentId: mealId,
-                        attachmentId: heroImage,
-                        displayType: "hero",
-                    };
-                }
-                return undefined;
-            })
-            .filter(Undefined);
-
-        if (attachments.length) {
-            await db(lamington.contentAttachment).insert(attachments);
-        }
+        await HeroAttachmentActions.save(
+            db,
+            mealsToCreate.map(({ mealId, heroImage }) => ({
+                contentId: mealId,
+                attachmentId: heroImage,
+            })),
+        );
 
         const updatedMeals = await readByIds(
             db,
@@ -316,24 +274,15 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
                     .andWhere(PlannerMealTable.plannerId, plannerId)
                     .update(updateData);
             }
-
-            if (meal.heroImage !== undefined) {
-                await db(lamington.contentAttachment)
-                    .where({
-                        [ContentAttachmentTable.contentId]: meal.mealId,
-                        [ContentAttachmentTable.displayType]: "hero",
-                    })
-                    .delete();
-
-                if (meal.heroImage !== null) {
-                    await db(lamington.contentAttachment).insert({
-                        contentId: meal.mealId,
-                        attachmentId: meal.heroImage,
-                        displayType: "hero",
-                    });
-                }
-            }
         }
+
+        await HeroAttachmentActions.save(
+            db,
+            meals.map(({ mealId, heroImage }) => ({
+                contentId: mealId,
+                attachmentId: heroImage,
+            })),
+        );
 
         const updatedMeals = await readByIds(
             db,

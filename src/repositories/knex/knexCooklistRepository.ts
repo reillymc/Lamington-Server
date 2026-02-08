@@ -1,8 +1,8 @@
-import { Undefined } from "../../utils/index.ts";
 import type { CookListRepository } from "../cooklistRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { createDeleteContent } from "./common/repositoryMethods/content.ts";
+import { HeroAttachmentActions } from "./common/repositoryMethods/contentAttachment.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     AttachmentTable,
@@ -151,22 +151,13 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
             })),
         );
 
-        const attachments = mealsToCreate
-            .map(({ mealId, heroImage }) => {
-                if (heroImage) {
-                    return {
-                        contentId: mealId,
-                        attachmentId: heroImage,
-                        displayType: "hero",
-                    };
-                }
-                return undefined;
-            })
-            .filter(Undefined);
-
-        if (attachments.length) {
-            await db(lamington.contentAttachment).insert(attachments);
-        }
+        await HeroAttachmentActions.save(
+            db,
+            mealsToCreate.map(({ mealId, heroImage }) => ({
+                contentId: mealId,
+                attachmentId: heroImage,
+            })),
+        );
 
         return readByIds(
             db,
@@ -184,24 +175,16 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
                     .where(PlannerMealTable.mealId, meal.mealId)
                     .update(updateData);
             }
-
-            if (meal.heroImage !== undefined) {
-                await db(lamington.contentAttachment)
-                    .where({
-                        [ContentAttachmentTable.contentId]: meal.mealId,
-                        [ContentAttachmentTable.displayType]: "hero",
-                    })
-                    .delete();
-
-                if (meal.heroImage !== null) {
-                    await db(lamington.contentAttachment).insert({
-                        contentId: meal.mealId,
-                        attachmentId: meal.heroImage,
-                        displayType: "hero",
-                    });
-                }
-            }
         }
+
+        await HeroAttachmentActions.save(
+            db,
+            meals.map(({ mealId, heroImage }) => ({
+                contentId: mealId,
+                attachmentId: heroImage,
+            })),
+        );
+
         return readByIds(
             db,
             meals.map((m) => m.mealId),

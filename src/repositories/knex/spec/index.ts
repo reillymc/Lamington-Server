@@ -204,13 +204,6 @@ export const UserTable = table(lamington.user, [
     "preferences",
 ] as const);
 
-// READ
-export type ReadQuery<T> = T | Array<T>;
-
-export type ReadResponse<T> = Promise<Array<T>>;
-
 export type CreateQuery<T> = T | Array<T>;
-
-export type CreateResponse<T> = Promise<Array<T>>;
 
 export const PAGE_SIZE = config.app.pageSize;

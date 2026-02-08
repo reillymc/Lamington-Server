@@ -3,7 +3,6 @@ import {
     ObjectFromEntries,
     Undefined,
 } from "../../utils/index.ts";
-import type { Attachment } from "../attachmentRepository.ts";
 import type {
     Recipe,
     RecipeIngredient,
@@ -12,25 +11,24 @@ import type {
     RecipeSection,
     RecipeStep,
 } from "../recipeRepository.ts";
-import type { Content, ContentAttachment, ContentTag } from "../temp.ts";
+import type { Content, ContentTag } from "../temp.ts";
 import type { User } from "../userRepository.ts";
-import { ContentAttachmentActions } from "./common/contentAttachment.ts";
 import { ContentTagActions } from "./common/contentTag.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
+import { formatHeroAttachment } from "./common/dataFormatting/formatHeroAttachment.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
+import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
 import {
     createDeleteContent,
     createVerifyContentPermissions,
 } from "./common/repositoryMethods/content.ts";
+import { HeroAttachmentActions } from "./common/repositoryMethods/contentAttachment.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
-    AttachmentTable,
     BookRecipeTable,
-    ContentAttachmentTable,
     ContentTable,
     ContentTagTable,
     type CreateQuery,
-    type CreateResponse,
     IngredientTable,
     lamington,
     PAGE_SIZE,
@@ -43,55 +41,6 @@ import {
 
 const DefaultSection = "default";
 
-type SaveRecipeAttachmentRequest = CreateQuery<{
-    recipeId: Recipe["recipeId"];
-    attachments: Array<{
-        attachmentId: Attachment["attachmentId"];
-        displayType: ContentAttachment["displayType"];
-        displayId?: ContentAttachment["displayId"];
-        displayOrder?: ContentAttachment["displayOrder"];
-    }>;
-}>;
-
-type ReadRecipeAttachmentsRequest = CreateQuery<{
-    recipeId: Recipe["recipeId"];
-}>;
-
-type ReadRecipeAttachmentsResponse = {
-    attachmentId: Attachment["attachmentId"];
-    uri: Attachment["uri"];
-    displayType: ContentAttachment["displayType"];
-    displayId?: ContentAttachment["displayId"];
-    displayOrder: ContentAttachment["displayOrder"];
-    createdBy: Attachment["createdBy"];
-    recipeId: Recipe["recipeId"];
-};
-
-const RecipeAttachmentActions = {
-    read: (
-        db: KnexDatabase,
-        request: ReadRecipeAttachmentsRequest,
-    ): CreateResponse<ReadRecipeAttachmentsResponse> =>
-        ContentAttachmentActions.read(
-            db,
-            EnsureArray(request).map(({ recipeId }) => ({
-                contentId: recipeId,
-            })),
-        ).then((response) =>
-            response.map(({ contentId, ...rest }) => ({
-                recipeId: contentId,
-                ...rest,
-            })),
-        ),
-    save: (db: KnexDatabase, request: SaveRecipeAttachmentRequest) =>
-        ContentAttachmentActions.save(
-            db,
-            EnsureArray(request).map(({ recipeId, attachments }) => ({
-                contentId: recipeId,
-                attachments,
-            })),
-        ),
-};
 const ContentTagsRequestToRows = (
     contentId: string,
     tags: ReadonlyArray<{ tagId: string }>,
@@ -349,8 +298,6 @@ const RecipeBase = (db: KnexDatabase, userId: string) => {
                 .andWhere(RecipeRatingTable.raterId, userId)
                 .first()
                 .as("rating_personal"),
-            db.ref(ContentAttachmentTable.attachmentId).as("heroAttachmentId"),
-            db.ref(AttachmentTable.uri).as("heroAttachmentUri"),
         )
         .leftJoin(
             lamington.content,
@@ -359,22 +306,7 @@ const RecipeBase = (db: KnexDatabase, userId: string) => {
         )
         .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
         .leftJoin(ratingsSubquery, RecipeTable.recipeId, "avg_ratings.recipeId")
-        .leftJoin(lamington.contentAttachment, (join) => {
-            join.on(
-                ContentAttachmentTable.contentId,
-                "=",
-                RecipeTable.recipeId,
-            ).andOn(
-                ContentAttachmentTable.displayType,
-                "=",
-                db.raw("?", ["hero"]),
-            );
-        })
-        .leftJoin(
-            lamington.attachment,
-            ContentAttachmentTable.attachmentId,
-            AttachmentTable.attachmentId,
-        );
+        .modify(withHeroAttachment(RecipeTable.recipeId));
 };
 
 type GetFullRecipeResults =
@@ -396,6 +328,8 @@ type GetFullRecipeResults =
           [ratingPersonalName]: RecipeRating["rating"];
           createdByName: User["firstName"];
           createdBy: Content["createdBy"];
+          heroAttachmentId?: string;
+          heroAttachmentUri?: string;
       })
     | undefined;
 
@@ -442,6 +376,7 @@ const getFullRecipe = async (
         )
         .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
         .leftJoin(ratingsSubquery, RecipeTable.recipeId, "avg_ratings.recipeId")
+        .modify(withHeroAttachment(RecipeTable.recipeId))
         .where(RecipeTable.recipeId, recipeId)
         .first();
 
@@ -483,21 +418,15 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
             { result: ingredients },
             method,
             { result: sections },
-            attachments,
         ] = await Promise.all([
             getFullRecipe(db, recipeId, userId),
             readTags(db, { recipeId }),
             queryRecipeIngredientsByRecipeId(db, { recipeId }),
             readStepsByRecipeId(db, recipeId),
             querySectionsByRecipeId(db, { recipeId }),
-            RecipeAttachmentActions.read(db, { recipeId }),
         ]);
 
         if (!recipe) continue;
-
-        const heroAttachment = attachments?.find(
-            (att) => att.displayType === "hero",
-        );
 
         response.push({
             ...formatRecipe(recipe),
@@ -513,7 +442,10 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
             }),
             method: recipeStepRowsToResponse({ method, sections }),
             tags: ContentTagRowsToResponse(tags),
-            photo: heroAttachment,
+            photo: formatHeroAttachment(
+                recipe.heroAttachmentId,
+                recipe.heroAttachmentUri,
+            ),
         });
     }
 
@@ -606,27 +538,13 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                 .merge();
         }
 
-        const recipesAttachments = recipesToCreate.map(
-            ({ recipeId, photo }) => ({
-                recipeId,
-                attachments: photo
-                    ? [
-                          {
-                              attachmentId: photo.attachmentId,
-                              displayType: "hero" as const,
-                              displayOrder: 0,
-                          },
-                      ]
-                    : [],
-            }),
+        await HeroAttachmentActions.save(
+            db,
+            recipesToCreate.map(({ recipeId, photo }) => ({
+                contentId: recipeId,
+                attachmentId: photo?.attachmentId,
+            })),
         );
-        for (const { recipeId, attachments } of recipesAttachments) {
-            if (attachments.length)
-                await RecipeAttachmentActions.save(db, {
-                    recipeId,
-                    attachments,
-                });
-        }
 
         const results = await read(db, { userId, recipes: recipesToCreate });
 
@@ -698,29 +616,13 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                 .merge();
         }
 
-        for (const { recipeId, photo } of recipes) {
-            if (photo !== undefined) {
-                await db(lamington.contentAttachment)
-                    .where({
-                        [ContentAttachmentTable.contentId]: recipeId,
-                        [ContentAttachmentTable.displayType]: "hero",
-                    })
-                    .delete();
-
-                if (photo) {
-                    await RecipeAttachmentActions.save(db, {
-                        recipeId,
-                        attachments: [
-                            {
-                                attachmentId: photo.attachmentId,
-                                displayType: "hero" as const,
-                                displayOrder: 0,
-                            },
-                        ],
-                    });
-                }
-            }
-        }
+        await HeroAttachmentActions.save(
+            db,
+            recipes.map(({ recipeId, photo }) => ({
+                contentId: recipeId,
+                attachmentId: photo === null ? null : photo?.attachmentId,
+            })),
+        );
 
         const results = await read(db, { userId, recipes });
 
@@ -827,7 +729,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                     heroAttachmentId,
                     heroAttachmentUri,
                     ...recipe
-                }) => ({
+                }: any) => ({
                     ...formatRecipe(recipe),
                     rating: {
                         average: ratingAverage
@@ -842,12 +744,10 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                                 cat.recipeId === recipe.recipeId,
                         ),
                     ),
-                    photo: heroAttachmentId
-                        ? {
-                              attachmentId: heroAttachmentId,
-                              uri: heroAttachmentUri,
-                          }
-                        : undefined,
+                    photo: formatHeroAttachment(
+                        heroAttachmentId,
+                        heroAttachmentUri,
+                    ),
                 }),
             ),
         };

@@ -1,10 +1,10 @@
 import type { MealRepository } from "../mealRepository.ts";
+import { formatHeroAttachment } from "./common/dataFormatting/formatHeroAttachment.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentReadPermissions } from "./common/queryBuilders/withContentReadPermissions.ts";
+import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
-    AttachmentTable,
-    ContentAttachmentTable,
     ContentTable,
     lamington,
     PlannerMealTable,
@@ -31,10 +31,6 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
                 PlannerMealTable.notes,
                 ContentTable.createdBy,
                 UserTable.firstName,
-                db
-                    .ref(ContentAttachmentTable.attachmentId)
-                    .as("heroAttachmentId"),
-                db.ref(AttachmentTable.uri).as("heroAttachmentUri"),
             )
             .whereIn(PlannerMealTable.mealId, mealIds)
             .leftJoin(
@@ -59,24 +55,7 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
                     allowedStatuses: ["A", "M", "O"],
                 }),
             )
-            .leftJoin(lamington.contentAttachment, (join) =>
-                join
-                    .on(
-                        ContentAttachmentTable.contentId,
-                        "=",
-                        PlannerMealTable.mealId,
-                    )
-                    .andOn(
-                        ContentAttachmentTable.displayType,
-                        "=",
-                        db.raw("?", ["hero"]),
-                    ),
-            )
-            .leftJoin(
-                lamington.attachment,
-                ContentAttachmentTable.attachmentId,
-                AttachmentTable.attachmentId,
-            );
+            .modify(withHeroAttachment(PlannerMealTable.mealId));
 
         return {
             userId,
@@ -96,12 +75,10 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
                 sequence: toUndefined(meal.sequence),
                 recipeId: toUndefined(meal.recipeId),
                 notes: toUndefined(meal.notes),
-                heroImage: meal.heroAttachmentId
-                    ? {
-                          attachmentId: meal.heroAttachmentId,
-                          uri: meal.heroAttachmentUri,
-                      }
-                    : undefined,
+                heroImage: formatHeroAttachment(
+                    meal.heroAttachmentId,
+                    meal.heroAttachmentUri,
+                ),
             })),
         };
     },
