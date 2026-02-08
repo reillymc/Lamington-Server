@@ -16,6 +16,7 @@ import type { User } from "../userRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { formatHeroAttachment } from "./common/dataFormatting/formatHeroAttachment.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
+import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
 import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
 import { createDeleteContent } from "./common/repositoryMethods/content.ts";
 import { HeroAttachmentActions } from "./common/repositoryMethods/contentAttachment.ts";
@@ -33,7 +34,6 @@ import {
     RecipeRatingTable,
     RecipeStepTable,
     RecipeTable,
-    UserTable,
 } from "./spec/index.ts";
 
 const DefaultSection = "default";
@@ -45,9 +45,9 @@ const ContentTagsRequestToRows = (
 
 const readTags = (
     db: KnexDatabase,
-    request: CreateQuery<{
+    request: {
         recipeId: Recipe["recipeId"];
-    }>,
+    },
 ) =>
     ContentTagActions.readByContentId(
         db,
@@ -63,10 +63,10 @@ const readTags = (
 
 const saveTags = (
     db: KnexDatabase,
-    request: CreateQuery<{
+    request: {
         recipeId: Recipe["recipeId"];
         tags: ReadonlyArray<Pick<ContentTag, "tagId">>;
-    }>,
+    },
 ) =>
     ContentTagActions.save(
         db,
@@ -286,8 +286,6 @@ const RecipeBase = (db: KnexDatabase, userId: string) => {
             RecipeTable.cookTime,
             RecipeTable.prepTime,
             RecipeTable.public,
-            ContentTable.createdBy,
-            db.ref(UserTable.firstName).as("createdByName"),
             db.ref("avg_ratings.rating_average"),
             db(lamington.recipeRating)
                 .select(RecipeRatingTable.rating)
@@ -301,8 +299,8 @@ const RecipeBase = (db: KnexDatabase, userId: string) => {
             RecipeTable.recipeId,
             ContentTable.contentId,
         )
-        .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
         .leftJoin(ratingsSubquery, RecipeTable.recipeId, "avg_ratings.recipeId")
+        .modify(withContentAuthor)
         .modify(withHeroAttachment(RecipeTable.recipeId));
 };
 
@@ -323,7 +321,7 @@ type GetFullRecipeResults =
       > & {
           [ratingAverageName]: string;
           [ratingPersonalName]: RecipeRating["rating"];
-          createdByName: User["firstName"];
+          firstName: User["firstName"];
           createdBy: Content["createdBy"];
           heroAttachmentId?: string;
           heroAttachmentUri?: string;
@@ -354,10 +352,8 @@ const getFullRecipe = async (
             "public",
             "timesCooked",
             "nutritionalInformation",
-            ContentTable.createdBy,
             ContentTable.createdAt,
             ContentTable.updatedAt,
-            db.ref(UserTable.firstName).as("createdByName"),
             db.ref("avg_ratings.rating_average"),
             db(lamington.recipeRating)
                 .select(RecipeRatingTable.rating)
@@ -371,8 +367,8 @@ const getFullRecipe = async (
             RecipeTable.recipeId,
             ContentTable.contentId,
         )
-        .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
         .leftJoin(ratingsSubquery, RecipeTable.recipeId, "avg_ratings.recipeId")
+        .modify(withContentAuthor)
         .modify(withHeroAttachment(RecipeTable.recipeId))
         .where(RecipeTable.recipeId, recipeId)
         .first();
@@ -394,7 +390,7 @@ const formatRecipe = (recipe: any) => ({
     nutritionalInformation: toUndefined(recipe.nutritionalInformation),
     owner: {
         userId: recipe.createdBy,
-        firstName: recipe.createdByName,
+        firstName: recipe.firstName,
     },
 });
 

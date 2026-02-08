@@ -53,7 +53,7 @@ interface ListItem {
 
 type VerifyPermissionsRequest = {
     userId: User["userId"];
-    status: ListUserStatus | ReadonlyArray<ListUserStatus>;
+    status: ListUserStatus | [ListUserStatus, ...ReadonlyArray<ListUserStatus>];
     lists: ReadonlyArray<{
         listId: List["listId"];
     }>;

@@ -31,7 +31,9 @@ type VerifyPermissionsRequest = {
     /**
      * Will return true of user is a member of a planner with the provided statuses
      */
-    status: PlannerUserStatus | ReadonlyArray<PlannerUserStatus>;
+    status:
+        | PlannerUserStatus
+        | [PlannerUserStatus, ...ReadonlyArray<PlannerUserStatus>];
     planners: ReadonlyArray<{
         plannerId: Planner["plannerId"];
     }>;

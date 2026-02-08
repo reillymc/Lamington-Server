@@ -2,7 +2,8 @@ import { EnsureArray } from "../../utils/index.ts";
 import type { BookRepository } from "../bookRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
-import { withContentReadPermissions } from "./common/queryBuilders/withContentReadPermissions.ts";
+import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
+import { withContentPermissions } from "./common/queryBuilders/withContentPermissions.ts";
 import { createDeleteContent } from "./common/repositoryMethods/content.ts";
 import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
 import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
@@ -13,7 +14,6 @@ import {
     ContentMemberTable,
     ContentTable,
     lamington,
-    UserTable,
 } from "./spec/index.ts";
 
 const formatBook = (
@@ -41,8 +41,6 @@ const read: BookRepository<KnexDatabase>["read"] = async (
             BookTable.name,
             BookTable.description,
             BookTable.customisations,
-            ContentTable.createdBy,
-            UserTable.firstName,
             ContentMemberTable.status,
         )
         .whereIn(
@@ -50,12 +48,12 @@ const read: BookRepository<KnexDatabase>["read"] = async (
             books.map(({ bookId }) => bookId),
         )
         .leftJoin(lamington.content, BookTable.bookId, ContentTable.contentId)
-        .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
+        .modify(withContentAuthor)
         .modify(
-            withContentReadPermissions({
+            withContentPermissions({
                 userId,
                 idColumn: BookTable.bookId,
-                allowedStatuses: ["A", "M"],
+                statuses: ["O", "A", "M"],
             }),
         );
 
@@ -124,8 +122,6 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
                 BookTable.name,
                 BookTable.description,
                 BookTable.customisations,
-                ContentTable.createdBy,
-                UserTable.firstName,
                 ContentMemberTable.status,
             )
             .leftJoin(
@@ -133,12 +129,12 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
                 BookTable.bookId,
                 ContentTable.contentId,
             )
-            .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
+            .modify(withContentAuthor)
             .modify(
-                withContentReadPermissions({
+                withContentPermissions({
                     userId,
                     idColumn: BookTable.bookId,
-                    allowedStatuses: ["A", "M", "P"],
+                    statuses: ["O", "A", "M", "P"],
                 }),
             );
 

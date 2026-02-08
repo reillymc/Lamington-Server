@@ -2,7 +2,8 @@ import { EnsureArray } from "../../utils/index.ts";
 import type { ListRepository } from "../listRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
-import { withContentReadPermissions } from "./common/queryBuilders/withContentReadPermissions.ts";
+import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
+import { withContentPermissions } from "./common/queryBuilders/withContentPermissions.ts";
 import { createDeleteContent } from "./common/repositoryMethods/content.ts";
 import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
 import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
@@ -13,7 +14,6 @@ import {
     ListItemTable,
     ListTable,
     lamington,
-    UserTable,
 } from "./spec/index.ts";
 
 const formatListItem = (
@@ -40,7 +40,6 @@ const readItemsByIds = async (
     listId: string,
     itemIds: string[],
 ) => {
-    const listContentAlias = "listContent";
     const result = await db(lamington.listItem)
         .select(
             ListItemTable.itemId,
@@ -51,31 +50,23 @@ const readItemsByIds = async (
             ListItemTable.unit,
             ListItemTable.amount,
             ListItemTable.notes,
-            ContentTable.createdBy,
             ContentTable.updatedAt,
-            UserTable.firstName,
         )
         .leftJoin(
             lamington.content,
             ListItemTable.itemId,
             ContentTable.contentId,
         )
-        .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
-        .leftJoin(
-            `${lamington.content} as ${listContentAlias}`,
-            ListItemTable.listId,
-            `${listContentAlias}.contentId`,
-        )
         .whereIn(ListItemTable.itemId, itemIds)
         .modify((qb) => {
             if (listId) qb.where(ListItemTable.listId, listId);
         })
+        .modify(withContentAuthor)
         .modify(
-            withContentReadPermissions({
+            withContentPermissions({
                 userId,
                 idColumn: ListItemTable.listId,
-                ownerColumns: `${listContentAlias}.createdBy`,
-                allowedStatuses: ["A", "M"],
+                statuses: ["O", "A", "M"],
             }),
         );
 
@@ -92,8 +83,6 @@ const read: ListRepository<KnexDatabase>["read"] = async (
             ListTable.name,
             ListTable.description,
             ListTable.customisations,
-            ContentTable.createdBy,
-            UserTable.firstName,
             ContentMemberTable.status,
         )
         .whereIn(
@@ -101,12 +90,12 @@ const read: ListRepository<KnexDatabase>["read"] = async (
             lists.map(({ listId }) => listId),
         )
         .leftJoin(lamington.content, ListTable.listId, ContentTable.contentId)
-        .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
+        .modify(withContentAuthor)
         .modify(
-            withContentReadPermissions({
+            withContentPermissions({
                 userId,
                 idColumn: ListTable.listId,
-                allowedStatuses: ["A", "M"],
+                statuses: ["O", "A", "M"],
             }),
         );
 
@@ -143,8 +132,6 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
                 ListTable.name,
                 ListTable.description,
                 ListTable.customisations,
-                ContentTable.createdBy,
-                UserTable.firstName,
                 ContentMemberTable.status,
             )
             .leftJoin(
@@ -152,12 +139,12 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
                 ListTable.listId,
                 ContentTable.contentId,
             )
-            .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
+            .modify(withContentAuthor)
             .modify(
-                withContentReadPermissions({
+                withContentPermissions({
                     userId,
                     idColumn: ListTable.listId,
-                    allowedStatuses: ["A", "M", "P"],
+                    statuses: ["O", "A", "M", "P"],
                 }),
             )
             .modify((qb) => {
@@ -224,7 +211,6 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
     },
     delete: createDeleteContent("lists", "listId"),
     readAllItems: async (db, { userId, filter }) => {
-        const listContentAlias = "listContent";
         const result = await db(lamington.listItem)
             .select(
                 ListItemTable.itemId,
@@ -235,27 +221,19 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
                 ListItemTable.unit,
                 ListItemTable.amount,
                 ListItemTable.notes,
-                ContentTable.createdBy,
                 ContentTable.updatedAt,
-                UserTable.firstName,
             )
             .leftJoin(
                 lamington.content,
                 ListItemTable.itemId,
                 ContentTable.contentId,
             )
-            .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
-            .leftJoin(
-                `${lamington.content} as ${listContentAlias}`,
-                ListItemTable.listId,
-                `${listContentAlias}.contentId`,
-            )
+            .modify(withContentAuthor)
             .modify(
-                withContentReadPermissions({
+                withContentPermissions({
                     userId,
                     idColumn: ListItemTable.listId,
-                    ownerColumns: `${listContentAlias}.createdBy`,
-                    allowedStatuses: ["A", "M"],
+                    statuses: ["O", "A", "M"],
                 }),
             )
             .where(ListItemTable.listId, filter.listId);

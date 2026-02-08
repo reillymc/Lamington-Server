@@ -2,7 +2,9 @@ import { EnsureArray } from "../../utils/index.ts";
 import type { PlannerRepository } from "../plannerRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
-import { withContentReadPermissions } from "./common/queryBuilders/withContentReadPermissions.ts";
+import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
+import { withContentPermissions } from "./common/queryBuilders/withContentPermissions.ts";
+import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
 import { createDeleteContent } from "./common/repositoryMethods/content.ts";
 import { HeroAttachmentActions } from "./common/repositoryMethods/contentAttachment.ts";
 import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
@@ -16,7 +18,6 @@ import {
     lamington,
     PlannerMealTable,
     PlannerTable,
-    UserTable,
 } from "./spec/index.ts";
 
 const formatPlannerMeal = (
@@ -62,8 +63,6 @@ const readByIds = async (
             PlannerMealTable.source,
             PlannerMealTable.recipeId,
             PlannerMealTable.notes,
-            ContentTable.createdBy,
-            UserTable.firstName,
             db.ref(ContentAttachmentTable.attachmentId).as("heroAttachmentId"),
             db.ref(AttachmentTable.uri).as("heroAttachmentUri"),
         )
@@ -72,29 +71,12 @@ const readByIds = async (
             PlannerMealTable.mealId,
             ContentTable.contentId,
         )
-        .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
-        .leftJoin(lamington.contentAttachment, (join) =>
-            join
-                .on(
-                    ContentAttachmentTable.contentId,
-                    "=",
-                    PlannerMealTable.mealId,
-                )
-                .andOn(
-                    ContentAttachmentTable.displayType,
-                    "=",
-                    db.raw("?", ["hero"]),
-                ),
-        )
-        .leftJoin(
-            lamington.attachment,
-            ContentAttachmentTable.attachmentId,
-            AttachmentTable.attachmentId,
-        )
         .whereIn(PlannerMealTable.mealId, mealIds)
         .modify((qb) => {
             if (plannerId) qb.where(PlannerMealTable.plannerId, plannerId);
-        });
+        })
+        .modify(withHeroAttachment(PlannerMealTable.mealId))
+        .modify(withContentAuthor);
 
     return result.map(formatPlannerMeal);
 };
@@ -109,8 +91,6 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (
             PlannerTable.name,
             PlannerTable.description,
             PlannerTable.customisations,
-            ContentTable.createdBy,
-            UserTable.firstName,
             ContentMemberTable.status,
         )
         .whereIn(
@@ -122,12 +102,12 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (
             PlannerTable.plannerId,
             ContentTable.contentId,
         )
-        .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
+        .modify(withContentAuthor)
         .modify(
-            withContentReadPermissions({
+            withContentPermissions({
                 userId,
                 idColumn: PlannerTable.plannerId,
-                allowedStatuses: ["A", "M"],
+                statuses: ["O", "A", "M"],
             }),
         );
 
@@ -146,8 +126,6 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (
 
 export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
     readAllMeals: async (db, { userId, filter }) => {
-        const plannerContentAlias = "plannerContent";
-
         const result = await db(lamington.plannerMeal)
             .select(
                 PlannerMealTable.mealId,
@@ -160,48 +138,19 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
                 PlannerMealTable.source,
                 PlannerMealTable.recipeId,
                 PlannerMealTable.notes,
-                ContentTable.createdBy,
-                UserTable.firstName,
-                db
-                    .ref(ContentAttachmentTable.attachmentId)
-                    .as("heroAttachmentId"),
-                db.ref(AttachmentTable.uri).as("heroAttachmentUri"),
             )
             .leftJoin(
                 lamington.content,
                 PlannerMealTable.mealId,
                 ContentTable.contentId,
             )
-            .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
-            .leftJoin(lamington.contentAttachment, (join) =>
-                join
-                    .on(
-                        ContentAttachmentTable.contentId,
-                        "=",
-                        PlannerMealTable.mealId,
-                    )
-                    .andOn(
-                        ContentAttachmentTable.displayType,
-                        "=",
-                        db.raw("?", ["hero"]),
-                    ),
-            )
-            .leftJoin(
-                lamington.attachment,
-                ContentAttachmentTable.attachmentId,
-                AttachmentTable.attachmentId,
-            )
-            .leftJoin(
-                `${lamington.content} as ${plannerContentAlias}`,
-                PlannerMealTable.plannerId,
-                `${plannerContentAlias}.contentId`,
-            )
+            .modify(withHeroAttachment(PlannerMealTable.mealId))
+            .modify(withContentAuthor)
             .modify(
-                withContentReadPermissions({
+                withContentPermissions({
                     userId,
                     idColumn: PlannerMealTable.plannerId,
-                    ownerColumns: `${plannerContentAlias}.createdBy`,
-                    allowedStatuses: ["A", "M"],
+                    statuses: ["O", "A", "M"],
                 }),
             )
             .where(PlannerMealTable.plannerId, filter.plannerId)
@@ -309,8 +258,6 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
                 PlannerTable.name,
                 PlannerTable.description,
                 PlannerTable.customisations,
-                ContentTable.createdBy,
-                UserTable.firstName,
                 ContentMemberTable.status,
             )
             .leftJoin(
@@ -318,12 +265,12 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
                 PlannerTable.plannerId,
                 ContentTable.contentId,
             )
-            .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
+            .modify(withContentAuthor)
             .modify(
-                withContentReadPermissions({
+                withContentPermissions({
                     userId,
                     idColumn: PlannerTable.plannerId,
-                    allowedStatuses: ["A", "M", "P"],
+                    statuses: ["O", "A", "M", "P"],
                 }),
             )
             .modify((qb) => {

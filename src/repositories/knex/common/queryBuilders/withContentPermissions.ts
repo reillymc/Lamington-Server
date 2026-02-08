@@ -5,28 +5,22 @@ import {
     ContentTable,
     lamington,
 } from "../../spec/index.ts";
+import type { ContentMemberStatus } from "../repositoryMethods/contentMember.ts";
 
-interface WithContentReadPermissionsParams {
+type WithContentReadPermissionsParams = {
     userId: string;
     idColumn: string;
-    ownerColumns?: string | string[];
-    allowedStatuses?: string | string[];
-}
+    statuses:
+        | ContentMemberStatus
+        | [ContentMemberStatus, ...ReadonlyArray<ContentMemberStatus>];
+};
 
-export const withContentReadPermissions =
-    ({
-        userId,
-        idColumn,
-        ownerColumns,
-        allowedStatuses = [],
-    }: WithContentReadPermissionsParams) =>
+export const withContentPermissions =
+    ({ userId, idColumn, ...params }: WithContentReadPermissionsParams) =>
     <TRecord extends {}, TResult>(
         query: Knex.QueryBuilder<TRecord, TResult>,
     ) => {
-        const owners =
-            ownerColumns === undefined
-                ? [ContentTable.createdBy]
-                : EnsureArray(ownerColumns);
+        const statuses = EnsureArray(params.statuses);
 
         query
             .leftJoin(lamington.contentMember, (join) =>
@@ -35,24 +29,16 @@ export const withContentReadPermissions =
                     .andOnVal(ContentMemberTable.userId, "=", userId),
             )
             .where((b) => {
-                let hasCondition = false;
-                const statuses = EnsureArray(allowedStatuses);
                 if (statuses.length > 0) {
                     b.orWhere((sub) =>
                         sub
                             .whereNotNull(ContentMemberTable.userId)
                             .whereIn(ContentMemberTable.status, statuses),
                     );
-                    hasCondition = true;
                 }
 
-                for (const col of owners) {
-                    b.orWhere(col, userId);
-                    hasCondition = true;
-                }
-
-                if (!hasCondition) {
-                    b.whereRaw("1 = 0");
+                if (statuses.includes("O")) {
+                    b.orWhere(ContentTable.createdBy, userId);
                 }
             });
     };

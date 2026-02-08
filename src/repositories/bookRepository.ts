@@ -65,7 +65,7 @@ type VerifyPermissionsRequest = {
     /**
      * Will return true of user is a member of a book with the provided statuses
      */
-    status: BookUserStatus | ReadonlyArray<BookUserStatus>;
+    status: BookUserStatus | [BookUserStatus, ...ReadonlyArray<BookUserStatus>];
     books: ReadonlyArray<{
         bookId: Book["bookId"];
     }>;

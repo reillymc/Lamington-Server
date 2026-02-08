@@ -1,54 +1,30 @@
-import { EnsureArray } from "../../../../utils/index.ts";
 import type { KnexDatabase } from "../../knex.ts";
-import {
-    ContentMemberTable,
-    ContentTable,
-    lamington,
-} from "../../spec/index.ts";
+import { ContentTable, lamington } from "../../spec/index.ts";
+import { withContentPermissions } from "../queryBuilders/withContentPermissions.ts";
 import type { ContentMemberStatus } from "./contentMember.ts";
 
 export const verifyContentPermissions = async (
     db: KnexDatabase,
     userId: string,
     contentIds: string[],
-    statuses: ContentMemberStatus | ReadonlyArray<ContentMemberStatus>,
+    statuses:
+        | ContentMemberStatus
+        | [ContentMemberStatus, ...ContentMemberStatus[]],
 ): Promise<Record<string, boolean>> => {
     if (contentIds.length === 0) return {};
 
-    const allowedStatuses = EnsureArray(statuses);
-    const memberStatuses = allowedStatuses.filter((s) => s !== "O");
-    const checkOwner = allowedStatuses.includes("O");
-
-    const rows = await db(lamington.content)
+    const rows: any[] = await db(lamington.content)
         .select(ContentTable.contentId)
-        .leftJoin(lamington.contentMember, (join) => {
-            join.on(
-                ContentTable.contentId,
-                "=",
-                ContentMemberTable.contentId,
-            ).andOn(ContentMemberTable.userId, "=", db.raw("?", [userId]));
-        })
         .whereIn(ContentTable.contentId, contentIds)
-        .andWhere((builder) => {
-            if (checkOwner) {
-                builder.where(ContentTable.createdBy, userId);
-            }
+        .modify(
+            withContentPermissions({
+                userId,
+                idColumn: ContentTable.contentId,
+                statuses: statuses,
+            }),
+        );
 
-            if (memberStatuses.length > 0) {
-                if (checkOwner) {
-                    builder.orWhereIn(
-                        ContentMemberTable.status,
-                        memberStatuses,
-                    );
-                } else {
-                    builder.whereIn(ContentMemberTable.status, memberStatuses);
-                }
-            } else if (!checkOwner) {
-                builder.whereRaw("1 = 0");
-            }
-        });
-
-    const allowedSet = new Set(rows.map((r) => r.contentId));
+    const allowedSet = new Set(rows.map(({ contentId }) => contentId));
 
     return contentIds.reduce<Record<string, boolean>>((acc, id) => {
         acc[id] = allowedSet.has(id);

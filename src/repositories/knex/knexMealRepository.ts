@@ -1,20 +1,15 @@
 import type { MealRepository } from "../mealRepository.ts";
 import { formatHeroAttachment } from "./common/dataFormatting/formatHeroAttachment.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
-import { withContentReadPermissions } from "./common/queryBuilders/withContentReadPermissions.ts";
+import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
+import { withContentPermissions } from "./common/queryBuilders/withContentPermissions.ts";
 import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
 import type { KnexDatabase } from "./knex.ts";
-import {
-    ContentTable,
-    lamington,
-    PlannerMealTable,
-    UserTable,
-} from "./spec/index.ts";
+import { ContentTable, lamington, PlannerMealTable } from "./spec/index.ts";
 
 export const KnexMealRepository: MealRepository<KnexDatabase> = {
     read: async (db, { userId, meals }) => {
         const mealIds = meals.map(({ mealId }) => mealId);
-        const plannerContentAlias = "plannerContent";
 
         const result: any[] = await db(lamington.plannerMeal)
             .select(
@@ -29,8 +24,6 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
                 PlannerMealTable.sequence,
                 PlannerMealTable.recipeId,
                 PlannerMealTable.notes,
-                ContentTable.createdBy,
-                UserTable.firstName,
             )
             .whereIn(PlannerMealTable.mealId, mealIds)
             .leftJoin(
@@ -38,21 +31,12 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
                 PlannerMealTable.mealId,
                 ContentTable.contentId,
             )
-            .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
-            .leftJoin(
-                `${lamington.content} as ${plannerContentAlias}`,
-                PlannerMealTable.plannerId,
-                `${plannerContentAlias}.contentId`,
-            )
+            .modify(withContentAuthor)
             .modify(
-                withContentReadPermissions({
+                withContentPermissions({
                     userId,
                     idColumn: PlannerMealTable.plannerId,
-                    ownerColumns: [
-                        ContentTable.createdBy,
-                        `${plannerContentAlias}.createdBy`,
-                    ],
-                    allowedStatuses: ["A", "M", "O"],
+                    statuses: ["O", "A", "M"],
                 }),
             )
             .modify(withHeroAttachment(PlannerMealTable.mealId));

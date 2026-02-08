@@ -1,17 +1,13 @@
 import type { CookListRepository } from "../cooklistRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
+import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
+import { withContentPermissions } from "./common/queryBuilders/withContentPermissions.ts";
+import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
 import { createDeleteContent } from "./common/repositoryMethods/content.ts";
 import { HeroAttachmentActions } from "./common/repositoryMethods/contentAttachment.ts";
 import type { KnexDatabase } from "./knex.ts";
-import {
-    AttachmentTable,
-    ContentAttachmentTable,
-    ContentTable,
-    lamington,
-    PlannerMealTable,
-    UserTable,
-} from "./spec/index.ts";
+import { ContentTable, lamington, PlannerMealTable } from "./spec/index.ts";
 
 const formatCookListMeal = (
     meal: any,
@@ -47,37 +43,18 @@ const readByIds = async (db: KnexDatabase, mealIds: string[]) => {
             PlannerMealTable.sequence,
             PlannerMealTable.recipeId,
             PlannerMealTable.notes,
-            ContentTable.createdBy,
-            UserTable.firstName,
-            db.ref(ContentAttachmentTable.attachmentId).as("heroAttachmentId"),
-            db.ref(AttachmentTable.uri).as("heroAttachmentUri"),
         )
         .leftJoin(
             lamington.content,
             PlannerMealTable.mealId,
             ContentTable.contentId,
         )
-        .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
-        .leftJoin(lamington.contentAttachment, (join) => {
-            join.on(
-                ContentAttachmentTable.contentId,
-                "=",
-                PlannerMealTable.mealId,
-            ).andOn(
-                ContentAttachmentTable.displayType,
-                "=",
-                db.raw("?", ["hero"]),
-            );
-        })
-        .leftJoin(
-            lamington.attachment,
-            ContentAttachmentTable.attachmentId,
-            AttachmentTable.attachmentId,
-        )
         .whereIn(PlannerMealTable.mealId, mealIds)
         .whereNull(PlannerMealTable.plannerId)
         .whereNull(PlannerMealTable.year)
-        .whereNull(PlannerMealTable.month);
+        .whereNull(PlannerMealTable.month)
+        .modify(withHeroAttachment(PlannerMealTable.mealId))
+        .modify(withContentAuthor);
 
     return { meals: result.map(formatCookListMeal) };
 };
@@ -93,39 +70,22 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
                 PlannerMealTable.sequence,
                 PlannerMealTable.recipeId,
                 PlannerMealTable.notes,
-                ContentTable.createdBy,
-                UserTable.firstName,
-                db
-                    .ref(ContentAttachmentTable.attachmentId)
-                    .as("heroAttachmentId"),
-                db.ref(AttachmentTable.uri).as("heroAttachmentUri"),
             )
             .leftJoin(
                 lamington.content,
                 PlannerMealTable.mealId,
                 ContentTable.contentId,
             )
-            .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
-            .leftJoin(lamington.contentAttachment, (join) =>
-                join
-                    .on(
-                        ContentAttachmentTable.contentId,
-                        "=",
-                        PlannerMealTable.mealId,
-                    )
-                    .andOn(
-                        ContentAttachmentTable.displayType,
-                        "=",
-                        db.raw("?", ["hero"]),
-                    ),
+            .whereNull(PlannerMealTable.plannerId)
+            .modify(
+                withContentPermissions({
+                    userId,
+                    idColumn: PlannerMealTable.mealId,
+                    statuses: "O",
+                }),
             )
-            .leftJoin(
-                lamington.attachment,
-                ContentAttachmentTable.attachmentId,
-                AttachmentTable.attachmentId,
-            )
-            .where(ContentTable.createdBy, userId)
-            .whereNull(PlannerMealTable.plannerId);
+            .modify(withHeroAttachment(PlannerMealTable.mealId))
+            .modify(withContentAuthor);
 
         return { meals: result.map(formatCookListMeal) };
     },
