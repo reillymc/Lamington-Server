@@ -3,15 +3,9 @@ import type { ListRepository } from "../listRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentReadPermissions } from "./common/queryBuilders/withContentReadPermissions.ts";
-import {
-    createDeleteContent,
-    createVerifyContentPermissions,
-} from "./common/repositoryMethods/content.ts";
-import {
-    createReadMembers,
-    createRemoveMembers,
-    createSaveMembers,
-} from "./common/repositoryMethods/contentMember.ts";
+import { createDeleteContent } from "./common/repositoryMethods/content.ts";
+import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
+import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     ContentMemberTable,
@@ -397,13 +391,64 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
             updatedAt: toUndefined(resultMap.get(listId)),
         }));
     },
-    readMembers: createReadMembers("listId"),
-    saveMembers: createSaveMembers("listId"),
-    updateMembers: createSaveMembers("listId"),
-    removeMembers: createRemoveMembers("listId"),
-    verifyPermissions: createVerifyContentPermissions(
-        "listId",
-        "lists",
-        lamington.list,
-    ),
+    readMembers: async (db, request) =>
+        ContentMemberActions.readByContentId(
+            db,
+            EnsureArray(request).map(({ listId }) => listId),
+        ).then((members) =>
+            EnsureArray(request).map(({ listId }) => ({
+                listId,
+                members: members.filter((m) => m.contentId === listId),
+            })),
+        ),
+    saveMembers: async (db, request) =>
+        ContentMemberActions.save(
+            db,
+            EnsureArray(request).flatMap(({ listId, members = [] }) =>
+                members.map(({ userId, status }) => ({
+                    contentId: listId,
+                    userId,
+                    status,
+                })),
+            ),
+        ).then((members = []) =>
+            EnsureArray(request).map(({ listId }) => ({
+                listId,
+                members: members.filter(
+                    ({ contentId }) => contentId === listId,
+                ),
+            })),
+        ),
+    removeMembers: async (db, request) =>
+        ContentMemberActions.delete(
+            db,
+            EnsureArray(request).flatMap(({ listId, members = [] }) =>
+                members.map(({ userId }) => ({
+                    contentId: listId,
+                    userId,
+                })),
+            ),
+        ).then(() =>
+            EnsureArray(request).map(({ listId, members = [] }) => ({
+                listId,
+                count: members.length,
+            })),
+        ),
+    verifyPermissions: async (db, { userId, lists, status }) => {
+        const listIds = EnsureArray(lists).map((l) => l.listId);
+        const permissions = await verifyContentPermissions(
+            db,
+            userId,
+            listIds,
+            status,
+        );
+        return {
+            userId,
+            status,
+            lists: listIds.map((listId) => ({
+                listId,
+                hasPermissions: permissions[listId] ?? false,
+            })),
+        };
+    },
 };

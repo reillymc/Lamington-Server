@@ -241,16 +241,6 @@ type SaveMembersResponse = {
     members: ReadonlyArray<MemberResponseItem>;
 };
 
-type UpdateMembersRequest = {
-    plannerId: Planner["plannerId"];
-    members: ReadonlyArray<MemberSaveItem>;
-};
-
-type UpdateMembersResponse = {
-    plannerId: Planner["plannerId"];
-    members: ReadonlyArray<MemberResponseItem>;
-};
-
 type RemoveMembersRequest = {
     plannerId: Planner["plannerId"];
     members: ReadonlyArray<{
@@ -323,11 +313,6 @@ export interface PlannerRepository<TDatabase extends Database = Database> {
         TDatabase,
         UpdateMealsRequest,
         UpdateMealsResponse
-    >;
-    updateMembers: RepositoryBulkService<
-        TDatabase,
-        UpdateMembersRequest,
-        UpdateMembersResponse
     >;
     verifyPermissions: RepositoryService<
         TDatabase,

@@ -13,22 +13,19 @@ import type {
 } from "../recipeRepository.ts";
 import type { Content, ContentTag } from "../temp.ts";
 import type { User } from "../userRepository.ts";
-import { ContentTagActions } from "./common/contentTag.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { formatHeroAttachment } from "./common/dataFormatting/formatHeroAttachment.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
-import {
-    createDeleteContent,
-    createVerifyContentPermissions,
-} from "./common/repositoryMethods/content.ts";
+import { createDeleteContent } from "./common/repositoryMethods/content.ts";
 import { HeroAttachmentActions } from "./common/repositoryMethods/contentAttachment.ts";
+import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
+import { ContentTagActions } from "./common/repositoryMethods/contentTag.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     BookRecipeTable,
     ContentTable,
     ContentTagTable,
-    type CreateQuery,
     IngredientTable,
     lamington,
     PAGE_SIZE,
@@ -628,11 +625,23 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
 
         return { userId, recipes: results.recipes };
     },
-    verifyPermissions: createVerifyContentPermissions(
-        "recipeId",
-        "recipes",
-        lamington.recipe,
-    ),
+    verifyPermissions: async (db, { userId, recipes, status }) => {
+        const recipeIds = EnsureArray(recipes).map((r) => r.recipeId);
+        const permissions = await verifyContentPermissions(
+            db,
+            userId,
+            recipeIds,
+            status,
+        );
+        return {
+            userId,
+            status,
+            recipes: recipeIds.map((recipeId) => ({
+                recipeId,
+                hasPermissions: permissions[recipeId] ?? false,
+            })),
+        };
+    },
     readAll: async (
         db,
         { userId, order, page = 1, sort = "name", filter = {} },

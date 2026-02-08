@@ -3,15 +3,9 @@ import type { BookRepository } from "../bookRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentReadPermissions } from "./common/queryBuilders/withContentReadPermissions.ts";
-import {
-    createDeleteContent,
-    createVerifyContentPermissions,
-} from "./common/repositoryMethods/content.ts";
-import {
-    createReadMembers,
-    createRemoveMembers,
-    createSaveMembers,
-} from "./common/repositoryMethods/contentMember.ts";
+import { createDeleteContent } from "./common/repositoryMethods/content.ts";
+import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
+import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     BookRecipeTable,
@@ -211,12 +205,66 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
             count: countsByBookId[bookId] || 0,
         }));
     },
-    readMembers: createReadMembers("bookId"),
-    saveMembers: createSaveMembers("bookId"),
-    removeMembers: createRemoveMembers("bookId"),
-    verifyPermissions: createVerifyContentPermissions(
-        "bookId",
-        "books",
-        lamington.book,
-    ),
+    readMembers: async (db, request) =>
+        ContentMemberActions.readByContentId(
+            db,
+            EnsureArray(request).map(({ bookId }) => bookId),
+        ).then((members) =>
+            EnsureArray(request).map(({ bookId }) => ({
+                bookId,
+                members: members.filter(
+                    ({ contentId }) => contentId === bookId,
+                ),
+            })),
+        ),
+    saveMembers: async (db, request) =>
+        ContentMemberActions.save(
+            db,
+            EnsureArray(request).flatMap(({ bookId, members = [] }) =>
+                members.map(({ userId, status }) => ({
+                    contentId: bookId,
+                    userId,
+                    status,
+                })),
+            ),
+        ).then((members = []) =>
+            EnsureArray(request).map(({ bookId }) => ({
+                bookId,
+                members: members.filter(
+                    ({ contentId }) => contentId === bookId,
+                ),
+            })),
+        ),
+    removeMembers: async (db, request) =>
+        ContentMemberActions.delete(
+            db,
+            EnsureArray(request).flatMap(({ bookId, members = [] }) =>
+                members.map(({ userId }) => ({
+                    contentId: bookId,
+                    userId,
+                })),
+            ),
+        ).then(() =>
+            EnsureArray(request).map(({ bookId, members = [] }) => ({
+                bookId,
+                count: members.length,
+            })),
+        ),
+    verifyPermissions: async (db, { userId, books, status }) => {
+        const bookIds = EnsureArray(books).map((b) => b.bookId);
+        const permissions = await verifyContentPermissions(
+            db,
+            userId,
+            bookIds,
+            status,
+        );
+        return {
+            userId,
+            status,
+            books: bookIds.map((bookId) => ({
+                bookId,
+                hasPermissions: permissions[bookId] ?? false,
+            })),
+        };
+    },
 };

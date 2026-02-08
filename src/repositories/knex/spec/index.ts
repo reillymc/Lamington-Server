@@ -204,6 +204,4 @@ export const UserTable = table(lamington.user, [
     "preferences",
 ] as const);
 
-export type CreateQuery<T> = T | Array<T>;
-
 export const PAGE_SIZE = config.app.pageSize;

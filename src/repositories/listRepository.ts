@@ -174,16 +174,6 @@ type SaveMembersResponse = {
     members: ReadonlyArray<MemberResponseItem>;
 };
 
-type UpdateMembersRequest = {
-    listId: List["listId"];
-    members: ReadonlyArray<MemberSaveItem>;
-};
-
-type UpdateMembersResponse = {
-    listId: List["listId"];
-    members: ReadonlyArray<MemberResponseItem>;
-};
-
 type RemoveMembersRequest = {
     listId: List["listId"];
     members: ReadonlyArray<{
@@ -396,11 +386,6 @@ export interface ListRepository<TDatabase extends Database = Database> {
         TDatabase,
         UpdateItemsRequest,
         UpdateItemsResponse
-    >;
-    updateMembers: RepositoryBulkService<
-        TDatabase,
-        UpdateMembersRequest,
-        UpdateMembersResponse
     >;
     verifyPermissions: RepositoryService<
         TDatabase,

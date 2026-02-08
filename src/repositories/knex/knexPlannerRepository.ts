@@ -1,17 +1,12 @@
+import { EnsureArray } from "../../utils/index.ts";
 import type { PlannerRepository } from "../plannerRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentReadPermissions } from "./common/queryBuilders/withContentReadPermissions.ts";
-import {
-    createDeleteContent,
-    createVerifyContentPermissions,
-} from "./common/repositoryMethods/content.ts";
+import { createDeleteContent } from "./common/repositoryMethods/content.ts";
 import { HeroAttachmentActions } from "./common/repositoryMethods/contentAttachment.ts";
-import {
-    createReadMembers,
-    createRemoveMembers,
-    createSaveMembers,
-} from "./common/repositoryMethods/contentMember.ts";
+import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
+import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     AttachmentTable,
@@ -388,13 +383,64 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
         return read(db, { userId, planners });
     },
     delete: createDeleteContent("planners", "plannerId"),
-    readMembers: createReadMembers("plannerId"),
-    saveMembers: createSaveMembers("plannerId"),
-    updateMembers: createSaveMembers("plannerId"),
-    removeMembers: createRemoveMembers("plannerId"),
-    verifyPermissions: createVerifyContentPermissions(
-        "plannerId",
-        "planners",
-        lamington.planner,
-    ),
+    readMembers: async (db, request) =>
+        ContentMemberActions.readByContentId(
+            db,
+            EnsureArray(request).map(({ plannerId }) => plannerId),
+        ).then((members) =>
+            EnsureArray(request).map(({ plannerId }) => ({
+                plannerId,
+                members: members.filter((m) => m.contentId === plannerId),
+            })),
+        ),
+    saveMembers: async (db, request) =>
+        ContentMemberActions.save(
+            db,
+            EnsureArray(request).flatMap(({ plannerId, members = [] }) =>
+                members.map(({ userId, status }) => ({
+                    contentId: plannerId,
+                    userId,
+                    status,
+                })),
+            ),
+        ).then((members = []) =>
+            EnsureArray(request).map(({ plannerId }) => ({
+                plannerId,
+                members: members.filter(
+                    ({ contentId }) => contentId === plannerId,
+                ),
+            })),
+        ),
+    removeMembers: async (db, request) =>
+        ContentMemberActions.delete(
+            db,
+            EnsureArray(request).flatMap(({ plannerId, members = [] }) =>
+                members.map(({ userId }) => ({
+                    contentId: plannerId,
+                    userId,
+                })),
+            ),
+        ).then(() =>
+            EnsureArray(request).map(({ plannerId, members = [] }) => ({
+                plannerId,
+                count: members.length,
+            })),
+        ),
+    verifyPermissions: async (db, { userId, planners, status }) => {
+        const plannerIds = EnsureArray(planners).map((p) => p.plannerId);
+        const permissions = await verifyContentPermissions(
+            db,
+            userId,
+            plannerIds,
+            status,
+        );
+        return {
+            userId,
+            status,
+            planners: plannerIds.map((plannerId) => ({
+                plannerId,
+                hasPermissions: permissions[plannerId] ?? false,
+            })),
+        };
+    },
 };
