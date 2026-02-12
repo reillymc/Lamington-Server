@@ -26,7 +26,7 @@ export const lamington = {
 export type lamington = typeof lamington;
 
 export type Table<T extends ReadonlyArray<string> = []> = Required<{
-    [key in T[number]]: string;
+    [key in T[number]]: key;
 }>;
 
 const table = <T extends ReadonlyArray<string>>(

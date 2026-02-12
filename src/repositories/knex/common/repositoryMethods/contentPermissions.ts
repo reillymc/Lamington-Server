@@ -13,7 +13,9 @@ export const verifyContentPermissions = async (
 ): Promise<Record<string, boolean>> => {
     if (contentIds.length === 0) return {};
 
-    const rows: any[] = await db(lamington.content)
+    const rows: Array<{ [ContentTable.contentId]: string }> = await db(
+        lamington.content,
+    )
         .select(ContentTable.contentId)
         .whereIn(ContentTable.contentId, contentIds)
         .modify(

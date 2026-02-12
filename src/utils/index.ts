@@ -12,6 +12,7 @@ export const ObjectFromEntries = <
     cast: (entries: Array<[keyof T, T[keyof T]]>) => Array<[K, S]>,
 ): { [k in K]: S } => {
     const entries = Object.entries(obj) as Array<[keyof T, T[keyof T]]>;
+    // biome-ignore lint/suspicious/noExplicitAny: TS cannot properly infer object keys
     return Object.fromEntries(cast(entries)) as any;
 };
 

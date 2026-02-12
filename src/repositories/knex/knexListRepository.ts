@@ -34,6 +34,18 @@ const formatListItem = (
     },
 });
 
+const formatList = (
+    l: any,
+): Awaited<ReturnType<ListRepository["read"]>>["lists"][number] => ({
+    listId: l.listId,
+    name: l.name,
+    description: toUndefined(l.description),
+    color: l.customisations?.color,
+    icon: l.customisations?.icon,
+    owner: { userId: l.createdBy, firstName: l.firstName },
+    status: l.status ?? "O",
+});
+
 const readItemsByIds = async (
     db: KnexDatabase,
     userId: string,
@@ -77,7 +89,7 @@ const read: ListRepository<KnexDatabase>["read"] = async (
     db,
     { lists, userId },
 ) => {
-    const result: any[] = await db(lamington.list)
+    const result: unknown[] = await db(lamington.list)
         .select(
             ListTable.listId,
             ListTable.name,
@@ -101,15 +113,7 @@ const read: ListRepository<KnexDatabase>["read"] = async (
 
     return {
         userId,
-        lists: result.map((l) => ({
-            listId: l.listId,
-            name: l.name,
-            description: toUndefined(l.description),
-            color: l.customisations?.color,
-            icon: l.customisations?.icon,
-            owner: { userId: l.createdBy, firstName: l.firstName },
-            status: l.status ?? "O",
-        })),
+        lists: result.map(formatList),
     };
 };
 
@@ -126,7 +130,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
         return { items: result, listId };
     },
     readAll: async (db, { userId, filter }) => {
-        const listItems: any[] = await db(lamington.list)
+        const listItems: unknown[] = await db(lamington.list)
             .select(
                 ListTable.listId,
                 ListTable.name,
@@ -155,15 +159,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
 
         return {
             userId,
-            lists: listItems.map((l) => ({
-                listId: l.listId,
-                name: l.name,
-                description: toUndefined(l.description),
-                color: l.customisations?.color,
-                icon: l.customisations?.icon,
-                owner: { userId: l.createdBy, firstName: l.firstName },
-                status: l.status ?? "O",
-            })),
+            lists: listItems.map(formatList),
         };
     },
     create: async (db, { userId, lists }) => {
@@ -330,7 +326,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
     countOutstandingItems: async (db, request) => {
         const listIds = EnsureArray(request).map(({ listId }) => listId);
 
-        const results = await db(lamington.listItem)
+        const results: any[] = await db(lamington.listItem)
             .select(ListItemTable.listId)
             .count({ count: ListItemTable.itemId })
             .whereIn(ListItemTable.listId, listIds)
@@ -338,7 +334,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
             .groupBy(ListItemTable.listId);
 
         const countMap = new Map(
-            results.map((r: any) => [r.listId, Number(r.count)]),
+            results.map((r) => [r.listId, Number(r.count)]),
         );
 
         return listIds.map((listId) => ({
@@ -349,7 +345,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
     getLatestUpdatedTimestamp: async (db, request) => {
         const listIds = EnsureArray(request).map(({ listId }) => listId);
 
-        const results = await db(lamington.listItem)
+        const results: any[] = await db(lamington.listItem)
             .select(ListItemTable.listId)
             .max(ContentTable.updatedAt, { as: "updatedAt" })
             .leftJoin(
@@ -360,9 +356,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
             .whereIn(ListItemTable.listId, listIds)
             .groupBy(ListItemTable.listId);
 
-        const resultMap = new Map(
-            results.map((r: any) => [r.listId, r.updatedAt]),
-        );
+        const resultMap = new Map(results.map((r) => [r.listId, r.updatedAt]));
 
         return listIds.map((listId) => ({
             listId,

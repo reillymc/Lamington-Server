@@ -35,7 +35,7 @@ const read: BookRepository<KnexDatabase>["read"] = async (
     db,
     { books, userId },
 ) => {
-    const result: any[] = await db(lamington.book)
+    const result: unknown[] = await db(lamington.book)
         .select(
             BookTable.bookId,
             BookTable.name,
@@ -116,7 +116,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         return read(db, { userId, books });
     },
     readAll: async (db, { userId }) => {
-        const bookList: any[] = await db(lamington.book)
+        const bookList: unknown[] = await db(lamington.book)
             .select(
                 BookTable.bookId,
                 BookTable.name,

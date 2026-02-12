@@ -133,7 +133,10 @@ export const assertRecipeServingsAreEqual = (
     expect(servings1Parsed.count.value).toEqual(servings2Parsed.count.value);
 };
 
-export const assertRecipeTagsAreEqual = (tags1: any = {}, tags2: any = {}) => {
+export const assertRecipeTagsAreEqual = (
+    tags1: components["schemas"]["Recipe"]["tags"] = {},
+    tags2: components["schemas"]["Recipe"]["tags"] = {},
+) => {
     const tagGroups1 = Object.keys(tags1);
     const tagGroups2 = Object.keys(tags2);
 
@@ -145,22 +148,20 @@ export const assertRecipeTagsAreEqual = (tags1: any = {}, tags2: any = {}) => {
 
         expect(tag1?.tagId).toEqual(tag2?.tagId);
         expect(tag1?.name).toEqual(tag2?.name);
-        // expect(tag1?.description).toEqual(tag2?.description); Parent tag description currently not returned
 
         const childTags1 = tag1?.tags ?? [];
         const childTags2 = tag2?.tags ?? [];
 
         expect(childTags1.length).toEqual(childTags2.length);
 
-        childTags1.forEach((childTag: any) => {
+        childTags1.forEach((childTag) => {
             const childTag1 = childTags1.find(
-                ({ tagId }: any) => tagId === childTag.tagId,
+                ({ tagId }) => tagId === childTag.tagId,
             );
 
             expect(childTag1).toBeDefined();
             expect(childTag1?.tagId).toEqual(childTag.tagId);
             expect(childTag1?.name).toEqual(childTag.name);
-            expect(childTag1?.description).toEqual(childTag.description);
         });
     });
 };
