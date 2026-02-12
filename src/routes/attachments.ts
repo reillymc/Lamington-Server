@@ -1,12 +1,12 @@
 import express from "express";
-import config from "../config.ts";
 import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
 export const createAttachmentsRouter: CreateRouter<
     "attachmentService",
-    "rateLimiterControlled"
-> = ({ attachmentService }, middleware) =>
+    "rateLimiterControlled",
+    { uploadDirectory: string }
+> = ({ attachmentService }, middleware, { uploadDirectory }) =>
     express
         .Router()
         .post<
@@ -33,5 +33,5 @@ export const createAttachmentsRouter: CreateRouter<
         )
         .use(
             "/attachments/image" satisfies routes,
-            express.static(config.attachments.localUploadDirectory),
+            express.static(uploadDirectory),
         );

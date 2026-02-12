@@ -13,7 +13,7 @@ import { PrepareAuthenticatedUser } from "../helpers/index.ts";
 import { createTestApp } from "../helpers/setup.ts";
 
 const MockSuccessfulFileRepository: FileRepository = {
-    create: mock.fn(async () => true),
+    create: mock.fn(async () => "uri://"),
     delete: mock.fn(async () => true),
 };
 
@@ -144,7 +144,7 @@ describe("Upload an image", () => {
     });
 
     it("should not upload when save to db fails", async () => {
-        const mockCreate = mock.fn(async () => true);
+        const mockCreate = mock.fn(async () => "uri://");
 
         app = createTestApp({
             database,

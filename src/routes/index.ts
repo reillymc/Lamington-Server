@@ -1,9 +1,10 @@
 import express from "express";
+import type { LamingtonConfig } from "../config.ts";
 import { createAssetsRouter } from "./assets.ts";
 import { createAttachmentsRouter } from "./attachments.ts";
 import { createAuthRouter } from "./auth.ts";
 import { createBookRouter } from "./books.ts";
-import { createCooklistRouter } from "./cookLists.ts";
+import { createCooklistRouter } from "./cooklists.ts";
 import { createDocsRouter } from "./docs.ts";
 import { createExtractorRouter } from "./extractor.ts";
 import { createHealthRouter } from "./health.ts";
@@ -33,8 +34,9 @@ export const createAppRouter: CreateRouter<
     | "validator"
     | "logger"
     | "errorHandler"
-    | "notFound"
-> = (services, middleware) =>
+    | "notFound",
+    LamingtonConfig
+> = (services, middleware, config) =>
     express
         .Router()
         .use(middleware.logger)
@@ -47,7 +49,7 @@ export const createAppRouter: CreateRouter<
                 .use(middleware.validator)
                 .use(createAuthRouter(services, middleware))
                 .use(createAssetsRouter())
-                .use(createAttachmentsRouter(services, middleware))
+                .use(createAttachmentsRouter(services, middleware, config))
                 .use(createBookRouter(services))
                 .use(createCooklistRouter(services))
                 .use(createExtractorRouter(services))
@@ -59,6 +61,6 @@ export const createAppRouter: CreateRouter<
                 .use(createTagsRouter(services))
                 .use(createUserRouter(services)),
         )
-        .use("/", createDocsRouter())
+        .use("/", createDocsRouter(config.app))
         .use(middleware.notFound)
         .use(middleware.errorHandler);

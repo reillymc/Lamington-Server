@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import { type AppParams, setupApp } from "../../src/app.ts";
+import config from "../../src/config.ts";
 
 const dummyRequestHandler: RequestHandler[] = [
     (_req, _res, next) => {
@@ -12,7 +13,7 @@ export const createTestApp = ({
     repositories,
     services,
     middleware,
-}: AppParams) =>
+}: Omit<AppParams, "config">) =>
     setupApp({
         database,
         repositories,
@@ -24,4 +25,5 @@ export const createTestApp = ({
             rateLimiterRestrictive: dummyRequestHandler,
             ...middleware,
         },
+        config,
     });

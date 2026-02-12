@@ -3,7 +3,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import { DefaultAppMiddleware, DefaultAppServices } from "./appDependencies.ts";
-import config from "./config.ts";
+import type { LamingtonConfig } from "./config.ts";
 import type { AppMiddleware } from "./middleware/index.ts";
 import type { AppRepositories, Database } from "./repositories/index.ts";
 import { createAppRouter } from "./routes/index.ts";
@@ -14,6 +14,7 @@ export interface AppParams {
     repositories?: Partial<AppRepositories>;
     services?: Partial<AppServices>;
     middleware?: Partial<AppMiddleware>;
+    config: LamingtonConfig;
 }
 
 export const setupApp = ({
@@ -21,6 +22,7 @@ export const setupApp = ({
     repositories,
     services,
     middleware,
+    config,
 }: AppParams) =>
     express()
         .use(express.json())
@@ -50,5 +52,6 @@ export const setupApp = ({
                     ...DefaultAppMiddleware(),
                     ...middleware,
                 },
+                config,
             ),
         );

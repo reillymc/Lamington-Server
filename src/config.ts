@@ -13,22 +13,8 @@ const parseLogLevel = (
     }
 };
 
-const parseAttachmentStorage = (
-    imageStorage: string | undefined,
-): "local" | "s3" => {
-    switch (imageStorage) {
-        case "local":
-            return "local";
-        case "s3":
-            return "s3";
-        default:
-            return "local";
-    }
-};
-
 const config: LamingtonConfig = {
     app: {
-        port: parseInt(process.env.PORT ?? "3000", 10),
         logDetail: parseLogLevel(process.env.LOG_LEVEL),
         pageSize: parseInt(process.env.PAGE_SIZE ?? "50", 10),
         externalHost: process.env.EXTERNAL_HOST,
@@ -40,22 +26,11 @@ const config: LamingtonConfig = {
         jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
         jwtRefreshExpiration: process.env.JWT_REFRESH_EXPIRATION ?? "7d",
     },
-    attachments: {
-        storageService: parseAttachmentStorage(
-            process.env.ATTACHMENT_STORAGE_SERVICE,
-        ),
-        awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        awsRegion: process.env.AWS_REGION,
-        awsBucketName: process.env.AWS_BUCKET_NAME,
-        path: process.env.ATTACHMENT_PATH ?? "prod",
-        localUploadDirectory: "uploads",
-    },
+    uploadDirectory: "uploads",
 } as const;
 
-export interface LamingtonConfig {
+export type LamingtonConfig = {
     app: {
-        port: number;
         logDetail: "tiny" | "short" | "dev";
         pageSize: number;
         externalHost: string | undefined;
@@ -67,15 +42,7 @@ export interface LamingtonConfig {
         jwtRefreshSecret: string | undefined;
         jwtRefreshExpiration: string;
     };
-    attachments: {
-        storageService: "local" | "s3";
-        localUploadDirectory: string;
-        path: string;
-        awsAccessKeyId: string | undefined;
-        awsSecretAccessKey: string | undefined;
-        awsRegion: string | undefined;
-        awsBucketName: string | undefined;
-    };
-}
+    uploadDirectory: string;
+};
 
 export default config;

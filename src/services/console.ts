@@ -22,40 +22,7 @@ const formatAuthenticationString = (
     return { message, error };
 };
 
-const formatAttachmentConfig = (
-    config: LamingtonConfig["attachments"],
-): { message: string; error?: boolean } => {
-    let message = "Attachment Storage:";
-    let error = false;
-
-    switch (config.storageService) {
-        case "s3":
-            message = `${message} S3 (Bucket=${config.awsBucketName} - Region=${config.awsRegion}, (Path=${
-                config.path
-            }), Access key=${!!config.awsAccessKeyId}, Secret key=${!!config.awsSecretAccessKey})`;
-            error =
-                !config.awsBucketName ||
-                !config.awsAccessKeyId ||
-                !config.awsSecretAccessKey;
-            break;
-        default:
-            message = `${message} Local (Path=uploads/${config.path})`;
-            break;
-    }
-
-    return { message, error };
-};
-
 export const printConfig = (config: LamingtonConfig): void => {
     const authentication = formatAuthenticationString(config.authentication);
     console.info(applyColor(authentication));
-
-    const attachments = formatAttachmentConfig(config.attachments);
-    console.info(applyColor(attachments));
-
-    console.info(
-        applyColor({
-            message: `Listening on http://localhost:${config.app.port}`,
-        }),
-    );
 };

@@ -1,5 +1,4 @@
 import sharp from "sharp";
-import config from "../config.ts";
 import type { components } from "../routes/spec/schema.js";
 import { CreatedDataFetchError, InsufficientDataError } from "./logging.ts";
 import type { CreateService } from "./service.ts";
@@ -11,12 +10,6 @@ const compressImage = (file: Buffer) =>
         .rotate()
         .withMetadata()
         .toBuffer();
-
-const constructAttachmentPath = (userId: string, attachmentId: string) => {
-    const uploadPath = `${config.attachments.path}/${userId}/${attachmentId}`;
-    const uri = `${config.attachments.storageService}:${uploadPath}`;
-    return { uri, uploadPath };
-};
 
 export interface AttachmentService {
     create: (
@@ -46,16 +39,12 @@ export const createAttachmentService: CreateService<
                 throw new CreatedDataFetchError("attachment");
             }
 
-            const { uri, uploadPath } = constructAttachmentPath(
-                userId,
-                attachmentEntry.attachmentId,
-            );
-
             const compressedImage = await compressImage(file.buffer);
 
             const result = await fileRepository.create(undefined, {
                 file: compressedImage,
-                path: uploadPath,
+                userId,
+                attachmentId: attachmentEntry.attachmentId,
             });
 
             if (!result) {
@@ -67,7 +56,7 @@ export const createAttachmentService: CreateService<
             } = await attachmentRepository.update(trx, {
                 userId,
                 attachments: [
-                    { attachmentId: attachmentEntry.attachmentId, uri },
+                    { attachmentId: attachmentEntry.attachmentId, uri: result },
                 ],
             });
 

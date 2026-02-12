@@ -1,4 +1,3 @@
-import config from "./config.ts";
 import db from "./database/index.ts";
 import { createErrorHandlerMiddleware } from "./middleware/errorHandler.ts";
 import type { AppMiddleware } from "./middleware/index.ts";
@@ -10,7 +9,7 @@ import {
     createRateLimiterRestrictive,
 } from "./middleware/rateLimiters.ts";
 import { createValidatorMiddleware } from "./middleware/validator.ts";
-import { DiskFileRepository } from "./repositories/disk/diskFileRepository.ts";
+import { createDiskFileRepository } from "./repositories/disk/diskFileRepository.ts";
 import type { AppRepositories, Database } from "./repositories/index.ts";
 import { KnexAttachmentRepository } from "./repositories/knex/knexAttachmentRepository.ts";
 import { KnexBookRepository } from "./repositories/knex/knexBookRepository.ts";
@@ -21,7 +20,6 @@ import { KnexPlannerRepository } from "./repositories/knex/knexPlannerRepository
 import { KnexRecipeRepository } from "./repositories/knex/knexRecipeRepository.ts";
 import { KnexTagRepository } from "./repositories/knex/knexTagRepository.ts";
 import { KnexUserRepository } from "./repositories/knex/knexUserRepository.ts";
-import { S3FileRepository } from "./repositories/s3/s3FileRepository.ts";
 
 import { createAttachmentService } from "./services/attachmentService.ts";
 import { createBookService } from "./services/bookService.ts";
@@ -46,10 +44,7 @@ const DefaultAppRepositories: AppRepositories<any> = {
     userRepository: KnexUserRepository,
     tagRepository: KnexTagRepository,
     attachmentRepository: KnexAttachmentRepository,
-    fileRepository:
-        config.attachments.storageService === "local"
-            ? DiskFileRepository
-            : S3FileRepository,
+    fileRepository: createDiskFileRepository("uploads", "prod"),
 };
 
 export const DefaultAppServices = (
