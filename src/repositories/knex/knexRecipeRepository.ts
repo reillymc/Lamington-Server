@@ -18,6 +18,7 @@ import { formatHeroAttachment } from "./common/dataFormatting/formatHeroAttachme
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
 import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
+import { withPagination } from "./common/queryBuilders/withPagination.ts";
 import { createDeleteContent } from "./common/repositoryMethods/content.ts";
 import { HeroAttachmentActions } from "./common/repositoryMethods/contentAttachment.ts";
 import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
@@ -699,8 +700,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             //     );
             // })
             .orderBy([{ column: sortColumn, order }, RecipeTable.recipeId])
-            .limit(PAGE_SIZE + 1)
-            .offset((page - 1) * PAGE_SIZE);
+            .modify(withPagination({ page, pageSize: PAGE_SIZE }));
 
         if (filter.books?.length) {
             query
