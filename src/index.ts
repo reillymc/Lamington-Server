@@ -2,7 +2,6 @@ import { S3Client } from "@aws-sdk/client-s3";
 import knex from "knex";
 import ms, { type StringValue } from "ms";
 import { setupApp } from "./app.ts";
-import config from "./config.ts";
 import development from "./database/knexfile.development.ts";
 import production from "./database/knexfile.production.ts";
 import { createErrorHandlerMiddleware } from "./middleware/errorHandler.ts";
@@ -139,7 +138,8 @@ const app = setupApp({
         logger: createLoggerMiddleware(),
     },
     config: {
-        ...config,
+        externalHost: process.env.EXTERNAL_HOST,
+        allowedOrigin: process.env.CORS_ALLOWED_ORIGIN,
         uploadDirectory: "uploads",
     },
 });

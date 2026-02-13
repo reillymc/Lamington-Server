@@ -38,7 +38,7 @@ export const createAccessToken = (
     user: components["schemas"]["AuthResponse"]["user"],
 ) => jwt.sign(user, jwtAccessSecret, { noTimestamp: true, expiresIn });
 
-export const createRefreshToken = (
+const createRefreshToken = (
     jwtRefreshSecret: string,
     expiresIn: number,
     user: components["schemas"]["AuthResponse"]["user"],

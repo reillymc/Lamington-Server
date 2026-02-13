@@ -7,11 +7,13 @@ import { parse } from "yaml";
 import packageJson from "../../package.json" with { type: "json" };
 import type { CreateRouter } from "./route.ts";
 
-export const createDocsRouter: CreateRouter<
-    never,
-    never,
-    { externalHost?: string }
-> = ({ externalHost }) => {
+export type DocsRouterConfig = {
+    externalHost?: string;
+};
+
+export const createDocsRouter: CreateRouter<never, never, DocsRouterConfig> = ({
+    externalHost,
+}) => {
     const file = readFileSync("./openapi.yaml", "utf8");
     const swaggerDocument = parse(file);
 

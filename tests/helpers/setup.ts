@@ -1,7 +1,6 @@
 import knex from "knex";
 import { v4 } from "uuid";
 import { setupApp } from "../../src/app.ts";
-import config from "../../src/config.ts";
 import { createErrorHandlerMiddleware } from "../../src/middleware/errorHandler.ts";
 import type { AppMiddleware } from "../../src/middleware/index.ts";
 import { createLoggerMiddleware } from "../../src/middleware/logger.ts";
@@ -106,6 +105,10 @@ export const createTestApp = ({
             rateLimiterRestrictive: createRateLimiterRestrictive(),
             ...middleware,
         },
-        config,
+        config: {
+            allowedOrigin: "test.origin",
+            externalHost: "https://test.host",
+            uploadDirectory: "uploads",
+        },
     });
 };

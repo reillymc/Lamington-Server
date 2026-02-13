@@ -2,10 +2,14 @@ import express from "express";
 import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
+export type AttachmentsRouterConfig = {
+    uploadDirectory: string;
+};
+
 export const createAttachmentsRouter: CreateRouter<
     "attachmentService",
     "rateLimiterControlled",
-    { uploadDirectory: string }
+    AttachmentsRouterConfig
 > = ({ attachmentService }, middleware, { uploadDirectory }) =>
     express
         .Router()

@@ -1,11 +1,13 @@
 import express from "express";
-import type { LamingtonConfig } from "../config.ts";
 import { createAssetsRouter } from "./assets.ts";
-import { createAttachmentsRouter } from "./attachments.ts";
+import {
+    type AttachmentsRouterConfig,
+    createAttachmentsRouter,
+} from "./attachments.ts";
 import { createAuthRouter } from "./auth.ts";
 import { createBookRouter } from "./books.ts";
 import { createCooklistRouter } from "./cooklists.ts";
-import { createDocsRouter } from "./docs.ts";
+import { createDocsRouter, type DocsRouterConfig } from "./docs.ts";
 import { createExtractorRouter } from "./extractor.ts";
 import { createHealthRouter } from "./health.ts";
 import { createListRouter } from "./lists.ts";
@@ -16,6 +18,8 @@ import { createRecipeRouter } from "./recipes.ts";
 import type { CreateRouter } from "./route.ts";
 import { createTagsRouter } from "./tags.ts";
 import { createUserRouter } from "./users.ts";
+
+export type AppRouterConfig = AttachmentsRouterConfig & DocsRouterConfig;
 
 export const createAppRouter: CreateRouter<
     | "userService"
@@ -34,7 +38,7 @@ export const createAppRouter: CreateRouter<
     | "validator"
     | "logger"
     | "errorHandler",
-    LamingtonConfig
+    AppRouterConfig
 > = (services, middleware, config) =>
     express
         .Router()
@@ -60,5 +64,5 @@ export const createAppRouter: CreateRouter<
                 .use(createUserRouter(services)),
         )
         .use("/health", createHealthRouter())
-        .use("/", createDocsRouter(config.app))
+        .use("/", createDocsRouter(config))
         .use(middleware.errorHandler);
