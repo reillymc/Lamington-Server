@@ -112,7 +112,7 @@ export class UnknownError extends AppError {
 }
 
 export class UnauthorizedError extends AppError {
-    constructor(reason?: string, innerError?: unknown) {
+    constructor(reason = "Unauthorised", innerError?: unknown) {
         super({
             status: 401,
             code: "UNAUTHORIZED",

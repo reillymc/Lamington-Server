@@ -18,9 +18,14 @@ const errorHandler: ErrorRequestHandler = (
         innerError = error.innerError as Error;
     }
 
+    if (error instanceof Error) {
+        message = error.message;
+        innerError = error.cause;
+    }
+
     logger.log({
         level: "error",
-        message: (error as Error)?.message || "Unknown Error",
+        message: message || "Unknown Error",
         request: {
             params: request.params,
             query: request.query,

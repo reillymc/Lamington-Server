@@ -19,7 +19,7 @@ import type { CreateRouter } from "./route.ts";
 import { createTagsRouter } from "./tags.ts";
 import { createUserRouter } from "./users.ts";
 
-export type AppRouterConfig = AttachmentsRouterConfig & DocsRouterConfig;
+type AppRouterConfig = AttachmentsRouterConfig & DocsRouterConfig;
 
 export const createAppRouter: CreateRouter<
     | "userService"

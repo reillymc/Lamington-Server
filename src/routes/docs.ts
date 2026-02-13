@@ -9,17 +9,17 @@ export type DocsRouterConfig = {
     externalHost?: string;
 };
 
-export const createDocsRouter: CreateRouter<never, never, DocsRouterConfig> = ({
-    externalHost,
-}) => {
+export const createDocsRouter: CreateRouter<never, never, DocsRouterConfig> = (
+    config,
+) => {
     const swaggerDocument = {
         ...openApiSpec,
         info: {
             ...openApiSpec.info,
             version: packageJson.version,
         },
-        servers: externalHost
-            ? [{ url: `${externalHost}/v1` }]
+        servers: config.externalHost
+            ? [{ url: `${config.externalHost}/v1` }]
             : openApiSpec.servers,
     };
 

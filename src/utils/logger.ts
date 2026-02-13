@@ -29,39 +29,45 @@ export class AppError {
     }
 }
 
-const ErrorLogFileTransport = new transports.DailyRotateFile({
-    level: "error",
-    filename: "error-%DATE%.log",
-    zippedArchive: true,
-    maxSize: "10m",
-    maxFiles: "60d",
-    dirname: logPath,
-    format: format.combine(
-        format.timestamp({
-            format: "YYYY-MM-DD HH:mm:ss",
-        }),
-        format.errors({ stack: true }),
-        format.splat(),
-        format.json(),
-    ),
-});
+const ErrorLogFileTransport =
+    process.env.NODE_ENV !== "test"
+        ? new transports.DailyRotateFile({
+              level: "error",
+              filename: "error-%DATE%.log",
+              zippedArchive: true,
+              maxSize: "10m",
+              maxFiles: "60d",
+              dirname: logPath,
+              format: format.combine(
+                  format.timestamp({
+                      format: "YYYY-MM-DD HH:mm:ss",
+                  }),
+                  format.errors({ stack: true }),
+                  format.splat(),
+                  format.json(),
+              ),
+          })
+        : undefined;
 
-const AccessLogFileTransport = new transports.DailyRotateFile({
-    level: "http",
-    filename: "access-%DATE%.log",
-    zippedArchive: true,
-    maxSize: "10m",
-    maxFiles: "60d",
-    dirname: logPath,
-    format: format.combine(
-        format.timestamp({
-            format: "YYYY-MM-DD HH:mm:ss",
-        }),
-        format.printf(({ level, message, timestamp }) => {
-            return `${timestamp} ${level}: ${message}`;
-        }),
-    ),
-});
+const AccessLogFileTransport =
+    process.env.NODE_ENV !== "test"
+        ? new transports.DailyRotateFile({
+              level: "http",
+              filename: "access-%DATE%.log",
+              zippedArchive: true,
+              maxSize: "10m",
+              maxFiles: "60d",
+              dirname: logPath,
+              format: format.combine(
+                  format.timestamp({
+                      format: "YYYY-MM-DD HH:mm:ss",
+                  }),
+                  format.printf(({ level, message, timestamp }) => {
+                      return `${timestamp} ${level}: ${message}`;
+                  }),
+              ),
+          })
+        : undefined;
 
 const ConsoleLogTransport =
     process.env.NODE_ENV !== "production"

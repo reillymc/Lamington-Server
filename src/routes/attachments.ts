@@ -10,7 +10,7 @@ export const createAttachmentsRouter: CreateRouter<
     "attachmentService",
     "rateLimiterControlled",
     AttachmentsRouterConfig
-> = ({ attachmentService }, middleware, { uploadDirectory }) =>
+> = ({ attachmentService }, middleware, config) =>
     express
         .Router()
         .post<
@@ -37,5 +37,5 @@ export const createAttachmentsRouter: CreateRouter<
         )
         .use(
             "/attachments/image" satisfies routes,
-            express.static(uploadDirectory),
+            express.static(config.uploadDirectory),
         );
