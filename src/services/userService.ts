@@ -5,12 +5,12 @@ import { UniqueViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
 import {
     CreatedDataFetchError,
+    type CreateService,
     InvalidOperationError,
     NotFoundError,
     PermissionError,
     UnauthorizedError,
-} from "./index.ts";
-import type { CreateService } from "./service.ts";
+} from "./service.ts";
 
 const isRefreshToken = (
     decoded: string | undefined | JwtPayload,

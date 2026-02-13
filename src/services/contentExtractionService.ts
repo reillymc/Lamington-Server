@@ -2,7 +2,7 @@ import { load } from "cheerio";
 import moment from "moment";
 
 import type { components } from "../routes/spec/index.ts";
-import { AppError } from "./logging.ts";
+import { UnknownError } from "./service.ts";
 
 export interface ContentExtractionService {
     extractRecipeMetadata: (
@@ -18,7 +18,7 @@ export const createContentExtractionService = (): ContentExtractionService => ({
         try {
             const response = await fetch(url);
             if (!response.ok) {
-                throw new AppError({
+                throw new UnknownError({
                     message: `Request failed with status ${response.status}`,
                 });
             }
@@ -31,14 +31,14 @@ export const createContentExtractionService = (): ContentExtractionService => ({
             const imageUrl = page('meta[property="og:image"]').attr("content");
 
             if (!name) {
-                throw new AppError({
+                throw new UnknownError({
                     message: "Could not extract a name from the URL.",
                 });
             }
 
             return { name, imageUrl };
         } catch (_error) {
-            throw new AppError({
+            throw new UnknownError({
                 message:
                     "Failed to fetch or parse content from the provided URL.",
             });
@@ -47,7 +47,7 @@ export const createContentExtractionService = (): ContentExtractionService => ({
     extractRecipe: async (url: string) => {
         const response = await fetch(url);
         if (!response.ok) {
-            throw new AppError({
+            throw new UnknownError({
                 message: `Request failed with status ${response.status}`,
             });
         }
@@ -86,13 +86,13 @@ export const createContentExtractionService = (): ContentExtractionService => ({
         });
 
         if (!recipeData) {
-            throw new AppError({
+            throw new UnknownError({
                 message: "No recipe JSON-LD data found on the page.",
             });
         }
 
         if (typeof recipeData !== "object") {
-            throw new AppError({
+            throw new UnknownError({
                 message: "No valid JSON-LD recipe object found on the page.",
             });
         }

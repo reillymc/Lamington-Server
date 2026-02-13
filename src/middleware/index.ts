@@ -7,5 +7,4 @@ export type AppMiddleware = {
     validator: Middleware[];
     errorHandler: Middleware[];
     logger: Middleware[];
-    notFound: Middleware[];
 };

@@ -7,7 +7,6 @@ import development from "./database/knexfile.development.ts";
 import production from "./database/knexfile.production.ts";
 import { createErrorHandlerMiddleware } from "./middleware/errorHandler.ts";
 import { createLoggerMiddleware } from "./middleware/logger.ts";
-import { createNotFoundMiddleware } from "./middleware/notFound.ts";
 import {
     createRateLimiterControlled,
     createRateLimiterLoose,
@@ -31,13 +30,13 @@ import { createAttachmentService } from "./services/attachmentService.ts";
 import { createBookService } from "./services/bookService.ts";
 import { createContentExtractionService } from "./services/contentExtractionService.ts";
 import { createCooklistService } from "./services/cooklistService.ts";
-import { logger } from "./services/index.ts";
 import { createListService } from "./services/listService.ts";
 import { createMealService } from "./services/mealService.ts";
 import { createPlannerService } from "./services/plannerService.ts";
 import { createRecipeService } from "./services/recipeService.ts";
 import { createTagService } from "./services/tagService.ts";
 import { createUserService } from "./services/userService.ts";
+import { logger } from "./utils/logger.ts";
 
 const port = parseInt(process.env.PORT ?? "3000", 10);
 
@@ -138,7 +137,6 @@ const app = setupApp({
         validator: createValidatorMiddleware({ accessSecret }),
         errorHandler: createErrorHandlerMiddleware(),
         logger: createLoggerMiddleware(),
-        notFound: createNotFoundMiddleware(),
     },
     config: {
         ...config,

@@ -1,7 +1,10 @@
 import sharp from "sharp";
 import type { components } from "../routes/spec/schema.js";
-import { CreatedDataFetchError, InsufficientDataError } from "./logging.ts";
-import type { CreateService } from "./service.ts";
+import {
+    CreatedDataFetchError,
+    type CreateService,
+    InsufficientDataError,
+} from "./service.ts";
 
 const compressImage = (file: Buffer) =>
     sharp(file)

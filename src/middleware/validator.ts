@@ -3,9 +3,12 @@ import type { Request } from "express";
 import * as OpenApiValidator from "express-openapi-validator";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import multer, { type FileFilterCallback } from "multer";
-import { UnauthorizedError } from "../services/index.ts";
-import { ValidationError } from "../services/logging.ts";
-import type { CreateMiddleware, Middleware } from "./middleware.ts";
+import {
+    type CreateMiddleware,
+    type Middleware,
+    UnauthorizedError,
+    ValidationError,
+} from "./middleware.ts";
 
 const { JsonWebTokenError, NotBeforeError, TokenExpiredError } = jwt;
 
@@ -24,6 +27,17 @@ const fileFilter = (
     callback(null, validFile);
 };
 
+const isAccessToken = (
+    decoded: string | undefined | JwtPayload,
+): decoded is Request["session"] => {
+    if (decoded === undefined || typeof decoded === "string") return false;
+
+    if ("userId" in decoded) return true;
+    if ("status" in decoded) return true;
+
+    return false;
+};
+
 type ValidatorMiddlewareConfig = {
     accessSecret: string;
 };
@@ -31,17 +45,6 @@ type ValidatorMiddlewareConfig = {
 export const createValidatorMiddleware: CreateMiddleware<
     ValidatorMiddlewareConfig
 > = ({ accessSecret }) => {
-    const isAccessToken = (
-        decoded: string | undefined | JwtPayload,
-    ): decoded is Request["session"] => {
-        if (decoded === undefined || typeof decoded === "string") return false;
-
-        if ("userId" in decoded) return true;
-        if ("status" in decoded) return true;
-
-        return false;
-    };
-
     const verifyAccessToken = (token: string | undefined) => {
         if (!token) {
             throw new UnauthorizedError("No Token Provided");

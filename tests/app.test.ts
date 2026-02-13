@@ -133,3 +133,22 @@ describe("Rate Limiter Middleware", () => {
         expect(res.statusCode).toEqual(429);
     });
 });
+
+describe("Health Check", () => {
+    let database: KnexDatabase;
+    let app: Express;
+
+    beforeEach(async () => {
+        database = await db.transaction();
+        app = createTestApp({ database });
+    });
+
+    afterEach(async () => {
+        await database.rollback();
+    });
+
+    it("should return 204", async () => {
+        const res = await request(app).get("/health");
+        expect(res.statusCode).toEqual(204);
+    });
+});

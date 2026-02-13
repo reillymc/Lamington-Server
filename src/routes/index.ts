@@ -33,14 +33,12 @@ export const createAppRouter: CreateRouter<
     | "rateLimiterRestrictive"
     | "validator"
     | "logger"
-    | "errorHandler"
-    | "notFound",
+    | "errorHandler",
     LamingtonConfig
 > = (services, middleware, config) =>
     express
         .Router()
         .use(middleware.logger)
-        .use("/health", createHealthRouter())
         .use(
             "/v1",
             express
@@ -61,6 +59,6 @@ export const createAppRouter: CreateRouter<
                 .use(createTagsRouter(services))
                 .use(createUserRouter(services)),
         )
+        .use("/health", createHealthRouter())
         .use("/", createDocsRouter(config.app))
-        .use(middleware.notFound)
         .use(middleware.errorHandler);

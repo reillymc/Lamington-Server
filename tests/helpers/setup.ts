@@ -5,7 +5,6 @@ import config from "../../src/config.ts";
 import { createErrorHandlerMiddleware } from "../../src/middleware/errorHandler.ts";
 import type { AppMiddleware } from "../../src/middleware/index.ts";
 import { createLoggerMiddleware } from "../../src/middleware/logger.ts";
-import { createNotFoundMiddleware } from "../../src/middleware/notFound.ts";
 import {
     createRateLimiterControlled,
     createRateLimiterLoose,
@@ -102,7 +101,6 @@ export const createTestApp = ({
             validator: createValidatorMiddleware({ accessSecret }),
             errorHandler: createErrorHandlerMiddleware(),
             logger: createLoggerMiddleware(),
-            notFound: createNotFoundMiddleware(),
             rateLimiterControlled: createRateLimiterControlled(),
             rateLimiterLoose: createRateLimiterLoose(),
             rateLimiterRestrictive: createRateLimiterRestrictive(),

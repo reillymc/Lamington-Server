@@ -1,11 +1,10 @@
 import type { components } from "../routes/spec/index.ts";
-
 import {
     CreatedDataFetchError,
+    type CreateService,
     NotFoundError,
     UpdatedDataFetchError,
-} from "./logging.ts";
-import type { CreateService } from "./service.ts";
+} from "./service.ts";
 
 export interface RecipeService {
     get: (
