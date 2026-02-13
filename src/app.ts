@@ -2,28 +2,18 @@ import compression from "compression";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
-import { DefaultAppMiddleware, DefaultAppServices } from "./appDependencies.ts";
 import type { LamingtonConfig } from "./config.ts";
 import type { AppMiddleware } from "./middleware/index.ts";
-import type { AppRepositories, Database } from "./repositories/index.ts";
 import { createAppRouter } from "./routes/index.ts";
 import type { AppServices } from "./services/index.ts";
 
 export interface AppParams {
-    database: Database;
-    repositories?: Partial<AppRepositories>;
-    services?: Partial<AppServices>;
-    middleware?: Partial<AppMiddleware>;
+    services: AppServices;
+    middleware: AppMiddleware;
     config: LamingtonConfig;
 }
 
-export const setupApp = ({
-    database,
-    repositories,
-    services,
-    middleware,
-    config,
-}: AppParams) =>
+export const setupApp = ({ services, middleware, config }: AppParams) =>
     express()
         .use(express.json())
         .use(express.urlencoded({ extended: false }))
@@ -42,16 +32,4 @@ export const setupApp = ({
             }),
         )
         .use(compression())
-        .use(
-            createAppRouter(
-                {
-                    ...DefaultAppServices(database, repositories),
-                    ...services,
-                },
-                {
-                    ...DefaultAppMiddleware(),
-                    ...middleware,
-                },
-                config,
-            ),
-        );
+        .use(createAppRouter(services, middleware, config));

@@ -3,17 +3,13 @@ import { expect } from "expect";
 import type { Express } from "express";
 import jwt from "jsonwebtoken";
 import request from "supertest";
-import { DefaultAppMiddleware } from "../../src/appDependencies.ts";
-import config from "../../src/config.ts";
 import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { comparePassword } from "../../src/services/userService.ts";
 import { CreateUsers } from "../helpers/index.ts";
-import { createTestApp } from "../helpers/setup.ts";
-
-const { jwtRefreshSecret } = config.authentication;
+import { createTestApp, refreshSecret } from "../helpers/setup.ts";
 
 let database: KnexDatabase;
 let app: Express;
@@ -33,8 +29,7 @@ after(async () => {
 
 describe("Login a user", () => {
     it("login respect restrictive rate limit", async () => {
-        // Setup app without test rate limiter overrides
-        app = createTestApp({ database, middleware: DefaultAppMiddleware() });
+        app = createTestApp({ database });
 
         const [user] = await CreateUsers(database);
 
@@ -153,8 +148,7 @@ describe("Login a user", () => {
 
 describe("Register a new user", () => {
     it("should respect restrictive rate limit", async () => {
-        // Setup app without test rate limiter overrides
-        app = createTestApp({ database, middleware: DefaultAppMiddleware() });
+        app = createTestApp({ database });
 
         const requestBody: components["schemas"]["AuthRegister"] = {
             email: "test@example.com",
@@ -330,15 +324,14 @@ describe("Register a new user", () => {
 
 describe("Refresh authentication token", () => {
     const createValidRefreshToken = (userId: string) => {
-        return jwt.sign({ userId }, jwtRefreshSecret!, {
+        return jwt.sign({ userId }, refreshSecret, {
             noTimestamp: true,
             expiresIn: "5m",
         });
     };
 
     it("should respect general rate limit", async () => {
-        // Setup app without test rate limiter overrides
-        app = createTestApp({ database, middleware: DefaultAppMiddleware() });
+        app = createTestApp({ database });
 
         const requestBody = { refreshToken: "some-token" };
 
@@ -385,14 +378,10 @@ describe("Refresh authentication token", () => {
     });
 
     it("should fail with expired refresh token", async () => {
-        const expiredToken = jwt.sign(
-            { userId: "some-id" },
-            jwtRefreshSecret!,
-            {
-                noTimestamp: true,
-                expiresIn: "-1s",
-            },
-        );
+        const expiredToken = jwt.sign({ userId: "some-id" }, refreshSecret, {
+            noTimestamp: true,
+            expiresIn: "-1s",
+        });
 
         const res = await request(app)
             .post("/v1/auth/refresh")

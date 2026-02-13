@@ -29,7 +29,6 @@ import {
     ContentTagTable,
     IngredientTable,
     lamington,
-    PAGE_SIZE,
     RecipeIngredientTable,
     RecipeRatingTable,
     RecipeStepTable,
@@ -37,6 +36,8 @@ import {
 } from "./spec/index.ts";
 
 const DefaultSection = "default";
+
+const PAGE_SIZE = 50;
 
 const ContentTagsRequestToRows = (
     contentId: string,

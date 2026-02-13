@@ -1,5 +1,3 @@
-import config from "../../../config.ts";
-
 export const lamington = {
     attachment: "attachment",
     book: "book",
@@ -203,5 +201,3 @@ export const UserTable = table(lamington.user, [
     "status",
     "preferences",
 ] as const);
-
-export const PAGE_SIZE = config.app.pageSize;

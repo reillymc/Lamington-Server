@@ -2,7 +2,6 @@ import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
-import { DefaultAppMiddleware } from "../../src/appDependencies.ts";
 import db from "../../src/database/index.ts";
 import type { AttachmentRepository } from "../../src/repositories/attachmentRepository.ts";
 import type { FileRepository } from "../../src/repositories/fileRepository.ts";
@@ -64,11 +63,9 @@ describe("Upload an image", () => {
     });
 
     it("should respect controlled rate limit", async () => {
-        // Setup app without test rate limiter overrides
         app = createTestApp({
             database,
             repositories: { fileRepository: MockSuccessfulFileRepository },
-            middleware: DefaultAppMiddleware(),
         });
 
         const [token] = await PrepareAuthenticatedUser(database);

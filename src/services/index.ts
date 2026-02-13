@@ -9,9 +9,7 @@ import type { RecipeService } from "./recipeService.ts";
 import type { TagService } from "./tagService.ts";
 import type { UserService } from "./userService.ts";
 
-export { printConfig } from "./console.ts";
 export * from "./logging.ts";
-export * from "./token.ts";
 
 export type AppServices = {
     attachmentService: AttachmentService;

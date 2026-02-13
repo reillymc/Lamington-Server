@@ -1,20 +1,54 @@
 import bcrypt from "bcrypt";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 import { v4 as Uuid } from "uuid";
 import { UniqueViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
 import {
     CreatedDataFetchError,
-    createAccessToken,
-    createRefreshToken,
     InvalidOperationError,
     NotFoundError,
     PermissionError,
     UnauthorizedError,
-    verifyRefreshToken,
 } from "./index.ts";
 import type { CreateService } from "./service.ts";
 
 const saltRounds = 10;
+
+const isRefreshToken = (
+    decoded: string | undefined | JwtPayload,
+): decoded is { userId: string } => {
+    if (decoded === undefined || typeof decoded === "string") return false;
+
+    if ("userId" in decoded) return true;
+
+    return false;
+};
+
+const verifyRefreshToken = (jwtRefreshSecret: string, token: string) => {
+    const decoded = jwt.verify(token, jwtRefreshSecret);
+
+    if (isRefreshToken(decoded)) {
+        return decoded;
+    }
+
+    throw new UnauthorizedError("Invalid Token Structure");
+};
+
+export const createAccessToken = (
+    jwtAccessSecret: string,
+    expiresIn: number,
+    user: components["schemas"]["AuthResponse"]["user"],
+) => jwt.sign(user, jwtAccessSecret, { noTimestamp: true, expiresIn });
+
+export const createRefreshToken = (
+    jwtRefreshSecret: string,
+    expiresIn: number,
+    user: components["schemas"]["AuthResponse"]["user"],
+) =>
+    jwt.sign(user, jwtRefreshSecret, {
+        noTimestamp: true,
+        expiresIn,
+    });
 
 export const hashPassword = async (password: string) => {
     const salt = await bcrypt.genSalt(saltRounds);
@@ -57,13 +91,21 @@ export interface UserService {
     ): Promise<components["schemas"]["AuthResponse"]>;
 }
 
+type UserServiceConfig = {
+    accessSecret: string;
+    accessExpiration: number;
+    refreshSecret: string;
+    refreshExpiration: number;
+};
+
 export const createUserService: CreateService<
     UserService,
     | "userRepository"
     | "listRepository"
     | "bookRepository"
     | "recipeRepository"
-    | "plannerRepository"
+    | "plannerRepository",
+    UserServiceConfig
 > = (
     database,
     {
@@ -73,6 +115,7 @@ export const createUserService: CreateService<
         plannerRepository,
         recipeRepository,
     },
+    config,
 ) => ({
     getAll: async (userId, status) => {
         const { hasPermissions } = await userRepository.verifyPermissions(
@@ -338,8 +381,16 @@ export const createUserService: CreateService<
         return {
             authorization: !userBlacklisted
                 ? {
-                      access: createAccessToken(user.userId, user.status),
-                      refresh: createRefreshToken(user.userId),
+                      access: createAccessToken(
+                          config.accessSecret,
+                          config.accessExpiration,
+                          user,
+                      ),
+                      refresh: createRefreshToken(
+                          config.refreshSecret,
+                          config.refreshExpiration,
+                          user,
+                      ),
                   }
                 : undefined,
             user: {
@@ -359,7 +410,10 @@ export const createUserService: CreateService<
     refresh: async (refreshToken) => {
         let userId: string;
         try {
-            const decoded = verifyRefreshToken(refreshToken);
+            const decoded = verifyRefreshToken(
+                config.refreshSecret,
+                refreshToken,
+            );
             userId = decoded.userId;
         } catch (error) {
             throw new UnauthorizedError("Invalid Refresh Token", error);
@@ -379,8 +433,16 @@ export const createUserService: CreateService<
 
         return {
             authorization: {
-                access: createAccessToken(user.userId, user.status),
-                refresh: createRefreshToken(user.userId),
+                access: createAccessToken(
+                    config.accessSecret,
+                    config.accessExpiration,
+                    user,
+                ),
+                refresh: createRefreshToken(
+                    config.refreshSecret,
+                    config.refreshExpiration,
+                    user,
+                ),
             },
             user: {
                 userId: user.userId,

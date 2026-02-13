@@ -16,15 +16,8 @@ const parseLogLevel = (
 const config: LamingtonConfig = {
     app: {
         logDetail: parseLogLevel(process.env.LOG_LEVEL),
-        pageSize: parseInt(process.env.PAGE_SIZE ?? "50", 10),
         externalHost: process.env.EXTERNAL_HOST,
         allowedOrigin: process.env.CORS_ALLOWED_ORIGIN,
-    },
-    authentication: {
-        jwtSecret: process.env.JWT_SECRET,
-        jwtAccessExpiration: process.env.JWT_ACCESS_EXPIRATION ?? "15m",
-        jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
-        jwtRefreshExpiration: process.env.JWT_REFRESH_EXPIRATION ?? "7d",
     },
     uploadDirectory: "uploads",
 } as const;
@@ -32,16 +25,10 @@ const config: LamingtonConfig = {
 export type LamingtonConfig = {
     app: {
         logDetail: "tiny" | "short" | "dev";
-        pageSize: number;
         externalHost: string | undefined;
         allowedOrigin: string | undefined;
     };
-    authentication: {
-        jwtSecret: string | undefined;
-        jwtAccessExpiration: string;
-        jwtRefreshSecret: string | undefined;
-        jwtRefreshExpiration: string;
-    };
+
     uploadDirectory: string;
 };
 
