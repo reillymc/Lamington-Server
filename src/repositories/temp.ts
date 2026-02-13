@@ -13,14 +13,6 @@ export interface Content {
     updatedAt: string;
 }
 
-export interface ContentAttachment {
-    contentId: string;
-    attachmentId: string;
-    displayType: string;
-    displayId: string;
-    displayOrder: number;
-}
-
 export interface ContentTag {
     contentId: string;
     tagId: string;

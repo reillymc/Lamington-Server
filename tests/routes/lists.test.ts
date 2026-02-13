@@ -3,12 +3,11 @@ import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
-import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
-import { createTestApp } from "../helpers/setup.ts";
+import { createTestApp, db } from "../helpers/setup.ts";
 
 const randomIcon = () =>
     (["variant1", "variant2", "variant3"] as const)[

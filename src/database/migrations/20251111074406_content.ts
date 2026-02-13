@@ -1,5 +1,5 @@
 import type { Knex } from "knex";
-import { tables } from "../convertedMigrations/20240407043918_setup_tables.ts";
+import { tables } from "./converted/20240407043918_setup_tables.ts";
 
 export const newTables = {
     content: "content",

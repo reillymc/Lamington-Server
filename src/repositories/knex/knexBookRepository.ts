@@ -1,9 +1,12 @@
 import { EnsureArray } from "../../utils/index.ts";
 import type { BookRepository } from "../bookRepository.ts";
-import { buildUpdateRecord } from "./common/buildUpdateRecord.ts";
-import { ContentMemberActions } from "./common/contentMember.ts";
-import { withContentReadPermissions } from "./common/contentQueries.ts";
-import { toUndefined } from "./common/toUndefined.ts";
+import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
+import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
+import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
+import { withContentPermissions } from "./common/queryBuilders/withContentPermissions.ts";
+import { createDeleteContent } from "./common/repositoryMethods/content.ts";
+import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
+import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     BookRecipeTable,
@@ -11,7 +14,6 @@ import {
     ContentMemberTable,
     ContentTable,
     lamington,
-    UserTable,
 } from "./spec/index.ts";
 
 const formatBook = (
@@ -29,43 +31,16 @@ const formatBook = (
     status: book.status ?? "O",
 });
 
-const readMembers: BookRepository<KnexDatabase>["readMembers"] = async (
-    db,
-    request,
-) => {
-    const requests = EnsureArray(request);
-    const allMembers = await ContentMemberActions.read(
-        db,
-        requests.map(({ bookId }) => ({ contentId: bookId })),
-    );
-
-    const membersByBookId = allMembers.reduce<
-        Record<string, typeof allMembers>
-    >((acc, member) => {
-        acc[member.contentId] = [...(acc[member.contentId] ?? []), member];
-        return acc;
-    }, {});
-
-    return requests.map(({ bookId }) => ({
-        bookId,
-        members: (membersByBookId[bookId] ?? []).map(
-            ({ contentId, ...rest }) => rest,
-        ),
-    }));
-};
-
 const read: BookRepository<KnexDatabase>["read"] = async (
     db,
     { books, userId },
 ) => {
-    const result: any[] = await db(lamington.book)
+    const result: unknown[] = await db(lamington.book)
         .select(
             BookTable.bookId,
             BookTable.name,
             BookTable.description,
             BookTable.customisations,
-            ContentTable.createdBy,
-            UserTable.firstName,
             ContentMemberTable.status,
         )
         .whereIn(
@@ -73,12 +48,12 @@ const read: BookRepository<KnexDatabase>["read"] = async (
             books.map(({ bookId }) => bookId),
         )
         .leftJoin(lamington.content, BookTable.bookId, ContentTable.contentId)
-        .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
+        .modify(withContentAuthor)
         .modify(
-            withContentReadPermissions({
+            withContentPermissions({
                 userId,
                 idColumn: BookTable.bookId,
-                allowedStatuses: ["A", "M"],
+                statuses: ["O", "A", "M"],
             }),
         );
 
@@ -140,52 +115,13 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
 
         return read(db, { userId, books });
     },
-    verifyPermissions: async (db, { userId, status, books }) => {
-        const statuses = EnsureArray(status);
-        const memberStatuses = statuses.filter((s) => s !== "O");
-
-        const bookOwners: any[] = await db(lamington.book)
-            .select(BookTable.bookId)
-            .leftJoin(
-                lamington.content,
-                ContentTable.contentId,
-                BookTable.bookId,
-            )
-            .whereIn(
-                BookTable.bookId,
-                books.map(({ bookId }) => bookId),
-            )
-            .modify(
-                withContentReadPermissions({
-                    userId,
-                    idColumn: BookTable.bookId,
-                    allowedStatuses: memberStatuses,
-                    ownerColumns: statuses.includes("O") ? undefined : [],
-                }),
-            );
-
-        const permissionMap = Object.fromEntries(
-            bookOwners.map(({ bookId }) => [bookId, true]),
-        );
-
-        return {
-            userId,
-            status,
-            books: books.map(({ bookId }) => ({
-                bookId,
-                hasPermissions: permissionMap[bookId] ?? false,
-            })),
-        };
-    },
     readAll: async (db, { userId }) => {
-        const bookList: any[] = await db(lamington.book)
+        const bookList: unknown[] = await db(lamington.book)
             .select(
                 BookTable.bookId,
                 BookTable.name,
                 BookTable.description,
                 BookTable.customisations,
-                ContentTable.createdBy,
-                UserTable.firstName,
                 ContentMemberTable.status,
             )
             .leftJoin(
@@ -193,12 +129,12 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
                 BookTable.bookId,
                 ContentTable.contentId,
             )
-            .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
+            .modify(withContentAuthor)
             .modify(
-                withContentReadPermissions({
+                withContentPermissions({
                     userId,
                     idColumn: BookTable.bookId,
-                    allowedStatuses: ["A", "M", "P"],
+                    statuses: ["O", "A", "M", "P"],
                 }),
             );
 
@@ -208,15 +144,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         };
     },
     read,
-    delete: async (db, params) => {
-        const count = await db(lamington.content)
-            .whereIn(
-                ContentTable.contentId,
-                params.books.map(({ bookId }) => bookId),
-            )
-            .delete();
-        return { count };
-    },
+    delete: createDeleteContent("books", "bookId"),
     saveRecipes: async (db, request) => {
         const allBookRecipes = EnsureArray(request).flatMap(
             ({ bookId, recipes }) =>
@@ -273,34 +201,66 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
             count: countsByBookId[bookId] || 0,
         }));
     },
-    saveMembers: (db, request) =>
+    readMembers: async (db, request) =>
+        ContentMemberActions.readByContentId(
+            db,
+            EnsureArray(request).map(({ bookId }) => bookId),
+        ).then((members) =>
+            EnsureArray(request).map(({ bookId }) => ({
+                bookId,
+                members: members.filter(
+                    ({ contentId }) => contentId === bookId,
+                ),
+            })),
+        ),
+    saveMembers: async (db, request) =>
         ContentMemberActions.save(
             db,
-            EnsureArray(request).map(({ bookId, members }) => ({
-                contentId: bookId,
-                members,
-            })),
-        ).then((response) =>
-            response.map(({ contentId, members }) => ({
-                bookId: contentId,
-                members: members.map(({ status, ...rest }) => ({
-                    ...rest,
-                    status: toUndefined(status),
+            EnsureArray(request).flatMap(({ bookId, members = [] }) =>
+                members.map(({ userId, status }) => ({
+                    contentId: bookId,
+                    userId,
+                    status,
                 })),
+            ),
+        ).then((members = []) =>
+            EnsureArray(request).map(({ bookId }) => ({
+                bookId,
+                members: members.filter(
+                    ({ contentId }) => contentId === bookId,
+                ),
             })),
         ),
-    removeMembers: (db, request) =>
+    removeMembers: async (db, request) =>
         ContentMemberActions.delete(
             db,
-            EnsureArray(request).map(({ bookId, members }) => ({
-                contentId: bookId,
-                members,
-            })),
-        ).then((response) =>
-            response.map(({ contentId, ...rest }) => ({
-                bookId: contentId,
-                ...rest,
+            EnsureArray(request).flatMap(({ bookId, members = [] }) =>
+                members.map(({ userId }) => ({
+                    contentId: bookId,
+                    userId,
+                })),
+            ),
+        ).then(() =>
+            EnsureArray(request).map(({ bookId, members = [] }) => ({
+                bookId,
+                count: members.length,
             })),
         ),
-    readMembers,
+    verifyPermissions: async (db, { userId, books, status }) => {
+        const bookIds = EnsureArray(books).map((b) => b.bookId);
+        const permissions = await verifyContentPermissions(
+            db,
+            userId,
+            bookIds,
+            status,
+        );
+        return {
+            userId,
+            status,
+            books: bookIds.map((bookId) => ({
+                bookId,
+                hasPermissions: permissions[bookId] ?? false,
+            })),
+        };
+    },
 };

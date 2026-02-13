@@ -182,6 +182,7 @@ type ReadAllResponse = {
 
 type VerifyPermissionsRequest = {
     userId: User["userId"];
+    status: "O";
     recipes: ReadonlyArray<{
         recipeId: Recipe["recipeId"];
     }>;

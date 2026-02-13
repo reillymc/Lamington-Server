@@ -3,7 +3,6 @@ import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { v4 } from "uuid";
-import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
@@ -17,7 +16,7 @@ import {
     PrepareAuthenticatedUser,
     randomCount,
 } from "../helpers/index.ts";
-import { createTestApp } from "../helpers/setup.ts";
+import { createTestApp, db } from "../helpers/setup.ts";
 
 let database: KnexDatabase;
 let app: Express;

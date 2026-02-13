@@ -1,20 +1,15 @@
 import type { MealRepository } from "../mealRepository.ts";
-import { withContentReadPermissions } from "./common/contentQueries.ts";
-import { toUndefined } from "./common/toUndefined.ts";
+import { formatHeroAttachment } from "./common/dataFormatting/formatHeroAttachment.ts";
+import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
+import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
+import { withContentPermissions } from "./common/queryBuilders/withContentPermissions.ts";
+import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
 import type { KnexDatabase } from "./knex.ts";
-import {
-    AttachmentTable,
-    ContentAttachmentTable,
-    ContentTable,
-    lamington,
-    PlannerMealTable,
-    UserTable,
-} from "./spec/index.ts";
+import { ContentTable, lamington, PlannerMealTable } from "./spec/index.ts";
 
 export const KnexMealRepository: MealRepository<KnexDatabase> = {
     read: async (db, { userId, meals }) => {
         const mealIds = meals.map(({ mealId }) => mealId);
-        const plannerContentAlias = "plannerContent";
 
         const result: any[] = await db(lamington.plannerMeal)
             .select(
@@ -29,12 +24,6 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
                 PlannerMealTable.sequence,
                 PlannerMealTable.recipeId,
                 PlannerMealTable.notes,
-                ContentTable.createdBy,
-                UserTable.firstName,
-                db
-                    .ref(ContentAttachmentTable.attachmentId)
-                    .as("heroAttachmentId"),
-                db.ref(AttachmentTable.uri).as("heroAttachmentUri"),
             )
             .whereIn(PlannerMealTable.mealId, mealIds)
             .leftJoin(
@@ -42,41 +31,15 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
                 PlannerMealTable.mealId,
                 ContentTable.contentId,
             )
-            .leftJoin(lamington.user, ContentTable.createdBy, UserTable.userId)
-            .leftJoin(
-                `${lamington.content} as ${plannerContentAlias}`,
-                PlannerMealTable.plannerId,
-                `${plannerContentAlias}.contentId`,
-            )
+            .modify(withContentAuthor)
             .modify(
-                withContentReadPermissions({
+                withContentPermissions({
                     userId,
                     idColumn: PlannerMealTable.plannerId,
-                    ownerColumns: [
-                        ContentTable.createdBy,
-                        `${plannerContentAlias}.createdBy`,
-                    ],
-                    allowedStatuses: ["A", "M", "O"],
+                    statuses: ["O", "A", "M"],
                 }),
             )
-            .leftJoin(lamington.contentAttachment, (join) =>
-                join
-                    .on(
-                        ContentAttachmentTable.contentId,
-                        "=",
-                        PlannerMealTable.mealId,
-                    )
-                    .andOn(
-                        ContentAttachmentTable.displayType,
-                        "=",
-                        db.raw("?", ["hero"]),
-                    ),
-            )
-            .leftJoin(
-                lamington.attachment,
-                ContentAttachmentTable.attachmentId,
-                AttachmentTable.attachmentId,
-            );
+            .modify(withHeroAttachment(PlannerMealTable.mealId));
 
         return {
             userId,
@@ -96,12 +59,10 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
                 sequence: toUndefined(meal.sequence),
                 recipeId: toUndefined(meal.recipeId),
                 notes: toUndefined(meal.notes),
-                heroImage: meal.heroAttachmentId
-                    ? {
-                          attachmentId: meal.heroAttachmentId,
-                          uri: meal.heroAttachmentUri,
-                      }
-                    : undefined,
+                heroImage: formatHeroAttachment(
+                    meal.heroAttachmentId,
+                    meal.heroAttachmentUri,
+                ),
             })),
         };
     },

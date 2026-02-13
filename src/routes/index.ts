@@ -1,10 +1,13 @@
 import express from "express";
 import { createAssetsRouter } from "./assets.ts";
-import { createAttachmentsRouter } from "./attachments.ts";
+import {
+    type AttachmentsRouterConfig,
+    createAttachmentsRouter,
+} from "./attachments.ts";
 import { createAuthRouter } from "./auth.ts";
 import { createBookRouter } from "./books.ts";
-import { createCooklistRouter } from "./cookLists.ts";
-import { createDocsRouter } from "./docs.ts";
+import { createCooklistRouter } from "./cooklists.ts";
+import { createDocsRouter, type DocsRouterConfig } from "./docs.ts";
 import { createExtractorRouter } from "./extractor.ts";
 import { createHealthRouter } from "./health.ts";
 import { createListRouter } from "./lists.ts";
@@ -15,6 +18,8 @@ import { createRecipeRouter } from "./recipes.ts";
 import type { CreateRouter } from "./route.ts";
 import { createTagsRouter } from "./tags.ts";
 import { createUserRouter } from "./users.ts";
+
+type AppRouterConfig = AttachmentsRouterConfig & DocsRouterConfig;
 
 export const createAppRouter: CreateRouter<
     | "userService"
@@ -32,13 +37,13 @@ export const createAppRouter: CreateRouter<
     | "rateLimiterRestrictive"
     | "validator"
     | "logger"
-    | "errorHandler"
-    | "notFound"
-> = (services, middleware) =>
+    | "errorHandler",
+    AppRouterConfig
+> = (services, middleware, config) =>
     express
         .Router()
-        .use(middleware.logger)
         .use("/health", createHealthRouter())
+        .use(middleware.logger)
         .use(
             "/v1",
             express
@@ -47,7 +52,7 @@ export const createAppRouter: CreateRouter<
                 .use(middleware.validator)
                 .use(createAuthRouter(services, middleware))
                 .use(createAssetsRouter())
-                .use(createAttachmentsRouter(services, middleware))
+                .use(createAttachmentsRouter(services, middleware, config))
                 .use(createBookRouter(services))
                 .use(createCooklistRouter(services))
                 .use(createExtractorRouter(services))
@@ -59,6 +64,5 @@ export const createAppRouter: CreateRouter<
                 .use(createTagsRouter(services))
                 .use(createUserRouter(services)),
         )
-        .use("/", createDocsRouter())
-        .use(middleware.notFound)
+        .use("/", createDocsRouter(config))
         .use(middleware.errorHandler);

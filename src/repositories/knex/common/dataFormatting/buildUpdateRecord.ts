@@ -1,4 +1,4 @@
-import type { Table } from "../spec/index.ts";
+import type { Table } from "../../spec/index.ts";
 
 export const buildUpdateRecord = <
     Definition extends Table,

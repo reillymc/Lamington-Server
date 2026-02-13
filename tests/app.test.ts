@@ -4,11 +4,9 @@ import type { Express } from "express";
 import jwt from "jsonwebtoken";
 import request from "supertest";
 import { v4 } from "uuid";
-import { DefaultAppMiddleware } from "../src/appDependencies.ts";
-import db from "../src/database/index.ts";
 import type { KnexDatabase } from "../src/repositories/knex/knex.ts";
 import { CreateUsers } from "./helpers/index.ts";
-import { createTestApp } from "./helpers/setup.ts";
+import { accessSecret, createTestApp, db } from "./helpers/setup.ts";
 
 let database: KnexDatabase;
 let app: Express;
@@ -44,7 +42,7 @@ describe("Authentication Middleware", () => {
 
     it("should return 401 if user status is Pending (P)", async () => {
         const payload = { userId: v4(), status: "P" };
-        const token = jwt.sign(payload, process.env.JWT_SECRET!, {
+        const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
             expiresIn: "1h",
         });
@@ -58,7 +56,7 @@ describe("Authentication Middleware", () => {
 
     it("should return 401 if user status is Blocked (B)", async () => {
         const payload = { userId: v4(), status: "B" };
-        const token = jwt.sign(payload, process.env.JWT_SECRET!, {
+        const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
             expiresIn: "1h",
         });
@@ -72,7 +70,7 @@ describe("Authentication Middleware", () => {
 
     it("should return 401 if token format is invalid", async () => {
         const payload = { userName: v4(), status: "B" };
-        const token = jwt.sign(payload, process.env.JWT_SECRET!, {
+        const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
             expiresIn: "1h",
         });
@@ -87,7 +85,7 @@ describe("Authentication Middleware", () => {
     it("should authorise valid user", async () => {
         const [user] = await CreateUsers(database, { status: "M" });
         const payload = { userId: user!.userId, status: "M" };
-        const token = jwt.sign(payload, process.env.JWT_SECRET!, {
+        const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
             expiresIn: "1h",
         });
@@ -105,7 +103,7 @@ describe("Rate Limiter Middleware", () => {
     before(async () => {
         // App setup with default rate limiter
         database = await db.transaction();
-        app = createTestApp({ database, middleware: DefaultAppMiddleware() });
+        app = createTestApp({ database });
 
         // Exceed rate limit for general endpoints
         const responses = await Promise.all(
@@ -133,5 +131,24 @@ describe("Rate Limiter Middleware", () => {
         const res = await request(app).delete(`/v1/lists/${v4()}`);
 
         expect(res.statusCode).toEqual(429);
+    });
+});
+
+describe("Health Check", () => {
+    let database: KnexDatabase;
+    let app: Express;
+
+    beforeEach(async () => {
+        database = await db.transaction();
+        app = createTestApp({ database });
+    });
+
+    afterEach(async () => {
+        await database.rollback();
+    });
+
+    it("should return 204", async () => {
+        const res = await request(app).get("/health");
+        expect(res.statusCode).toEqual(204);
     });
 });

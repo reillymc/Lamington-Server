@@ -1,5 +1,5 @@
 import type { Knex } from "knex";
-import baseConfig from "./knexfile.base.ts";
+import baseConfig from "../../src/database/knexfile.base.ts";
 
 const config: Knex.Config = {
     ...baseConfig,
@@ -16,6 +16,9 @@ const config: Knex.Config = {
         // This tells the pool to retry creating a connection instead of throwing an error when the DB
         // rejects the connection (e.g. due to connection limits when running test simultaneously).
         propagateCreateError: false,
+    },
+    migrations: {
+        directory: "../../src/database/migrations",
     },
 };
 

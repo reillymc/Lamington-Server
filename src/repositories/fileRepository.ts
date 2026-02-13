@@ -6,10 +6,11 @@ type DeleteRequest = {
 type DeleteResponse = boolean;
 
 type CreateRequest = {
-    path: string;
     file: Buffer;
+    userId: string;
+    attachmentId: string;
 };
-type CreateResponse = boolean;
+type CreateResponse = false | string;
 
 export interface FileRepository {
     create: RepositoryService<undefined, CreateRequest, CreateResponse>;

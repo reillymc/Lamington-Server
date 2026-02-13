@@ -1,5 +1,3 @@
-import config from "../../../config.ts";
-
 export const lamington = {
     attachment: "attachment",
     book: "book",
@@ -26,7 +24,7 @@ export const lamington = {
 export type lamington = typeof lamington;
 
 export type Table<T extends ReadonlyArray<string> = []> = Required<{
-    [key in T[number]]: string;
+    [key in T[number]]: key;
 }>;
 
 const table = <T extends ReadonlyArray<string>>(
@@ -203,14 +201,3 @@ export const UserTable = table(lamington.user, [
     "status",
     "preferences",
 ] as const);
-
-// READ
-export type ReadQuery<T> = T | Array<T>;
-
-export type ReadResponse<T> = Promise<Array<T>>;
-
-export type CreateQuery<T> = T | Array<T>;
-
-export type CreateResponse<T> = Promise<Array<T>>;
-
-export const PAGE_SIZE = config.app.pageSize;

@@ -1,61 +1,42 @@
 import {
     DeleteObjectCommand,
     PutObjectCommand,
-    S3Client,
+    type S3Client,
 } from "@aws-sdk/client-s3";
-
-import config from "../../config.ts";
 import type { FileRepository } from "../fileRepository.ts";
 
-const createS3Client = () => {
-    if (
-        !config.attachments.awsBucketName ||
-        !config.attachments.awsAccessKeyId ||
-        !config.attachments.awsSecretAccessKey
-    ) {
-        throw new Error("AWS bucket details not defined");
-    }
-
-    return new S3Client({
-        region: config.attachments.awsRegion,
-        credentials: {
-            accessKeyId: config.attachments.awsAccessKeyId,
-            secretAccessKey: config.attachments.awsSecretAccessKey,
-        },
-        useDualstackEndpoint: true,
-    });
-};
-
-export const S3FileRepository: FileRepository = {
+export const createS3FileRepository = (
+    s3Client: S3Client,
+    bucket: string,
+    subPath: string,
+): FileRepository => ({
     delete: async (_, { path }) => {
-        const s3 = createS3Client();
-
         const command = new DeleteObjectCommand({
-            Bucket: config.attachments.awsBucketName,
+            Bucket: bucket,
             Key: path,
         });
 
-        const result = await s3.send(command);
+        const result = await s3Client.send(command);
         if (result.$metadata.httpStatusCode !== 200) {
             return false;
         }
 
         return true;
     },
-    create: async (_, { path, file }) => {
-        const s3 = createS3Client();
+    create: async (_, { file, attachmentId, userId }) => {
+        const key = `${subPath}/${userId}/${attachmentId}`;
 
         const command = new PutObjectCommand({
-            Bucket: config.attachments.awsBucketName,
-            Key: path,
+            Bucket: bucket,
+            Key: key,
             Body: file,
         });
 
-        const result = await s3.send(command);
+        const result = await s3Client.send(command);
         if (result.$metadata.httpStatusCode !== 200) {
             return false;
         }
 
-        return true;
+        return `s3:${key}`;
     },
-};
+});

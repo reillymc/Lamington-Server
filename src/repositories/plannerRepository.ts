@@ -31,7 +31,9 @@ type VerifyPermissionsRequest = {
     /**
      * Will return true of user is a member of a planner with the provided statuses
      */
-    status: PlannerUserStatus | ReadonlyArray<PlannerUserStatus>;
+    status:
+        | PlannerUserStatus
+        | [PlannerUserStatus, ...ReadonlyArray<PlannerUserStatus>];
     planners: ReadonlyArray<{
         plannerId: Planner["plannerId"];
     }>;
@@ -233,20 +235,10 @@ type ReadMembersResponse = {
 
 type SaveMembersRequest = {
     plannerId: Planner["plannerId"];
-    members?: ReadonlyArray<MemberSaveItem>;
+    members: ReadonlyArray<MemberSaveItem>;
 };
 
 type SaveMembersResponse = {
-    plannerId: Planner["plannerId"];
-    members: ReadonlyArray<MemberResponseItem>;
-};
-
-type UpdateMembersRequest = {
-    plannerId: Planner["plannerId"];
-    members?: ReadonlyArray<MemberSaveItem>;
-};
-
-type UpdateMembersResponse = {
     plannerId: Planner["plannerId"];
     members: ReadonlyArray<MemberResponseItem>;
 };
@@ -323,11 +315,6 @@ export interface PlannerRepository<TDatabase extends Database = Database> {
         TDatabase,
         UpdateMealsRequest,
         UpdateMealsResponse
-    >;
-    updateMembers: RepositoryBulkService<
-        TDatabase,
-        UpdateMembersRequest,
-        UpdateMembersResponse
     >;
     verifyPermissions: RepositoryService<
         TDatabase,

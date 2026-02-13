@@ -1,5 +1,5 @@
 import morgan from "morgan";
-import { logger } from "../services/index.ts";
+import { logger } from "../utils/logger.ts";
 import type { CreateMiddleware } from "./middleware.ts";
 
 export const createLoggerMiddleware: CreateMiddleware = () => [

@@ -3,6 +3,56 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { parse } from "yaml";
 
+interface OperationObject {
+    tags?: string[];
+    summary?: string;
+    description?: string;
+    operationId?: string;
+}
+
+interface PathItemObject {
+    summary?: string;
+    description?: string;
+    get?: OperationObject;
+    put?: OperationObject;
+    post?: OperationObject;
+    delete?: OperationObject;
+    options?: OperationObject;
+    head?: OperationObject;
+    patch?: OperationObject;
+    trace?: OperationObject;
+}
+
+interface PathsObject {
+    [path: string]: PathItemObject;
+}
+
+interface TagObject {
+    name: string;
+    description?: string;
+}
+
+interface OpenAPIObject {
+    openapi: string;
+    paths?: PathsObject;
+    tags?: TagObject[];
+}
+
+const isValidMethod = (
+    method: string,
+): method is keyof Omit<PathItemObject, "summary" | "description"> => {
+    return [
+        "get",
+        "put",
+        "post",
+        "delete",
+        "options",
+        "head",
+        "patch",
+        "trace",
+    ].includes(method);
+};
+
 /**
  * This test ensures that for each OpenAPI operation defined in openapi.yaml,
  * there exists a corresponding test case in the appropriate test file under tests/routes/.
@@ -13,26 +63,30 @@ import { parse } from "yaml";
 describe("OpenAPI Spec", () => {
     const openApiPath = path.join(process.cwd(), "openapi.yaml");
     const openApiContent = fs.readFileSync(openApiPath, "utf-8");
-    const doc = parse(openApiContent) as any;
+    const doc: OpenAPIObject = parse(openApiContent);
 
     const operationsByTag: Record<string, string[]> = {};
 
     if (doc.paths) {
-        for (const pathItem of Object.values(doc.paths) as any[]) {
-            for (const method of Object.keys(pathItem)) {
-                if (
-                    ["get", "post", "put", "delete", "patch"].includes(method)
-                ) {
-                    const operation = pathItem[method];
-                    if (operation.tags && Array.isArray(operation.tags)) {
-                        for (const tag of operation.tags) {
-                            if (!operationsByTag[tag]) {
-                                operationsByTag[tag] = [];
-                            }
-                            if (operation.summary) {
-                                operationsByTag[tag].push(operation.summary);
-                            }
-                        }
+        for (const pathItem of Object.values(doc.paths)) {
+            for (const method of Object.keys(
+                pathItem,
+            ) as (keyof PathItemObject)[]) {
+                if (!isValidMethod(method)) {
+                    continue;
+                }
+
+                const operation = pathItem[method]!;
+                if (!Array.isArray(operation.tags)) {
+                    continue;
+                }
+
+                for (const tag of operation.tags) {
+                    if (!operationsByTag[tag]) {
+                        operationsByTag[tag] = [];
+                    }
+                    if (operation.summary) {
+                        operationsByTag[tag].push(operation.summary);
                     }
                 }
             }
@@ -40,7 +94,7 @@ describe("OpenAPI Spec", () => {
     }
 
     const tags = doc.tags
-        ? doc.tags.map((t: any) => t.name)
+        ? doc.tags.map(({ name }) => name)
         : Object.keys(operationsByTag);
 
     for (const tag of tags) {

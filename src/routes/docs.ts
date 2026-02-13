@@ -1,21 +1,29 @@
-import { readFileSync } from "node:fs";
-
 import express from "express";
 import swaggerUI from "swagger-ui-express";
-import { parse } from "yaml";
 
 import packageJson from "../../package.json" with { type: "json" };
-import config from "../config.ts";
+import { openApiSpec } from "../openApiSpec.ts";
 import type { CreateRouter } from "./route.ts";
 
-const file = readFileSync("./openapi.yaml", "utf8");
-const swaggerDocument = parse(file);
+export type DocsRouterConfig = {
+    externalHost?: string;
+};
 
-swaggerDocument.info.version = packageJson.version;
+export const createDocsRouter: CreateRouter<never, never, DocsRouterConfig> = (
+    config,
+) => {
+    const swaggerDocument = {
+        ...openApiSpec,
+        info: {
+            ...openApiSpec.info,
+            version: packageJson.version,
+        },
+        servers: config.externalHost
+            ? [{ url: `${config.externalHost}/v1` }]
+            : openApiSpec.servers,
+    };
 
-if (config.app.externalHost) {
-    swaggerDocument.servers = [{ url: `${config.app.externalHost}/v1` }];
-}
-
-export const createDocsRouter: CreateRouter = () =>
-    express.Router().use(swaggerUI.serve, swaggerUI.setup(swaggerDocument));
+    return express
+        .Router()
+        .use(swaggerUI.serve, swaggerUI.setup(swaggerDocument));
+};

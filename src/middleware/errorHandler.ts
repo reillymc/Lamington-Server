@@ -1,10 +1,5 @@
 import type { ErrorRequestHandler } from "express";
-import {
-    AppError,
-    logger,
-    UnauthorizedError,
-    ValidationError,
-} from "../services/index.ts";
+import { AppError, logger } from "../utils/logger.ts";
 import type { CreateMiddleware, Middleware } from "./middleware.ts";
 
 const errorHandler: ErrorRequestHandler = (
@@ -23,21 +18,14 @@ const errorHandler: ErrorRequestHandler = (
         innerError = error.innerError as Error;
     }
 
-    if (error instanceof ValidationError) {
-        status = error.status;
+    if (error instanceof Error) {
         message = error.message;
-        innerError = error.innerError;
-    }
-
-    if (error instanceof UnauthorizedError) {
-        status = error.status;
-        message = error.message;
-        innerError = error.innerError;
+        innerError = error.cause;
     }
 
     logger.log({
         level: "error",
-        message: (error as Error)?.message || "Unknown Error",
+        message: message || "Unknown Error",
         request: {
             params: request.params,
             query: request.query,

@@ -1,11 +1,10 @@
 import type { components } from "../routes/spec/index.ts";
-
 import {
     CreatedDataFetchError,
+    type CreateService,
     NotFoundError,
     UpdatedDataFetchError,
-} from "./logging.ts";
-import type { CreateService } from "./service.ts";
+} from "./service.ts";
 
 export interface RecipeService {
     get: (
@@ -89,6 +88,7 @@ export const createRecipeService: CreateService<
             const permissions = await recipeRepository.verifyPermissions(trx, {
                 userId,
                 recipes: [{ recipeId }],
+                status: "O",
             });
             const missingPermissions = permissions.recipes.some(
                 ({ hasPermissions }) => !hasPermissions,
@@ -113,6 +113,7 @@ export const createRecipeService: CreateService<
             const permissions = await recipeRepository.verifyPermissions(trx, {
                 userId,
                 recipes: [{ recipeId }],
+                status: "O",
             });
             const missingPermissions = permissions.recipes.some(
                 ({ hasPermissions }) => !hasPermissions,

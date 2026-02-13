@@ -2,7 +2,7 @@ import { load } from "cheerio";
 import moment from "moment";
 
 import type { components } from "../routes/spec/index.ts";
-import { AppError } from "./logging.ts";
+import { UnknownError } from "./service.ts";
 
 export interface ContentExtractionService {
     extractRecipeMetadata: (
@@ -18,7 +18,7 @@ export const createContentExtractionService = (): ContentExtractionService => ({
         try {
             const response = await fetch(url);
             if (!response.ok) {
-                throw new AppError({
+                throw new UnknownError({
                     message: `Request failed with status ${response.status}`,
                 });
             }
@@ -31,14 +31,14 @@ export const createContentExtractionService = (): ContentExtractionService => ({
             const imageUrl = page('meta[property="og:image"]').attr("content");
 
             if (!name) {
-                throw new AppError({
+                throw new UnknownError({
                     message: "Could not extract a name from the URL.",
                 });
             }
 
             return { name, imageUrl };
         } catch (_error) {
-            throw new AppError({
+            throw new UnknownError({
                 message:
                     "Failed to fetch or parse content from the provided URL.",
             });
@@ -47,14 +47,14 @@ export const createContentExtractionService = (): ContentExtractionService => ({
     extractRecipe: async (url: string) => {
         const response = await fetch(url);
         if (!response.ok) {
-            throw new AppError({
+            throw new UnknownError({
                 message: `Request failed with status ${response.status}`,
             });
         }
         const html = await response.text();
         const page = load(html);
 
-        let recipeData: any = null;
+        let recipeData: unknown = null;
 
         page('script[type="application/ld+json"]').each((_, element) => {
             const scriptContent = page(element).html();
@@ -64,8 +64,13 @@ export const createContentExtractionService = (): ContentExtractionService => ({
                 const json = JSON.parse(scriptContent);
                 // The recipe can be the main entity or part of a graph
                 const graph = json["@graph"] || [json];
+
+                if (!Array.isArray(graph)) {
+                    return false;
+                }
+
                 const recipeNode = graph.find(
-                    (node: any) =>
+                    (node) =>
                         node["@type"] === "Recipe" ||
                         (Array.isArray(node["@type"]) &&
                             node["@type"].includes("Recipe")),
@@ -81,24 +86,64 @@ export const createContentExtractionService = (): ContentExtractionService => ({
         });
 
         if (!recipeData) {
-            throw new AppError({
+            throw new UnknownError({
                 message: "No recipe JSON-LD data found on the page.",
             });
         }
 
-        const prepTime = moment.duration(recipeData.prepTime || 0).asMinutes();
-        const cookTime = moment.duration(recipeData.cookTime || 0).asMinutes();
+        if (typeof recipeData !== "object") {
+            throw new UnknownError({
+                message: "No valid JSON-LD recipe object found on the page.",
+            });
+        }
+
+        const prepTime =
+            "prepTime" in recipeData && typeof recipeData.prepTime === "number"
+                ? moment.duration(recipeData.prepTime).asMinutes()
+                : undefined;
+
+        const cookTime =
+            "cookTime" in recipeData && typeof recipeData.cookTime === "number"
+                ? moment.duration(recipeData.cookTime).asMinutes()
+                : undefined;
+
+        let imageUrl: string | undefined;
+        if ("image" in recipeData && recipeData.image) {
+            const imageValue = Array.isArray(recipeData.image)
+                ? recipeData.image[0]
+                : recipeData.image;
+
+            if (typeof imageValue === "string") {
+                imageUrl = imageValue;
+            } else if (
+                imageValue &&
+                typeof imageValue === "object" &&
+                "url" in imageValue &&
+                typeof imageValue.url === "string"
+            ) {
+                imageUrl = imageValue.url;
+            }
+        }
 
         return {
-            name: recipeData.name || "Untitled Recipe",
+            name:
+                "name" in recipeData && typeof recipeData.name === "string"
+                    ? recipeData.name
+                    : "Untitled Recipe",
             source: url,
-            servings: recipeData.recipeYield,
-            summary: recipeData.description,
+            servings:
+                "recipeYield" in recipeData &&
+                typeof recipeData.recipeYield === "number"
+                    ? recipeData.recipeYield
+                    : undefined,
+            summary:
+                "description" in recipeData &&
+                typeof recipeData.description === "string"
+                    ? recipeData.description
+                    : undefined,
             prepTime,
             cookTime,
-            imageUrl: Array.isArray(recipeData.image)
-                ? recipeData.image[0]
-                : (recipeData.image?.url ?? recipeData.image),
+            imageUrl,
         };
     },
 });

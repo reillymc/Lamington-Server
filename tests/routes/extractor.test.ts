@@ -3,11 +3,10 @@ import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { v4 } from "uuid";
-import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { ContentExtractionService } from "../../src/services/contentExtractionService.ts";
 import { PrepareAuthenticatedUser, randomNumber } from "../helpers/index.ts";
-import { createTestApp } from "../helpers/setup.ts";
+import { createTestApp, db } from "../helpers/setup.ts";
 
 let database: KnexDatabase;
 let app: Express;

@@ -53,7 +53,7 @@ interface ListItem {
 
 type VerifyPermissionsRequest = {
     userId: User["userId"];
-    status: ListUserStatus | ReadonlyArray<ListUserStatus>;
+    status: ListUserStatus | [ListUserStatus, ...ReadonlyArray<ListUserStatus>];
     lists: ReadonlyArray<{
         listId: List["listId"];
     }>;
@@ -166,20 +166,10 @@ type ReadMembersResponse = {
 
 type SaveMembersRequest = {
     listId: List["listId"];
-    members?: ReadonlyArray<MemberSaveItem>;
+    members: ReadonlyArray<MemberSaveItem>;
 };
 
 type SaveMembersResponse = {
-    listId: List["listId"];
-    members: ReadonlyArray<MemberResponseItem>;
-};
-
-type UpdateMembersRequest = {
-    listId: List["listId"];
-    members?: ReadonlyArray<MemberSaveItem>;
-};
-
-type UpdateMembersResponse = {
     listId: List["listId"];
     members: ReadonlyArray<MemberResponseItem>;
 };
@@ -396,11 +386,6 @@ export interface ListRepository<TDatabase extends Database = Database> {
         TDatabase,
         UpdateItemsRequest,
         UpdateItemsResponse
-    >;
-    updateMembers: RepositoryBulkService<
-        TDatabase,
-        UpdateMembersRequest,
-        UpdateMembersResponse
     >;
     verifyPermissions: RepositoryService<
         TDatabase,

@@ -1,6 +1,5 @@
 import type { components } from "../routes/spec/index.ts";
-import { NotFoundError } from "./logging.ts";
-import type { CreateService } from "./service.ts";
+import { type CreateService, NotFoundError } from "./service.ts";
 
 export interface MealService {
     get: (

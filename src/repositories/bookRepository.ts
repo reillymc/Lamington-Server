@@ -33,6 +33,11 @@ type MemberItem = {
     status: BookUserStatus | undefined;
 };
 
+type MemberResponseItem = MemberItem & {
+    firstName: User["firstName"];
+    lastName: User["lastName"];
+};
+
 type ReadAllRequest = {
     userId: User["userId"];
 };
@@ -60,7 +65,7 @@ type VerifyPermissionsRequest = {
     /**
      * Will return true of user is a member of a book with the provided statuses
      */
-    status: BookUserStatus | ReadonlyArray<BookUserStatus>;
+    status: BookUserStatus | [BookUserStatus, ...ReadonlyArray<BookUserStatus>];
     books: ReadonlyArray<{
         bookId: Book["bookId"];
     }>;
@@ -151,12 +156,12 @@ type RemoveRecipesResponse = {
 
 type SaveMembersRequest = {
     bookId: Book["bookId"];
-    members: ReadonlyArray<SaveMemberRequest> | undefined;
+    members: ReadonlyArray<SaveMemberRequest>;
 };
 
 type SaveMembersResponse = {
     bookId: Book["bookId"];
-    members: ReadonlyArray<MemberItem>;
+    members: ReadonlyArray<MemberResponseItem>;
 };
 
 type RemoveMembersRequest = {
@@ -177,12 +182,7 @@ type ReadMembersRequest = {
 
 type ReadMembersResponse = {
     bookId: Book["bookId"];
-    members: ReadonlyArray<
-        MemberItem & {
-            firstName: User["firstName"];
-            lastName: User["lastName"];
-        }
-    >;
+    members: ReadonlyArray<MemberResponseItem>;
 };
 
 export interface BookRepository<TDatabase extends Database = Database> {
