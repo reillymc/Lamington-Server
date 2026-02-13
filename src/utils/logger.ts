@@ -5,7 +5,7 @@ import { Undefined } from "../utils/index.ts";
 
 const logPath = "logs";
 
-export interface AppErrorConstructor {
+interface AppErrorConstructor {
     status?: number;
     code?: string;
     message?: string;
