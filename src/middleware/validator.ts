@@ -3,6 +3,7 @@ import type { Request } from "express";
 import * as OpenApiValidator from "express-openapi-validator";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import multer, { type FileFilterCallback } from "multer";
+import { openApiSpec } from "../openApiSpec.ts";
 import {
     type CreateMiddleware,
     type Middleware,
@@ -90,7 +91,7 @@ export const createValidatorMiddleware: CreateMiddleware<
     };
 
     const openApiValidatorMiddlewares = OpenApiValidator.middleware({
-        apiSpec: "./openapi.yaml",
+        apiSpec: openApiSpec,
         validateRequests: {
             allErrors: process.env.NODE_ENV !== "production",
             allowUnknownQueryParameters: false,

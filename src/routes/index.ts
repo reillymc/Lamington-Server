@@ -42,6 +42,7 @@ export const createAppRouter: CreateRouter<
 > = (services, middleware, config) =>
     express
         .Router()
+        .use("/health", createHealthRouter())
         .use(middleware.logger)
         .use(
             "/v1",
@@ -63,6 +64,5 @@ export const createAppRouter: CreateRouter<
                 .use(createTagsRouter(services))
                 .use(createUserRouter(services)),
         )
-        .use("/health", createHealthRouter())
         .use("/", createDocsRouter(config))
         .use(middleware.errorHandler);

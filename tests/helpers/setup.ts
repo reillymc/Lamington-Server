@@ -37,6 +37,9 @@ import { createTagService } from "../../src/services/tagService.ts";
 import { createUserService } from "../../src/services/userService.ts";
 import testConfig from "./knexfile.testing.ts";
 
+export const accessSecret = v4();
+export const refreshSecret = v4();
+
 const defaultAppRepositories: AppRepositories<KnexDatabase> = {
     bookRepository: KnexBookRepository,
     cooklistRepository: KnexCookListRepository,
@@ -53,8 +56,14 @@ const defaultAppRepositories: AppRepositories<KnexDatabase> = {
     },
 };
 
-export const accessSecret = v4();
-export const refreshSecret = v4();
+const defaultAppMiddleware: AppMiddleware = {
+    validator: createValidatorMiddleware({ accessSecret }),
+    errorHandler: createErrorHandlerMiddleware(),
+    logger: createLoggerMiddleware(),
+    rateLimiterControlled: createRateLimiterControlled(),
+    rateLimiterLoose: createRateLimiterLoose(),
+    rateLimiterRestrictive: createRateLimiterRestrictive(),
+};
 
 export const db = knex(testConfig);
 
@@ -97,9 +106,7 @@ export const createTestApp = ({
             ...services,
         },
         middleware: {
-            validator: createValidatorMiddleware({ accessSecret }),
-            errorHandler: createErrorHandlerMiddleware(),
-            logger: createLoggerMiddleware(),
+            ...defaultAppMiddleware,
             rateLimiterControlled: createRateLimiterControlled(),
             rateLimiterLoose: createRateLimiterLoose(),
             rateLimiterRestrictive: createRateLimiterRestrictive(),
