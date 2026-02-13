@@ -2,14 +2,13 @@ import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
-import db from "../../src/database/index.ts";
 import type { AttachmentRepository } from "../../src/repositories/attachmentRepository.ts";
 import type { FileRepository } from "../../src/repositories/fileRepository.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { readAllAttachments } from "../helpers/attachment.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
-import { createTestApp } from "../helpers/setup.ts";
+import { createTestApp, db } from "../helpers/setup.ts";
 
 const MockSuccessfulFileRepository: FileRepository = {
     create: mock.fn(async () => "uri://"),

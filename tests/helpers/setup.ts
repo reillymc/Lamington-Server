@@ -1,5 +1,5 @@
+import knex from "knex";
 import { v4 } from "uuid";
-
 import { setupApp } from "../../src/app.ts";
 import config from "../../src/config.ts";
 import { createErrorHandlerMiddleware } from "../../src/middleware/errorHandler.ts";
@@ -37,6 +37,7 @@ import { createPlannerService } from "../../src/services/plannerService.ts";
 import { createRecipeService } from "../../src/services/recipeService.ts";
 import { createTagService } from "../../src/services/tagService.ts";
 import { createUserService } from "../../src/services/userService.ts";
+import testConfig from "./knexfile.testing.ts";
 
 const defaultAppRepositories: AppRepositories<KnexDatabase> = {
     bookRepository: KnexBookRepository,
@@ -56,6 +57,8 @@ const defaultAppRepositories: AppRepositories<KnexDatabase> = {
 
 export const accessSecret = v4();
 export const refreshSecret = v4();
+
+export const db = knex(testConfig);
 
 export const createTestApp = ({
     database,

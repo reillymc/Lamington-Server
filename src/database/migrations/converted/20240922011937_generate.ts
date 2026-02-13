@@ -1,6 +1,6 @@
+import bcrypt from "bcrypt";
 import type { Knex } from "knex";
 import { v4 } from "uuid";
-import { hashPassword } from "../../services/userService.ts";
 
 export async function up(knex: Knex): Promise<void> {
     if (process.env.NODE_ENV !== "production") {
@@ -14,6 +14,9 @@ export async function up(knex: Knex): Promise<void> {
         throw new Error("NO ADMINISTRATOR ACCOUNT DETAILS PROVIDED");
     }
 
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = bcrypt.hash(password, salt);
+
     await knex("user")
         .insert([
             {
@@ -21,7 +24,7 @@ export async function up(knex: Knex): Promise<void> {
                 email,
                 firstName: "admin",
                 lastName: "",
-                password: await hashPassword(password),
+                password: hashedPassword,
                 status: "A",
                 preferences: "{}",
             },

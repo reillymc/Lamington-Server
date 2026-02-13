@@ -1,5 +1,10 @@
+import bcrypt from "bcrypt";
 import type { Knex } from "knex";
-import { hashPassword } from "../../../services/userService.ts";
+
+const hashPassword = async (password: string) => {
+    const salt = await bcrypt.genSalt();
+    return bcrypt.hash(password, salt);
+};
 
 export const seed = async (knex: Knex): Promise<void> => {
     await knex("user").insert([
@@ -548,8 +553,6 @@ export const seed = async (knex: Knex): Promise<void> => {
                 servings,
                 prepTime,
                 cookTime,
-                createdAt,
-                updatedAt,
                 public: isPublic,
                 timesCooked,
             }) => ({
@@ -558,22 +561,20 @@ export const seed = async (knex: Knex): Promise<void> => {
                 servings,
                 prepTime,
                 cookTime,
-                createdAt,
-                updatedAt,
                 public: isPublic,
                 timesCooked,
             }),
         ),
     );
 
-    await knex("bookRecipe").insert([
+    await knex("book_recipe").insert([
         {
             bookId: "b7a49a84-f39a-44b0-a8db-fc3d12a23a38",
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
         },
     ]);
 
-    await knex("recipeRating").insert([
+    await knex("recipe_rating").insert([
         {
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             raterId: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
@@ -586,7 +587,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ]);
 
-    await knex("contentTag").insert([
+    await knex("content_tag").insert([
         {
             contentId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             tagId: "46839022-4057-4722-b2c0-0f376b5ad2f9",
@@ -613,7 +614,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ]);
 
-    await knex("recipeSection").insert([
+    await knex("recipe_section").insert([
         {
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
             sectionId: "444b8e22-ed15-425f-accc-ba7a52082a30",
@@ -640,7 +641,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ]);
 
-    await knex("recipeIngredient").insert([
+    await knex("recipe_ingredient").insert([
         {
             id: "15fed8ab-3554-4a81-ad80-82f36eb3267e",
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
@@ -715,7 +716,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         },
     ]);
 
-    await knex("recipeStep").insert([
+    await knex("recipe_step").insert([
         {
             id: "04e951b8-23c0-49f6-9d90-f7c8fff1511f",
             recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
@@ -891,7 +892,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         })),
     );
 
-    await knex("listItem").insert(
+    await knex("list_item").insert(
         listItems.map(
             ({
                 listId,
@@ -900,7 +901,6 @@ export const seed = async (knex: Knex): Promise<void> => {
                 ingredientId,
                 unit,
                 amount,
-                updatedAt,
                 completed,
             }) => ({
                 listId,
@@ -909,7 +909,6 @@ export const seed = async (knex: Knex): Promise<void> => {
                 ingredientId: ingredientId,
                 unit: unit,
                 amount: amount,
-                updatedAt,
                 completed,
             }),
         ),
@@ -1084,7 +1083,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         })),
     );
 
-    await knex("plannerMeal").insert(
+    await knex("planner_meal").insert(
         plannerMeals.map(
             ({
                 mealId,

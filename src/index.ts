@@ -1,8 +1,10 @@
 import { S3Client } from "@aws-sdk/client-s3";
+import knex from "knex";
 import ms, { type StringValue } from "ms";
 import { setupApp } from "./app.ts";
 import config from "./config.ts";
-import db from "./database/index.ts";
+import development from "./database/knexfile.development.ts";
+import production from "./database/knexfile.production.ts";
 import { createErrorHandlerMiddleware } from "./middleware/errorHandler.ts";
 import { createLoggerMiddleware } from "./middleware/logger.ts";
 import { createNotFoundMiddleware } from "./middleware/notFound.ts";
@@ -38,6 +40,17 @@ import { createTagService } from "./services/tagService.ts";
 import { createUserService } from "./services/userService.ts";
 
 const port = parseInt(process.env.PORT ?? "3000", 10);
+
+const selectDatabaseConfig = () => {
+    switch (process.env.NODE_ENV) {
+        case "development":
+            return development;
+        default:
+            return production;
+    }
+};
+
+const db = knex(selectDatabaseConfig());
 
 let fileRepository = createDiskFileRepository(
     "uploads",

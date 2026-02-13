@@ -4,10 +4,9 @@ import type { Express } from "express";
 import jwt from "jsonwebtoken";
 import request from "supertest";
 import { v4 } from "uuid";
-import db from "../src/database/index.ts";
 import type { KnexDatabase } from "../src/repositories/knex/knex.ts";
 import { CreateUsers } from "./helpers/index.ts";
-import { accessSecret, createTestApp } from "./helpers/setup.ts";
+import { accessSecret, createTestApp, db } from "./helpers/setup.ts";
 
 let database: KnexDatabase;
 let app: Express;

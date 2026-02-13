@@ -3,7 +3,6 @@ import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
-import db from "../../src/database/index.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
@@ -19,7 +18,7 @@ import {
     randomYear,
 } from "../helpers/index.ts";
 import { randomCourse } from "../helpers/meal.ts";
-import { createTestApp } from "../helpers/setup.ts";
+import { createTestApp, db } from "../helpers/setup.ts";
 
 let database: KnexDatabase;
 let app: Express;

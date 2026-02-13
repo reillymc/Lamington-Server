@@ -12,8 +12,6 @@ import {
 } from "./index.ts";
 import type { CreateService } from "./service.ts";
 
-const saltRounds = 10;
-
 const isRefreshToken = (
     decoded: string | undefined | JwtPayload,
 ): decoded is { userId: string } => {
@@ -51,7 +49,7 @@ export const createRefreshToken = (
     });
 
 export const hashPassword = async (password: string) => {
-    const salt = await bcrypt.genSalt(saltRounds);
+    const salt = await bcrypt.genSalt();
     return bcrypt.hash(password, salt);
 };
 
