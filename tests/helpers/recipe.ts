@@ -112,7 +112,7 @@ export const createRandomRecipeTags = async (database: KnexDatabase) => {
     await KnexTagRepository.create(database, parentTags);
     await KnexTagRepository.create(database, childTags);
 
-    return childTags;
+    return childTags.map(({ tagId }) => ({ tagId }));
 };
 
 export const assertRecipeServingsAreEqual = (

@@ -16,18 +16,21 @@ export const createTagService: CreateService<TagService, "tagRepository"> = (
         const children = result.filter((row) => row.parentId !== undefined);
 
         const childrenMap = children.reduce(
-            (acc, child) => {
-                const key = child.parentId as string;
-                if (!acc[key]) {
-                    acc[key] = [];
+            (acc, { parentId, ...child }) => {
+                if (!parentId) {
+                    return acc;
                 }
-                acc[key].push(child);
+
+                if (!acc[parentId]) {
+                    acc[parentId] = [];
+                }
+                acc[parentId].push(child);
                 return acc;
             },
-            {} as Record<string, typeof children>,
+            {} as Record<string, components["schemas"]["Tag"][]>,
         );
 
-        return parents.map((parent) => ({
+        return parents.map(({ parentId, ...parent }) => ({
             ...parent,
             tags: childrenMap[parent.tagId],
         }));

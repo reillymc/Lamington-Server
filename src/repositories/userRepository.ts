@@ -22,10 +22,6 @@ type UserProfile = {
     status: UserStatus;
 };
 
-type UserDirectoryEntry = UserProfile & {
-    createdAt: User["createdAt"];
-};
-
 type UserCredentials = {
     userId: User["userId"];
     email: User["email"];
@@ -50,7 +46,7 @@ type ReadAllUsersRequest = {
 };
 
 type ReadAllUsersResponse = {
-    users: ReadonlyArray<UserDirectoryEntry>;
+    users: ReadonlyArray<UserProfile>;
 };
 
 type ReadCredentialsRequest = {
