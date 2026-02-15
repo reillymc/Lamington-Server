@@ -2813,8 +2813,6 @@ components:
           type: integer
         servings:
           $ref: "#/components/schemas/Servings"
-        public:
-          type: boolean
         nutritionalInformation:
           type: string
           maxLength: 4096

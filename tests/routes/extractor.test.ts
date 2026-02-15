@@ -110,13 +110,9 @@ describe("Extract full recipe", () => {
             ReturnType<ContentExtractionService["extractRecipe"]>
         > = {
             name: v4(),
-            description: v4(),
             cookTime: randomNumber(),
-            imageUrl: v4(),
-            notes: v4(),
             prepTime: randomNumber(),
             source: v4(),
-            url: v4(),
         };
 
         const extractRecipeMock = mock.fn(
