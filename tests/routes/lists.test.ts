@@ -1802,7 +1802,6 @@ describe("Move list items to another list", () => {
         );
         expect(destItems).toHaveLength(1);
         expect(destItems[0]!.itemId).toEqual(item.itemId);
-        expect(destItems[0]!.listId).toEqual(destList!.listId);
     });
 
     it("should fail if moving to the same list", async () => {

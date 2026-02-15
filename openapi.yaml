@@ -795,6 +795,9 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/AuthLogin"
+            example:
+              email: alice@lamington.app
+              password: lamington.app
       responses:
         200:
           description: Successful response
@@ -2125,7 +2128,8 @@ components:
           type: string
       required:
         - error
-    Tag:
+      unevaluatedProperties: false
+    TagBase:
       type: object
       properties:
         tagId:
@@ -2137,15 +2141,20 @@ components:
       required:
         - tagId
         - name
+    Tag:
+      allOf:
+        - $ref: "#/components/schemas/TagBase"
+      unevaluatedProperties: false
     TagGroup:
       allOf:
-        - $ref: "#/components/schemas/Tag"
+        - $ref: "#/components/schemas/TagBase"
         - type: object
           properties:
             tags:
               type: array
               items:
                 $ref: "#/components/schemas/Tag"
+      unevaluatedProperties: false
     User:
       type: object
       properties:
@@ -2166,6 +2175,7 @@ components:
         - firstName
         - lastName
         - status
+      unevaluatedProperties: false
     Owner:
       type: object
       properties:
@@ -2176,6 +2186,7 @@ components:
       required:
         - userId
         - firstName
+      unevaluatedProperties: false
     Uuid:
       type: string
       format: uuid
@@ -2216,63 +2227,47 @@ components:
         - component
         - dessert
         - drink
-    MealProperties:
-      type: object
-      properties:
-        mealId:
-          $ref: "#/components/schemas/Uuid"
-        plannerId:
-          $ref: "#/components/schemas/Uuid"
-        year:
-          $ref: "#/components/schemas/Year"
-        month:
-          $ref: "#/components/schemas/Month"
-        dayOfMonth:
-          $ref: "#/components/schemas/DayOfMonth"
-        course:
-          $ref: "#/components/schemas/Course"
-        description:
-          type: string
-        source:
-          type: string
-          maxLength: 255
-        sequence:
-          type: integer
-        recipeId:
-          $ref: "#/components/schemas/Uuid"
-        notes:
-          type: string
-          maxLength: 255
-      dependentRequired:
-        plannerId:
-          - year
-          - month
-          - dayOfMonth
-        year:
-          - plannerId
-          - month
-          - dayOfMonth
-        month:
-          - plannerId
-          - year
-          - dayOfMonth
-        dayOfMonth:
-          - plannerId
-          - year
-          - month
     Meal:
       allOf:
-        - $ref: "#/components/schemas/MealProperties"
+        - $ref: "#/components/schemas/MealBase"
         - type: object
           properties:
+            mealId:
+              $ref: "#/components/schemas/Uuid"
             owner:
               $ref: "#/components/schemas/Owner"
-            heroImage:
-              $ref: "#/components/schemas/ImageAttachment"
+            plannerId:
+              $ref: "#/components/schemas/Uuid"
+            year:
+              $ref: "#/components/schemas/Year"
+            month:
+              $ref: "#/components/schemas/Month"
+            dayOfMonth:
+              $ref: "#/components/schemas/DayOfMonth"
+            sequence:
+              type: integer
+          dependentRequired:
+            plannerId:
+              - year
+              - month
+              - dayOfMonth
+            year:
+              - plannerId
+              - month
+              - dayOfMonth
+            month:
+              - plannerId
+              - year
+              - dayOfMonth
+            dayOfMonth:
+              - plannerId
+              - year
+              - month
       required:
         - mealId
         - course
         - owner
+      unevaluatedProperties: false
     MealBase:
       type: object
       properties:
@@ -2282,10 +2277,14 @@ components:
           type: string
         source:
           type: string
+          maxLength: 255
         recipeId:
           $ref: "#/components/schemas/Uuid"
         heroImage:
           $ref: "#/components/schemas/ImageAttachment"
+        notes:
+          type: string
+          maxLength: 255
       required:
         - course
     MealCreateBase:
@@ -2311,6 +2310,11 @@ components:
             - type: "null"
         heroImage:
           $ref: "#/components/schemas/Uuid"
+        notes:
+          type:
+            - string
+            - "null"
+          maxLength: 255
       required:
         - course
     MealUpdateBase:
@@ -2338,6 +2342,11 @@ components:
           oneOf:
             - $ref: "#/components/schemas/Uuid"
             - type: "null"
+        notes:
+          type:
+            - string
+            - "null"
+          maxLength: 255
     CookListMeal:
       allOf:
         - $ref: "#/components/schemas/MealBase"
@@ -2352,6 +2361,7 @@ components:
           required:
             - mealId
             - owner
+      unevaluatedProperties: false
     CookListMealCreate:
       allOf:
         - $ref: "#/components/schemas/MealCreateBase"
@@ -2403,6 +2413,7 @@ components:
         - plannerId
         - owner
         - name
+      unevaluatedProperties: false
     PlannerCreate:
       type: object
       properties:
@@ -2451,6 +2462,7 @@ components:
       required:
         - userId
         - firstName
+      unevaluatedProperties: false
     MemberUpdateStatus:
       type: string
       description: >
@@ -2515,6 +2527,7 @@ components:
       required:
         - representation
         - value
+      unevaluatedProperties: false
     AmountRange:
       type: object
       properties:
@@ -2530,6 +2543,7 @@ components:
       required:
         - representation
         - value
+      unevaluatedProperties: false
     AmountNumber:
       type: object
       properties:
@@ -2541,6 +2555,7 @@ components:
       required:
         - representation
         - value
+      unevaluatedProperties: false
     ListItem:
       type: object
       properties:
@@ -2567,6 +2582,7 @@ components:
         - name
         - updatedAt
         - completed
+      unevaluatedProperties: false
     ListItemCreate:
       type: object
       properties:
@@ -2617,7 +2633,7 @@ components:
             - "null"
           maxLength: 255
       unevaluatedProperties: false
-    List:
+    ListBase:
       type: object
       properties:
         listId:
@@ -2636,9 +2652,13 @@ components:
         - listId
         - name
         - owner
+    List:
+      allOf:
+        - $ref: "#/components/schemas/ListBase"
+      unevaluatedProperties: false
     ListSummary:
       allOf:
-        - $ref: "#/components/schemas/List"
+        - $ref: "#/components/schemas/ListBase"
         - type: object
           properties:
             outstandingItemCount:
@@ -2646,6 +2666,7 @@ components:
             lastUpdated:
               type: string
               format: date-time
+      unevaluatedProperties: false
     ListCreate:
       type: object
       properties:
@@ -2704,6 +2725,7 @@ components:
             - year
             - month
             - dayOfMonth
+      unevaluatedProperties: false
     PlannerMealCreate:
       allOf:
         - $ref: "#/components/schemas/MealCreateBase"
@@ -2732,15 +2754,6 @@ components:
             dayOfMonth:
               $ref: "#/components/schemas/DayOfMonth"
       unevaluatedProperties: false
-    MealPartial:
-      allOf:
-        - $ref: "#/components/schemas/MealProperties"
-    MealCreate:
-      allOf:
-        - $ref: "#/components/schemas/MealProperties"
-      required:
-        - course
-      unevaluatedProperties: false
     ExtractedRecipeMetadata:
       type: object
       properties:
@@ -2750,6 +2763,7 @@ components:
           type: string
       required:
         - name
+      unevaluatedProperties: false
     RecipeBase:
       type: object
       properties:
@@ -2765,10 +2779,49 @@ components:
           type: string
         notes:
           type: string
+      unevaluatedProperties: false
     ExtractedRecipe:
-      allOf:
-        - $ref: "#/components/schemas/ExtractedRecipeMetadata"
-        - $ref: "#/components/schemas/RecipeBase"
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        source:
+          type: string
+          maxLength: 255
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeSectionIngredient"
+        method:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeSectionMethod"
+        summary:
+          type: string
+          maxLength: 4096
+        rating:
+          type: number
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeTagRef"
+        cookTime:
+          type: integer
+        prepTime:
+          type: integer
+        servings:
+          $ref: "#/components/schemas/Servings"
+        nutritionalInformation:
+          type: string
+          maxLength: 4096
+        additionalData:
+          type: object
+          properties:
+            imageUrl:
+              type: string
+      unevaluatedProperties: false
     Recipe:
       type: object
       properties:
@@ -2841,6 +2894,7 @@ components:
         - recipeId
         - name
         - owner
+      unevaluatedProperties: false
     ImageAttachment:
       type: object
       properties:
@@ -2851,6 +2905,7 @@ components:
       required:
         - attachmentId
         - uri
+      unevaluatedProperties: false
     Password:
       type: string
       minLength: 12
@@ -2875,6 +2930,7 @@ components:
         - firstName
         - lastName
         - password
+      unevaluatedProperties: false
     AuthLogin:
       type: object
       properties:
@@ -2886,6 +2942,7 @@ components:
       required:
         - email
         - password
+      unevaluatedProperties: false
     AuthResponse:
       type: object
       properties:
@@ -2917,6 +2974,7 @@ components:
           type: string
       required:
         - user
+      unevaluatedProperties: false
     AuthRegisterResponse:
       type: object
       properties:
@@ -2936,6 +2994,7 @@ components:
             - status
       required:
         - user
+      unevaluatedProperties: false
     BookColor:
       type: string
       enum:
@@ -2978,6 +3037,7 @@ components:
         - bookId
         - name
         - owner
+      unevaluatedProperties: false
     BookCreate:
       type: object
       properties:
@@ -3008,6 +3068,7 @@ components:
       required:
         - unit
         - count
+      unevaluatedProperties: false
     RecipeTagRef:
       type: object
       properties:
@@ -3015,6 +3076,7 @@ components:
           $ref: "#/components/schemas/Uuid"
       required:
         - tagId
+      unevaluatedProperties: false
     RecipeIngredientItem:
       type: object
       properties:
@@ -3039,6 +3101,7 @@ components:
           maxLength: 255
       required:
         - id
+      unevaluatedProperties: false
     RecipeSectionIngredient:
       type: object
       properties:
@@ -3058,6 +3121,7 @@ components:
         - sectionId
         - name
         - items
+      unevaluatedProperties: false
     RecipeMethodStep:
       type: object
       properties:
@@ -3068,6 +3132,7 @@ components:
           maxLength: 4096
       required:
         - id
+      unevaluatedProperties: false
     RecipeSectionMethod:
       type: object
       properties:
@@ -3087,6 +3152,7 @@ components:
         - sectionId
         - name
         - items
+      unevaluatedProperties: false
     RecipeCreate:
       type: object
       properties:

@@ -16,7 +16,6 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
                 UserTable.firstName,
                 UserTable.lastName,
                 UserTable.status,
-                UserTable.createdAt,
             )
             .whereIn(UserTable.userId, userIds);
 
@@ -27,7 +26,6 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
                 firstName: u.firstName,
                 lastName: u.lastName,
                 status: u.status,
-                createdAt: u.createdAt,
             })),
         };
     },
@@ -38,7 +36,6 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
             UserTable.lastName,
             UserTable.email,
             UserTable.status,
-            UserTable.createdAt,
         );
 
         if (filter?.status) {
@@ -56,7 +53,6 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
                 lastName: u.lastName,
                 email: u.email,
                 status: u.status,
-                createdAt: u.createdAt,
             })),
         };
     },

@@ -67,7 +67,10 @@ export const createAttachmentService: CreateService<
                 throw new CreatedDataFetchError("attachment");
             }
 
-            return finalAttachmentEntry;
+            return {
+                attachmentId: finalAttachmentEntry.attachmentId,
+                uri: finalAttachmentEntry.uri,
+            };
         });
     },
 });

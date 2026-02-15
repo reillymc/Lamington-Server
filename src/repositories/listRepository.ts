@@ -83,7 +83,6 @@ type BaseListResponse = {
     listId: List["listId"];
     name: List["name"];
     description: List["description"];
-    color: string | null;
     icon: ListIcon | null;
     owner: {
         userId: User["userId"];
@@ -188,7 +187,6 @@ type RemoveMembersResponse = {
 
 type ListItemResponse = {
     itemId: ListItem["itemId"];
-    listId: ListItem["listId"];
     name: ListItem["name"];
     completed: ListItem["completed"];
     updatedAt: Content["updatedAt"];
@@ -196,10 +194,6 @@ type ListItemResponse = {
     unit: ListItem["unit"] | null;
     amount: ListItem["amount"] | null;
     notes: ListItem["notes"] | null;
-    owner: {
-        userId: User["userId"];
-        firstName: User["firstName"];
-    };
 };
 
 type ReadAllItemsRequest = {

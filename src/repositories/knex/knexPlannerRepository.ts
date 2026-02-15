@@ -337,7 +337,9 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
         ).then((members) =>
             EnsureArray(request).map(({ plannerId }) => ({
                 plannerId,
-                members: members.filter((m) => m.contentId === plannerId),
+                members: members
+                    .filter((m) => m.contentId === plannerId)
+                    .map(({ contentId, ...member }) => member),
             })),
         ),
     saveMembers: async (db, request) =>

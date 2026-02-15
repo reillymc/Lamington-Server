@@ -208,9 +208,9 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         ).then((members) =>
             EnsureArray(request).map(({ bookId }) => ({
                 bookId,
-                members: members.filter(
-                    ({ contentId }) => contentId === bookId,
-                ),
+                members: members
+                    .filter(({ contentId }) => contentId === bookId)
+                    .map(({ contentId, ...member }) => member),
             })),
         ),
     saveMembers: async (db, request) =>

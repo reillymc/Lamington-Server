@@ -20,7 +20,6 @@ const formatListItem = (
     item: any,
 ): Awaited<ReturnType<ListRepository["readAllItems"]>>["items"][number] => ({
     itemId: item.itemId,
-    listId: item.listId,
     name: item.name,
     completed: !!item.completed,
     ingredientId: toUndefined(item.ingredientId),
@@ -28,10 +27,6 @@ const formatListItem = (
     amount: toUndefined(item.amount),
     updatedAt: item.updatedAt,
     notes: toUndefined(item.notes),
-    owner: {
-        userId: item.createdBy,
-        firstName: item.firstName,
-    },
 });
 
 const formatList = (
@@ -40,7 +35,6 @@ const formatList = (
     listId: l.listId,
     name: l.name,
     description: toUndefined(l.description),
-    color: l.customisations?.color,
     icon: l.customisations?.icon,
     owner: { userId: l.createdBy, firstName: l.firstName },
     status: l.status ?? "O",
@@ -370,7 +364,9 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
         ).then((members) =>
             EnsureArray(request).map(({ listId }) => ({
                 listId,
-                members: members.filter((m) => m.contentId === listId),
+                members: members
+                    .filter((m) => m.contentId === listId)
+                    .map(({ contentId, ...member }) => member),
             })),
         ),
     saveMembers: async (db, request) =>
