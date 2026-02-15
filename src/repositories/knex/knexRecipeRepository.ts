@@ -887,6 +887,7 @@ const recipeIngredientRowsToResponse = ({
                 .filter((ingredient: any) => ingredient.sectionId === sectionId)
                 .sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0))
                 .map((ingredient: any) => ({
+                    id: ingredient.id,
                     description: toUndefined(ingredient.description),
                     subrecipeId: toUndefined(ingredient.subrecipeId),
                     multiplier: toUndefined(ingredient.multiplier),
