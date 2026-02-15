@@ -888,6 +888,7 @@ const recipeIngredientRowsToResponse = ({
                 .sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0))
                 .map((ingredient: any) => ({
                     id: ingredient.id,
+                    name: ingredient.name,
                     description: toUndefined(ingredient.description),
                     subrecipeId: toUndefined(ingredient.subrecipeId),
                     multiplier: toUndefined(ingredient.multiplier),
