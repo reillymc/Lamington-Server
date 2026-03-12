@@ -8,12 +8,7 @@ import {
     findRecipe,
     isRecipe,
 } from "../../src/utils/recipeConverter.ts";
-
-type TestCase<T = unknown> = {
-    name: string;
-    input: object;
-    expected: T;
-};
+import { runTestCases, type TestCase } from "../helpers/index.ts";
 
 describe("isRecipe", () => {
     const testCases: TestCase[] = [
@@ -44,10 +39,8 @@ describe("isRecipe", () => {
         },
     ];
 
-    testCases.forEach(({ name, input, expected }) => {
-        it(name, () => {
-            expect(isRecipe(input)).toBe(expected);
-        });
+    runTestCases(testCases, (input, expected) => {
+        expect(isRecipe(input)).toBe(expected);
     });
 });
 
@@ -87,10 +80,8 @@ describe("findRecipe", () => {
         },
     ];
 
-    testCases.forEach(({ name, input, expected }) => {
-        it(name, () => {
-            expect(findRecipe(input)).toEqual(expected);
-        });
+    runTestCases(testCases, (input, expected) => {
+        expect(findRecipe(input)).toEqual(expected);
     });
 });
 
@@ -131,11 +122,9 @@ describe("convertRecipe", () => {
             },
         ];
 
-        testCases.forEach(({ name, input, expected }) => {
-            it(name, () => {
-                const result = convertRecipe({ ...baseRecipe, ...input });
-                expect(result.source).toBe(expected);
-            });
+        runTestCases(testCases, (input, expected) => {
+            const result = convertRecipe({ ...baseRecipe, ...input });
+            expect(result.source).toBe(expected);
         });
     });
 
@@ -185,11 +174,9 @@ describe("convertRecipe", () => {
             },
         ];
 
-        testCases.forEach(({ name, input, expected }) => {
-            it(name, () => {
-                const result = convertRecipe({ ...baseRecipe, ...input });
-                expect(result.prepTime).toBe(expected);
-            });
+        runTestCases(testCases, (input, expected) => {
+            const result = convertRecipe({ ...baseRecipe, ...input });
+            expect(result.prepTime).toBe(expected);
         });
     });
 
@@ -224,11 +211,9 @@ describe("convertRecipe", () => {
             },
         ];
 
-        testCases.forEach(({ name, input, expected }) => {
-            it(name, () => {
-                const result = convertRecipe({ ...baseRecipe, ...input });
-                expect(result.cookTime).toBe(expected);
-            });
+        runTestCases(testCases, (input, expected) => {
+            const result = convertRecipe({ ...baseRecipe, ...input });
+            expect(result.cookTime).toBe(expected);
         });
     });
 
@@ -341,11 +326,9 @@ describe("convertRecipe", () => {
             },
         ];
 
-        testCases.forEach(({ name, input, expected }) => {
-            it(name, () => {
-                const result = convertRecipe({ ...baseRecipe, ...input });
-                expect(result.servings).toEqual(expected);
-            });
+        runTestCases(testCases, (input, expected) => {
+            const result = convertRecipe({ ...baseRecipe, ...input });
+            expect(result.servings).toEqual(expected);
         });
     });
 
@@ -450,11 +433,9 @@ describe("convertRecipe", () => {
             },
         ];
 
-        testCases.forEach(({ name, input, expected }) => {
-            it(name, () => {
-                const result = convertRecipe({ ...baseRecipe, ...input });
-                expect(result.additionalData!.imageUrl).toBe(expected);
-            });
+        runTestCases(testCases, (input, expected) => {
+            const result = convertRecipe({ ...baseRecipe, ...input });
+            expect(result.additionalData!.imageUrl).toBe(expected);
         });
     });
 
@@ -467,11 +448,10 @@ describe("convertRecipe", () => {
                 input: { recipeInstructions: ["Step 1", "Step 2"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Method",
                         items: [
-                            { id: "", description: "Step 1" },
-                            { id: "", description: "Step 2" },
+                            { description: "Step 1" },
+                            { description: "Step 2" },
                         ],
                     },
                 ],
@@ -486,11 +466,10 @@ describe("convertRecipe", () => {
                 },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Method",
                         items: [
-                            { id: "", description: "Step 1" },
-                            { id: "", description: "Step 2" },
+                            { description: "Step 1" },
+                            { description: "Step 2" },
                         ],
                     },
                 ],
@@ -504,9 +483,8 @@ describe("convertRecipe", () => {
                 },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Method",
-                        items: [{ id: "", description: "Step 1 Name" }],
+                        items: [{ description: "Step 1 Name" }],
                     },
                 ],
             },
@@ -530,14 +508,12 @@ describe("convertRecipe", () => {
                 },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Prep",
-                        items: [{ id: "", description: "Chop" }],
+                        items: [{ description: "Chop" }],
                     },
                     {
-                        sectionId: "",
                         name: "Cook",
-                        items: [{ id: "", description: "Fry" }],
+                        items: [{ description: "Fry" }],
                     },
                 ],
             },
@@ -546,9 +522,8 @@ describe("convertRecipe", () => {
                 input: { recipeInstructions: "Just cook it." },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Method",
-                        items: [{ id: "", description: "Just cook it." }],
+                        items: [{ description: "Just cook it." }],
                     },
                 ],
             },
@@ -567,19 +542,16 @@ describe("convertRecipe", () => {
                 },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Method",
-                        items: [{ id: "", description: "Preheat oven" }],
+                        items: [{ description: "Preheat oven" }],
                     },
                     {
-                        sectionId: "",
                         name: "Bake",
-                        items: [{ id: "", description: "Put in oven" }],
+                        items: [{ description: "Put in oven" }],
                     },
                     {
-                        sectionId: "",
                         name: "Method",
-                        items: [{ id: "", description: "Cool down" }],
+                        items: [{ description: "Cool down" }],
                     },
                 ],
             },
@@ -610,19 +582,17 @@ describe("convertRecipe", () => {
                 },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Preparation",
                         items: [
-                            { id: "", description: "Wash vegetables" },
-                            { id: "", description: "Dice onions" },
+                            { description: "Wash vegetables" },
+                            { description: "Dice onions" },
                         ],
                     },
                     {
-                        sectionId: "",
                         name: "Cooking",
                         items: [
-                            { id: "", description: "Heat oil" },
-                            { id: "", description: "Sauté onions" },
+                            { description: "Heat oil" },
+                            { description: "Sauté onions" },
                         ],
                     },
                 ],
@@ -638,11 +608,9 @@ describe("convertRecipe", () => {
                 },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Method",
                         items: [
                             {
-                                id: "",
                                 description: "Step without type property",
                             },
                         ],
@@ -656,9 +624,8 @@ describe("convertRecipe", () => {
                 },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Method",
-                        items: [{ id: "", description: "Regular step" }],
+                        items: [{ description: "Regular step" }],
                     },
                 ],
             },
@@ -684,33 +651,17 @@ describe("convertRecipe", () => {
                 },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Method",
-                        items: [{ id: "", description: "Valid step" }],
+                        items: [{ description: "Valid step" }],
                     },
                 ],
             },
         ];
 
-        testCases.forEach(({ name, input, expected }) => {
-            it(name, () => {
-                const result = convertRecipe({ ...baseRecipe, ...input });
+        runTestCases(testCases, (input, expected) => {
+            const result = convertRecipe({ ...baseRecipe, ...input });
 
-                // TODO: deep equal object once id is no longer required
-                const actual = result.method!.map(({ name, items }) => ({
-                    name,
-                    items: items.map(({ description }) => ({ description })),
-                }));
-
-                expect(actual).toEqual(
-                    expected!.map(({ name, items }) => ({
-                        name,
-                        items: items.map(({ description }) => ({
-                            description,
-                        })),
-                    })),
-                );
-            });
+            expect(result.method).toStrictEqual(expected);
         });
     });
 
@@ -723,9 +674,8 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["Garlic"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
-                        items: [{ id: "", name: "Garlic" }],
+                        items: [{ name: "Garlic" }],
                     },
                 ],
             },
@@ -734,9 +684,8 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["Extra-virgin olive oil"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
-                        items: [{ id: "", name: "Extra-virgin olive oil" }],
+                        items: [{ name: "Extra-virgin olive oil" }],
                     },
                 ],
             },
@@ -745,9 +694,8 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["sunflower / vegetable oil"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
-                        items: [{ id: "", name: "sunflower / vegetable oil" }],
+                        items: [{ name: "sunflower / vegetable oil" }],
                     },
                 ],
             },
@@ -756,11 +704,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["1 Onion"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "Onion",
                                 amount: {
                                     representation: "number",
@@ -776,11 +722,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["2 Tbsp olive oil"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "olive oil",
                                 unit: "tbsp",
                                 amount: {
@@ -797,11 +741,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["250g smooth ricotta"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "smooth ricotta",
                                 unit: "g",
                                 amount: {
@@ -818,11 +760,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["2-3 slices of Halloumi cheese"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "slices of Halloumi cheese",
                                 amount: {
                                     representation: "range",
@@ -840,11 +780,9 @@ describe("convertRecipe", () => {
                 },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "slices of Halloumi cheese",
                                 amount: {
                                     representation: "range",
@@ -860,11 +798,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["1/2 lemon"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "lemon",
                                 amount: {
                                     representation: "fraction",
@@ -880,11 +816,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["¼ lemon"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "lemon",
                                 amount: {
                                     representation: "fraction",
@@ -900,11 +834,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["1 1/4 lemon"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "lemon",
                                 amount: {
                                     representation: "fraction",
@@ -920,11 +852,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["1 ½ lemon"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "lemon",
                                 amount: {
                                     representation: "fraction",
@@ -940,11 +870,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["&#8531 potato"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "potato",
                                 amount: {
                                     representation: "fraction",
@@ -960,11 +888,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["0.25 cup grated parmesan"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "grated parmesan",
                                 unit: "cup",
                                 amount: {
@@ -985,11 +911,9 @@ describe("convertRecipe", () => {
                 },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "crushed red pepper flakes",
                                 unit: "teaspoon",
                                 amount: {
@@ -1006,11 +930,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["2  garlic cloves (minced)"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "garlic cloves",
                                 description: "minced",
                                 amount: {
@@ -1031,11 +953,9 @@ describe("convertRecipe", () => {
                 },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "tomato paste",
                                 description: "double strength, Italian",
                                 unit: "oz",
@@ -1055,11 +975,9 @@ describe("convertRecipe", () => {
                 },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "lemon",
                                 description: "1 juiced, 1 sliced",
                                 amount: {
@@ -1078,11 +996,9 @@ describe("convertRecipe", () => {
                 },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "Water",
                                 unit: "g",
                                 amount: {
@@ -1104,11 +1020,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["1 cup <b>flour</b>"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "flour",
                                 unit: "cup",
                                 amount: {
@@ -1125,11 +1039,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["1 apple (sliced &amp; peeled)"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "apple",
                                 description: "sliced & peeled",
                                 amount: {
@@ -1146,11 +1058,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["2.7 cups flour"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "flour",
                                 unit: "cups",
                                 amount: {
@@ -1172,11 +1082,9 @@ describe("convertRecipe", () => {
                 input: { recipeIngredient: ["1 unknown_unit ingredient"] },
                 expected: [
                     {
-                        sectionId: "",
                         name: "Ingredients",
                         items: [
                             {
-                                id: "",
                                 name: "unknown_unit ingredient",
                                 amount: {
                                     representation: "number",
@@ -1189,37 +1097,10 @@ describe("convertRecipe", () => {
             },
         ];
 
-        testCases.forEach(({ name, input, expected }) => {
-            it(name, () => {
-                const result = convertRecipe({ ...baseRecipe, ...input });
+        runTestCases(testCases, (input, expected) => {
+            const result = convertRecipe({ ...baseRecipe, ...input });
 
-                // TODO: deep equal object once id is no longer required
-                const actual = result.ingredients!.map(({ name, items }) => ({
-                    name,
-                    items: items.map((i) => {
-                        // biome-ignore lint/suspicious/noExplicitAny: clean up when above TODO is completed
-                        const item: any = { name: i.name };
-                        if (i.amount) item.amount = i.amount;
-                        if (i.unit) item.unit = i.unit;
-                        if (i.description) item.description = i.description;
-                        return item;
-                    }),
-                }));
-
-                expect(actual).toEqual(
-                    expected!.map(({ name, items }) => ({
-                        name,
-                        items: items.map((i) => {
-                            // biome-ignore lint/suspicious/noExplicitAny: clean up when above TODO is completed
-                            const item: any = { name: i.name };
-                            if (i.amount) item.amount = i.amount;
-                            if (i.unit) item.unit = i.unit;
-                            if (i.description) item.description = i.description;
-                            return item;
-                        }),
-                    })),
-                );
-            });
+            expect(result.ingredients).toStrictEqual(expected);
         });
     });
 
@@ -1263,19 +1144,15 @@ describe("convertRecipe", () => {
             },
         ];
 
-        testCases.forEach(({ name, input, expected }) => {
-            it(name, () => {
-                const result = convertRecipe({ ...baseRecipe, ...input });
+        runTestCases(testCases, (input, expected) => {
+            const result = convertRecipe({ ...baseRecipe, ...input });
 
-                const sortTags = (tags: typeof result.tags) =>
-                    tags
-                        ? [...tags].sort((a, b) =>
-                              a.tagId.localeCompare(b.tagId),
-                          )
-                        : tags;
+            const sortTags = (tags: typeof result.tags) =>
+                tags
+                    ? [...tags].sort((a, b) => a.tagId.localeCompare(b.tagId))
+                    : tags;
 
-                expect(sortTags(result.tags)).toStrictEqual(sortTags(expected));
-            });
+            expect(sortTags(result.tags)).toStrictEqual(sortTags(expected));
         });
     });
 });

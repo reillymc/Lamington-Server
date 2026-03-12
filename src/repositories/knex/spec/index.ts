@@ -154,7 +154,7 @@ export const RecipeIngredientTable = table(lamington.recipeIngredient, [
     "sectionId",
     "ingredientId",
     "subrecipeId",
-    "index",
+    "order",
     "unit",
     "amount",
     "multiplier",
@@ -170,7 +170,7 @@ export const RecipeRatingTable = table(lamington.recipeRating, [
 const _RecipeSectionTable = table(lamington.recipeSection, [
     "recipeId",
     "sectionId",
-    "index",
+    "order",
     "name",
     "description",
 ] as const);
@@ -179,7 +179,7 @@ export const RecipeStepTable = table(lamington.recipeStep, [
     "id",
     "recipeId",
     "sectionId",
-    "index",
+    "order",
     "description",
 ] as const);
 

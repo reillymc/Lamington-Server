@@ -1,6 +1,5 @@
 import bcrypt from "bcrypt";
 import jwt, { type JwtPayload } from "jsonwebtoken";
-import { v4 as Uuid } from "uuid";
 import { UniqueViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
 import {
@@ -205,7 +204,6 @@ export const createUserService: CreateService<
                         public: false,
                         ingredients: [
                             {
-                                sectionId: Uuid(),
                                 name: "This is an ingredient section",
                                 description:
                                     "Ingredients can be added in a simple list above, and/or divided into sections like this one",
@@ -214,7 +212,6 @@ export const createUserService: CreateService<
                         ],
                         method: [
                             {
-                                sectionId: Uuid(),
                                 name: "This is a method section",
                                 description:
                                     "Steps can be added in a simple list above, and/or divided into sections like this one",

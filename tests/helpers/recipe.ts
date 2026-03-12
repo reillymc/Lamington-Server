@@ -32,13 +32,11 @@ const generateRandomAmount = [
 ][randomNumber(0, 2)]!;
 
 export const generateRandomRecipeIngredientSections =
-    (): components["schemas"]["RecipeSectionIngredient"][] =>
+    (): components["schemas"]["RecipeIngredientSection"][] =>
         Array.from({ length: randomNumber() }).map(() => ({
-            sectionId: uuid(),
             name: uuid(),
             description: uuid(),
             items: Array.from({ length: randomNumber() }).map(() => ({
-                id: uuid(),
                 name: uuid(),
                 amount: generateRandomAmount(),
                 description: uuid(),
@@ -49,13 +47,11 @@ export const generateRandomRecipeIngredientSections =
         }));
 
 export const generateRandomRecipeMethodSections =
-    (): components["schemas"]["RecipeSectionMethod"][] =>
+    (): components["schemas"]["RecipeMethodSection"][] =>
         Array.from({ length: randomNumber() }).map(() => ({
-            sectionId: uuid(),
             name: uuid(),
             description: uuid(),
             items: Array.from({ length: randomNumber() }).map(() => ({
-                id: uuid(),
                 description: uuid(),
             })),
         }));
@@ -113,24 +109,6 @@ export const createRandomRecipeTags = async (database: KnexDatabase) => {
     await KnexTagRepository.create(database, childTags);
 
     return childTags.map(({ tagId }) => ({ tagId }));
-};
-
-export const assertRecipeServingsAreEqual = (
-    servings1: components["schemas"]["Servings"] | string | undefined,
-    servings2: components["schemas"]["Servings"] | string | undefined,
-) => {
-    if (!(servings1 && !!servings2) || (!servings2 && !!servings1))
-        throw new Error("Serving parameter undefined");
-    const servings1Parsed =
-        typeof servings1 === "string" ? JSON.parse(servings1) : servings1;
-    const servings2Parsed =
-        typeof servings2 === "string" ? JSON.parse(servings2) : servings2;
-
-    expect(servings1Parsed.unit).toEqual(servings2Parsed.unit);
-    expect(servings1Parsed.count.representation).toEqual(
-        servings2Parsed.count.representation,
-    );
-    expect(servings1Parsed.count.value).toEqual(servings2Parsed.count.value);
 };
 
 export const assertRecipeTagsAreEqual = (

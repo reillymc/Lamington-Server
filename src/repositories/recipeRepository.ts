@@ -8,8 +8,8 @@ export interface RecipeStep {
     id: string;
     recipeId: string;
     sectionId: string | undefined;
-    index: number;
-    description: string | undefined;
+    order: number;
+    description: string; // technically: | undefined;
 }
 
 type NumberValue = { representation: "number"; value: string };
@@ -22,7 +22,13 @@ type FractionValue = {
 export interface RecipeSection {
     recipeId: string;
     sectionId: string;
-    index: number;
+    order: number;
+    name: string;
+    description: string | undefined;
+}
+export interface RecipeSectionCreate {
+    recipeId: string;
+    order: number;
     name: string;
     description: string | undefined;
 }
@@ -34,9 +40,8 @@ export interface RecipeSection {
  * information stored in the properties.
  */
 export interface RecipeIngredient {
-    id: string;
     recipeId: string;
-    sectionId: string;
+    sectionId?: string;
 
     /**
      * Used when linking an ingredient item
@@ -47,7 +52,7 @@ export interface RecipeIngredient {
      * Used when linking another recipe as an ingredient
      */
     subrecipeId?: string;
-    index?: number;
+    order?: number;
     unit?: string;
 
     /**
@@ -109,7 +114,6 @@ type AdditionalFields = {
 };
 
 type SaveIngredientItemRequest = {
-    id: RecipeIngredient["id"];
     amount?: RecipeIngredient["amount"];
     description?: RecipeIngredient["description"];
     multiplier?: RecipeIngredient["multiplier"];
@@ -120,7 +124,6 @@ type SaveIngredientItemRequest = {
 };
 
 type SaveMethodStepRequest = {
-    id: RecipeStep["id"];
     description?: RecipeStep["description"];
 };
 
@@ -129,7 +132,6 @@ type SaveTagRequest = {
 };
 
 type SaveSectionRequest<T> = {
-    sectionId: string;
     name: string;
     description?: string;
     items: ReadonlyArray<T>;
@@ -247,7 +249,6 @@ type ReadAttachmentResponse = {
 };
 
 type ReadIngredientItemResponse = {
-    id: RecipeIngredient["id"];
     amount: RecipeIngredient["amount"] | undefined;
     description: RecipeIngredient["description"] | undefined;
     multiplier: RecipeIngredient["multiplier"] | undefined;

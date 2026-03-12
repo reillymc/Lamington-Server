@@ -2792,11 +2792,11 @@ components:
         ingredients:
           type: array
           items:
-            $ref: "#/components/schemas/RecipeSectionIngredient"
+            $ref: "#/components/schemas/RecipeIngredientSection"
         method:
           type: array
           items:
-            $ref: "#/components/schemas/RecipeSectionMethod"
+            $ref: "#/components/schemas/RecipeMethodSection"
         summary:
           type: string
           maxLength: 4096
@@ -2834,11 +2834,11 @@ components:
         ingredients:
           type: array
           items:
-            $ref: "#/components/schemas/RecipeSectionIngredient"
+            $ref: "#/components/schemas/RecipeIngredientSection"
         method:
           type: array
           items:
-            $ref: "#/components/schemas/RecipeSectionMethod"
+            $ref: "#/components/schemas/RecipeMethodSection"
         summary:
           type: string
         tips:
@@ -3078,8 +3078,6 @@ components:
     RecipeIngredientItem:
       type: object
       properties:
-        id:
-          $ref: "#/components/schemas/Uuid"
         ingredientId:
           $ref: "#/components/schemas/Uuid"
         subrecipeId:
@@ -3097,59 +3095,48 @@ components:
         name:
           type: string
           maxLength: 255
-      required:
-        - id
       unevaluatedProperties: false
-    RecipeSectionIngredient:
+    RecipeSectionBase:
       type: object
       properties:
-        sectionId:
-          $ref: "#/components/schemas/Uuid"
         name:
           type: string
           maxLength: 255
         description:
           type: string
           maxLength: 255
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/RecipeIngredientItem"
-      required:
-        - sectionId
-        - name
-        - items
+    RecipeIngredientSection:
+      allOf:
+        - $ref: "#/components/schemas/RecipeSectionBase"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/RecipeIngredientItem"
+          required:
+            - items
       unevaluatedProperties: false
     RecipeMethodStep:
       type: object
       properties:
-        id:
-          $ref: "#/components/schemas/Uuid"
         description:
           type: string
           maxLength: 4096
       required:
-        - id
+        - description
       unevaluatedProperties: false
-    RecipeSectionMethod:
-      type: object
-      properties:
-        sectionId:
-          $ref: "#/components/schemas/Uuid"
-        name:
-          type: string
-          maxLength: 255
-        description:
-          type: string
-          maxLength: 255
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/RecipeMethodStep"
-      required:
-        - sectionId
-        - name
-        - items
+    RecipeMethodSection:
+      allOf:
+        - $ref: "#/components/schemas/RecipeSectionBase"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/RecipeMethodStep"
+          required:
+            - items
       unevaluatedProperties: false
     RecipeCreate:
       type: object
@@ -3164,11 +3151,11 @@ components:
         ingredients:
           type: array
           items:
-            $ref: "#/components/schemas/RecipeSectionIngredient"
+            $ref: "#/components/schemas/RecipeIngredientSection"
         method:
           type: array
           items:
-            $ref: "#/components/schemas/RecipeSectionMethod"
+            $ref: "#/components/schemas/RecipeMethodSection"
         summary:
           type: string
           maxLength: 4096
@@ -3221,13 +3208,13 @@ components:
             - array
             - "null"
           items:
-            $ref: "#/components/schemas/RecipeSectionIngredient"
+            $ref: "#/components/schemas/RecipeIngredientSection"
         method:
           type:
             - array
             - "null"
           items:
-            $ref: "#/components/schemas/RecipeSectionMethod"
+            $ref: "#/components/schemas/RecipeMethodSection"
         summary:
           type:
             - string

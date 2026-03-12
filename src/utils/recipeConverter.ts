@@ -1,7 +1,6 @@
 import { load } from "cheerio";
 import moment from "moment";
 import type { HowToSection, Recipe as RecipeSchema } from "schema-dts";
-import { v4 as Uuid, v4 } from "uuid";
 import { DEFINITIONS } from "../database/seeds/production/01-default_tags.ts";
 import type { components } from "../routes/spec/schema.js";
 import { EnsureArray, Undefined } from "./index.ts";
@@ -11,7 +10,18 @@ type FractionAmount = components["schemas"]["AmountFraction"];
 type RangeAmount = components["schemas"]["AmountRange"];
 type Amount = NumberAmount | FractionAmount | RangeAmount;
 type ParsedIngredient = components["schemas"]["RecipeIngredientItem"];
-type TagRef = { tagId: string };
+type TagRef = components["schemas"]["RecipeTagRef"];
+
+const stripUndefined = <T extends object>(obj: T): T => {
+    const result = { ...obj };
+    for (const key of Object.keys(result)) {
+        const k = key as keyof T;
+        if (result[k] === undefined) {
+            delete result[k];
+        }
+    }
+    return result;
+};
 
 export const isRecipe = (input: unknown): input is RecipeSchema => {
     if (!input || typeof input !== "object") {
@@ -514,19 +524,18 @@ const parseIngredientString = (raw: string): ParsedIngredient => {
             : commaSuffix
         : parentDesc;
 
-    return {
-        id: v4(),
+    return stripUndefined({
         name,
         amount,
         unit,
         description,
-    };
+    });
 };
 
 const parseIngredients = (
     recipeIngredient: RecipeSchema["recipeIngredient"],
 ): components["schemas"]["ExtractedRecipe"]["ingredients"] => {
-    const ingredients: components["schemas"]["RecipeSectionIngredient"][] = [];
+    const ingredients: components["schemas"]["RecipeIngredientSection"][] = [];
     if (recipeIngredient) {
         const rawIngredients = Array.isArray(recipeIngredient)
             ? recipeIngredient
@@ -538,7 +547,6 @@ const parseIngredients = (
 
         if (items.length > 0) {
             ingredients.push({
-                sectionId: Uuid(),
                 name: "Ingredients",
                 items,
             });
@@ -604,16 +612,14 @@ const parseInstructions = (
     return groups
         .map((group) => {
             const items = group.steps
-                .map((step) => ({
-                    id: v4(),
-                    description: decodeHtml(getStepText(step)),
-                }))
-                .filter((i) => i.description);
+                .map(getStepText)
+                .map(decodeHtml)
+                .filter(Undefined)
+                .map((description) => ({ description }));
 
             if (items.length === 0) return undefined;
 
             return {
-                sectionId: Uuid(),
                 name: decodeHtml(group.name) ?? "Method",
                 items,
             };
@@ -708,17 +714,18 @@ const parseTags = (recipe: RecipeSchema): TagRef[] | undefined => {
 
 export const convertRecipe = (
     input: RecipeSchema,
-): components["schemas"]["ExtractedRecipe"] => ({
-    name: decodeHtml(input.name?.toString()) ?? "Untitled Recipe",
-    summary: decodeHtml(input.description?.toString()),
-    prepTime: parseDuration(input.prepTime),
-    cookTime: parseDuration(input.cookTime),
-    servings: parseYield(input.recipeYield),
-    ingredients: parseIngredients(input.recipeIngredient),
-    method: parseInstructions(input.recipeInstructions),
-    source: parseSource(input),
-    tags: parseTags(input),
-    additionalData: {
-        imageUrl: selectBestImage(input.image),
-    },
-});
+): components["schemas"]["ExtractedRecipe"] =>
+    stripUndefined({
+        name: decodeHtml(input.name?.toString()) ?? "Untitled Recipe",
+        summary: decodeHtml(input.description?.toString()),
+        prepTime: parseDuration(input.prepTime),
+        cookTime: parseDuration(input.cookTime),
+        servings: parseYield(input.recipeYield),
+        ingredients: parseIngredients(input.recipeIngredient),
+        method: parseInstructions(input.recipeInstructions),
+        source: parseSource(input),
+        tags: parseTags(input),
+        additionalData: stripUndefined({
+            imageUrl: selectBestImage(input.image),
+        }),
+    });
