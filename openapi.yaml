@@ -2678,7 +2678,6 @@ components:
           maxLength: 255
         description:
           type: string
-          minLength: 1
           maxLength: 255
         icon:
           $ref: "#/components/schemas/ListIcon"
@@ -3047,7 +3046,6 @@ components:
           maxLength: 255
         description:
           type: string
-          minLength: 1
           maxLength: 255
         color:
           $ref: "#/components/schemas/BookColor"
