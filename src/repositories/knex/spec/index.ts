@@ -84,6 +84,7 @@ export const ContentTagTable = table(lamington.contentTag, [
 export const IngredientTable = table(lamington.ingredient, [
     "ingredientId",
     "name",
+    "namePlural",
     "description",
 ] as const);
 

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import { expect } from "expect";
 import type { Recipe } from "schema-dts";
-import { Tags } from "../../src/database/seeds/production/01-default_tags.ts";
+import { Tags } from "../../src/database/seeds/production/01_default_tags.ts";
 import type { components } from "../../src/routes/spec/schema.js";
 import {
     convertRecipe,

@@ -37,7 +37,6 @@ export const generateRandomRecipeIngredientSections =
             name: uuid(),
             description: uuid(),
             items: Array.from({ length: randomNumber() }).map(() => ({
-                name: uuid(),
                 amount: generateRandomAmount(),
                 description: uuid(),
                 multiplier: randomNumber(),

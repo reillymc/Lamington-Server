@@ -18,6 +18,7 @@ import type { KnexDatabase } from "./repositories/knex/knex.ts";
 import { KnexAttachmentRepository } from "./repositories/knex/knexAttachmentRepository.ts";
 import { KnexBookRepository } from "./repositories/knex/knexBookRepository.ts";
 import { KnexCookListRepository } from "./repositories/knex/knexCooklistRepository.ts";
+import { KnexIngredientRepository } from "./repositories/knex/knexIngredientRepository.ts";
 import { KnexListRepository } from "./repositories/knex/knexListRepository.ts";
 import { KnexMealRepository } from "./repositories/knex/knexMealRepository.ts";
 import { KnexPlannerRepository } from "./repositories/knex/knexPlannerRepository.ts";
@@ -29,6 +30,7 @@ import { createAttachmentService } from "./services/attachmentService.ts";
 import { createBookService } from "./services/bookService.ts";
 import { createContentExtractionService } from "./services/contentExtractionService.ts";
 import { createCooklistService } from "./services/cooklistService.ts";
+import { createIngredientService } from "./services/ingredientService.ts";
 import { createListService } from "./services/listService.ts";
 import { createMealService } from "./services/mealService.ts";
 import { createPlannerService } from "./services/plannerService.ts";
@@ -84,16 +86,17 @@ awsBucketName: ${awsBucketName ? "provided" : "missing"}`,
 }
 
 const defaultAppRepositories: AppRepositories<KnexDatabase> = {
+    attachmentRepository: KnexAttachmentRepository,
     bookRepository: KnexBookRepository,
     cooklistRepository: KnexCookListRepository,
+    fileRepository,
+    ingredientRepository: KnexIngredientRepository,
     listRepository: KnexListRepository,
     mealRepository: KnexMealRepository,
     plannerRepository: KnexPlannerRepository,
     recipeRepository: KnexRecipeRepository,
-    userRepository: KnexUserRepository,
     tagRepository: KnexTagRepository,
-    attachmentRepository: KnexAttachmentRepository,
-    fileRepository,
+    userRepository: KnexUserRepository,
 };
 
 const accessSecret = process.env.JWT_SECRET;
@@ -117,6 +120,7 @@ const app = setupApp({
         bookService: createBookService(db, repositories),
         contentExtractionService: createContentExtractionService(),
         cooklistService: createCooklistService(db, repositories),
+        ingredientService: createIngredientService(db, repositories),
         listService: createListService(db, repositories),
         mealService: createMealService(db, repositories),
         plannerService: createPlannerService(db, repositories),

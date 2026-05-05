@@ -25,6 +25,8 @@ tags:
     description: Cook list operations
   - name: Recipes
     description: Recipe operations
+  - name: Ingredients
+    description: Ingredient operations
   - name: Lists
     description: List operations
   - name: Users
@@ -1419,6 +1421,28 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
+  /ingredients:
+    get:
+      tags:
+        - Ingredients
+      summary: Get user and system ingredients
+      operationId: getIngredients
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ingredient"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+
   /lists:
     get:
       tags:
@@ -3308,3 +3332,21 @@ components:
       enum:
         - asc
         - desc
+    Ingredient:
+      type: object
+      properties:
+        ingredientId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+        namePlural:
+          type: string
+        description:
+          type: string
+        owner:
+          $ref: "#/components/schemas/Owner"
+
+      required:
+        - ingredientId
+        - name
+      unevaluatedProperties: false

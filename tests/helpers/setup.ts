@@ -18,6 +18,7 @@ import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
+import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
 import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
 import { KnexMealRepository } from "../../src/repositories/knex/knexMealRepository.ts";
 import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
@@ -29,6 +30,7 @@ import { createBookService } from "../../src/services/bookService.ts";
 import { createContentExtractionService } from "../../src/services/contentExtractionService.ts";
 import { createCooklistService } from "../../src/services/cooklistService.ts";
 import type { AppServices } from "../../src/services/index.ts";
+import { createIngredientService } from "../../src/services/ingredientService.ts";
 import { createListService } from "../../src/services/listService.ts";
 import { createMealService } from "../../src/services/mealService.ts";
 import { createPlannerService } from "../../src/services/plannerService.ts";
@@ -41,19 +43,20 @@ export const accessSecret = v4();
 export const refreshSecret = v4();
 
 const defaultAppRepositories: AppRepositories<KnexDatabase> = {
+    attachmentRepository: KnexAttachmentRepository,
     bookRepository: KnexBookRepository,
     cooklistRepository: KnexCookListRepository,
-    listRepository: KnexListRepository,
-    mealRepository: KnexMealRepository,
-    plannerRepository: KnexPlannerRepository,
-    recipeRepository: KnexRecipeRepository,
-    userRepository: KnexUserRepository,
-    tagRepository: KnexTagRepository,
-    attachmentRepository: KnexAttachmentRepository,
     fileRepository: {
         create: async () => "uri://",
         delete: async () => true,
     },
+    ingredientRepository: KnexIngredientRepository,
+    listRepository: KnexListRepository,
+    mealRepository: KnexMealRepository,
+    plannerRepository: KnexPlannerRepository,
+    recipeRepository: KnexRecipeRepository,
+    tagRepository: KnexTagRepository,
+    userRepository: KnexUserRepository,
 };
 
 const defaultAppMiddleware: AppMiddleware = {
@@ -92,6 +95,10 @@ export const createTestApp = ({
             bookService: createBookService(database, appRepositories),
             contentExtractionService: createContentExtractionService(),
             cooklistService: createCooklistService(database, appRepositories),
+            ingredientService: createIngredientService(
+                database,
+                appRepositories,
+            ),
             listService: createListService(database, appRepositories),
             mealService: createMealService(database, appRepositories),
             plannerService: createPlannerService(database, appRepositories),

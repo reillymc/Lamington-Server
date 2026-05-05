@@ -10,6 +10,7 @@ import { createCooklistRouter } from "./cooklists.ts";
 import { createDocsRouter, type DocsRouterConfig } from "./docs.ts";
 import { createExtractorRouter } from "./extractor.ts";
 import { createHealthRouter } from "./health.ts";
+import { createIngredientRouter } from "./ingredients.ts";
 import { createListRouter } from "./lists.ts";
 import { createMealRouter } from "./meals.ts";
 import { createPlannerRouter } from "./planners.ts";
@@ -22,16 +23,17 @@ import { createUserRouter } from "./users.ts";
 type AppRouterConfig = AttachmentsRouterConfig & DocsRouterConfig;
 
 export const createAppRouter: CreateRouter<
-    | "userService"
     | "attachmentService"
     | "bookService"
     | "contentExtractionService"
     | "cooklistService"
+    | "ingredientService"
     | "listService"
     | "mealService"
     | "plannerService"
     | "recipeService"
-    | "tagService",
+    | "tagService"
+    | "userService",
     | "rateLimiterControlled"
     | "rateLimiterLoose"
     | "rateLimiterRestrictive"
@@ -56,6 +58,7 @@ export const createAppRouter: CreateRouter<
                 .use(createBookRouter(services))
                 .use(createCooklistRouter(services))
                 .use(createExtractorRouter(services))
+                .use(createIngredientRouter(services))
                 .use(createListRouter(services))
                 .use(createMealRouter(services))
                 .use(createPlannerRouter(services))

@@ -132,7 +132,7 @@ type SaveTagRequest = {
 };
 
 type SaveSectionRequest<T> = {
-    name: string;
+    name?: string;
     description?: string;
     items: ReadonlyArray<T>;
 };

@@ -886,7 +886,6 @@ const recipeIngredientsRequestToRows = (
                     sectionId,
                     order: itemIndex,
                     description: ingItem.description,
-                    name: ingItem.name,
                     unit: ingItem.unit,
                     amount: ingItem.amount,
                     multiplier: ingItem.multiplier,
