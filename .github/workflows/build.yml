@@ -35,6 +35,9 @@ jobs:
       - name: Run Biome
         run: biome ci . # TODO: --errors-as-warnings when remaining issues in code are addressed
 
+      - name: Run typecheck
+        run: npm run typecheck
+
       - name: Run knip
         run: npm run knip
 
