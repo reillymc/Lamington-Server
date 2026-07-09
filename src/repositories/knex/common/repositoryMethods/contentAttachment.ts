@@ -28,7 +28,6 @@ export const HeroAttachmentActions = {
                         contentId,
                         attachmentId,
                         displayType: "hero",
-                        displayOrder: 0,
                     };
                 }
                 return undefined;

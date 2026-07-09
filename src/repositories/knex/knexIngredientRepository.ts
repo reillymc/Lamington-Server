@@ -52,7 +52,7 @@ export const KnexIngredientRepository: IngredientRepository<KnexDatabase> = {
             ingredientId: contentId,
         }));
 
-        return db(lamington.ingredient)
+        const result = await db(lamington.ingredient)
             .insert(
                 ingredientsToCreate.map(
                     ({ name, ingredientId, description, namePlural }) => ({
@@ -69,5 +69,10 @@ export const KnexIngredientRepository: IngredientRepository<KnexDatabase> = {
                 IngredientTable.name,
                 IngredientTable.description,
             ]);
+
+        return {
+            userId,
+            ingredients: result.map(formatIngredient),
+        };
     },
 };
