@@ -15,7 +15,6 @@ type ReadRequest = undefined;
 type ReadResponse = ReadonlyArray<Tag>;
 
 type CreateRequest = {
-    tagId: Tag["tagId"];
     name: Tag["name"];
     description?: Tag["description"];
     parentId?: Tag["parentId"];

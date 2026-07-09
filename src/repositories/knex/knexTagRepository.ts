@@ -23,14 +23,11 @@ export const KnexTagRepository: TagRepository<KnexDatabase> = {
     create: async (db, params) =>
         db(lamington.tag)
             .insert(
-                EnsureArray(params).map(
-                    ({ name, tagId, description, parentId }) => ({
-                        name,
-                        tagId,
-                        description,
-                        parentId,
-                    }),
-                ),
+                EnsureArray(params).map(({ name, description, parentId }) => ({
+                    name,
+                    description,
+                    parentId,
+                })),
             )
             .returning([
                 TagTable.tagId,
