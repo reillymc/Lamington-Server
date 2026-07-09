@@ -1,5 +1,4 @@
 import express from "express";
-import { createAssetsRouter } from "./assets.ts";
 import {
     type AttachmentsRouterConfig,
     createAttachmentsRouter,
@@ -53,7 +52,6 @@ export const createAppRouter: CreateRouter<
                 .use(middleware.rateLimiterLoose)
                 .use(middleware.validator)
                 .use(createAuthRouter(services, middleware))
-                .use(createAssetsRouter())
                 .use(createAttachmentsRouter(services, middleware, config))
                 .use(createBookRouter(services))
                 .use(createCooklistRouter(services))
