@@ -39,7 +39,7 @@ describe("isRecipe", () => {
         },
     ];
 
-    runTestCases(testCases, (input, expected) => {
+    runTestCases(testCases, ({ input, expected }) => {
         expect(isRecipe(input)).toBe(expected);
     });
 });
@@ -80,7 +80,7 @@ describe("findRecipe", () => {
         },
     ];
 
-    runTestCases(testCases, (input, expected) => {
+    runTestCases(testCases, ({ input, expected }) => {
         expect(findRecipe(input)).toEqual(expected);
     });
 });
@@ -122,7 +122,7 @@ describe("convertRecipe", () => {
             },
         ];
 
-        runTestCases(testCases, (input, expected) => {
+        runTestCases(testCases, ({ input, expected }) => {
             const result = convertRecipe({ ...baseRecipe, ...input });
             expect(result.source).toBe(expected);
         });
@@ -174,7 +174,7 @@ describe("convertRecipe", () => {
             },
         ];
 
-        runTestCases(testCases, (input, expected) => {
+        runTestCases(testCases, ({ input, expected }) => {
             const result = convertRecipe({ ...baseRecipe, ...input });
             expect(result.prepTime).toBe(expected);
         });
@@ -211,7 +211,7 @@ describe("convertRecipe", () => {
             },
         ];
 
-        runTestCases(testCases, (input, expected) => {
+        runTestCases(testCases, ({ input, expected }) => {
             const result = convertRecipe({ ...baseRecipe, ...input });
             expect(result.cookTime).toBe(expected);
         });
@@ -326,7 +326,7 @@ describe("convertRecipe", () => {
             },
         ];
 
-        runTestCases(testCases, (input, expected) => {
+        runTestCases(testCases, ({ input, expected }) => {
             const result = convertRecipe({ ...baseRecipe, ...input });
             expect(result.servings).toEqual(expected);
         });
@@ -433,7 +433,7 @@ describe("convertRecipe", () => {
             },
         ];
 
-        runTestCases(testCases, (input, expected) => {
+        runTestCases(testCases, ({ input, expected }) => {
             const result = convertRecipe({ ...baseRecipe, ...input });
             expect(result.additionalData!.imageUrl).toBe(expected);
         });
@@ -449,10 +449,7 @@ describe("convertRecipe", () => {
                 expected: [
                     {
                         name: "Method",
-                        items: [
-                            { description: "Step 1" },
-                            { description: "Step 2" },
-                        ],
+                        items: [{ content: "Step 1" }, { content: "Step 2" }],
                     },
                 ],
             },
@@ -467,10 +464,7 @@ describe("convertRecipe", () => {
                 expected: [
                     {
                         name: "Method",
-                        items: [
-                            { description: "Step 1" },
-                            { description: "Step 2" },
-                        ],
+                        items: [{ content: "Step 1" }, { content: "Step 2" }],
                     },
                 ],
             },
@@ -484,7 +478,7 @@ describe("convertRecipe", () => {
                 expected: [
                     {
                         name: "Method",
-                        items: [{ description: "Step 1 Name" }],
+                        items: [{ content: "Step 1 Name" }],
                     },
                 ],
             },
@@ -509,11 +503,11 @@ describe("convertRecipe", () => {
                 expected: [
                     {
                         name: "Prep",
-                        items: [{ description: "Chop" }],
+                        items: [{ content: "Chop" }],
                     },
                     {
                         name: "Cook",
-                        items: [{ description: "Fry" }],
+                        items: [{ content: "Fry" }],
                     },
                 ],
             },
@@ -523,7 +517,7 @@ describe("convertRecipe", () => {
                 expected: [
                     {
                         name: "Method",
-                        items: [{ description: "Just cook it." }],
+                        items: [{ content: "Just cook it." }],
                     },
                 ],
             },
@@ -543,15 +537,15 @@ describe("convertRecipe", () => {
                 expected: [
                     {
                         name: "Method",
-                        items: [{ description: "Preheat oven" }],
+                        items: [{ content: "Preheat oven" }],
                     },
                     {
                         name: "Bake",
-                        items: [{ description: "Put in oven" }],
+                        items: [{ content: "Put in oven" }],
                     },
                     {
                         name: "Method",
-                        items: [{ description: "Cool down" }],
+                        items: [{ content: "Cool down" }],
                     },
                 ],
             },
@@ -584,15 +578,15 @@ describe("convertRecipe", () => {
                     {
                         name: "Preparation",
                         items: [
-                            { description: "Wash vegetables" },
-                            { description: "Dice onions" },
+                            { content: "Wash vegetables" },
+                            { content: "Dice onions" },
                         ],
                     },
                     {
                         name: "Cooking",
                         items: [
-                            { description: "Heat oil" },
-                            { description: "Sauté onions" },
+                            { content: "Heat oil" },
+                            { content: "Sauté onions" },
                         ],
                     },
                 ],
@@ -611,7 +605,7 @@ describe("convertRecipe", () => {
                         name: "Method",
                         items: [
                             {
-                                description: "Step without type property",
+                                content: "Step without type property",
                             },
                         ],
                     },
@@ -625,7 +619,7 @@ describe("convertRecipe", () => {
                 expected: [
                     {
                         name: "Method",
-                        items: [{ description: "Regular step" }],
+                        items: [{ content: "Regular step" }],
                     },
                 ],
             },
@@ -652,13 +646,13 @@ describe("convertRecipe", () => {
                 expected: [
                     {
                         name: "Method",
-                        items: [{ description: "Valid step" }],
+                        items: [{ content: "Valid step" }],
                     },
                 ],
             },
         ];
 
-        runTestCases(testCases, (input, expected) => {
+        runTestCases(testCases, ({ input, expected }) => {
             const result = convertRecipe({ ...baseRecipe, ...input });
 
             expect(result.method).toStrictEqual(expected);
@@ -934,7 +928,7 @@ describe("convertRecipe", () => {
                         items: [
                             {
                                 name: "garlic cloves",
-                                description: "minced",
+                                preparation: "minced",
                                 amount: {
                                     representation: "number",
                                     value: "2",
@@ -957,7 +951,7 @@ describe("convertRecipe", () => {
                         items: [
                             {
                                 name: "tomato paste",
-                                description: "double strength, Italian",
+                                preparation: "double strength, Italian",
                                 unit: "oz",
                                 amount: {
                                     representation: "number",
@@ -979,7 +973,7 @@ describe("convertRecipe", () => {
                         items: [
                             {
                                 name: "lemon",
-                                description: "1 juiced, 1 sliced",
+                                preparation: "1 juiced, 1 sliced",
                                 amount: {
                                     representation: "number",
                                     value: "2",
@@ -1043,7 +1037,7 @@ describe("convertRecipe", () => {
                         items: [
                             {
                                 name: "apple",
-                                description: "sliced & peeled",
+                                preparation: "sliced & peeled",
                                 amount: {
                                     representation: "number",
                                     value: "1",
@@ -1097,7 +1091,7 @@ describe("convertRecipe", () => {
             },
         ];
 
-        runTestCases(testCases, (input, expected) => {
+        runTestCases(testCases, ({ input, expected }) => {
             const result = convertRecipe({ ...baseRecipe, ...input });
 
             expect(result.ingredients).toStrictEqual(expected);
@@ -1144,7 +1138,7 @@ describe("convertRecipe", () => {
             },
         ];
 
-        runTestCases(testCases, (input, expected) => {
+        runTestCases(testCases, ({ input, expected }) => {
             const result = convertRecipe({ ...baseRecipe, ...input });
 
             const sortTags = (tags: typeof result.tags) =>

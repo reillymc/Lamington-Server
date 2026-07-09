@@ -1,16 +1,11 @@
-import {
-    EnsureArray,
-    ObjectFromEntries,
-    Undefined,
-} from "../../utils/index.ts";
+import { EnsureArray, Undefined } from "../../utils/index.ts";
+import type { Ingredient } from "../ingredientRepository.ts";
 import type {
     Recipe,
     RecipeIngredient,
     RecipeRating,
+    RecipeRecipe,
     RecipeRepository,
-    RecipeSection,
-    RecipeSectionCreate,
-    RecipeStep,
 } from "../recipeRepository.ts";
 import type { Content, ContentTag } from "../temp.ts";
 import type { User } from "../userRepository.ts";
@@ -33,7 +28,7 @@ import {
     lamington,
     RecipeIngredientTable,
     RecipeRatingTable,
-    RecipeStepTable,
+    RecipeRecipeTable,
     RecipeTable,
 } from "./spec/index.ts";
 
@@ -77,37 +72,6 @@ const saveTags = (
         })),
     );
 
-const readStepsByRecipeId = async (db: KnexDatabase, recipeId: string) =>
-    db<RecipeStep>(lamington.recipeStep)
-        .where({ [RecipeStepTable.recipeId]: recipeId })
-        .select(
-            RecipeStepTable.id,
-            RecipeStepTable.sectionId,
-            RecipeStepTable.order,
-            RecipeStepTable.description,
-        );
-
-/**
- * Update RecipeSteps for recipeId, by deleting all steps not in step list and then creating / updating provided steps in list
- * @param recipeId recipe to modify
- * @param recipeSteps steps to include in recipe
- */
-const saveRecipeStepRows = async (
-    db: KnexDatabase,
-    params: Pick<Recipe, "recipeId"> & {
-        recipeSteps: ReadonlyArray<RecipeStep>;
-    },
-) => {
-    const deleteExcessRows = async (recipeId: string) =>
-        db<RecipeStep>(lamington.recipeStep).where({ recipeId }).del();
-
-    const insertRows = async (recipeSteps: ReadonlyArray<RecipeStep>) =>
-        db<RecipeStep>(lamington.recipeStep).insert(recipeSteps);
-
-    await deleteExcessRows(params.recipeId);
-    if (params.recipeSteps.length > 0) await insertRows(params.recipeSteps);
-};
-
 /**
  * Get all ingredients for a recipe
  * @param recipeId recipe to retrieve ingredients from
@@ -117,38 +81,45 @@ const queryRecipeIngredientsByRecipeId = async (
     db: KnexDatabase,
     { recipeId }: Pick<Recipe, "recipeId">,
 ) => {
-    const data = await db(lamington.recipeIngredient)
+    const data: Array<
+        Pick<Ingredient, "ingredientId" | "name" | "namePlural">
+    > = await db(lamington.recipeIngredient)
         .where({ [RecipeIngredientTable.recipeId]: recipeId })
         .select(
-            RecipeIngredientTable.id,
-            RecipeIngredientTable.ingredientId,
-            RecipeIngredientTable.subrecipeId,
-            `${RecipeTable.name} as recipeName`,
-            `${IngredientTable.name} as ingredientName`,
-            RecipeIngredientTable.sectionId,
-            RecipeIngredientTable.order,
-            RecipeIngredientTable.description,
-            RecipeIngredientTable.unit,
-            RecipeIngredientTable.amount,
-            RecipeIngredientTable.multiplier,
+            IngredientTable.ingredientId,
+            IngredientTable.name,
+            IngredientTable.namePlural,
         )
         .leftJoin(
             lamington.ingredient,
             RecipeIngredientTable.ingredientId,
             IngredientTable.ingredientId,
-        )
+        );
+
+    return { result: data };
+};
+
+/**
+ * Get all sub-recipes for a recipe
+ * @param recipeId recipe to retrieve sub-recipes from
+ * @returns RecipeIngredient
+ */
+const queryRecipeSubRecipesByRecipeId = async (
+    db: KnexDatabase,
+    { recipeId }: Pick<Recipe, "recipeId">,
+) => {
+    const data: Array<Pick<Recipe, "recipeId" | "name">> = await db(
+        lamington.recipeRecipe,
+    )
+        .where({ [RecipeRecipeTable.recipeId]: recipeId })
+        .select(RecipeTable.recipeId, RecipeTable.name)
         .leftJoin(
             lamington.recipe,
-            RecipeIngredientTable.subrecipeId,
+            RecipeRecipeTable.subRecipeId,
             RecipeTable.recipeId,
         );
 
-    const result = data.map(({ recipeName, ingredientName, ...rest }) => ({
-        ...rest,
-        name: ingredientName ?? recipeName,
-    }));
-
-    return { result };
+    return { result: data };
 };
 
 /**
@@ -159,7 +130,7 @@ const queryRecipeIngredientsByRecipeId = async (
 const saveRecipeIngredientRows = async (
     db: KnexDatabase,
     params: Pick<Recipe, "recipeId"> & {
-        ingredients: Array<Omit<RecipeIngredient, "recipeId">>;
+        ingredients: Array<RecipeIngredient["ingredientId"]>;
     },
 ) => {
     const recipeIngredients = EnsureArray(params);
@@ -170,21 +141,18 @@ const saveRecipeIngredientRows = async (
             .delete();
 
     const insertRows = async (recipeIngredients: RecipeIngredient[]) =>
-        db<RecipeIngredient>(lamington.recipeIngredient)
-            .insert(recipeIngredients)
-            .onConflict(["id", "recipeId"])
-            .merge();
+        db<RecipeIngredient>(lamington.recipeIngredient).insert(
+            recipeIngredients,
+        );
 
     for (const { recipeId } of recipeIngredients) {
+        // TODO: flatten loop
         await deleteExcessRows(recipeId);
     }
 
     const ingredients = recipeIngredients.flatMap(({ recipeId, ingredients }) =>
         ingredients.map(
-            (recipeIngredient): RecipeIngredient => ({
-                ...recipeIngredient,
-                recipeId,
-            }),
+            (ingredientId): RecipeIngredient => ({ ingredientId, recipeId }),
         ),
     );
 
@@ -193,58 +161,32 @@ const saveRecipeIngredientRows = async (
     return [];
 };
 
-/**
- * Update RecipeSections for recipeId, by deleting all steps not in step list and then creating / updating provided steps in list
- * @param recipeId recipe to modify
- * @param recipeSections steps to include in recipe
- */
-const saveSectionRows = async (
+const saveRecipeRecipeRows = async (
     db: KnexDatabase,
     params: Pick<Recipe, "recipeId"> & {
-        sections: Array<Omit<RecipeSection, "recipeId" | "sectionId">>;
+        recipes: Array<RecipeRecipe["recipeId"]>;
     },
-): Promise<Pick<RecipeSection, "sectionId" | "order">[]> => {
+) => {
+    const recipeRecipes = EnsureArray(params);
+
     const deleteExcessRows = async (recipeId: string) =>
-        db<RecipeSection>(lamington.recipeSection).where({ recipeId }).del();
+        db<RecipeRecipe>(lamington.recipeRecipe).where({ recipeId }).delete();
 
-    const insertRows = async (recipeSections: RecipeSectionCreate[]) =>
-        db<RecipeSection>(lamington.recipeSection)
-            .insert(recipeSections)
-            .returning(["sectionId", "order"]);
+    const insertRows = async (recipeRecipes: RecipeRecipe[]) =>
+        db<RecipeRecipe>(lamington.recipeRecipe).insert(recipeRecipes);
 
-    const recipeSections = EnsureArray(params);
-
-    for (const { recipeId } of recipeSections) {
+    for (const { recipeId } of recipeRecipes) {
+        // TODO: flatten loop
         await deleteExcessRows(recipeId);
     }
 
-    const sections = recipeSections.flatMap(({ recipeId, sections }) =>
-        sections.map(
-            (section): RecipeSectionCreate => ({ ...section, recipeId }),
-        ),
+    const recipes = recipeRecipes.flatMap(({ recipeId, recipes }) =>
+        recipes.map((subRecipeId): RecipeRecipe => ({ recipeId, subRecipeId })),
     );
 
-    if (sections.length > 0) {
-        return insertRows(sections);
-    }
+    if (recipes.length > 0) await insertRows(recipes);
 
     return [];
-};
-
-/**
- * Get all method steps for a recipe
- * @param recipeId recipe to retrieve steps from
- * @returns RecipeSection array
- */
-const querySectionsByRecipeId = async (
-    db: KnexDatabase,
-    { recipeId }: Pick<Recipe, "recipeId">,
-) => {
-    const result = await db<RecipeSection>(lamington.recipeSection)
-        .where({ recipeId })
-        .select("recipeId", "sectionId", "order", "name", "description");
-
-    return { result };
 };
 
 const ratingPersonalName = "rating_personal";
@@ -293,6 +235,8 @@ type GetFullRecipeResults =
           | "prepTime"
           | "public"
           | "tips"
+          | "ingredients"
+          | "method"
           | "summary"
           | "servings"
           | "source"
@@ -329,6 +273,8 @@ const getFullRecipe = async (
             "tips",
             "summary",
             "public",
+            "method",
+            "ingredients",
             "timesCooked",
             "nutritionalInformation",
             ContentTable.createdAt,
@@ -364,8 +310,10 @@ const formatRecipe = (recipe: any) => ({
     source: toUndefined(recipe.source),
     summary: toUndefined(recipe.summary),
     tips: toUndefined(recipe.tips),
-    timesCooked: recipe.timesCooked,
-    public: recipe.public,
+    timesCooked: toUndefined(recipe.timesCooked),
+    public: toUndefined(recipe.public),
+    method: toUndefined(recipe.method),
+    ingredients: toUndefined(recipe.ingredients),
     nutritionalInformation: toUndefined(recipe.nutritionalInformation),
     owner: {
         userId: recipe.createdBy,
@@ -384,19 +332,34 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
     // TODO: remove loop and use requests keyed by recipe id for sub-queries
     for (const { recipeId } of recipes) {
         // Fetch from database
-        const [
-            recipe,
-            tags,
-            { result: ingredients },
-            method,
-            { result: sections },
-        ] = await Promise.all([
-            getFullRecipe(db, recipeId, userId),
-            readTags(db, { recipeId }),
-            queryRecipeIngredientsByRecipeId(db, { recipeId }),
-            readStepsByRecipeId(db, recipeId),
-            querySectionsByRecipeId(db, { recipeId }),
-        ]);
+        const [recipe, tags, { result: ingredients }, { result: subRecipes }] =
+            await Promise.all([
+                getFullRecipe(db, recipeId, userId),
+                readTags(db, { recipeId }),
+                queryRecipeIngredientsByRecipeId(db, { recipeId }),
+                queryRecipeSubRecipesByRecipeId(db, { recipeId }),
+            ]);
+
+        const ingredientMap = Object.fromEntries(
+            ingredients.map((ingredient) => [
+                ingredient.ingredientId,
+                {
+                    ingredientId: ingredient.ingredientId,
+                    name: ingredient.name,
+                    namePlural: toUndefined(ingredient.namePlural),
+                },
+            ]),
+        );
+
+        const recipeMap = Object.fromEntries(
+            subRecipes.map((subRecipe) => [
+                subRecipe.recipeId,
+                {
+                    recipeId: subRecipe.recipeId,
+                    name: subRecipe.name,
+                },
+            ]),
+        );
 
         if (!recipe) continue;
 
@@ -408,12 +371,36 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
                     : undefined,
                 personal: toUndefined(recipe[ratingPersonalName]),
             },
-            ingredients: recipeIngredientRowsToResponse({
-                ingredients,
-                sections,
-            }),
-            method: recipeStepRowsToResponse({ method, sections }),
-            tags: ContentTagRowsToResponse(tags),
+            ingredients: recipe.ingredients?.map((section) => ({
+                ...section,
+                items: section.items.map((item) => {
+                    if ("ingredient" in item) {
+                        return {
+                            ...item,
+                            ingredient: {
+                                ...item.ingredient,
+                                ...ingredientMap[item.ingredient.ingredientId],
+                                namePlural: toUndefined(
+                                    item.ingredient.namePlural,
+                                ),
+                            },
+                        };
+                    }
+
+                    if ("recipe" in item) {
+                        return {
+                            ...item,
+                            recipe: {
+                                ...item.recipe,
+                                ...recipeMap[item.recipe.recipeId],
+                            },
+                        };
+                    }
+
+                    return item;
+                }),
+            })),
+            tags: tags?.length ? ContentTagRowsToResponse(tags) : undefined,
             photo: formatHeroAttachment(
                 recipe.heroAttachmentId,
                 recipe.heroAttachmentUri,
@@ -445,7 +432,22 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                 public: recipe.public,
                 recipeId: recipe.recipeId,
                 cookTime: recipe.cookTime,
-                nutritionalInformation: recipe.nutritionalInformation,
+                // https://github.com/knex/knex/issues/6126
+                nutritionalInformation: !recipe.nutritionalInformation
+                    ? recipe.nutritionalInformation
+                    : (JSON.stringify(
+                          recipe.nutritionalInformation,
+                      ) as unknown as Recipe["nutritionalInformation"]),
+                ingredients: !recipe.ingredients
+                    ? recipe.ingredients
+                    : (JSON.stringify(
+                          recipe.ingredients,
+                      ) as unknown as Recipe["ingredients"]),
+                method: !recipe.method
+                    ? recipe.method
+                    : (JSON.stringify(
+                          recipe.method,
+                      ) as unknown as Recipe["method"]),
                 prepTime: recipe.prepTime,
                 servings: recipe.servings,
                 source: recipe.source,
@@ -455,74 +457,44 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             })),
         );
 
-        const recipesSections = recipesToCreate.map((recipeItem) => {
-            const { ingSections, methodSections, allSections } =
-                recipeSectionRequestToRows(recipeItem);
-
-            const allSectionsToSave = allSections.filter(Undefined);
-
-            return {
-                recipeId: recipeItem.recipeId,
-                ingSections,
-                methodSections,
-                allSectionsToSave,
-            };
-        });
-
-        const savedSectionsMap: Record<
-            string,
-            {
-                ing: (Pick<RecipeSection, "sectionId"> | undefined)[];
-                method: (Pick<RecipeSection, "sectionId"> | undefined)[];
-            }
-        > = {};
-
-        for (const {
-            recipeId,
-            allSectionsToSave,
-            ingSections,
-            methodSections,
-        } of recipesSections) {
-            const saved = await saveSectionRows(db, {
-                recipeId,
-                sections: allSectionsToSave,
-            });
-
-            let savedIndex = 0;
-            const mapSaved = (sections: (RecipeSectionCreate | undefined)[]) =>
-                sections.map((s) => (s ? saved[savedIndex++] : undefined));
-
-            savedSectionsMap[recipeId] = {
-                ing: mapSaved(ingSections),
-                method: mapSaved(methodSections),
-            };
-        }
-
         const recipesIngredients = recipesToCreate.map((recipeItem) => ({
             recipeId: recipeItem.recipeId,
-            rows: recipeIngredientsRequestToRows(
-                recipeItem,
-                savedSectionsMap[recipeItem.recipeId]?.ing,
+            rows: recipeItem.ingredients?.flatMap(({ items }) =>
+                items
+                    .map((item) =>
+                        "ingredient" in item
+                            ? item.ingredient?.ingredientId
+                            : undefined,
+                    )
+                    .filter(Undefined),
             ),
         }));
+
+        const recipesRecipes = recipesToCreate.map((recipeItem) => ({
+            recipeId: recipeItem.recipeId,
+            rows: recipeItem.ingredients?.flatMap(({ items }) =>
+                items
+                    .map((item) =>
+                        "recipe" in item ? item.recipe?.recipeId : undefined,
+                    )
+                    .filter(Undefined),
+            ),
+        }));
+
         for (const { recipeId, rows } of recipesIngredients) {
-            if (rows)
+            if (rows?.length)
                 await saveRecipeIngredientRows(db, {
                     recipeId,
                     ingredients: rows,
                 });
         }
 
-        const recipesSteps = recipesToCreate.map((recipeItem) => ({
-            recipeId: recipeItem.recipeId,
-            rows: recipeMethodRequestToRows(
-                recipeItem,
-                savedSectionsMap[recipeItem.recipeId]?.method,
-            ),
-        }));
-        for (const { recipeId, rows } of recipesSteps) {
-            if (rows)
-                await saveRecipeStepRows(db, { recipeId, recipeSteps: rows });
+        for (const { recipeId, rows } of recipesRecipes) {
+            if (rows?.length)
+                await saveRecipeRecipeRows(db, {
+                    recipeId,
+                    recipes: rows,
+                });
         }
 
         const recipesTags = recipesToCreate.map(({ recipeId, tags }) => ({
@@ -558,66 +530,61 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
         return { userId, recipes: results.recipes };
     },
     update: async (db, { userId, recipes }) => {
-        for (const r of recipes) {
-            const updateData = buildUpdateRecord(r, RecipeTable);
+        for (const recipe of recipes) {
+            const updateData = buildUpdateRecord(
+                {
+                    ...recipe,
+                    // https://github.com/knex/knex/issues/6126
+                    nutritionalInformation: !recipe.nutritionalInformation
+                        ? recipe.nutritionalInformation
+                        : (JSON.stringify(
+                              recipe.nutritionalInformation,
+                          ) as unknown as Recipe["nutritionalInformation"]),
+                    ingredients: !recipe.ingredients
+                        ? recipe.ingredients
+                        : (JSON.stringify(
+                              recipe.ingredients,
+                          ) as unknown as Recipe["ingredients"]),
+                    method: !recipe.method
+                        ? recipe.method
+                        : (JSON.stringify(
+                              recipe.method,
+                          ) as unknown as Recipe["method"]),
+                },
+                RecipeTable,
+            );
 
             if (updateData) {
                 await db(lamington.recipe)
-                    .where(RecipeTable.recipeId, r.recipeId)
+                    .where(RecipeTable.recipeId, recipe.recipeId)
                     .update(updateData);
             }
         }
 
-        const recipesSections = recipes.map((recipeItem) => {
-            const { ingSections, methodSections, allSections } =
-                recipeSectionRequestToRows(recipeItem);
-
-            const allSectionsToSave = allSections.filter(Undefined);
-
-            return {
-                recipeId: recipeItem.recipeId,
-                ingSections,
-                methodSections,
-                allSectionsToSave,
-            };
-        });
-
-        const savedSectionsMap: Record<
-            string,
-            {
-                ing: (Pick<RecipeSection, "sectionId"> | undefined)[];
-                method: (Pick<RecipeSection, "sectionId"> | undefined)[];
-            }
-        > = {};
-
-        for (const {
-            recipeId,
-            allSectionsToSave,
-            ingSections,
-            methodSections,
-        } of recipesSections) {
-            const saved = await saveSectionRows(db, {
-                recipeId,
-                sections: allSectionsToSave,
-            });
-
-            let savedIndex = 0;
-            const mapSaved = (sections: (RecipeSectionCreate | undefined)[]) =>
-                sections.map((s) => (s ? saved[savedIndex++] : undefined));
-
-            savedSectionsMap[recipeId] = {
-                ing: mapSaved(ingSections),
-                method: mapSaved(methodSections),
-            };
-        }
-
         const recipesIngredients = recipes.map((recipeItem) => ({
             recipeId: recipeItem.recipeId,
-            rows: recipeIngredientsRequestToRows(
-                recipeItem,
-                savedSectionsMap[recipeItem.recipeId]?.ing,
+            rows: recipeItem.ingredients?.flatMap(({ items }) =>
+                items
+                    .map((item) =>
+                        "ingredient" in item
+                            ? item.ingredient?.ingredientId
+                            : undefined,
+                    )
+                    .filter(Undefined),
             ),
         }));
+
+        const recipesRecipes = recipes.map((recipeItem) => ({
+            recipeId: recipeItem.recipeId,
+            rows: recipeItem.ingredients?.flatMap(({ items }) =>
+                items
+                    .map((item) =>
+                        "recipe" in item ? item.recipe?.recipeId : undefined,
+                    )
+                    .filter(Undefined),
+            ),
+        }));
+
         for (const { recipeId, rows } of recipesIngredients) {
             if (rows)
                 await saveRecipeIngredientRows(db, {
@@ -626,16 +593,12 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                 });
         }
 
-        const recipesSteps = recipes.map((recipeItem) => ({
-            recipeId: recipeItem.recipeId,
-            rows: recipeMethodRequestToRows(
-                recipeItem,
-                savedSectionsMap[recipeItem.recipeId]?.method,
-            ),
-        }));
-        for (const { recipeId, rows } of recipesSteps) {
+        for (const { recipeId, rows } of recipesRecipes) {
             if (rows)
-                await saveRecipeStepRows(db, { recipeId, recipeSteps: rows });
+                await saveRecipeRecipeRows(db, {
+                    recipeId,
+                    recipes: rows,
+                });
         }
 
         const recipesTags = recipes.map(({ recipeId, tags }) => ({
@@ -651,6 +614,21 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                 rating ? { raterId: userId, rating, recipeId } : undefined,
             )
             .filter(Undefined);
+
+        const recipeRatingDeleteRows = recipes.filter(
+            ({ rating }) => rating === null,
+        );
+
+        if (recipeRatingDeleteRows.length) {
+            await db<RecipeRating>(lamington.recipeRating)
+                .whereIn(
+                    RecipeRatingTable.recipeId,
+                    recipeRatingDeleteRows.map(({ recipeId }) => recipeId),
+                )
+                .andWhere(RecipeRatingTable.raterId, userId)
+                .delete();
+        }
+
         if (recipeRatingRows.length) {
             await db<RecipeRating>(lamington.recipeRating)
                 .insert(recipeRatingRows)
@@ -666,9 +644,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             })),
         );
 
-        const results = await read(db, { userId, recipes });
-
-        return { userId, recipes: results.recipes };
+        return read(db, { userId, recipes });
     },
     verifyPermissions: async (db, { userId, recipes, status }) => {
         const recipeIds = EnsureArray(recipes).map((r) => r.recipeId);
@@ -698,7 +674,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             cookTime: RecipeTable.cookTime,
         }[sort];
 
-        const query = RecipeBase(db, userId)
+        const recipeList = await RecipeBase(db, userId)
             .where((builder) => {
                 if (!filter.name) return;
                 return builder.where(
@@ -707,7 +683,6 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                     `%${filter.name}%`,
                 );
             })
-
             .where((builder) => {
                 builder
                     .where({ [ContentTable.createdBy]: userId })
@@ -732,45 +707,43 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                         ),
                 );
             })
-            // .where(builder => {
-            //     if (!filter.ingredients?.length) return;
-            //     return builder.whereIn(
-            //         recipe.recipeId,
-            //         db
-            //             .select(recipeIngredientTable.recipeId)
-            //             .from(lamington.recipeIngredient)
-            //             .whereIn(
-            //                 recipeIngredientTable.description,
-            //                 filter.ingredients.map(({ name }) => name)
-            //             )
-            //             .groupBy(recipeIngredientTable.recipeId)
-            //     );
-            // })
+            .where((builder) => {
+                if (!filter.ingredients?.length) return;
+                return builder.whereIn(
+                    RecipeTable.recipeId,
+                    db
+                        .select(RecipeIngredientTable.recipeId)
+                        .from(lamington.recipeIngredient)
+                        .whereIn(
+                            RecipeIngredientTable.ingredientId,
+                            filter.ingredients.map(
+                                ({ ingredientId }) => ingredientId,
+                            ),
+                        ),
+                );
+            })
+            .modify((builder) => {
+                if (!filter.books?.length) return;
+                builder
+                    .leftJoin(
+                        lamington.bookRecipe,
+                        RecipeTable.recipeId,
+                        BookRecipeTable.recipeId,
+                    )
+                    .whereIn(
+                        BookRecipeTable.bookId,
+                        filter.books.map(({ bookId }) => bookId),
+                    );
+            })
+
             .orderBy([{ column: sortColumn, order }, RecipeTable.recipeId])
             .modify(withPagination({ page, pageSize: PAGE_SIZE }));
-
-        if (filter.books?.length) {
-            query
-                .leftJoin(
-                    lamington.bookRecipe,
-                    RecipeTable.recipeId,
-                    BookRecipeTable.recipeId,
-                )
-                .whereIn(
-                    BookRecipeTable.bookId,
-                    filter.books.map(({ bookId }) => bookId),
-                );
-        }
-
-        const recipeList = await query;
 
         let nextPage: number | undefined;
         if (recipeList.length > PAGE_SIZE) {
             nextPage = page + 1;
             recipeList.pop();
         }
-
-        const recipeCategoriesList = await readTags(db, recipeList);
 
         return {
             userId,
@@ -783,20 +756,18 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                     heroAttachmentUri,
                     ...recipe
                 }: any) => ({
-                    ...formatRecipe(recipe),
+                    recipeId: recipe.recipeId,
+                    name: recipe.name,
+                    owner: {
+                        userId: recipe.createdBy,
+                        firstName: recipe.firstName,
+                    },
                     rating: {
                         average: ratingAverage
                             ? parseFloat(ratingAverage)
                             : undefined,
                         personal: toUndefined(ratingPersonal),
                     },
-                    tags: ContentTagRowsToResponse(
-                        recipeCategoriesList.filter(
-                            (cat) =>
-                                !cat.parentId ||
-                                cat.recipeId === recipe.recipeId,
-                        ),
-                    ),
                     photo: formatHeroAttachment(
                         heroAttachmentId,
                         heroAttachmentUri,
@@ -827,202 +798,20 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
     },
 };
 
-const recipeSectionRequestToRows = ({
-    recipeId,
-    ingredients = [],
-    method = [],
-}: Parameters<RecipeRepository["update"]>["1"]["recipes"][number] & {
-    recipeId: string;
-}) => {
-    const ingSectionRequests: Array<RecipeSectionCreate | undefined> =
-        ingredients?.map(({ name, description }, index) =>
-            name
-                ? {
-                      recipeId,
-                      name,
-                      description,
-                      order: index,
-                  }
-                : undefined,
-        ) ?? [];
-    const methodSectionRequests: Array<RecipeSectionCreate | undefined> =
-        method?.map(({ name, description }, index) =>
-            name
-                ? {
-                      recipeId,
-                      name,
-                      description,
-                      order: index,
-                  }
-                : undefined,
-        ) ?? [];
-
-    return {
-        ingSections: ingSectionRequests,
-        methodSections: methodSectionRequests,
-        allSections: [...ingSectionRequests, ...methodSectionRequests],
-    };
-};
-
-const recipeIngredientsRequestToRows = (
-    {
-        recipeId,
-        ingredients,
-    }: Parameters<RecipeRepository["update"]>["1"]["recipes"][number],
-    savedSections: (Pick<RecipeSection, "sectionId"> | undefined)[] = [],
-): RecipeIngredient[] | undefined => {
-    if (!ingredients?.length) return;
-
-    return ingredients.flatMap(({ items }, index) => {
-        const sectionId = savedSections[index]?.sectionId;
-
-        return items
-            .map((ingItem, itemIndex) => {
-                // if (!ingItem.ingredientId && !ingItem.subrecipeId)
-                //     return undefined;
-                return {
-                    recipeId,
-                    subrecipeId: ingItem.subrecipeId,
-                    sectionId,
-                    order: itemIndex,
-                    description: ingItem.description,
-                    unit: ingItem.unit,
-                    amount: ingItem.amount,
-                    multiplier: ingItem.multiplier,
-                };
-            })
-            .filter(Undefined);
-    });
-};
-
-const recipeMethodRequestToRows = (
-    {
-        recipeId,
-        method,
-    }: {
-        recipeId: string;
-        method?: ReadonlyArray<any> | null;
-    },
-    savedSections: (Pick<RecipeSection, "sectionId"> | undefined)[] = [],
-): ReadonlyArray<RecipeStep> | undefined => {
-    if (!method?.length) return;
-
-    return method.flatMap(({ items }, index) => {
-        const sectionId = savedSections[index]?.sectionId;
-
-        return (items as any[]).map(
-            ({ id, description }, itemIndex): RecipeStep => ({
-                id,
-                recipeId,
-                sectionId,
-                order: itemIndex,
-                description,
-            }),
-        );
-    });
-};
-
-const recipeIngredientRowsToResponse = ({
-    sections,
-    ingredients,
-}: any): any => {
-    const recipeIngredients: any = (sections as any[])
-        .sort((a, b) => a.order - b.order)
-        .map(({ sectionId, name, description }) => ({
-            name,
-            description: toUndefined(description),
-            items: ingredients
-                .filter((ingredient: any) => ingredient.sectionId === sectionId)
-                .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
-                .map((ingredient: any) => ({
-                    name: ingredient.name,
-                    description: toUndefined(ingredient.description),
-                    subrecipeId: toUndefined(ingredient.subrecipeId),
-                    multiplier: toUndefined(ingredient.multiplier),
-                    unit: toUndefined(ingredient.unit),
-                    amount: toUndefined(ingredient.amount),
-                    ingredientId: toUndefined(ingredient.ingredientId),
-                })),
-        }))
-        .filter(({ items }) => items.length > 0);
-
-    const unsectionedItems = ingredients
-        .filter((ingredient: any) => !ingredient.sectionId)
-        .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
-        .map((ingredient: any) => ({
-            name: ingredient.name,
-            description: toUndefined(ingredient.description),
-            subrecipeId: toUndefined(ingredient.subrecipeId),
-            multiplier: toUndefined(ingredient.multiplier),
-            unit: toUndefined(ingredient.unit),
-            amount: toUndefined(ingredient.amount),
-            ingredientId: toUndefined(ingredient.ingredientId),
-        }));
-
-    if (unsectionedItems.length > 0) {
-        return [{ items: unsectionedItems }, ...recipeIngredients];
-    }
-
-    return recipeIngredients;
-};
-
-const recipeStepRowsToResponse = ({ sections, method }: any): any => {
-    const recipeMethod: any = (sections as any[])
-        .sort((a, b) => a.order - b.order)
-        .map(({ sectionId, name, description }) => ({
-            name,
-            description: toUndefined(description),
-            items: method
-                .filter((method: any) => method.sectionId === sectionId)
-                .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
-                .map((step: any) => ({
-                    description: toUndefined(step.description),
-                })),
-        }))
-        .filter(({ items }) => items.length > 0);
-
-    const unsectionedItems = method
-        .filter((method: any) => !method.sectionId)
-        .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
-        .map((step: any) => ({
-            description: toUndefined(step.description),
-        }));
-
-    if (unsectionedItems.length > 0) {
-        return [{ items: unsectionedItems }, ...recipeMethod];
-    }
-
-    return recipeMethod;
-};
-
-const ContentTagRowsToResponse = (tags: any): any => {
-    const groupedTags: any = tags.reduce(
-        (acc: any, { tagId, parentId, name }: any) => {
-            if (parentId) {
-                acc[parentId] = {
-                    ...acc[parentId],
-                    tagId: parentId,
-                    tags: [...(acc[parentId]?.tags ?? []), { tagId, name }],
-                };
-            } else {
-                acc[tagId] = {
-                    ...acc[tagId],
-                    tagId,
-                    name,
-                };
-            }
-            return acc;
-        },
-        {} as any,
-    );
-
-    return ObjectFromEntries(
-        groupedTags,
-        (data) =>
-            data
-                .map(([id, value]) =>
-                    value.tags?.length ? [id, value] : undefined,
-                )
-                .filter(Undefined) as unknown as [string, any][],
-    );
-};
+const ContentTagRowsToResponse = (tags: any): any =>
+    tags.reduce((acc: any, { tagId, parentId, name }: any) => {
+        if (parentId) {
+            acc[parentId] = {
+                ...acc[parentId],
+                tagId: parentId,
+                tags: [...(acc[parentId]?.tags ?? []), { tagId, name }],
+            };
+        } else {
+            acc[tagId] = {
+                ...acc[tagId],
+                tagId,
+                name,
+            };
+        }
+        return acc;
+    }, {} as any);

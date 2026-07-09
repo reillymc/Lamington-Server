@@ -15,8 +15,6 @@ tags:
     description: Attachment operations
   - name: Tags
     description: Tag operations
-  - name: Assets
-    description: Asset operations
   - name: Extractor
     description: Recipe extraction operations
   - name: Planners
@@ -107,23 +105,6 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
-  /assets/ingredients.json:
-    get:
-      tags:
-        - Assets
-      summary: Get preset ingredients
-      operationId: getPresetIngredients
-      responses:
-        200:
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: string
-        429:
-          $ref: "#/components/responses/TooManyRequests"
   /tags:
     get:
       tags:
@@ -178,6 +159,12 @@ paths:
             type: array
             items:
               $ref: "#/components/schemas/Uuid"
+        - name: ingredients
+          in: query
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/Uuid"
       responses:
         200:
           description: Successful response
@@ -189,7 +176,7 @@ paths:
                   recipes:
                     type: array
                     items:
-                      $ref: "#/components/schemas/Recipe"
+                      $ref: "#/components/schemas/RecipeSummary"
                   nextPage:
                     type: integer
                 required:
@@ -926,7 +913,7 @@ paths:
       tags:
         - CookList
       summary: Update meal in cook list
-      operationId: putCookList
+      operationId: patchCookList
       requestBody:
         required: true
         content:
@@ -1057,7 +1044,7 @@ paths:
       tags:
         - Planners
       summary: Update a planner
-      operationId: putPlanner
+      operationId: patchPlanner
       requestBody:
         required: true
         content:
@@ -1193,7 +1180,7 @@ paths:
       tags:
         - Planners
       summary: Update a meal in a planner
-      operationId: putPlannerMeal
+      operationId: patchPlannerMeal
       requestBody:
         required: true
         content:
@@ -2787,22 +2774,6 @@ components:
       required:
         - name
       unevaluatedProperties: false
-    RecipeBase:
-      type: object
-      properties:
-        description:
-          type: string
-        prepTime:
-          type: integer
-        cookTime:
-          type: integer
-        source:
-          type: string
-        url:
-          type: string
-        notes:
-          type: string
-      unevaluatedProperties: false
     ExtractedRecipe:
       type: object
       properties:
@@ -2845,16 +2816,88 @@ components:
             imageUrl:
               type: string
       unevaluatedProperties: false
+
+    RecipeName:
+      type: string
+      minLength: 1
+      maxLength: 255
+
+    RecipeSource:
+      type: string
+      maxLength: 255
+
+    RecipeSummaryText:
+      type: string
+      maxLength: 4096
+
+    RecipeTips:
+      type: string
+      maxLength: 4096
+
+    RecipeCookTime:
+      type: integer
+
+    RecipePrepTime:
+      type: integer
+
+    RecipePublic:
+      type: boolean
+
+    RecipeTimesCooked:
+      type: integer
+
+    RecipeNutrition:
+      type: object
+      unevaluatedProperties: false
+
+    RecipeRating:
+      type: number
+
+    RecipeIngredientSections:
+      type: array
+      items:
+        $ref: "#/components/schemas/RecipeIngredientSection"
+
+    RecipeIngredientSectionsCreate:
+      type: array
+      items:
+        $ref: "#/components/schemas/RecipeIngredientSectionCreate"
+
+    RecipeIngredientSectionsUpdate:
+      type: array
+      items:
+        $ref: "#/components/schemas/RecipeIngredientSectionUpdate"
+
+    RecipeMethod:
+      type: array
+      items:
+        $ref: "#/components/schemas/RecipeMethodSection"
+
     Recipe:
       type: object
       properties:
         recipeId:
           $ref: "#/components/schemas/Uuid"
         name:
-          type: string
+          $ref: "#/components/schemas/RecipeName"
         source:
-          type: string
-          maxLength: 255
+          $ref: "#/components/schemas/RecipeSource"
+        summary:
+          $ref: "#/components/schemas/RecipeSummaryText"
+        tips:
+          $ref: "#/components/schemas/RecipeTips"
+        cookTime:
+          $ref: "#/components/schemas/RecipeCookTime"
+        prepTime:
+          $ref: "#/components/schemas/RecipePrepTime"
+        servings:
+          $ref: "#/components/schemas/Servings"
+        public:
+          $ref: "#/components/schemas/RecipePublic"
+        nutritionalInformation:
+          $ref: "#/components/schemas/RecipeNutrition"
+        timesCooked:
+          $ref: "#/components/schemas/RecipeTimesCooked"
         ingredients:
           type: array
           items:
@@ -2863,10 +2906,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RecipeMethodSection"
-        summary:
-          type: string
-        tips:
-          type: string
         rating:
           type: object
           properties:
@@ -2897,26 +2936,193 @@ components:
                     - name
             required:
               - tagId
-        owner:
-          $ref: "#/components/schemas/Owner"
-        cookTime:
-          type: integer
-        prepTime:
-          type: integer
-        servings:
-          $ref: "#/components/schemas/Servings"
-        public:
-          type: boolean
-        nutritionalInformation:
-          type: string
-        timesCooked:
-          type: integer
         photo:
           $ref: "#/components/schemas/ImageAttachment"
+        owner:
+          $ref: "#/components/schemas/Owner"
       required:
         - recipeId
         - name
         - owner
+      unevaluatedProperties: false
+
+    RecipeSummary:
+      type: object
+      properties:
+        recipeId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          $ref: "#/components/schemas/RecipeName"
+        summary:
+          $ref: "#/components/schemas/RecipeSummaryText"
+        cookTime:
+          $ref: "#/components/schemas/RecipeCookTime"
+        prepTime:
+          $ref: "#/components/schemas/RecipePrepTime"
+        servings:
+          $ref: "#/components/schemas/Servings"
+        public:
+          $ref: "#/components/schemas/RecipePublic"
+        rating:
+          type: object
+          properties:
+            average:
+              type: number
+            personal:
+              type: number
+        tags:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              tagId:
+                type: string
+              name:
+                type: string
+              tags:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    tagId:
+                      type: string
+                    name:
+                      type: string
+                  required:
+                    - tagId
+                    - name
+            required:
+              - tagId
+        photo:
+          $ref: "#/components/schemas/ImageAttachment"
+        owner:
+          $ref: "#/components/schemas/Owner"
+      required:
+        - recipeId
+        - name
+        - owner
+      unevaluatedProperties: false
+
+    RecipeCreate:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/RecipeName"
+        source:
+          $ref: "#/components/schemas/RecipeSource"
+        summary:
+          $ref: "#/components/schemas/RecipeSummaryText"
+        tips:
+          $ref: "#/components/schemas/RecipeTips"
+        cookTime:
+          $ref: "#/components/schemas/RecipeCookTime"
+        prepTime:
+          $ref: "#/components/schemas/RecipePrepTime"
+        servings:
+          $ref: "#/components/schemas/Servings"
+        public:
+          $ref: "#/components/schemas/RecipePublic"
+        nutritionalInformation:
+          $ref: "#/components/schemas/RecipeNutrition"
+        timesCooked:
+          $ref: "#/components/schemas/RecipeTimesCooked"
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeIngredientSectionCreate"
+        method:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeMethodSection"
+        rating:
+          type: number
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeTagRef"
+        photo:
+          type: object
+          properties:
+            attachmentId:
+              $ref: "#/components/schemas/Uuid"
+          required:
+            - attachmentId
+      required:
+        - name
+      unevaluatedProperties: false
+
+    RecipeUpdate:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/RecipeName"
+        source:
+          anyOf:
+            - $ref: "#/components/schemas/RecipeSource"
+            - type: "null"
+        summary:
+          anyOf:
+            - $ref: "#/components/schemas/RecipeSummaryText"
+            - type: "null"
+        tips:
+          anyOf:
+            - $ref: "#/components/schemas/RecipeTips"
+            - type: "null"
+        cookTime:
+          anyOf:
+            - $ref: "#/components/schemas/RecipeCookTime"
+            - type: "null"
+        prepTime:
+          anyOf:
+            - $ref: "#/components/schemas/RecipePrepTime"
+            - type: "null"
+        servings:
+          anyOf:
+            - $ref: "#/components/schemas/Servings"
+            - type: "null"
+        public:
+          anyOf:
+            - $ref: "#/components/schemas/RecipePublic"
+            - type: "null"
+        nutritionalInformation:
+          anyOf:
+            - $ref: "#/components/schemas/RecipeNutrition"
+            - type: "null"
+        timesCooked:
+          anyOf:
+            - $ref: "#/components/schemas/RecipeTimesCooked"
+            - type: "null"
+        ingredients:
+          anyOf:
+            - type: array
+              items:
+                $ref: "#/components/schemas/RecipeIngredientSectionUpdate"
+            - type: "null"
+        method:
+          anyOf:
+            - type: array
+              items:
+                $ref: "#/components/schemas/RecipeMethodSection"
+            - type: "null"
+        rating:
+          anyOf:
+            - type: number
+            - type: "null"
+        tags:
+          anyOf:
+            - type: array
+              items:
+                $ref: "#/components/schemas/RecipeTagRef"
+            - type: "null"
+        photo:
+          anyOf:
+            - type: object
+              properties:
+                attachmentId:
+                  $ref: "#/components/schemas/Uuid"
+              required:
+                - attachmentId
+            - type: "null"
       unevaluatedProperties: false
     ImageAttachment:
       type: object
@@ -3102,23 +3308,62 @@ components:
     RecipeIngredientItem:
       type: object
       properties:
-        ingredientId:
-          $ref: "#/components/schemas/Uuid"
-        subrecipeId:
-          $ref: "#/components/schemas/Uuid"
+        recipe:
+          type: object
+          properties:
+            recipeId:
+              $ref: "#/components/schemas/Uuid"
+            name:
+              type: string
+              maxLength: 255
+          required:
+            - recipeId
+            - name
+          unevaluatedProperties: false
+
+        ingredient:
+          type: object
+          properties:
+            ingredientId:
+              $ref: "#/components/schemas/Uuid"
+            name:
+              type: string
+              maxLength: 255
+            namePlural:
+              type: string
+              maxLength: 255
+          required:
+            - ingredientId
+            - name
+          unevaluatedProperties: false
+
         amount:
           $ref: "#/components/schemas/ItemAmount"
+
         description:
           type: string
           maxLength: 255
+
         unit:
           type: string
           maxLength: 50
+
         multiplier:
           type: number
+
         name:
           type: string
           maxLength: 255
+
+        preparation:
+          type: string
+          maxLength: 255
+
+      not:
+        required:
+          - recipe
+          - ingredient
+
       unevaluatedProperties: false
     RecipeSectionBase:
       type: object
@@ -3141,14 +3386,118 @@ components:
           required:
             - items
       unevaluatedProperties: false
+    RecipeIngredientItemCreate:
+      type: object
+      properties:
+        recipe:
+          type: object
+          properties:
+            recipeId:
+              $ref: "#/components/schemas/Uuid"
+          required:
+            - recipeId
+          unevaluatedProperties: false
+        ingredient:
+          type: object
+          properties:
+            ingredientId:
+              $ref: "#/components/schemas/Uuid"
+          required:
+            - ingredientId
+          unevaluatedProperties: false
+        amount:
+          $ref: "#/components/schemas/ItemAmount"
+        description:
+          type: string
+          maxLength: 255
+        unit:
+          type: string
+          maxLength: 50
+        multiplier:
+          type: number
+        name:
+          type: string
+          maxLength: 255
+        preparation:
+          type: string
+          maxLength: 255
+      not:
+        required:
+          - recipe
+          - ingredient
+      unevaluatedProperties: false
+    RecipeIngredientSectionCreate:
+      allOf:
+        - $ref: "#/components/schemas/RecipeSectionBase"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/RecipeIngredientItemCreate"
+          required:
+            - items
+      unevaluatedProperties: false
+    RecipeIngredientItemUpdate:
+      type: object
+      properties:
+        recipe:
+          type: object
+          properties:
+            recipeId:
+              $ref: "#/components/schemas/Uuid"
+          required:
+            - recipeId
+          unevaluatedProperties: false
+        ingredient:
+          type: object
+          properties:
+            ingredientId:
+              $ref: "#/components/schemas/Uuid"
+          required:
+            - ingredientId
+          unevaluatedProperties: false
+        amount:
+          $ref: "#/components/schemas/ItemAmount"
+        description:
+          type: string
+          maxLength: 255
+        unit:
+          type: string
+          maxLength: 50
+        multiplier:
+          type: number
+        name:
+          type: string
+          maxLength: 255
+        preparation:
+          type: string
+          maxLength: 255
+      not:
+        required:
+          - recipe
+          - ingredient
+      unevaluatedProperties: false
+    RecipeIngredientSectionUpdate:
+      allOf:
+        - $ref: "#/components/schemas/RecipeSectionBase"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/RecipeIngredientItemUpdate"
+          required:
+            - items
+      unevaluatedProperties: false
     RecipeMethodStep:
       type: object
       properties:
-        description:
+        content:
           type: string
           maxLength: 4096
       required:
-        - description
+        - content
       unevaluatedProperties: false
     RecipeMethodSection:
       allOf:
@@ -3161,138 +3510,6 @@ components:
                 $ref: "#/components/schemas/RecipeMethodStep"
           required:
             - items
-      unevaluatedProperties: false
-    RecipeCreate:
-      type: object
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 255
-        source:
-          type: string
-          maxLength: 255
-        ingredients:
-          type: array
-          items:
-            $ref: "#/components/schemas/RecipeIngredientSection"
-        method:
-          type: array
-          items:
-            $ref: "#/components/schemas/RecipeMethodSection"
-        summary:
-          type: string
-          maxLength: 4096
-        tips:
-          type: string
-          maxLength: 4096
-        rating:
-          type: number
-        tags:
-          type: array
-          items:
-            $ref: "#/components/schemas/RecipeTagRef"
-        cookTime:
-          type: integer
-        prepTime:
-          type: integer
-        servings:
-          $ref: "#/components/schemas/Servings"
-        public:
-          type: boolean
-        nutritionalInformation:
-          type: string
-          maxLength: 4096
-        timesCooked:
-          type: integer
-        photo:
-          type: object
-          properties:
-            attachmentId:
-              $ref: "#/components/schemas/Uuid"
-          required:
-            - attachmentId
-      required:
-        - name
-      unevaluatedProperties: false
-    RecipeUpdate:
-      type: object
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 255
-        source:
-          type:
-            - string
-            - "null"
-          maxLength: 255
-        ingredients:
-          type:
-            - array
-            - "null"
-          items:
-            $ref: "#/components/schemas/RecipeIngredientSection"
-        method:
-          type:
-            - array
-            - "null"
-          items:
-            $ref: "#/components/schemas/RecipeMethodSection"
-        summary:
-          type:
-            - string
-            - "null"
-          maxLength: 4096
-        tips:
-          type:
-            - string
-            - "null"
-          maxLength: 4096
-        rating:
-          type:
-            - number
-            - "null"
-        nutritionalInformation:
-          type:
-            - string
-            - "null"
-          maxLength: 4096
-        tags:
-          type:
-            - array
-            - "null"
-          items:
-            $ref: "#/components/schemas/RecipeTagRef"
-        cookTime:
-          type:
-            - integer
-            - "null"
-        prepTime:
-          type:
-            - integer
-            - "null"
-        servings:
-          oneOf:
-            - $ref: "#/components/schemas/Servings"
-            - type: "null"
-        public:
-          type:
-            - boolean
-            - "null"
-        timesCooked:
-          type:
-            - integer
-            - "null"
-        photo:
-          type:
-            - object
-            - "null"
-          properties:
-            attachmentId:
-              $ref: "#/components/schemas/Uuid"
-          required:
-            - attachmentId
       unevaluatedProperties: false
     BookUpdate:
       type: object

@@ -615,7 +615,7 @@ const parseInstructions = (
                 .map(getStepText)
                 .map(decodeHtml)
                 .filter(Undefined)
-                .map((description) => ({ description }));
+                .map((content) => ({ content }));
 
             if (items.length === 0) return undefined;
 

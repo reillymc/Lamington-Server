@@ -1,15 +1,12 @@
 import type { Attachment } from "./attachmentRepository.ts";
+import type { Ingredient } from "./ingredientRepository.ts";
 import type { Database, RepositoryService } from "./repository.ts";
 import type { Tag } from "./tagRepository.ts";
 import type { Content } from "./temp.ts";
 import type { User } from "./userRepository.ts";
 
-export interface RecipeStep {
-    id: string;
-    recipeId: string;
-    sectionId: string | undefined;
-    order: number;
-    description: string; // technically: | undefined;
+interface RecipeStep {
+    content: string;
 }
 
 type NumberValue = { representation: "number"; value: string };
@@ -19,20 +16,6 @@ type FractionValue = {
     value: [string, string, string];
 };
 
-export interface RecipeSection {
-    recipeId: string;
-    sectionId: string;
-    order: number;
-    name: string;
-    description: string | undefined;
-}
-export interface RecipeSectionCreate {
-    recipeId: string;
-    order: number;
-    name: string;
-    description: string | undefined;
-}
-
 /**
  * RecipeIngredient
  *
@@ -41,36 +24,24 @@ export interface RecipeSectionCreate {
  */
 export interface RecipeIngredient {
     recipeId: string;
-    sectionId?: string;
-
-    /**
-     * Used when linking an ingredient item
-     */
-    ingredientId?: string;
-
-    /**
-     * Used when linking another recipe as an ingredient
-     */
-    subrecipeId?: string;
-    order?: number;
-    unit?: string;
-
-    /**
-     * JSON stringified object containing the amount of the ingredient, as type number, fraction
-     * or range with its representation explicitly denoted.
-     * TODO: Define this type correctly like other new json types
-     */
-    amount?: RecipeIngredientAmount;
-    multiplier?: number;
-    description?: string;
+    ingredientId: string;
 }
 
-type RecipeServingsV1 = {
+/**
+ * RecipeRecipe
+ *
+ * Contains the mapping for each of the recipe's ingredients to the sub-recipe item, with additional
+ * information stored in the properties.
+ */
+export interface RecipeRecipe {
+    recipeId: string;
+    subRecipeId: string;
+}
+
+type RecipeServings = {
     unit: string;
     count: RangeValue | NumberValue;
 };
-
-type RecipeServings = RecipeServingsV1;
 
 /**
  * Recipe
@@ -82,27 +53,25 @@ export interface Recipe {
     servings: RecipeServings | null;
     prepTime: number | null;
     cookTime: number | null;
-    nutritionalInformation: string | null;
+    ingredients: ReadonlyArray<
+        ReadSectionItemResponse<ReadIngredientItemResponse>
+    > | null;
+    method: ReadonlyArray<
+        ReadSectionItemResponse<ReadMethodStepResponse>
+    > | null;
+    nutritionalInformation: Record<string, never> | null;
     summary: string | null;
     tips: string | null;
     public: boolean | null;
     timesCooked: number | null;
 }
 
-type RecipeIngredientAmountV1 = RangeValue | NumberValue | FractionValue;
-
-type RecipeIngredientAmount = RecipeIngredientAmountV1;
+type RecipeIngredientAmount = RangeValue | NumberValue | FractionValue;
 
 export interface RecipeRating {
     recipeId: string;
     raterId: string;
     rating: number;
-}
-
-interface Ingredient {
-    ingredientId: string;
-    name: string;
-    description: string | undefined;
 }
 
 type SortKeys<TKeys> = keyof TKeys;
@@ -111,20 +80,6 @@ type Pagination = number;
 type AdditionalFields = {
     ratingAverage: RecipeRating["rating"];
     ratingPersonal: RecipeRating["rating"];
-};
-
-type SaveIngredientItemRequest = {
-    amount?: RecipeIngredient["amount"];
-    description?: RecipeIngredient["description"];
-    multiplier?: RecipeIngredient["multiplier"];
-    unit?: RecipeIngredient["unit"];
-    subrecipeId?: RecipeIngredient["subrecipeId"];
-    ingredientId?: RecipeIngredient["ingredientId"]; // TODO: deprecate and remove, along with ingredient table
-    name?: Ingredient["name"];
-};
-
-type SaveMethodStepRequest = {
-    description?: RecipeStep["description"];
 };
 
 type SaveTagRequest = {
@@ -142,7 +97,7 @@ type ReadFilters = {
     owner?: Content["createdBy"];
     tags?: ReadonlyArray<{ tagId: Tag["tagId"] }>;
     books?: ReadonlyArray<{ bookId: string }>;
-    ingredients?: ReadonlyArray<{ name: Ingredient["name"] }>;
+    ingredients?: ReadonlyArray<{ ingredientId: Ingredient["ingredientId"] }>;
 };
 
 type ReadAllRequest = {
@@ -211,9 +166,31 @@ type RecipePayload = {
     tips?: Recipe["tips"];
     rating?: RecipeRating["rating"] | null;
     ingredients?: ReadonlyArray<
-        SaveSectionRequest<SaveIngredientItemRequest>
+        SaveSectionRequest<
+            {
+                amount?: RecipeIngredientAmount;
+                description?: string;
+                name?: string;
+                preparation?: string;
+                multiplier?: number;
+                unit?: string;
+            } & (
+                | {
+                      ingredient?: {
+                          ingredientId: RecipeIngredient["ingredientId"];
+                      };
+                  }
+                | {
+                      recipe?: { recipeId: RecipeIngredient["recipeId"] };
+                  }
+            )
+        >
     > | null;
-    method?: ReadonlyArray<SaveSectionRequest<SaveMethodStepRequest>> | null;
+    method?: ReadonlyArray<
+        SaveSectionRequest<{
+            content?: RecipeStep["content"];
+        }>
+    > | null;
     tags?: ReadonlyArray<SaveTagRequest> | null;
     photo?: { attachmentId: Attachment["attachmentId"] } | null;
 };
@@ -249,19 +226,30 @@ type ReadAttachmentResponse = {
 };
 
 type ReadIngredientItemResponse = {
-    amount: RecipeIngredient["amount"] | undefined;
-    description: RecipeIngredient["description"] | undefined;
-    multiplier: RecipeIngredient["multiplier"] | undefined;
-    unit: RecipeIngredient["unit"] | undefined;
-    subrecipeId: RecipeIngredient["subrecipeId"] | undefined;
-    ingredientId: RecipeIngredient["ingredientId"] | undefined;
-    name: Ingredient["name"] | undefined;
+    amount: RecipeIngredientAmount;
+    description: string;
+    preparation: string;
+    multiplier: number;
+    unit: string;
     photo: ReadAttachmentResponse | undefined;
-};
+} & (
+    | {
+          ingredient: {
+              ingredientId: RecipeIngredient["ingredientId"];
+              name: Ingredient["name"];
+              namePlural?: Ingredient["namePlural"];
+          };
+      }
+    | {
+          recipe: {
+              recipeId: Recipe["recipeId"];
+              name: Recipe["name"];
+          };
+      }
+);
 
 type ReadMethodStepResponse = {
-    id: RecipeStep["id"];
-    description: RecipeStep["description"];
+    content: RecipeStep["content"];
     photo: ReadAttachmentResponse;
 };
 
@@ -291,12 +279,8 @@ type ReadResponse = {
             summary: Recipe["summary"];
             timesCooked: Recipe["timesCooked"];
             tips: Recipe["tips"];
-            ingredients: ReadonlyArray<
-                ReadSectionItemResponse<ReadIngredientItemResponse>
-            >;
-            method: ReadonlyArray<
-                ReadSectionItemResponse<ReadMethodStepResponse>
-            >;
+            ingredients: Recipe["ingredients"];
+            method: Recipe["method"];
             tags: ReadTagsResponse;
         }
     >;

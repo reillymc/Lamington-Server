@@ -5,32 +5,21 @@ export * from "./data.ts";
 export * from "./database.ts";
 export * from "./recipe.ts";
 
-export type TestCase<TExpected = unknown, TInput = object> =
-    | {
-          name: string;
-          input: TInput;
-          expected: TExpected;
-      }
-    | {
-          name: string;
-          inputAndExpected: TInput;
-      };
-
-export const runTestCases = <TExpected, TInput>(
-    testCases: TestCase<TExpected, TInput>[],
-    testFn: (input: TInput, expected: TExpected) => Promise<void> | void,
-) => {
-    testCases.forEach(({ name, ...rest }) => {
-        const { input, expected } =
-            "input" in rest
-                ? (rest as { input: TInput; expected: TExpected })
-                : {
-                      input: rest.inputAndExpected as unknown as TInput,
-                      expected: rest.inputAndExpected as unknown as TExpected,
-                  };
-
-        it(name, async () => {
-            await testFn(input, expected);
-        });
-    });
+export type TestCase<TExpected = unknown, TInput = object, TUpdate = object> = {
+    name: string;
+    input: TInput;
+    update?: TUpdate;
+    expected: TExpected;
 };
+
+export const runTestCases = <TExpected, TInput, TUpdate>(
+    testCases: TestCase<TExpected, TInput, TUpdate>[],
+    testFn: (p: {
+        input: TInput;
+        update?: TUpdate;
+        expected: TExpected;
+    }) => Promise<void> | void,
+) =>
+    testCases.forEach(({ name, ...rest }) => {
+        it(name, () => testFn(rest));
+    });

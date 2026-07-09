@@ -22,6 +22,7 @@ export const createRecipeRouter: CreateRouter<"recipeService"> = ({
                 query?.order,
                 query?.owner,
                 query?.tags,
+                query?.ingredients,
             );
             return res.status(200).json(data);
         })

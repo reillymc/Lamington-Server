@@ -19,6 +19,7 @@ export interface RecipeService {
         order?: components["schemas"]["Order"],
         owner?: string,
         tags?: ReadonlyArray<string>,
+        ingredients?: ReadonlyArray<string>,
     ) => Promise<{
         recipes: ReadonlyArray<components["schemas"]["Recipe"]>;
         nextPage?: number;
@@ -44,7 +45,16 @@ export const createRecipeService: CreateService<
     RecipeService,
     "recipeRepository"
 > = (database, { recipeRepository }) => ({
-    getAll: async (userId, page, search, sort, order, owner, tags) => {
+    getAll: async (
+        userId,
+        page,
+        search,
+        sort,
+        order,
+        owner,
+        tags,
+        ingredients,
+    ) => {
         const { recipes, nextPage } = await recipeRepository.readAll(database, {
             userId,
             page,
@@ -54,6 +64,9 @@ export const createRecipeService: CreateService<
                 name: search,
                 owner,
                 tags: tags?.map((tagId) => ({ tagId })),
+                ingredients: ingredients?.map((ingredientId) => ({
+                    ingredientId,
+                })),
             },
         });
         return { recipes, nextPage };
