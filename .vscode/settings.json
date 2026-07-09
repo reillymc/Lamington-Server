@@ -1,8 +1,10 @@
 {
     "cSpell.words": [
+        "color",
         "cooklist",
         "devcontainer",
         "fieldname",
+        "ILIKE",
         "knexfile",
         "openapi",
         "originalname",
@@ -12,7 +14,6 @@
         "tinyint",
         "wcaserver"
     ],
-    "typescript.tsdk": "node_modules/typescript/lib",
     "sqltools.connections": [
         {
             "previewLimit": 50,
@@ -56,5 +57,8 @@
     "editor.codeActionsOnSave": {
         "source.organizeImports.biome": "explicit",
         "source.fixAll.biome": "explicit"
+    },
+    "[sql]": {
+        "editor.defaultFormatter": "mtxr.sqltools"
     }
 }
