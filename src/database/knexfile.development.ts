@@ -12,6 +12,7 @@ const config: Knex.Config = {
     },
     seeds: {
         directory: ["./seeds/production", "./seeds/development"],
+        sortDirsSeparately: true,
     },
 };
 

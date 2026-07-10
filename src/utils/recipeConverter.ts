@@ -528,7 +528,7 @@ const parseIngredientString = (raw: string): ParsedIngredient => {
         name,
         amount,
         unit,
-        description,
+        preparation: description,
     });
 };
 

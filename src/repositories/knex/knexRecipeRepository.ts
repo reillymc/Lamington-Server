@@ -375,14 +375,14 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
                 ...section,
                 items: section.items.map((item) => {
                     if ("ingredient" in item) {
+                        const { ingredientId, name } = item.ingredient;
+                        const ingredient = ingredientMap[ingredientId];
                         return {
                             ...item,
                             ingredient: {
-                                ...item.ingredient,
-                                ...ingredientMap[item.ingredient.ingredientId],
-                                namePlural: toUndefined(
-                                    item.ingredient.namePlural,
-                                ),
+                                ingredientId,
+                                name,
+                                ...ingredient,
                             },
                         };
                     }
@@ -432,12 +432,8 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                 public: recipe.public,
                 recipeId: recipe.recipeId,
                 cookTime: recipe.cookTime,
+                nutritionalInformation: recipe.nutritionalInformation,
                 // https://github.com/knex/knex/issues/6126
-                nutritionalInformation: !recipe.nutritionalInformation
-                    ? recipe.nutritionalInformation
-                    : (JSON.stringify(
-                          recipe.nutritionalInformation,
-                      ) as unknown as Recipe["nutritionalInformation"]),
                 ingredients: !recipe.ingredients
                     ? recipe.ingredients
                     : (JSON.stringify(
@@ -534,12 +530,8 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             const updateData = buildUpdateRecord(
                 {
                     ...recipe,
+                    nutritionalInformation: recipe.nutritionalInformation,
                     // https://github.com/knex/knex/issues/6126
-                    nutritionalInformation: !recipe.nutritionalInformation
-                        ? recipe.nutritionalInformation
-                        : (JSON.stringify(
-                              recipe.nutritionalInformation,
-                          ) as unknown as Recipe["nutritionalInformation"]),
                     ingredients: !recipe.ingredients
                         ? recipe.ingredients
                         : (JSON.stringify(
