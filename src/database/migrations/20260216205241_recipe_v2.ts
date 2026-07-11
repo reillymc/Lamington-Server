@@ -42,86 +42,66 @@ export async function up(knex: Knex): Promise<void> {
             COALESCE(
                 (
                     SELECT jsonb_agg(
-                        CASE
-                            WHEN rs."name" IS NULL THEN
-                                jsonb_build_object(
-                                    'items',
-                                    COALESCE(
-                                        (
-                                            SELECT jsonb_agg(
-                                                CASE
-                                                    WHEN ri."ingredientId" IS NOT NULL THEN
-                                                        jsonb_build_object(
-                                                            'ingredientId', ri."ingredientId",
-                                                            'amount', ri."amount",
-                                                            'unit', ri."unit",
-                                                            'description', ri."description",
-                                                            'multiplier', ri."multiplier"
-                                                        )
-                                                    WHEN ri."subrecipeId" IS NOT NULL THEN
-                                                        jsonb_build_object(
-                                                            'recipeId', ri."subrecipeId",
-                                                            'amount', ri."amount",
-                                                            'unit', ri."unit",
-                                                            'description', ri."description",
-                                                            'multiplier', ri."multiplier"
-                                                        )
-                                                END
-                                                ORDER BY ri."index"
+                        jsonb_strip_nulls(
+                            jsonb_build_object(
+                                'name',
+                                CASE
+                                    WHEN lower(nullif(btrim(rs."name"), '')) = 'default' THEN NULL
+                                    ELSE nullif(btrim(rs."name"), '')
+                                END,
+                                'description', rs."description",
+                                'items',
+                                COALESCE(
+                                    (
+                                        SELECT jsonb_agg(
+                                            jsonb_strip_nulls(
+                                                jsonb_build_object(
+                                                    'ingredient',
+                                                    CASE
+                                                        WHEN ri."ingredientId" IS NOT NULL THEN
+                                                            jsonb_build_object(
+                                                                'ingredientId', ri."ingredientId"
+                                                            )
+                                                    END,
+                                                    'recipe',
+                                                    CASE
+                                                        WHEN ri."subrecipeId" IS NOT NULL THEN
+                                                            jsonb_build_object(
+                                                                'recipeId', ri."subrecipeId"
+                                                            )
+                                                    END,
+                                                    'amount', ri."amount",
+                                                    'unit', ri."unit",
+                                                    'description', ri."description",
+                                                    'multiplier', ri."multiplier"
+                                                )
                                             )
-                                            FROM "recipe_ingredient_legacy" ri
-                                            WHERE ri."sectionId" = rs."sectionId"
-                                            AND (
-                                                ri."ingredientId" IS NOT NULL
-                                                OR ri."subrecipeId" IS NOT NULL
-                                            )
-                                        ),
-                                        '[]'::jsonb
-                                    )
+                                            ORDER BY ri."index"
+                                        )
+                                        FROM "recipe_ingredient_legacy" ri
+                                        WHERE ri."sectionId" = rs."sectionId"
+                                        AND (
+                                            ri."ingredientId" IS NOT NULL
+                                            OR ri."subrecipeId" IS NOT NULL
+                                        )
+                                    ),
+                                    '[]'::jsonb
                                 )
-                            ELSE
-                                jsonb_build_object(
-                                    'name', rs."name",
-                                    'description', rs."description",
-                                    'items',
-                                    COALESCE(
-                                        (
-                                            SELECT jsonb_agg(
-                                                CASE
-                                                    WHEN ri."ingredientId" IS NOT NULL THEN
-                                                        jsonb_build_object(
-                                                            'ingredientId', ri."ingredientId",
-                                                            'amount', ri."amount",
-                                                            'unit', ri."unit",
-                                                            'description', ri."description",
-                                                            'multiplier', ri."multiplier"
-                                                        )
-                                                    WHEN ri."subrecipeId" IS NOT NULL THEN
-                                                        jsonb_build_object(
-                                                            'recipeId', ri."subrecipeId",
-                                                            'amount', ri."amount",
-                                                            'unit', ri."unit",
-                                                            'description', ri."description",
-                                                            'multiplier', ri."multiplier"
-                                                        )
-                                                END
-                                                ORDER BY ri."index"
-                                            )
-                                            FROM "recipe_ingredient_legacy" ri
-                                            WHERE ri."sectionId" = rs."sectionId"
-                                            AND (
-                                                ri."ingredientId" IS NOT NULL
-                                                OR ri."subrecipeId" IS NOT NULL
-                                            )
-                                        ),
-                                        '[]'::jsonb
-                                    )
-                                )
-                        END
+                            )
+                        )
                         ORDER BY rs."index"
                     )
                     FROM "recipe_section_legacy" rs
                     WHERE rs."recipeId" = r."recipeId"
+                    AND EXISTS (
+                        SELECT 1
+                        FROM "recipe_ingredient_legacy" ri
+                        WHERE ri."sectionId" = rs."sectionId"
+                        AND (
+                            ri."ingredientId" IS NOT NULL
+                            OR ri."subrecipeId" IS NOT NULL
+                        )
+                    )
                 ),
                 '[]'::jsonb
             );
@@ -133,18 +113,43 @@ export async function up(knex: Knex): Promise<void> {
             COALESCE(
                 (
                     SELECT jsonb_agg(
-                        jsonb_build_object(
-                            'content', rs."description"
+                        jsonb_strip_nulls(
+                            jsonb_build_object(
+                                'name',
+                                CASE
+                                    WHEN lower(nullif(btrim(rs."name"), '')) = 'default' THEN NULL
+                                    ELSE nullif(btrim(rs."name"), '')
+                                END,
+                                'description', rs."description",
+                                'items',
+                                COALESCE(
+                                    (
+                                        SELECT jsonb_agg(
+                                            jsonb_build_object(
+                                                'content', st."description"
+                                            )
+                                            ORDER BY st."index"
+                                        )
+                                        FROM "recipe_step_legacy" st
+                                        WHERE st."sectionId" = rs."sectionId"
+                                    ),
+                                    '[]'::jsonb
+                                )
+                            )
                         )
                         ORDER BY rs."index"
                     )
-                    FROM "recipe_step_legacy" rs
+                    FROM "recipe_section_legacy" rs
                     WHERE rs."recipeId" = r."recipeId"
+                    AND EXISTS (
+                        SELECT 1
+                        FROM "recipe_step_legacy" st
+                        WHERE st."sectionId" = rs."sectionId"
+                    )
                 ),
                 '[]'::jsonb
             );
         `);
-
         //
         // Create recipe -> recipe relationship table
         //

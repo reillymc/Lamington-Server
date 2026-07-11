@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import type { Knex } from "knex";
+import { Undefined } from "../../../utils/index.ts";
 
 const hashPassword = async (password: string) => {
     const salt = await bcrypt.genSalt();
@@ -120,7 +121,7 @@ export const seed = async (knex: Knex): Promise<void> => {
             updatedAt: "2023-06-25 00:00:00",
             public: false,
             timesCooked: 0,
-            ingredients: JSON.stringify([
+            ingredients: [
                 {
                     items: [
                         {
@@ -196,8 +197,8 @@ export const seed = async (knex: Knex): Promise<void> => {
                         },
                     ],
                 },
-            ]),
-            method: JSON.stringify([
+            ],
+            method: [
                 {
                     name: "Cooking the Gnocchi",
                     items: [
@@ -239,7 +240,7 @@ export const seed = async (knex: Knex): Promise<void> => {
                         },
                     ],
                 },
-            ]),
+            ],
         },
         {
             recipeId: "99656745-3325-4a47-9361-caba8849a4e2",
@@ -291,12 +292,28 @@ export const seed = async (knex: Knex): Promise<void> => {
                     cookTime,
                     public: isPublic,
                     timesCooked,
-                    ingredients,
-                    method,
+                    ingredients: JSON.stringify(ingredients),
+                    method: JSON.stringify(method),
                 }),
             ),
         )
         .onConflict("recipeId")
+        .merge();
+
+    await knex("recipe_ingredient")
+        .insert(
+            recipes
+                .flatMap(({ recipeId, ingredients }) =>
+                    ingredients?.flatMap(({ items }) =>
+                        items.map(({ ingredient: { ingredientId } }) => ({
+                            recipeId,
+                            ingredientId,
+                        })),
+                    ),
+                )
+                .filter(Undefined),
+        )
+        .onConflict(["recipeId", "ingredientId"])
         .merge();
 
     await knex("book_recipe")
