@@ -121,7 +121,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: string
+                  $ref: "#/components/schemas/Ingredient"
         429:
           $ref: "#/components/responses/TooManyRequests"
   /tags:
