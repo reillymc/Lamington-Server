@@ -35,6 +35,11 @@ export const KnexIngredientRepository: IngredientRepository<KnexDatabase> = {
                 IngredientTable.ingredientId,
                 ContentTable.contentId,
             )
+            .where((builder) =>
+                userId !== undefined
+                    ? builder.where({ [ContentTable.createdBy]: userId })
+                    : builder.whereNull(ContentTable.createdBy),
+            )
             .modify(withContentAuthor);
 
         return {

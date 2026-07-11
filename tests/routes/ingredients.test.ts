@@ -2,10 +2,6 @@ import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
-import {
-    SYSTEM_INGREDIENTS,
-    seed,
-} from "../../src/database/seeds/production/02_default_ingredients.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
@@ -60,22 +56,5 @@ describe("Get user and system ingredients", () => {
         expect(ingredient!.name).toEqual("Apple");
         expect(ingredient!.namePlural).toEqual("Apples");
         expect(ingredient!.description).toEqual("A delicious fruit");
-    });
-
-    it("should return system ingredients", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-
-        await seed(database);
-
-        const res = await request(app).get("/v1/ingredients").set(token);
-
-        expect(res.statusCode).toEqual(200);
-
-        const ingredients = res.body as components["schemas"]["Ingredient"][];
-        expect(ingredients.length).toEqual(SYSTEM_INGREDIENTS.length);
-
-        expect(ingredients.every(({ owner }) => owner === undefined)).toBe(
-            true,
-        );
     });
 });

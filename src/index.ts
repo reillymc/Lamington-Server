@@ -4,6 +4,7 @@ import ms, { type StringValue } from "ms";
 import { setupApp } from "./app.ts";
 import development from "./database/knexfile.development.ts";
 import production from "./database/knexfile.production.ts";
+import { extractIngredientsAssetFile } from "./jobs/extractIngredientsAssetFile.ts";
 import { createErrorHandlerMiddleware } from "./middleware/errorHandler.ts";
 import { createLoggerMiddleware } from "./middleware/logger.ts";
 import {
@@ -41,6 +42,9 @@ import { logger } from "./utils/logger.ts";
 
 const port = parseInt(process.env.PORT ?? "3000", 10);
 
+const uploadDirectory = process.env.UPLOAD_DIRECTORY ?? "uploads";
+const assetDirectory = process.env.ASSET_DIRECTORY ?? "assets";
+
 const selectDatabaseConfig = () => {
     switch (process.env.NODE_ENV) {
         case "development":
@@ -53,7 +57,7 @@ const selectDatabaseConfig = () => {
 const db = knex(selectDatabaseConfig());
 
 let fileRepository = createDiskFileRepository(
-    "uploads",
+    uploadDirectory,
     process.env.ATTACHMENT_PATH ?? "prod",
 );
 
@@ -114,6 +118,9 @@ if (!accessSecret || !refreshSecret) {
 
 const repositories = defaultAppRepositories as AppRepositories<Database>;
 
+// Run job on startup for now, eventually move to trigger on ingredient table update
+await extractIngredientsAssetFile(db, repositories, "assets");
+
 const app = setupApp({
     services: {
         attachmentService: createAttachmentService(db, repositories),
@@ -144,7 +151,8 @@ const app = setupApp({
     config: {
         externalHost: process.env.EXTERNAL_HOST,
         allowedOrigin: process.env.CORS_ALLOWED_ORIGIN,
-        uploadDirectory: "uploads",
+        uploadDirectory,
+        assetDirectory,
     },
 });
 

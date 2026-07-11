@@ -10,6 +10,7 @@ interface AppConfig {
     externalHost: string | undefined;
     allowedOrigin: string | undefined;
     uploadDirectory: string;
+    assetDirectory: string;
 }
 
 interface AppParams {

@@ -103,7 +103,7 @@ describe("Upload an image", () => {
         const res = await request(app)
             .post("/v1/attachments/image")
             .set(token)
-            .attach("image", "tests/testAttachment.jpg");
+            .attach("image", "tests/resources/testAttachment.jpg");
 
         expect(res.statusCode).toEqual(200);
 

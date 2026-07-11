@@ -1,5 +1,5 @@
 import express from "express";
-import { createAssetsRouter } from "./assets.ts";
+import { type AssetsRouterConfig, createAssetsRouter } from "./assets.ts";
 import {
     type AttachmentsRouterConfig,
     createAttachmentsRouter,
@@ -20,7 +20,9 @@ import type { CreateRouter } from "./route.ts";
 import { createTagsRouter } from "./tags.ts";
 import { createUserRouter } from "./users.ts";
 
-type AppRouterConfig = AttachmentsRouterConfig & DocsRouterConfig;
+type AppRouterConfig = AttachmentsRouterConfig &
+    DocsRouterConfig &
+    AssetsRouterConfig;
 
 export const createAppRouter: CreateRouter<
     | "attachmentService"
@@ -53,7 +55,7 @@ export const createAppRouter: CreateRouter<
                 .use(middleware.rateLimiterLoose)
                 .use(middleware.validator)
                 .use(createAuthRouter(services, middleware))
-                .use(createAssetsRouter())
+                .use(createAssetsRouter(config))
                 .use(createAttachmentsRouter(services, middleware, config))
                 .use(createBookRouter(services))
                 .use(createCooklistRouter(services))

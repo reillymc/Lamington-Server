@@ -13,11 +13,11 @@ export interface Ingredient {
 }
 
 type ReadRequest = {
-    userId: User["userId"];
+    userId?: User["userId"];
 };
 
 type ReadResponse = {
-    userId: User["userId"];
+    userId?: User["userId"];
     ingredients: ReadonlyArray<Ingredient>;
 };
 

@@ -123,6 +123,7 @@ export const createTestApp = ({
             allowedOrigin: "test.origin",
             externalHost: "https://test.host",
             uploadDirectory: "uploads",
+            assetDirectory: "tests/resources/testAssets",
         },
     });
 };

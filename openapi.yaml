@@ -7,6 +7,8 @@ servers:
 tags:
   - name: Auth
     description: Authentication operations
+  - name: Assets
+    description: Asset operations
   - name: Meals
     description: Meal planning operations
   - name: Books
@@ -105,6 +107,23 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
+  /assets/ingredients.json:
+    get:
+      tags:
+        - Assets
+      summary: Get preset ingredients
+      operationId: getPresetIngredients
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        429:
+          $ref: "#/components/responses/TooManyRequests"
   /tags:
     get:
       tags:
