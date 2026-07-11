@@ -1,7 +1,8 @@
 import { S3Client } from "@aws-sdk/client-s3";
 import knex from "knex";
 import ms, { type StringValue } from "ms";
-import { setupApp } from "./app.ts";
+import { createLogger, format, transports } from "winston";
+import { type AppConfig, setupApp } from "./app.ts";
 import development from "./database/knexfile.development.ts";
 import production from "./database/knexfile.production.ts";
 import { extractIngredientsAssetFile } from "./jobs/extractIngredientsAssetFile.ts";
@@ -38,12 +39,66 @@ import { createPlannerService } from "./services/plannerService.ts";
 import { createRecipeService } from "./services/recipeService.ts";
 import { createTagService } from "./services/tagService.ts";
 import { createUserService } from "./services/userService.ts";
-import { logger } from "./utils/logger.ts";
+import { Undefined } from "./utils/index.ts";
+import "winston-daily-rotate-file";
+import type { AppMiddleware } from "./middleware/index.ts";
+import type { AppServices } from "./services/index.ts";
 
 const port = parseInt(process.env.PORT ?? "3000", 10);
 
 const uploadDirectory = process.env.UPLOAD_DIRECTORY ?? "uploads";
 const assetDirectory = process.env.ASSET_DIRECTORY ?? "assets";
+const logDirectory = process.env.LOG_DIRECTORY ?? "logs";
+
+const ErrorLogFileTransport = new transports.DailyRotateFile({
+    level: "error",
+    filename: "error-%DATE%.log",
+    zippedArchive: true,
+    maxSize: "10m",
+    maxFiles: "60d",
+    dirname: logDirectory,
+    format: format.combine(
+        format.timestamp({
+            format: "YYYY-MM-DD HH:mm:ss",
+        }),
+        format.errors({ stack: true }),
+        format.splat(),
+        format.json(),
+    ),
+});
+
+const AccessLogFileTransport = new transports.DailyRotateFile({
+    level: "http",
+    filename: "access-%DATE%.log",
+    zippedArchive: true,
+    maxSize: "10m",
+    maxFiles: "60d",
+    dirname: logDirectory,
+    format: format.combine(
+        format.timestamp({
+            format: "YYYY-MM-DD HH:mm:ss",
+        }),
+        format.printf(({ level, message, timestamp }) => {
+            return `${timestamp} ${level}: ${message}`;
+        }),
+    ),
+});
+
+const ConsoleLogTransport =
+    process.env.NODE_ENV !== "production"
+        ? new transports.Console({
+              level: "http",
+              format: format.combine(format.colorize(), format.simple()),
+          })
+        : undefined;
+
+export const logger = createLogger({
+    transports: [
+        ErrorLogFileTransport,
+        AccessLogFileTransport,
+        ConsoleLogTransport,
+    ].filter(Undefined),
+});
 
 const selectDatabaseConfig = () => {
     switch (process.env.NODE_ENV) {
@@ -118,43 +173,45 @@ if (!accessSecret || !refreshSecret) {
 
 const repositories = defaultAppRepositories as AppRepositories<Database>;
 
+const services: AppServices = {
+    attachmentService: createAttachmentService(db, repositories),
+    bookService: createBookService(db, repositories),
+    contentExtractionService: createContentExtractionService(),
+    cooklistService: createCooklistService(db, repositories),
+    ingredientService: createIngredientService(db, repositories),
+    listService: createListService(db, repositories),
+    mealService: createMealService(db, repositories),
+    plannerService: createPlannerService(db, repositories),
+    recipeService: createRecipeService(db, repositories),
+    tagService: createTagService(db, repositories),
+    userService: createUserService(db, repositories, {
+        accessExpiration,
+        accessSecret,
+        refreshExpiration,
+        refreshSecret,
+    }),
+};
+
+const middleware: AppMiddleware = {
+    rateLimiterControlled: createRateLimiterControlled(),
+    rateLimiterLoose: createRateLimiterLoose(),
+    rateLimiterRestrictive: createRateLimiterRestrictive(),
+    validator: createValidatorMiddleware({ accessSecret }),
+    errorHandler: createErrorHandlerMiddleware({ logger }),
+    logger: createLoggerMiddleware({ logger }),
+};
+
+const config: AppConfig = {
+    externalHost: process.env.EXTERNAL_HOST,
+    allowedOrigin: process.env.CORS_ALLOWED_ORIGIN,
+    uploadDirectory,
+    assetDirectory,
+};
+
 // Run job on startup for now, eventually move to trigger on ingredient table update
 await extractIngredientsAssetFile(db, repositories, "assets");
 
-const app = setupApp({
-    services: {
-        attachmentService: createAttachmentService(db, repositories),
-        bookService: createBookService(db, repositories),
-        contentExtractionService: createContentExtractionService(),
-        cooklistService: createCooklistService(db, repositories),
-        ingredientService: createIngredientService(db, repositories),
-        listService: createListService(db, repositories),
-        mealService: createMealService(db, repositories),
-        plannerService: createPlannerService(db, repositories),
-        recipeService: createRecipeService(db, repositories),
-        tagService: createTagService(db, repositories),
-        userService: createUserService(db, repositories, {
-            accessExpiration,
-            accessSecret,
-            refreshExpiration,
-            refreshSecret,
-        }),
-    },
-    middleware: {
-        rateLimiterControlled: createRateLimiterControlled(),
-        rateLimiterLoose: createRateLimiterLoose(),
-        rateLimiterRestrictive: createRateLimiterRestrictive(),
-        validator: createValidatorMiddleware({ accessSecret }),
-        errorHandler: createErrorHandlerMiddleware(),
-        logger: createLoggerMiddleware(),
-    },
-    config: {
-        externalHost: process.env.EXTERNAL_HOST,
-        allowedOrigin: process.env.CORS_ALLOWED_ORIGIN,
-        uploadDirectory,
-        assetDirectory,
-    },
-});
+const app = setupApp({ services, middleware, config });
 
 const server = app.listen(port, () => {
     logger.info(`Lamington Server Started: http://localhost:${port}`);

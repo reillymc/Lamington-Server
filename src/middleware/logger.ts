@@ -1,8 +1,14 @@
 import morgan from "morgan";
-import { logger } from "../utils/logger.ts";
+import type { Logger } from "../utils/logger.ts";
 import type { CreateMiddleware } from "./middleware.ts";
 
-export const createLoggerMiddleware: CreateMiddleware = () => [
+export type CreateLoggerMiddlewareConfig = {
+    logger: Logger;
+};
+
+export const createLoggerMiddleware: CreateMiddleware<
+    CreateLoggerMiddlewareConfig
+> = ({ logger }) => [
     morgan("dev", {
         stream: {
             write: (message) => logger.http(message.trim()),

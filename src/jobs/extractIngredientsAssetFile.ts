@@ -8,12 +8,10 @@ export const extractIngredientsAssetFile = async (
     { ingredientRepository }: Pick<AppRepositories, "ingredientRepository">,
     assetsDir: string,
 ) => {
-    const { ingredients } = await ingredientRepository.readAll(database, {
-        userId: null,
-    });
+    const { ingredients } = await ingredientRepository.readAll(database, {});
 
     if (!existsSync(assetsDir)) {
-        await mkdir(assetsDir);
+        await mkdir(assetsDir, { recursive: true });
     }
 
     await writeFile(

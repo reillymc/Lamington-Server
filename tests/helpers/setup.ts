@@ -1,5 +1,6 @@
 import knex from "knex";
 import { v4 } from "uuid";
+import { createLogger, transports } from "winston";
 import { setupApp } from "../../src/app.ts";
 import { createErrorHandlerMiddleware } from "../../src/middleware/errorHandler.ts";
 import type { AppMiddleware } from "../../src/middleware/index.ts";
@@ -59,10 +60,14 @@ const defaultAppRepositories: AppRepositories<KnexDatabase> = {
     userRepository: KnexUserRepository,
 };
 
+const logger = createLogger({
+    transports: [new transports.Console({ silent: true })],
+});
+
 const defaultAppMiddleware: AppMiddleware = {
     validator: createValidatorMiddleware({ accessSecret }),
-    errorHandler: createErrorHandlerMiddleware(),
-    logger: createLoggerMiddleware(),
+    errorHandler: createErrorHandlerMiddleware({ logger }),
+    logger: createLoggerMiddleware({ logger }),
     rateLimiterControlled: createRateLimiterControlled(),
     rateLimiterLoose: createRateLimiterLoose(),
     rateLimiterRestrictive: createRateLimiterRestrictive(),
