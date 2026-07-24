@@ -209,7 +209,7 @@ const config: AppConfig = {
 };
 
 // Run job on startup for now, eventually move to trigger on ingredient table update
-await extractIngredientsAssetFile(db, repositories, "assets");
+await extractIngredientsAssetFile(db, repositories, assetDirectory);
 
 const app = setupApp({ services, middleware, config });
 
