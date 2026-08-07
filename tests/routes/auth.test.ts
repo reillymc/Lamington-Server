@@ -336,7 +336,7 @@ describe("Refresh authentication token", () => {
 
         // Exceed rate limit
         const responses = await Promise.all(
-            Array.from({ length: 100 }).map(() =>
+            Array.from({ length: 150 }).map(() =>
                 request(app).post("/v1/auth/refresh").send(requestBody),
             ),
         );

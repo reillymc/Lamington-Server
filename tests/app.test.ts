@@ -107,7 +107,7 @@ describe("Rate Limiter Middleware", () => {
 
         // Exceed rate limit for general endpoints
         const responses = await Promise.all(
-            Array.from({ length: 100 }).map(() => request(app).get("/v1")),
+            Array.from({ length: 150 }).map(() => request(app).get("/v1")),
         );
 
         responses.map(({ statusCode }) => expect(statusCode).not.toEqual(429));
@@ -117,17 +117,17 @@ describe("Rate Limiter Middleware", () => {
         await database.rollback();
     });
 
-    it("books should trigger 429 response after 100 requests", async () => {
+    it("books should trigger 429 response after 150 requests", async () => {
         const res = await request(app).get("/v1/books");
         expect(res.statusCode).toEqual(429);
     });
 
-    it("planners should trigger 429 response after 100 requests", async () => {
+    it("planners should trigger 429 response after 150 requests", async () => {
         const res = await request(app).get("/v1/planners");
         expect(res.statusCode).toEqual(429);
     });
 
-    it("lists should trigger 429 response after 100 requests", async () => {
+    it("lists should trigger 429 response after 150 requests", async () => {
         const res = await request(app).delete(`/v1/lists/${v4()}`);
 
         expect(res.statusCode).toEqual(429);
