@@ -1,6 +1,6 @@
+import { Undefined } from "@reillymc/es-utils";
 import bcrypt from "bcrypt";
 import type { Knex } from "knex";
-import { Undefined } from "../../../utils/index.ts";
 
 const hashPassword = async (password: string) => {
     const salt = await bcrypt.genSalt();

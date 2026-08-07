@@ -1,5 +1,5 @@
+import { EnsureArray } from "@reillymc/es-utils";
 import type { AppRepositories, Database } from "../repositories/index.ts";
-import { EnsureArray } from "../utils/index.ts";
 import { AppError } from "../utils/logger.ts";
 
 export type CreateService<

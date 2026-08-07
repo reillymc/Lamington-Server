@@ -1,4 +1,4 @@
-import { EnsureArray } from "../../../../utils/index.ts";
+import { EnsureArray } from "@reillymc/es-utils";
 import type { ContentTag } from "../../../temp.ts";
 import type { KnexDatabase } from "../../knex.ts";
 import { ContentTagTable, lamington, TagTable } from "../../spec/index.ts";

@@ -1,5 +1,5 @@
+import { EnsureArray } from "@reillymc/es-utils";
 import type { Knex } from "knex";
-import { EnsureArray } from "../../../../utils/index.ts";
 import {
     ContentMemberTable,
     ContentTable,

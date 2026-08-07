@@ -1,4 +1,4 @@
-import { EnsureArray } from "../../utils/index.ts";
+import { EnsureArray } from "@reillymc/es-utils";
 import type { ListRepository } from "../listRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";

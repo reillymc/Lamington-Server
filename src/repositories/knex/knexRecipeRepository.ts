@@ -1,4 +1,4 @@
-import { EnsureArray, Undefined } from "../../utils/index.ts";
+import { EnsureArray, Undefined } from "@reillymc/es-utils";
 import type { Ingredient } from "../ingredientRepository.ts";
 import type {
     Recipe,

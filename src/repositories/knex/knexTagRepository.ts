@@ -1,4 +1,4 @@
-import { EnsureArray } from "../../utils/index.ts";
+import { EnsureArray } from "@reillymc/es-utils";
 import type { TagRepository } from "../tagRepository.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import type { KnexDatabase } from "./knex.ts";

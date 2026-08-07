@@ -1,4 +1,4 @@
-import { Undefined } from "../../../../utils/index.ts";
+import { Undefined } from "@reillymc/es-utils";
 import type { KnexDatabase } from "../../knex.ts";
 import { ContentAttachmentTable, lamington } from "../../spec/index.ts";
 
