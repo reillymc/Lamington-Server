@@ -2,7 +2,7 @@ import morgan from "morgan";
 import type { Logger } from "../utils/logger.ts";
 import type { CreateMiddleware } from "./middleware.ts";
 
-export type CreateLoggerMiddlewareConfig = {
+type CreateLoggerMiddlewareConfig = {
     logger: Logger;
 };
 

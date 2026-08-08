@@ -2,7 +2,7 @@ import type { ErrorRequestHandler } from "express";
 import { AppError, type Logger } from "../utils/logger.ts";
 import type { CreateMiddleware, Middleware } from "./middleware.ts";
 
-export type CreateErrorHandlerMiddlewareConfig = {
+type CreateErrorHandlerMiddlewareConfig = {
     logger: Logger;
 };
 
