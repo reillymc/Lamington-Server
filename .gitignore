@@ -114,9 +114,7 @@ dbfiles/lamington.mwb
 
 # Server upload files
 uploads/
-
 assets/
-
 
 # Generated types
 *.d.ts

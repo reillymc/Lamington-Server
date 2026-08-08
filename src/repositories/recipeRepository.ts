@@ -12,28 +12,6 @@ type FractionValue = {
     value: [string, string, string];
 };
 
-/**
- * RecipeIngredient
- *
- * Contains the mapping for each of the recipe's ingredients to the Ingredient item, with additional
- * information stored in the properties.
- */
-export interface RecipeIngredient {
-    recipeId: string;
-    ingredientId: string;
-}
-
-/**
- * RecipeRecipe
- *
- * Contains the mapping for each of the recipe's ingredients to the sub-recipe item, with additional
- * information stored in the properties.
- */
-export interface RecipeRecipe {
-    recipeId: string;
-    subRecipeId: string;
-}
-
 type RecipeServings = {
     unit: string;
     count: RangeValue | NumberValue;
@@ -76,8 +54,6 @@ export type RecipeIngredientItemRequest = {
 type RecipeMethodStepRequest = {
     content?: string;
 };
-
-// Response shapes: what reads return
 
 type RecipeIngredientItemResponse = {
     amount: RecipeIngredientAmount | undefined;

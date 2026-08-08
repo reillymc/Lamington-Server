@@ -86,7 +86,6 @@ export const ContentTagActions = {
             }
         }
 
-        // Include each tag's parent in its group so responses can render nested
         for (const groupTags of groups.values()) {
             const parentIds = new Set(
                 groupTags.flatMap(({ parentId }) =>

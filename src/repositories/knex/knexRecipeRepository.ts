@@ -3,12 +3,10 @@ import type { Ingredient } from "../ingredientRepository.ts";
 import type {
     ReadTagsResponse,
     Recipe,
-    RecipeIngredient,
     RecipeIngredientItemRequest,
     RecipeMethodStepResponse,
     RecipePayload,
     RecipeRating,
-    RecipeRecipe,
     RecipeRepository,
     RecipeSection,
 } from "../recipeRepository.ts";
@@ -75,6 +73,16 @@ const saveTags = (
             tags,
         })),
     );
+
+type RecipeIngredient = {
+    recipeId: string;
+    ingredientId: string;
+};
+
+type RecipeRecipe = {
+    recipeId: string;
+    subRecipeId: string;
+};
 
 type RecipeIngredientRow = Pick<
     Ingredient,
@@ -193,9 +201,6 @@ type RecipeRatingColumns = {
     [ratingPersonalName]: RecipeRating["rating"] | null;
 };
 
-// The recipe table stores DB-nullable columns as `| null`, unlike the
-// response-facing `Recipe` which exposes them as `| undefined`. The JSONB
-// ingredients hold the client-sent request items; names are enriched on read.
 type RecipeRow = {
     recipeId: Recipe["recipeId"];
     name: Recipe["name"];

@@ -4,7 +4,9 @@ export interface Database {
     ): Promise<T>;
 }
 
-// Map optional columns from the database (null) to undefined
+/**
+ *   Map optional columns from the database (null) to undefined
+ */
 type NullToUndefined<T> = T extends object
     ? { [K in keyof T]: NullToUndefined<T[K]> }
     : null extends T
