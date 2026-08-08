@@ -1,8 +1,8 @@
 export type LifecycleTrigger = "startup";
 
-export type Job = {
-    run: () => Promise<boolean>;
-    trigger?: ReadonlyArray<LifecycleTrigger>;
+export type Job<TParams extends unknown[] = []> = {
+    run: (...params: TParams) => Promise<boolean>;
+    trigger?: TParams["length"] extends 0
+        ? ReadonlyArray<LifecycleTrigger>
+        : never;
 };
-
-export type CreateJob<T> = (params: T) => Job;

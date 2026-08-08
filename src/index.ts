@@ -6,6 +6,7 @@ import { createLogger, format, transports } from "winston";
 import { type AppConfig, setupApp } from "./app.ts";
 import development from "./database/knexfile.development.ts";
 import production from "./database/knexfile.production.ts";
+import { createUserStarterDataJob } from "./jobs/createUserStarterData.ts";
 import { type AppJobs, runStartupJobs } from "./jobs/index.ts";
 import { createRefreshIngredientsAssetJob } from "./jobs/refreshIngredientsAsset.ts";
 import { createErrorHandlerMiddleware } from "./middleware/errorHandler.ts";
@@ -181,6 +182,11 @@ const jobs: AppJobs = {
         assetDirectory,
         logger,
     }),
+    createUserStarterData: createUserStarterDataJob({
+        database: db,
+        repositories,
+        logger,
+    }),
 };
 
 const services: AppServices = {
@@ -194,7 +200,7 @@ const services: AppServices = {
     plannerService: createPlannerService(db, repositories),
     recipeService: createRecipeService(db, repositories),
     tagService: createTagService(db, repositories),
-    userService: createUserService(db, repositories, {
+    userService: createUserService(db, repositories, jobs, {
         accessExpiration,
         accessSecret,
         refreshExpiration,

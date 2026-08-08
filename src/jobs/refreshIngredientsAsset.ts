@@ -3,18 +3,25 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { AppRepositories, Database } from "../repositories/index.ts";
 import type { Logger } from "../utils/logger.ts";
-import type { CreateJob } from "./job.ts";
+import type { Job } from "./job.ts";
 
-interface CreateRefreshIngredientsAssetJobParams {
-    database: Database;
-    repositories: Pick<AppRepositories, "ingredientRepository">;
+interface CreateRefreshIngredientsAssetJobParams<
+    TDatabase extends Database = Database,
+> {
+    database: TDatabase;
+    repositories: Pick<AppRepositories<TDatabase>, "ingredientRepository">;
     assetDirectory: string;
     logger: Logger;
 }
 
-export const createRefreshIngredientsAssetJob: CreateJob<
-    CreateRefreshIngredientsAssetJobParams
-> = ({ database, repositories, assetDirectory, logger }) => ({
+export const createRefreshIngredientsAssetJob = <
+    TDatabase extends Database = Database,
+>({
+    database,
+    repositories,
+    assetDirectory,
+    logger,
+}: CreateRefreshIngredientsAssetJobParams<TDatabase>): Job => ({
     run: async () => {
         try {
             const { ingredients } =

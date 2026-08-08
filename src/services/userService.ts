@@ -97,24 +97,10 @@ type UserServiceConfig = {
 
 export const createUserService: CreateService<
     UserService,
-    | "userRepository"
-    | "listRepository"
-    | "bookRepository"
-    | "recipeRepository"
-    | "plannerRepository",
-    never,
+    "userRepository",
+    "createUserStarterData",
     UserServiceConfig
-> = (
-    database,
-    {
-        userRepository,
-        bookRepository,
-        listRepository,
-        plannerRepository,
-        recipeRepository,
-    },
-    config,
-) => ({
+> = (database, { userRepository }, { createUserStarterData }, config) => ({
     getAll: async (userId, status) => {
         const { hasPermissions } = await userRepository.verifyPermissions(
             database,
@@ -159,114 +145,7 @@ export const createUserService: CreateService<
         });
 
         if (user.status === "P" && updatedUser?.status === "M") {
-            const {
-                lists: [list],
-            } = await listRepository.create(database, {
-                userId: userToApproveId,
-                lists: [
-                    {
-                        name: "My Shopping List",
-                        description: "A list of groceries I need to buy",
-                    },
-                ],
-            });
-
-            if (list) {
-                await listRepository.createItems(database, {
-                    userId: userToApproveId,
-                    listId: list.listId,
-                    items: [
-                        {
-                            name: "Example item",
-                            notes: "You can tap to edit me, or swipe left to delete me",
-                        },
-                    ],
-                });
-            }
-
-            const {
-                books: [book],
-            } = await bookRepository.create(database, {
-                userId: userToApproveId,
-                books: [
-                    {
-                        name: "Favourite Recipes",
-                        description:
-                            "A recipe book for all my favourite recipes",
-                    },
-                ],
-            });
-
-            const { recipes } = await recipeRepository.create(database, {
-                userId: userToApproveId,
-                recipes: [
-                    {
-                        name: "Example Recipe",
-                        public: false,
-                        ingredients: [
-                            {
-                                name: "This is an ingredient section",
-                                description:
-                                    "Ingredients can be added in a simple list above, and/or divided into sections like this one",
-                                items: [],
-                            },
-                        ],
-                        method: [
-                            {
-                                name: "This is a method section",
-                                description:
-                                    "Steps can be added in a simple list above, and/or divided into sections like this one",
-                                items: [],
-                            },
-                        ],
-                        tips: "There are many other entries you can use to create your recipe, such as adding a photo, recording the prep/cook time, servings, additional details, source and more.",
-                    },
-                ],
-            });
-
-            if (book) {
-                await bookRepository.saveRecipes(database, {
-                    bookId: book.bookId,
-                    recipes,
-                });
-            }
-
-            const { planners } = await plannerRepository.create(database, {
-                userId: userToApproveId,
-                planners: [
-                    {
-                        name: "My Meal Planner",
-                        description:
-                            "A planner for all the meals I want to cook",
-                    },
-                ],
-            });
-
-            const [planner] = planners;
-            const [recipe] = recipes;
-
-            if (planner && recipe) {
-                await plannerRepository.createMeals(database, {
-                    userId: userToApproveId,
-                    plannerId: planner.plannerId,
-                    meals: [
-                        {
-                            recipeId: recipe.recipeId,
-                            year: new Date().getFullYear(),
-                            month: new Date().getMonth(),
-                            dayOfMonth: new Date().getDate(),
-                            course: "lunch",
-                        },
-                        {
-                            year: new Date().getFullYear(),
-                            month: new Date().getMonth(),
-                            dayOfMonth: new Date().getDate(),
-                            course: "breakfast",
-                            description: "Example meal with no recipe",
-                        },
-                    ],
-                });
-            }
+            void createUserStarterData.run(userToApproveId);
         }
     },
     blacklist: async (userId, userToBlacklistId) => {

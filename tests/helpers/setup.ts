@@ -61,14 +61,14 @@ const defaultAppRepositories: AppRepositories<KnexDatabase> = {
     userRepository: KnexUserRepository,
 };
 
-const logger = createLogger({
+export const silentLogger = createLogger({
     transports: [new transports.Console({ silent: true })],
 });
 
 const defaultAppMiddleware: AppMiddleware = {
     validator: createValidatorMiddleware({ accessSecret }),
-    errorHandler: createErrorHandlerMiddleware({ logger }),
-    logger: createLoggerMiddleware({ logger }),
+    errorHandler: createErrorHandlerMiddleware({ logger: silentLogger }),
+    logger: createLoggerMiddleware({ logger: silentLogger }),
     rateLimiterControlled: createRateLimiterControlled(),
     rateLimiterLoose: createRateLimiterLoose(),
     rateLimiterRestrictive: createRateLimiterRestrictive(),
@@ -76,6 +76,9 @@ const defaultAppMiddleware: AppMiddleware = {
 
 const defaultAppJobs: AppJobs = {
     refreshIngredientsAsset: {
+        run: async () => true,
+    },
+    createUserStarterData: {
         run: async () => true,
     },
 };
@@ -124,7 +127,7 @@ export const createTestApp = ({
             plannerService: createPlannerService(database, appRepositories),
             recipeService: createRecipeService(database, appRepositories),
             tagService: createTagService(database, appRepositories),
-            userService: createUserService(database, appRepositories, {
+            userService: createUserService(database, appRepositories, appJobs, {
                 accessExpiration: 1000,
                 accessSecret,
                 refreshExpiration: 1000,
