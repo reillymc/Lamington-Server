@@ -6,7 +6,7 @@ import { ContentTagTable, lamington, TagTable } from "../../spec/index.ts";
 export const ContentTagActions = {
     readByContentId: async (
         db: KnexDatabase,
-        contentIds: string | string[],
+        contentIds: string | ReadonlyArray<string>,
     ) => {
         const contentIdList = EnsureArray(contentIds);
 
@@ -58,15 +58,14 @@ export const ContentTagActions = {
             tags: ReadonlyArray<{ tagId: string }>;
         }>,
     ) => {
-        for (const { contentId, tags } of items) {
-            await db<ContentTag>(lamington.contentTag)
-                .where({ contentId })
-                .whereNotIn(
-                    "tagId",
-                    tags.map(({ tagId }) => tagId),
-                )
-                .del();
-        }
+        if (!items.length) return;
+
+        await db<ContentTag>(lamington.contentTag)
+            .whereIn(
+                ContentTagTable.contentId,
+                items.map(({ contentId }) => contentId),
+            )
+            .del();
 
         const tagsToInsert = items.flatMap(({ contentId, tags }) =>
             tags.map(({ tagId }) => ({ contentId, tagId })),

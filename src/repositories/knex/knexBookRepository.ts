@@ -10,7 +10,10 @@ import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts"
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
 import { withContentPermissions } from "./common/queryBuilders/withContentPermissions.ts";
-import { createDeleteContent } from "./common/repositoryMethods/content.ts";
+import {
+    createContentRows,
+    createDeleteContent,
+} from "./common/repositoryMethods/content.ts";
 import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
 import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
 import type { ContentAuthorColumns } from "./common/rowTypes.ts";
@@ -77,9 +80,7 @@ const read: BookRepository<KnexDatabase>["read"] = async (
 
 export const KnexBookRepository: BookRepository<KnexDatabase> = {
     create: async (db, { userId, books }) => {
-        const newContent = await db(lamington.content)
-            .insert(books.map(() => ({ createdBy: userId })))
-            .returning("contentId");
+        const newContent = await createContentRows(db, userId, books.length);
 
         const booksToCreate = newContent.map(({ contentId }, index) => ({
             ...books[index],

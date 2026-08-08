@@ -12,7 +12,10 @@ import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
 import { withContentPermissions } from "./common/queryBuilders/withContentPermissions.ts";
 import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
-import { createDeleteContent } from "./common/repositoryMethods/content.ts";
+import {
+    createContentRows,
+    createDeleteContent,
+} from "./common/repositoryMethods/content.ts";
 import { HeroAttachmentActions } from "./common/repositoryMethods/contentAttachment.ts";
 import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
 import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
@@ -193,13 +196,11 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
         return { meals: result.map(formatPlannerMeal) };
     },
     createMeals: async (db, { plannerId, userId, meals }) => {
-        const newContent = await db(lamington.content)
-            .insert(meals.map(() => ({ createdBy: userId })))
-            .returning("contentId");
+        const newContent = await createContentRows(db, userId, meals.length);
 
-        const mealsToCreate = meals.map((meal, index) => ({
-            ...meal,
-            mealId: newContent[index].contentId,
+        const mealsToCreate = newContent.map(({ contentId }, index) => ({
+            ...meals[index],
+            mealId: contentId,
         }));
 
         await db(lamington.plannerMeal).insert(
@@ -319,9 +320,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
         };
     },
     create: async (db, { userId, planners }) => {
-        const newContent = await db(lamington.content)
-            .insert(planners.map(() => ({ createdBy: userId })))
-            .returning("contentId");
+        const newContent = await createContentRows(db, userId, planners.length);
 
         const plannersToCreate = newContent.map(({ contentId }, index) => ({
             ...planners[index],

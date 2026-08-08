@@ -4,6 +4,7 @@ import type {
 } from "../ingredientRepository.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
+import { createContentRows } from "./common/repositoryMethods/content.ts";
 import type { ContentAuthorColumns } from "./common/rowTypes.ts";
 import type { KnexDatabase } from "./knex.ts";
 import { ContentTable, IngredientTable, lamington } from "./spec/index.ts";
@@ -58,9 +59,11 @@ export const KnexIngredientRepository: IngredientRepository<KnexDatabase> = {
         };
     },
     create: async (db, { ingredients, userId }) => {
-        const newContent = await db(lamington.content)
-            .insert(ingredients.map(() => ({ createdBy: userId })))
-            .returning("contentId");
+        const newContent = await createContentRows(
+            db,
+            userId,
+            ingredients.length,
+        );
 
         const ingredientsToCreate = newContent.map(({ contentId }, index) => ({
             ...ingredients[index],

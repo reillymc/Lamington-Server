@@ -10,7 +10,10 @@ import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts"
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
 import { withContentPermissions } from "./common/queryBuilders/withContentPermissions.ts";
-import { createDeleteContent } from "./common/repositoryMethods/content.ts";
+import {
+    createContentRows,
+    createDeleteContent,
+} from "./common/repositoryMethods/content.ts";
 import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
 import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
 import type { ContentAuthorColumns } from "./common/rowTypes.ts";
@@ -185,9 +188,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
         };
     },
     create: async (db, { userId, lists }) => {
-        const newContent = await db(lamington.content)
-            .insert(lists.map(() => ({ createdBy: userId })))
-            .returning("contentId");
+        const newContent = await createContentRows(db, userId, lists.length);
 
         const listsToCreate = newContent.map(({ contentId }, index) => ({
             ...lists[index],
@@ -259,13 +260,11 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
         return { items: result.map(formatListItem) };
     },
     createItems: async (db, { userId, listId, items }) => {
-        const newContent = await db(lamington.content)
-            .insert(items.map(() => ({ createdBy: userId })))
-            .returning("contentId");
+        const newContent = await createContentRows(db, userId, items.length);
 
-        const itemsToCreate = items.map((item, index) => ({
-            ...item,
-            itemId: newContent[index].contentId,
+        const itemsToCreate = newContent.map(({ contentId }, index) => ({
+            ...items[index],
+            itemId: contentId,
         }));
 
         await db(lamington.listItem).insert(
