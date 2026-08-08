@@ -11,18 +11,18 @@ import type { Database } from "./repository.ts";
 import type { TagRepository } from "./tagRepository.ts";
 import type { UserRepository } from "./userRepository.ts";
 
-export type AppRepositories<T extends Database = Database> = {
-    attachmentRepository: AttachmentRepository<T>;
-    bookRepository: BookRepository<T>;
-    cooklistRepository: CookListRepository<T>;
+export type AppRepositories = {
+    attachmentRepository: AttachmentRepository;
+    bookRepository: BookRepository;
+    cooklistRepository: CookListRepository;
     fileRepository: FileRepository;
-    ingredientRepository: IngredientRepository<T>;
-    listRepository: ListRepository<T>;
-    mealRepository: MealRepository<T>;
-    plannerRepository: PlannerRepository<T>;
-    recipeRepository: RecipeRepository<T>;
-    tagRepository: TagRepository<T>;
-    userRepository: UserRepository<T>;
+    ingredientRepository: IngredientRepository;
+    listRepository: ListRepository;
+    mealRepository: MealRepository;
+    plannerRepository: PlannerRepository;
+    recipeRepository: RecipeRepository;
+    tagRepository: TagRepository;
+    userRepository: UserRepository;
 };
 
 export type { Database };

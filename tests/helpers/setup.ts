@@ -16,7 +16,6 @@ import type {
     AppRepositories,
     Database,
 } from "../../src/repositories/index.ts";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
@@ -44,7 +43,7 @@ import testConfig from "./knexfile.testing.ts";
 export const accessSecret = v4();
 export const refreshSecret = v4();
 
-const defaultAppRepositories: AppRepositories<KnexDatabase> = {
+const defaultAppRepositories: AppRepositories = {
     attachmentRepository: KnexAttachmentRepository,
     bookRepository: KnexBookRepository,
     cooklistRepository: KnexCookListRepository,
@@ -101,7 +100,7 @@ export const createTestApp = ({
     const appRepositories = {
         ...defaultAppRepositories,
         ...repositories,
-    } as AppRepositories<Database>;
+    };
 
     const appJobs = {
         ...defaultAppJobs,

@@ -18,8 +18,7 @@ import {
 } from "./middleware/rateLimiters.ts";
 import { createValidatorMiddleware } from "./middleware/validator.ts";
 import { createDiskFileRepository } from "./repositories/disk/diskFileRepository.ts";
-import type { AppRepositories, Database } from "./repositories/index.ts";
-import type { KnexDatabase } from "./repositories/knex/knex.ts";
+import type { AppRepositories } from "./repositories/index.ts";
 import { KnexAttachmentRepository } from "./repositories/knex/knexAttachmentRepository.ts";
 import { KnexBookRepository } from "./repositories/knex/knexBookRepository.ts";
 import { KnexCookListRepository } from "./repositories/knex/knexCooklistRepository.ts";
@@ -146,7 +145,7 @@ awsBucketName: ${awsBucketName ? "provided" : "missing"}`,
     );
 }
 
-const defaultAppRepositories: AppRepositories<KnexDatabase> = {
+const repositories: AppRepositories = {
     attachmentRepository: KnexAttachmentRepository,
     bookRepository: KnexBookRepository,
     cooklistRepository: KnexCookListRepository,
@@ -172,8 +171,6 @@ const refreshExpiration = ms(
 if (!accessSecret || !refreshSecret) {
     throw "Error starting Lamington Server";
 }
-
-const repositories = defaultAppRepositories as AppRepositories<Database>;
 
 const jobs: AppJobs = {
     refreshIngredientsAsset: createRefreshIngredientsAssetJob({

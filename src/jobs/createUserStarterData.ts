@@ -1,13 +1,11 @@
 import type { AppRepositories, Database } from "../repositories/index.ts";
 import type { Logger } from "../utils/logger.ts";
-import type { Job } from "./job.ts";
+import type { CreateJob } from "./job.ts";
 
-interface CreateUserStarterDataJobParams<
-    TDatabase extends Database = Database,
-> {
-    database: TDatabase;
+interface CreateUserStarterDataJobParams {
+    database: Database;
     repositories: Pick<
-        AppRepositories<TDatabase>,
+        AppRepositories,
         | "listRepository"
         | "bookRepository"
         | "recipeRepository"
@@ -18,9 +16,10 @@ interface CreateUserStarterDataJobParams<
 
 type RunParams = [userId: string];
 
-export const createUserStarterDataJob = <
-    TDatabase extends Database = Database,
->({
+export const createUserStarterDataJob: CreateJob<
+    CreateUserStarterDataJobParams,
+    RunParams
+> = ({
     database,
     repositories: {
         listRepository,
@@ -29,7 +28,7 @@ export const createUserStarterDataJob = <
         plannerRepository,
     },
     logger,
-}: CreateUserStarterDataJobParams<TDatabase>): Job<RunParams> => ({
+}) => ({
     run: async (userId) => {
         try {
             await database.transaction(async (trx) => {

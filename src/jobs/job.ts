@@ -6,3 +6,5 @@ export type Job<TParams extends unknown[] = []> = {
         ? ReadonlyArray<LifecycleTrigger>
         : never;
 };
+
+export type CreateJob<T, P extends unknown[] = []> = (params: T) => Job<P>;
