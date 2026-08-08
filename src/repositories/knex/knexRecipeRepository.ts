@@ -55,46 +55,11 @@ const groupBy = <T, K>(rows: ReadonlyArray<T>, key: (row: T) => K) => {
     return groups;
 };
 
-const groupRecipeTags = (tags: ReadonlyArray<RecipeTagRow>) => {
-    const groups = new Map<string, RecipeTagRow[]>();
-    const parents = new Map<string, RecipeTagRow>();
-
-    for (const tag of tags) {
-        if (!tag.recipeId) {
-            parents.set(tag.tagId, tag);
-        } else {
-            groups.set(tag.recipeId, [
-                ...(groups.get(tag.recipeId) ?? []),
-                tag,
-            ]);
-        }
-    }
-
-    for (const rows of groups.values()) {
-        const parentIds = new Set(
-            rows.flatMap(({ parentId }) => (parentId ? [parentId] : [])),
-        );
-        for (const parentId of parentIds) {
-            const parent = parents.get(parentId);
-            if (parent) rows.push(parent);
-        }
-    }
-
-    return groups;
-};
-
 const readTags = (
     db: KnexDatabase,
     recipeIds: ReadonlyArray<Recipe["recipeId"]>,
-): Promise<Array<RecipeTagRow>> =>
-    ContentTagActions.readByContentId(db, recipeIds).then((response) =>
-        response.map(({ contentId, parentId, name, ...rest }) => ({
-            recipeId: contentId,
-            parentId: toUndefined(parentId),
-            name: toUndefined(name),
-            ...rest,
-        })),
-    );
+): Promise<Map<Recipe["recipeId"], ReadTagsResponse>> =>
+    ContentTagActions.readByContentId(db, recipeIds);
 
 const saveTags = (
     db: KnexDatabase,
@@ -279,13 +244,6 @@ type RecipeListItemRow = Pick<
     HeroAttachmentColumns &
     RecipeRatingColumns;
 
-type RecipeTagRow = {
-    recipeId: string;
-    tagId: string;
-    parentId: string | undefined;
-    name: string;
-};
-
 const buildRecipeQuery = (db: KnexDatabase) => {
     const ratingsSubquery = db(lamington.recipeRating)
         .select(RecipeRatingTable.recipeId)
@@ -423,7 +381,6 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
     const recipesById = new Map(
         recipeRows.map((recipe) => [recipe.recipeId, recipe]),
     );
-    const tagsByRecipeId = groupRecipeTags(tags);
     const ingredientsByRecipeId = groupBy(
         ingredients,
         ({ recipeId }) => recipeId,
@@ -472,8 +429,6 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
                     },
                 ]),
             );
-
-            const recipeTags = tagsByRecipeId.get(recipeId);
 
             return [
                 {
@@ -530,7 +485,7 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
                             };
                         }),
                     })),
-                    tags: ContentTagRowsToResponse(recipeTags),
+                    tags: tags.get(recipeId),
                     photo: formatHeroAttachment(
                         recipe.heroAttachmentId,
                         recipe.heroAttachmentUri,
@@ -862,34 +817,3 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
         };
     },
 };
-
-const ContentTagRowsToResponse = (
-    tags: ReadonlyArray<RecipeTagRow> | undefined,
-): ReadTagsResponse | undefined =>
-    tags?.reduce<
-        Record<
-            string,
-            {
-                tagId: string;
-                name: string | undefined;
-                tags: Array<{ tagId: string; name: string }> | undefined;
-            }
-        >
-    >((acc, { tagId, parentId, name }) => {
-        if (parentId) {
-            acc[parentId] = {
-                ...acc[parentId],
-                tagId: parentId,
-                name: acc[parentId]?.name,
-                tags: [...(acc[parentId]?.tags ?? []), { tagId, name }],
-            };
-        } else {
-            acc[tagId] = {
-                ...acc[tagId],
-                tagId,
-                name,
-                tags: acc[tagId]?.tags,
-            };
-        }
-        return acc;
-    }, {});
