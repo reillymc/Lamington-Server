@@ -9,7 +9,7 @@
         "prod": "npm run migrate:prod && npm run seed:prod && NODE_ENV=production node src/index.ts",
         "test": "NODE_ENV=test node --test",
         "test:coverage": "NODE_ENV=test node --test --experimental-test-coverage --test-coverage-lines=95 --test-coverage-branches=90 --test-coverage-functions=95 --test-coverage-include=src/** --test-coverage-exclude=src/database/**",
-        "lint": "biome check",
+        "lint": "biome check --error-on-warnings",
         "knip": "knip",
         "typecheck": "tsc --noEmit",
         "depcruise": "depcruise src --collapse 3 --output-type dot | dot -T svg > module-dependency-graph.svg",
