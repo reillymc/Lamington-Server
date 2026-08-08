@@ -3,6 +3,7 @@ import type { Ingredient } from "./ingredientRepository.ts";
 import type { Database, RepositoryService } from "./repository.ts";
 import type { Tag } from "./tagRepository.ts";
 import type { Content } from "./temp.ts";
+import type { Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
 
 type NumberValue = { representation: "number"; value: string };
@@ -124,10 +125,7 @@ type BaseResponse = {
     name: Recipe["name"];
     cookTime: Recipe["cookTime"];
     prepTime: Recipe["prepTime"];
-    owner: {
-        userId: User["userId"];
-        firstName: User["firstName"];
-    };
+    owner: Owner;
     rating: {
         average: RecipeRating["rating"] | undefined;
         personal: RecipeRating["rating"] | undefined;

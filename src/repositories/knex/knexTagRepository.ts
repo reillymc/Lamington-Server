@@ -20,8 +20,8 @@ export const KnexTagRepository: TagRepository<KnexDatabase> = {
             description: toUndefined(tag.description),
         }));
     },
-    create: async (db, params) =>
-        db(lamington.tag)
+    create: async (db, params) => {
+        const result = await db(lamington.tag)
             .insert(
                 EnsureArray(params).map(({ name, description, parentId }) => ({
                     name,
@@ -34,5 +34,13 @@ export const KnexTagRepository: TagRepository<KnexDatabase> = {
                 TagTable.parentId,
                 TagTable.name,
                 TagTable.description,
-            ]),
+            ]);
+
+        return result.map((tag) => ({
+            tagId: tag.tagId,
+            parentId: toUndefined(tag.parentId),
+            name: tag.name,
+            description: toUndefined(tag.description),
+        }));
+    },
 };

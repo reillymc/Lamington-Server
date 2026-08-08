@@ -26,22 +26,20 @@ import {
     lamington,
 } from "./spec/index.ts";
 
-type ListRow = Pick<List, "listId" | "name" | "description"> & {
+type ListRow = Pick<List, "listId" | "name"> & {
+    description: List["description"] | null;
     customisations: { icon: ListIcon } | null;
     status: ListUserStatus | null;
 } & ContentAuthorColumns;
 
 type ListItemRow = Pick<
     ListItem,
-    | "itemId"
-    | "listId"
-    | "name"
-    | "completed"
-    | "ingredientId"
-    | "unit"
-    | "amount"
-    | "notes"
+    "itemId" | "listId" | "name" | "completed"
 > & {
+    ingredientId: ListItem["ingredientId"] | null;
+    unit: ListItem["unit"] | null;
+    amount: ListItem["amount"] | null;
+    notes: ListItem["notes"] | null;
     updatedAt: string;
 } & ContentAuthorColumns & {
         status: string | null;

@@ -20,17 +20,13 @@ import type {
 import type { KnexDatabase } from "./knex.ts";
 import { ContentTable, lamington, PlannerMealTable } from "./spec/index.ts";
 
-type CookListMealRow = Pick<
-    Meal,
-    | "mealId"
-    | "meal"
-    | "description"
-    | "source"
-    | "sequence"
-    | "recipeId"
-    | "notes"
-> &
-    ContentAuthorColumns &
+type CookListMealRow = Pick<Meal, "mealId" | "meal"> & {
+    description: Meal["description"] | null;
+    source: Meal["source"] | null;
+    sequence: Meal["sequence"] | null;
+    recipeId: Meal["recipeId"] | null;
+    notes: Meal["notes"] | null;
+} & ContentAuthorColumns &
     HeroAttachmentColumns;
 
 const formatCookListMeal = (

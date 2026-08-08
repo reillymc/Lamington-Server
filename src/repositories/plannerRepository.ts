@@ -6,6 +6,7 @@ import type {
     RepositoryService,
 } from "./repository.ts";
 import type { Content, ContentMember } from "./temp.ts";
+import type { HeroImage, MemberResponseItem, Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
 
 export type PlannerUserStatus = "O" | "A" | "M" | "P" | "B";
@@ -23,7 +24,7 @@ export type PlannerMealCourse =
 export interface Planner {
     plannerId: string;
     name: string;
-    description: string | null;
+    description: string | undefined;
 }
 
 type VerifyPermissionsRequest = {
@@ -41,7 +42,7 @@ type VerifyPermissionsRequest = {
 
 type VerifyPermissionsResponse = {
     userId: User["userId"];
-    status: PlannerUserStatus | ReadonlyArray<PlannerUserStatus> | null;
+    status: PlannerUserStatus | ReadonlyArray<PlannerUserStatus> | undefined;
     planners: ReadonlyArray<{
         plannerId: Planner["plannerId"];
         hasPermissions: boolean;
@@ -51,22 +52,16 @@ type VerifyPermissionsResponse = {
 type PlannerMealResponse = {
     mealId: Meal["mealId"];
     course: PlannerMealCourse;
-    owner: {
-        userId: User["userId"];
-        firstName: User["firstName"];
-    };
+    owner: Owner;
     plannerId: NonNullable<Meal["plannerId"]>;
     year: NonNullable<Meal["year"]>;
     month: NonNullable<Meal["month"]>;
     dayOfMonth: NonNullable<Meal["dayOfMonth"]>;
-    description: Meal["description"] | null;
-    source: Meal["source"] | null;
-    recipeId: Meal["recipeId"] | null;
-    notes: Meal["notes"] | null;
-    heroImage: {
-        attachmentId: string;
-        uri: string;
-    } | null;
+    description: Meal["description"];
+    source: Meal["source"];
+    recipeId: Meal["recipeId"];
+    notes: Meal["notes"];
+    heroImage: HeroImage | undefined;
 };
 
 type ReadFilters = {
@@ -89,10 +84,10 @@ type CreatePlannerMealPayload = {
     month: Meal["month"];
     dayOfMonth: Meal["dayOfMonth"];
     course: PlannerMealCourse;
-    description?: Meal["description"];
-    source?: Meal["source"];
-    recipeId?: Meal["recipeId"];
-    notes?: Meal["notes"];
+    description?: Meal["description"] | null;
+    source?: Meal["source"] | null;
+    recipeId?: Meal["recipeId"] | null;
+    notes?: Meal["notes"] | null;
     heroImage?: string;
 };
 
@@ -111,10 +106,10 @@ type UpdatePlannerMealPayload = {
     month?: Meal["month"];
     dayOfMonth?: Meal["dayOfMonth"];
     course?: PlannerMealCourse;
-    description?: Meal["description"];
-    source?: Meal["source"];
-    recipeId?: Meal["recipeId"];
-    notes?: Meal["notes"];
+    description?: Meal["description"] | null;
+    source?: Meal["source"] | null;
+    recipeId?: Meal["recipeId"] | null;
+    notes?: Meal["notes"] | null;
     heroImage?: Attachment["attachmentId"] | null;
     mealId: Meal["mealId"];
 };
@@ -145,21 +140,13 @@ type MemberSaveItem = {
     userId: ContentMember["userId"];
     status?: PlannerUserStatus;
 };
-type MemberResponseItem = {
-    userId: ContentMember["userId"];
-    firstName: User["firstName"];
-    status: PlannerUserStatus | null;
-};
 
 type BasePlannerResponse = {
     plannerId: Planner["plannerId"];
     name: Planner["name"];
-    description: Planner["description"] | undefined;
+    description: Planner["description"];
     color: PlannerColor;
-    owner: {
-        userId: User["userId"];
-        firstName: User["firstName"];
-    };
+    owner: Owner;
     status: PlannerUserStatus | undefined;
 };
 
@@ -191,7 +178,7 @@ type CreatePlannersRequest = {
     userId: User["userId"];
     planners: ReadonlyArray<{
         name: Planner["name"];
-        description?: Planner["description"];
+        description?: Planner["description"] | null;
         color?: string;
     }>;
 };
@@ -203,7 +190,7 @@ type UpdatePlannersRequest = {
     planners: ReadonlyArray<{
         plannerId: Planner["plannerId"];
         name?: Planner["name"];
-        description?: Planner["description"];
+        description?: Planner["description"] | null;
         color?: string;
     }>;
 };
@@ -226,11 +213,7 @@ type ReadMembersRequest = {
 
 type ReadMembersResponse = {
     plannerId: Planner["plannerId"];
-    members: ReadonlyArray<
-        MemberResponseItem & {
-            lastName: User["lastName"];
-        }
-    >;
+    members: ReadonlyArray<MemberResponseItem<PlannerUserStatus>>;
 };
 
 type SaveMembersRequest = {
@@ -240,7 +223,7 @@ type SaveMembersRequest = {
 
 type SaveMembersResponse = {
     plannerId: Planner["plannerId"];
-    members: ReadonlyArray<MemberResponseItem>;
+    members: ReadonlyArray<MemberResponseItem<PlannerUserStatus>>;
 };
 
 type RemoveMembersRequest = {

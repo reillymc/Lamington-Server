@@ -1,15 +1,13 @@
 import type { Database, RepositoryService } from "./repository.ts";
+import type { Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
 
 export interface Ingredient {
     ingredientId: string;
     name: string;
-    namePlural: string | null;
-    description: string | null;
-    owner: {
-        userId: User["userId"];
-        firstName: User["firstName"];
-    } | null;
+    namePlural: string | undefined;
+    description: string | undefined;
+    owner: Owner | undefined;
 }
 
 type ReadRequest = {

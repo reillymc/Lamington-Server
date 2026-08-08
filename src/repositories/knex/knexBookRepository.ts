@@ -26,7 +26,8 @@ import {
     lamington,
 } from "./spec/index.ts";
 
-type BookRow = Pick<Book, "bookId" | "name" | "description"> & {
+type BookRow = Pick<Book, "bookId" | "name"> & {
+    description: Book["description"] | null;
     customisations: { color: BookColor; icon: BookIcon } | null;
     status: BookUserStatus | null;
 } & ContentAuthorColumns;

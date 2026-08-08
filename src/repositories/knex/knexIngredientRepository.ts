@@ -9,11 +9,10 @@ import type { ContentAuthorColumns } from "./common/rowTypes.ts";
 import type { KnexDatabase } from "./knex.ts";
 import { ContentTable, IngredientTable, lamington } from "./spec/index.ts";
 
-type IngredientRow = Pick<
-    Ingredient,
-    "ingredientId" | "name" | "namePlural" | "description"
-> &
-    ContentAuthorColumns;
+type IngredientRow = Pick<Ingredient, "ingredientId" | "name"> & {
+    namePlural: Ingredient["namePlural"] | null;
+    description: Ingredient["description"] | null;
+} & ContentAuthorColumns;
 
 const formatIngredient = (
     ingredient: IngredientRow,

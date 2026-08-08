@@ -11,7 +11,7 @@ export type User = {
     createdAt: string;
     updatedAt: string;
     status: string;
-    preferences: string | null;
+    preferences: string | undefined;
 };
 
 type UserProfile = {

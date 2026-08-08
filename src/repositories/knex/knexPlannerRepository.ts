@@ -34,15 +34,17 @@ import {
     PlannerTable,
 } from "./spec/index.ts";
 
-type PlannerRow = Pick<Planner, "plannerId" | "name" | "description"> & {
+type PlannerRow = Pick<Planner, "plannerId" | "name"> & {
+    description: Planner["description"] | null;
     customisations: { color: PlannerColor } | null;
     status: PlannerUserStatus | null;
 } & ContentAuthorColumns;
 
-type PlannerMealRow = Pick<
-    Meal,
-    "mealId" | "meal" | "description" | "source" | "recipeId" | "notes"
-> & {
+type PlannerMealRow = Pick<Meal, "mealId" | "meal"> & {
+    description: Meal["description"] | null;
+    source: Meal["source"] | null;
+    recipeId: Meal["recipeId"] | null;
+    notes: Meal["notes"] | null;
     plannerId: string;
     year: number;
     month: number;

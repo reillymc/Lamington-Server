@@ -11,21 +11,17 @@ import type {
 import type { KnexDatabase } from "./knex.ts";
 import { ContentTable, lamington, PlannerMealTable } from "./spec/index.ts";
 
-type MealRow = Pick<
-    Meal,
-    | "mealId"
-    | "plannerId"
-    | "year"
-    | "month"
-    | "dayOfMonth"
-    | "meal"
-    | "description"
-    | "source"
-    | "sequence"
-    | "recipeId"
-    | "notes"
-> &
-    ContentAuthorColumns &
+type MealRow = Pick<Meal, "mealId" | "meal"> & {
+    plannerId: Meal["plannerId"] | null;
+    year: Meal["year"] | null;
+    month: Meal["month"] | null;
+    dayOfMonth: Meal["dayOfMonth"] | null;
+    description: Meal["description"] | null;
+    source: Meal["source"] | null;
+    sequence: Meal["sequence"] | null;
+    recipeId: Meal["recipeId"] | null;
+    notes: Meal["notes"] | null;
+} & ContentAuthorColumns &
     HeroAttachmentColumns;
 
 type MealCourse = "breakfast" | "lunch" | "dinner";

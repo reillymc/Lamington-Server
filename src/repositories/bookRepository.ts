@@ -5,6 +5,7 @@ import type {
     RepositoryService,
 } from "./repository.ts";
 import type { ContentMember } from "./temp.ts";
+import type { MemberResponseItem, Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
 
 export type BookUserStatus = "O" | "A" | "M" | "P" | "B";
@@ -12,30 +13,18 @@ export type BookIcon = `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10}`;
 
 export type BookColor = `variant${1 | 2 | 3 | 4 | 5}`;
 
-// type BookCustomisationsV1 = {
-//     color: string;
-//     icon: BookUserStatus;
-// };
-
-// type BookCustomisations = BookCustomisationsV1;
-
 /**
  * Book
  */
 export interface Book {
     bookId: string;
     name: string;
-    description: string | null;
+    description: string | undefined;
 }
 
 type MemberItem = {
     userId: ContentMember["userId"];
     status: BookUserStatus | undefined;
-};
-
-type MemberResponseItem = MemberItem & {
-    firstName: User["firstName"];
-    lastName: User["lastName"];
 };
 
 type ReadAllRequest = {
@@ -45,13 +34,10 @@ type ReadAllRequest = {
 type BaseResponse = {
     bookId: Book["bookId"];
     name: Book["name"];
-    description: Book["description"] | undefined;
+    description: Book["description"];
     color: BookColor;
     icon: BookIcon;
-    owner: {
-        userId: User["userId"];
-        firstName: User["firstName"];
-    };
+    owner: Owner;
     status: BookUserStatus | undefined;
 };
 
@@ -97,7 +83,7 @@ type UpdateRequest = {
     books: ReadonlyArray<{
         bookId: Book["bookId"];
         name?: Book["name"];
-        description?: Book["description"];
+        description?: Book["description"] | null;
         color?: BookColor;
         icon?: BookIcon;
     }>;
@@ -161,7 +147,7 @@ type SaveMembersRequest = {
 
 type SaveMembersResponse = {
     bookId: Book["bookId"];
-    members: ReadonlyArray<MemberResponseItem>;
+    members: ReadonlyArray<MemberResponseItem<BookUserStatus>>;
 };
 
 type RemoveMembersRequest = {
@@ -182,7 +168,7 @@ type ReadMembersRequest = {
 
 type ReadMembersResponse = {
     bookId: Book["bookId"];
-    members: ReadonlyArray<MemberResponseItem>;
+    members: ReadonlyArray<MemberResponseItem<BookUserStatus>>;
 };
 
 export interface BookRepository<TDatabase extends Database = Database> {

@@ -4,6 +4,7 @@ import type {
     RepositoryService,
 } from "./repository.ts";
 import type { Content, ContentMember } from "./temp.ts";
+import type { MemberResponseItem, Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
 
 export type ListUserStatus = "O" | "A" | "M" | "P" | "B";
@@ -33,8 +34,8 @@ type ListCustomisations = ListCustomisationsV1;
 export type List = {
     listId: string;
     name: string;
-    customisations: ListCustomisations | null;
-    description: string | null;
+    customisations: ListCustomisations | undefined;
+    description: string | undefined;
 };
 
 /**
@@ -45,10 +46,10 @@ export interface ListItem {
     listId: string;
     name: string;
     completed: boolean;
-    ingredientId: string | null;
-    unit: string | null;
-    amount: ListItemIngredientAmount | null;
-    notes: string | null;
+    ingredientId: string | undefined;
+    unit: string | undefined;
+    amount: ListItemIngredientAmount | undefined;
+    notes: string | undefined;
 }
 
 type VerifyPermissionsRequest = {
@@ -61,7 +62,7 @@ type VerifyPermissionsRequest = {
 
 type VerifyPermissionsResponse = {
     userId: User["userId"];
-    status: ListUserStatus | ReadonlyArray<ListUserStatus> | null;
+    status: ListUserStatus | ReadonlyArray<ListUserStatus> | undefined;
     lists: ReadonlyArray<{
         listId: List["listId"];
         hasPermissions: boolean;
@@ -73,22 +74,13 @@ type MemberSaveItem = {
     status?: ListUserStatus;
 };
 
-type MemberResponseItem = {
-    userId: ContentMember["userId"];
-    firstName: User["firstName"];
-    status: ListUserStatus | null;
-};
-
 type BaseListResponse = {
     listId: List["listId"];
     name: List["name"];
     description: List["description"];
-    icon: ListIcon | null;
-    owner: {
-        userId: User["userId"];
-        firstName: User["firstName"];
-    };
-    status: ListUserStatus | null;
+    icon: ListIcon | undefined;
+    owner: Owner;
+    status: ListUserStatus | undefined;
 };
 
 type ReadAllListsRequest = {
@@ -156,11 +148,7 @@ type ReadMembersRequest = {
 
 type ReadMembersResponse = {
     listId: List["listId"];
-    members: ReadonlyArray<
-        MemberResponseItem & {
-            lastName: User["lastName"];
-        }
-    >;
+    members: ReadonlyArray<MemberResponseItem<ListUserStatus>>;
 };
 
 type SaveMembersRequest = {
@@ -170,7 +158,7 @@ type SaveMembersRequest = {
 
 type SaveMembersResponse = {
     listId: List["listId"];
-    members: ReadonlyArray<MemberResponseItem>;
+    members: ReadonlyArray<MemberResponseItem<ListUserStatus>>;
 };
 
 type RemoveMembersRequest = {
@@ -190,10 +178,10 @@ type ListItemResponse = {
     name: ListItem["name"];
     completed: ListItem["completed"];
     updatedAt: Content["updatedAt"];
-    ingredientId: ListItem["ingredientId"] | null;
-    unit: ListItem["unit"] | null;
-    amount: ListItem["amount"] | null;
-    notes: ListItem["notes"] | null;
+    ingredientId: ListItem["ingredientId"];
+    unit: ListItem["unit"];
+    amount: ListItem["amount"];
+    notes: ListItem["notes"];
 };
 
 type ReadAllItemsRequest = {
@@ -223,10 +211,10 @@ type ReadItemsResponse = {
 type CreateListItemPayload = {
     name: ListItem["name"];
     completed?: ListItem["completed"];
-    ingredientId?: ListItem["ingredientId"];
-    unit?: ListItem["unit"];
-    amount?: ListItem["amount"];
-    notes?: ListItem["notes"];
+    ingredientId?: ListItem["ingredientId"] | null;
+    unit?: ListItem["unit"] | null;
+    amount?: ListItem["amount"] | null;
+    notes?: ListItem["notes"] | null;
 };
 
 type CreateItemsRequest = {
@@ -244,10 +232,10 @@ type UpdateListItemPayload = {
     itemId: ListItem["itemId"];
     name?: ListItem["name"];
     completed?: ListItem["completed"];
-    ingredientId?: ListItem["ingredientId"];
-    unit?: ListItem["unit"];
-    amount?: ListItem["amount"];
-    notes?: ListItem["notes"];
+    ingredientId?: ListItem["ingredientId"] | null;
+    unit?: ListItem["unit"] | null;
+    amount?: ListItem["amount"] | null;
+    notes?: ListItem["notes"] | null;
 };
 
 type UpdateItemsRequest = {
@@ -301,7 +289,7 @@ type GetLatestUpdatedTimestampRequest = {
 
 type GetLatestUpdatedTimestampResponse = {
     listId: List["listId"];
-    updatedAt?: Content["updatedAt"];
+    updatedAt: Content["updatedAt"] | undefined;
 };
 
 export interface ListRepository<TDatabase extends Database = Database> {

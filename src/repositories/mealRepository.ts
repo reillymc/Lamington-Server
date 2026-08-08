@@ -1,18 +1,19 @@
 import type { Database, RepositoryService } from "./repository.ts";
+import type { HeroImage, Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
 
 export type Meal = {
     mealId: string;
-    plannerId: string | null;
-    year: number | null;
-    month: number | null;
-    dayOfMonth: number | null;
+    plannerId: string | undefined;
+    year: number | undefined;
+    month: number | undefined;
+    dayOfMonth: number | undefined;
     meal: string;
-    description: string | null;
-    source: string | null;
-    sequence: number | null;
-    recipeId: string | null;
-    notes: string | null;
+    description: string | undefined;
+    source: string | undefined;
+    sequence: number | undefined;
+    recipeId: string | undefined;
+    notes: string | undefined;
 };
 
 type ReadRequest = {
@@ -27,10 +28,7 @@ type ReadResponse = {
     meals: ReadonlyArray<{
         mealId: Meal["mealId"];
         course: "breakfast" | "lunch" | "dinner";
-        owner: {
-            userId: User["userId"];
-            firstName: User["firstName"];
-        };
+        owner: Owner;
         plannerId: Meal["plannerId"];
         year: Meal["year"];
         month: Meal["month"];
@@ -40,10 +38,7 @@ type ReadResponse = {
         sequence: Meal["sequence"];
         recipeId: Meal["recipeId"];
         notes: Meal["notes"];
-        heroImage?: {
-            attachmentId: string;
-            uri: string;
-        };
+        heroImage: HeroImage | undefined;
     }>;
 };
 
