@@ -166,7 +166,7 @@ export async function up(knex: Knex): Promise<void> {
                 .notNullable()
                 .references("recipeId")
                 .inTable("recipe")
-                .onDelete("RESTRICT");
+                .onDelete("CASCADE");
 
             table.primary(["recipeId", "subRecipeId"]);
         });
@@ -188,14 +188,14 @@ export async function up(knex: Knex): Promise<void> {
                 .notNullable()
                 .references("recipeId")
                 .inTable("recipe")
-                .onDelete("RESTRICT");
+                .onDelete("CASCADE");
 
             table
                 .uuid("ingredientId")
                 .notNullable()
                 .references("ingredientId")
                 .inTable("ingredient")
-                .onDelete("RESTRICT");
+                .onDelete("CASCADE");
 
             table.primary(["recipeId", "ingredientId"]);
             table.index(["ingredientId"]);

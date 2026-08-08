@@ -1,6 +1,7 @@
 import { Undefined } from "@reillymc/es-utils";
 import bcrypt from "bcrypt";
 import type { Knex } from "knex";
+import { serializeJsonField } from "../../../repositories/knex/common/dataFormatting/serializeJsonField.ts";
 
 const hashPassword = async (password: string) => {
     const salt = await bcrypt.genSalt();
@@ -292,8 +293,8 @@ export const seed = async (knex: Knex): Promise<void> => {
                     cookTime,
                     public: isPublic,
                     timesCooked,
-                    ingredients: JSON.stringify(ingredients),
-                    method: JSON.stringify(method),
+                    ingredients: serializeJsonField(ingredients),
+                    method: serializeJsonField(method),
                 }),
             ),
         )
