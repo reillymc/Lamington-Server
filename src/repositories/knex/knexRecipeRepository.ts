@@ -4,13 +4,18 @@ import type {
     ReadTagsResponse,
     Recipe,
     RecipeIngredient,
+    RecipeIngredientItemRequest,
+    RecipeMethodStepResponse,
+    RecipePayload,
     RecipeRating,
     RecipeRecipe,
     RecipeRepository,
+    RecipeSection,
 } from "../recipeRepository.ts";
 import type { Content } from "../temp.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { formatHeroAttachment } from "./common/dataFormatting/formatHeroAttachment.ts";
+import { serializeJsonField } from "./common/dataFormatting/serializeJsonField.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
 import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
@@ -170,7 +175,7 @@ const saveRecipeIngredientRows = async (
     const recipeIngredients = EnsureArray(params);
 
     const recipeIds = recipeIngredients.map(({ recipeId }) => recipeId);
-    if (recipeIds.length === 0) return [];
+    if (recipeIds.length === 0) return;
 
     await db<RecipeIngredient>(lamington.recipeIngredient)
         .whereIn(RecipeIngredientTable.recipeId, recipeIds)
@@ -187,8 +192,6 @@ const saveRecipeIngredientRows = async (
             ingredients,
         );
     }
-
-    return [];
 };
 
 const saveRecipeRecipeRows = async (
@@ -202,7 +205,7 @@ const saveRecipeRecipeRows = async (
     const recipeRecipes = EnsureArray(params);
 
     const recipeIds = recipeRecipes.map(({ recipeId }) => recipeId);
-    if (recipeIds.length === 0) return [];
+    if (recipeIds.length === 0) return;
 
     await db<RecipeRecipe>(lamington.recipeRecipe)
         .whereIn(RecipeRecipeTable.recipeId, recipeIds)
@@ -215,8 +218,6 @@ const saveRecipeRecipeRows = async (
     if (recipes.length > 0) {
         await db<RecipeRecipe>(lamington.recipeRecipe).insert(recipes);
     }
-
-    return [];
 };
 
 const ratingPersonalName = "rating_personal";
@@ -227,8 +228,29 @@ type RecipeRatingColumns = {
     [ratingPersonalName]: RecipeRating["rating"] | null;
 };
 
+// The recipe table stores DB-nullable columns as `| null`, unlike the
+// response-facing `Recipe` which exposes them as `| undefined`. The JSONB
+// ingredients hold the client-sent request items; names are enriched on read.
+type RecipeRow = {
+    recipeId: Recipe["recipeId"];
+    name: Recipe["name"];
+    source: Recipe["source"] | null;
+    servings: Recipe["servings"] | null;
+    prepTime: Recipe["prepTime"] | null;
+    cookTime: Recipe["cookTime"] | null;
+    nutritionalInformation: Recipe["nutritionalInformation"] | null;
+    summary: Recipe["summary"] | null;
+    tips: Recipe["tips"] | null;
+    public: Recipe["public"] | null;
+    timesCooked: Recipe["timesCooked"] | null;
+    ingredients: ReadonlyArray<
+        RecipeSection<RecipeIngredientItemRequest>
+    > | null;
+    method: ReadonlyArray<RecipeSection<RecipeMethodStepResponse>> | null;
+};
+
 type FullRecipeRow = Pick<
-    Recipe,
+    RecipeRow,
     | "recipeId"
     | "name"
     | "source"
@@ -337,16 +359,31 @@ const formatRecipe = (recipe: FullRecipeRow) => ({
     },
 });
 
-type RecipeIngredientSection = {
-    items: ReadonlyArray<{
-        ingredient?: { ingredientId: string };
-        recipe?: { recipeId: string };
-    }>;
+const formatRating = (
+    average: RecipeRatingColumns[typeof ratingAverageName],
+    personal: RecipeRatingColumns[typeof ratingPersonalName],
+) => ({
+    average: average ? parseFloat(average) : undefined,
+    personal: toUndefined(personal),
+});
+
+const toMethodSections = (
+    sections: RecipePayload["method"],
+): RecipeRow["method"] | undefined => {
+    if (sections === null || sections === undefined) {
+        return sections;
+    }
+    return sections.map(({ name, description, items }) => ({
+        name,
+        description,
+        items: items
+            .map(({ content }) => content)
+            .filter(Undefined)
+            .map((content) => ({ content })),
+    }));
 };
 
-const extractIngredientIds = (
-    sections: ReadonlyArray<RecipeIngredientSection> | null | undefined,
-) =>
+const extractIngredientIds = (sections: RecipeRow["ingredients"] | undefined) =>
     sections?.flatMap(({ items }) =>
         items
             .map((item) =>
@@ -357,9 +394,7 @@ const extractIngredientIds = (
             .filter(Undefined),
     );
 
-const extractSubRecipeIds = (
-    sections: ReadonlyArray<RecipeIngredientSection> | null | undefined,
-) =>
+const extractSubRecipeIds = (sections: RecipeRow["ingredients"] | undefined) =>
     sections?.flatMap(({ items }) =>
         items
             .map((item) =>
@@ -404,7 +439,15 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
             const recipe = recipesById.get(recipeId);
             if (!recipe) return [];
 
-            const ingredientMap = Object.fromEntries(
+            const ingredientMap: Record<
+                string,
+                | {
+                      ingredientId: string;
+                      name: string;
+                      namePlural: string | undefined;
+                  }
+                | undefined
+            > = Object.fromEntries(
                 (ingredientsByRecipeId.get(recipeId) ?? []).map(
                     (ingredient) => [
                         ingredient.ingredientId,
@@ -417,7 +460,10 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
                 ),
             );
 
-            const recipeMap = Object.fromEntries(
+            const recipeMap: Record<
+                string,
+                { recipeId: string; name: string } | undefined
+            > = Object.fromEntries(
                 (subRecipesByRecipeId.get(recipeId) ?? []).map((subRecipe) => [
                     subRecipe.recipeId,
                     {
@@ -432,39 +478,56 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
             return [
                 {
                     ...formatRecipe(recipe),
-                    rating: {
-                        average: recipe[ratingAverageName]
-                            ? parseFloat(recipe[ratingAverageName])
-                            : undefined,
-                        personal: toUndefined(recipe[ratingPersonalName]),
-                    },
+                    rating: formatRating(
+                        recipe[ratingAverageName],
+                        recipe[ratingPersonalName],
+                    ),
                     ingredients: recipe.ingredients?.map((section) => ({
                         ...section,
                         items: section.items.map((item) => {
-                            if ("ingredient" in item) {
-                                const { ingredientId, name } = item.ingredient;
+                            const base = {
+                                amount: item.amount,
+                                description: item.description,
+                                unit: item.unit,
+                                multiplier: item.multiplier,
+                                name: item.name,
+                                preparation: item.preparation,
+                            };
+
+                            if (item.ingredient) {
+                                const { ingredientId } = item.ingredient;
                                 const ingredient = ingredientMap[ingredientId];
                                 return {
-                                    ...item,
+                                    ...base,
                                     ingredient: {
                                         ingredientId,
-                                        name,
-                                        ...ingredient,
+                                        name:
+                                            ingredient?.name ?? item.name ?? "",
+                                        namePlural: ingredient?.namePlural,
                                     },
+                                    recipe: undefined,
                                 };
                             }
 
-                            if ("recipe" in item) {
+                            if (item.recipe) {
+                                const { recipeId } = item.recipe;
+                                const subRecipe = recipeMap[recipeId];
                                 return {
-                                    ...item,
+                                    ...base,
+                                    ingredient: undefined,
                                     recipe: {
-                                        ...item.recipe,
-                                        ...recipeMap[item.recipe.recipeId],
+                                        recipeId,
+                                        name:
+                                            subRecipe?.name ?? item.name ?? "",
                                     },
                                 };
                             }
 
-                            return item;
+                            return {
+                                ...base,
+                                ingredient: undefined,
+                                recipe: undefined,
+                            };
                         }),
                     })),
                     tags: ContentTagRowsToResponse(recipeTags),
@@ -487,24 +550,15 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             recipeId: contentId,
         }));
 
-        await db<Recipe>(lamington.recipe).insert(
+        await db<RecipeRow>(lamington.recipe).insert(
             recipesToCreate.map((recipe) => ({
                 name: recipe.name,
                 public: recipe.public,
                 recipeId: recipe.recipeId,
                 cookTime: recipe.cookTime,
                 nutritionalInformation: recipe.nutritionalInformation,
-                // https://github.com/knex/knex/issues/6126
-                ingredients: !recipe.ingredients
-                    ? recipe.ingredients
-                    : (JSON.stringify(
-                          recipe.ingredients,
-                      ) as unknown as Recipe["ingredients"]),
-                method: !recipe.method
-                    ? recipe.method
-                    : (JSON.stringify(
-                          recipe.method,
-                      ) as unknown as Recipe["method"]),
+                ingredients: serializeJsonField(recipe.ingredients),
+                method: serializeJsonField(toMethodSections(recipe.method)),
                 prepTime: recipe.prepTime,
                 servings: recipe.servings,
                 source: recipe.source,
@@ -569,17 +623,8 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                 {
                     ...recipe,
                     nutritionalInformation: recipe.nutritionalInformation,
-                    // https://github.com/knex/knex/issues/6126
-                    ingredients: !recipe.ingredients
-                        ? recipe.ingredients
-                        : (JSON.stringify(
-                              recipe.ingredients,
-                          ) as unknown as Recipe["ingredients"]),
-                    method: !recipe.method
-                        ? recipe.method
-                        : (JSON.stringify(
-                              recipe.method,
-                          ) as unknown as Recipe["method"]),
+                    ingredients: serializeJsonField(recipe.ingredients),
+                    method: serializeJsonField(toMethodSections(recipe.method)),
                 },
                 RecipeTable,
             );
@@ -593,6 +638,9 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
 
         const recipesIngredients = recipes.flatMap(
             ({ recipeId, ingredients }) => {
+                if (ingredients === null) {
+                    return [{ recipeId, ingredients: [] }];
+                }
                 const rows = extractIngredientIds(ingredients);
                 return rows === undefined
                     ? []
@@ -601,6 +649,9 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
         );
 
         const recipesRecipes = recipes.flatMap(({ recipeId, ingredients }) => {
+            if (ingredients === null) {
+                return [{ recipeId, recipes: [] }];
+            }
             const rows = extractSubRecipeIds(ingredients);
             return rows === undefined ? [] : [{ recipeId, recipes: rows }];
         });
@@ -775,16 +826,13 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                 }) => ({
                     recipeId: recipe.recipeId,
                     name: recipe.name,
+                    cookTime: toUndefined(recipe.cookTime),
+                    prepTime: toUndefined(recipe.prepTime),
                     owner: {
                         userId: recipe.createdBy,
                         firstName: recipe.firstName,
                     },
-                    rating: {
-                        average: ratingAverage
-                            ? parseFloat(ratingAverage)
-                            : undefined,
-                        personal: toUndefined(ratingPersonal),
-                    },
+                    rating: formatRating(ratingAverage, ratingPersonal),
                     photo: formatHeroAttachment(
                         heroAttachmentId,
                         heroAttachmentUri,

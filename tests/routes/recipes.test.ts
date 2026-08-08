@@ -519,7 +519,7 @@ describe("Get recipes", () => {
                     recipe.ingredients?.some(({ items }) =>
                         items.some((item) =>
                             "ingredient" in item
-                                ? item.ingredient.ingredientId ===
+                                ? item.ingredient?.ingredientId ===
                                   includedIngredient!.ingredientId
                                 : false,
                         ),
@@ -2031,7 +2031,10 @@ describe("Get a recipe", () => {
         expect(response!.tips).toBe(recipe!.tips);
         expect(response!.timesCooked).toBe(recipe!.timesCooked);
         expect(response!.method).toStrictEqual(recipe!.method);
-        expect(response!.ingredients).toStrictEqual(recipe!.ingredients);
+        // JSON-serialise to match the wire format (undefined keys are dropped)
+        expect(response!.ingredients).toStrictEqual(
+            JSON.parse(JSON.stringify(recipe!.ingredients)),
+        );
         expect(response!.rating!.personal).toBe(recipe!.rating.personal);
         expect(response!.rating!.average).toEqual(
             (recipe!.rating.personal! + otherRating!.rating!) / 2,
@@ -2083,6 +2086,102 @@ describe("Delete a recipe", () => {
             recipes: [{ recipeId: recipe!.recipeId }],
         });
         expect(recipes).toHaveLength(0);
+    });
+
+    it("should delete a recipe with linked ingredients", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: user.userId,
+            ingredients: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(204);
+
+        const { recipes } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+        expect(recipes).toHaveLength(0);
+    });
+
+    it("should delete a recipe used as a sub-recipe", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [subRecipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    ingredients: [
+                        {
+                            items: [
+                                { recipe: { recipeId: subRecipe!.recipeId } },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/recipes/${subRecipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(204);
+
+        const { recipes } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [subRecipe!],
+        });
+        expect(recipes).toHaveLength(0);
+
+        // Parent recipe remains readable without the sub-recipe reference
+        const { recipes: parentRecipes } = await KnexRecipeRepository.read(
+            database,
+            {
+                userId: user.userId,
+                recipes: [recipe!],
+            },
+        );
+        expect(parentRecipes).toHaveLength(1);
     });
 });
 

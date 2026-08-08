@@ -92,7 +92,7 @@ export const createRandomRecipeTags = async (database: KnexDatabase) => {
         database,
         parentTags.flatMap(({ tagId }) =>
             Array.from({ length: randomNumber() }).map(() => ({
-                parentTagId: tagId,
+                parentId: tagId,
                 name: uuid(),
                 description: uuid(),
             })),
