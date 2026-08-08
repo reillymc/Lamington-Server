@@ -3589,3 +3589,19 @@ components:
         - ingredientId
         - name
       unevaluatedProperties: false
+    IngredientCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        namePlural:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 255
+      required:
+        - name
+      unevaluatedProperties: false

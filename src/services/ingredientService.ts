@@ -5,17 +5,32 @@ export interface IngredientService {
     getAll: (
         userId: string,
     ) => Promise<ReadonlyArray<components["schemas"]["Ingredient"]>>;
+    create: (
+        userId: string,
+        ingredients: ReadonlyArray<components["schemas"]["IngredientCreate"]>,
+    ) => Promise<ReadonlyArray<components["schemas"]["Ingredient"]>>;
 }
 
 export const createIngredientService: CreateService<
     IngredientService,
-    "ingredientRepository"
-> = (database, { ingredientRepository }) => ({
+    "ingredientRepository",
+    "refreshIngredientsAsset"
+> = (database, { ingredientRepository }, { refreshIngredientsAsset }) => ({
     getAll: async (userId) => {
         const { ingredients } = await ingredientRepository.readAll(database, {
             userId,
         });
 
         return ingredients;
+    },
+    create: async (userId, ingredients) => {
+        const { ingredients: created } = await ingredientRepository.create(
+            database,
+            { userId, ingredients },
+        );
+
+        refreshIngredientsAsset.run();
+
+        return created;
     },
 });

@@ -6,7 +6,8 @@ import { createLogger, format, transports } from "winston";
 import { type AppConfig, setupApp } from "./app.ts";
 import development from "./database/knexfile.development.ts";
 import production from "./database/knexfile.production.ts";
-import { extractIngredientsAssetFile } from "./jobs/extractIngredientsAssetFile.ts";
+import { type AppJobs, runStartupJobs } from "./jobs/index.ts";
+import { createRefreshIngredientsAssetJob } from "./jobs/refreshIngredientsAsset.ts";
 import { createErrorHandlerMiddleware } from "./middleware/errorHandler.ts";
 import { createLoggerMiddleware } from "./middleware/logger.ts";
 import {
@@ -173,12 +174,21 @@ if (!accessSecret || !refreshSecret) {
 
 const repositories = defaultAppRepositories as AppRepositories<Database>;
 
+const jobs: AppJobs = {
+    refreshIngredientsAsset: createRefreshIngredientsAssetJob({
+        database: db,
+        repositories,
+        assetDirectory,
+        logger,
+    }),
+};
+
 const services: AppServices = {
     attachmentService: createAttachmentService(db, repositories),
     bookService: createBookService(db, repositories),
     contentExtractionService: createContentExtractionService(),
     cooklistService: createCooklistService(db, repositories),
-    ingredientService: createIngredientService(db, repositories),
+    ingredientService: createIngredientService(db, repositories, jobs),
     listService: createListService(db, repositories),
     mealService: createMealService(db, repositories),
     plannerService: createPlannerService(db, repositories),
@@ -208,8 +218,7 @@ const config: AppConfig = {
     assetDirectory,
 };
 
-// Run job on startup for now, eventually move to trigger on ingredient table update
-await extractIngredientsAssetFile(db, repositories, assetDirectory);
+runStartupJobs(jobs);
 
 const app = setupApp({ services, middleware, config });
 

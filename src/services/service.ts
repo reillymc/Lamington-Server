@@ -1,21 +1,36 @@
 import { EnsureArray } from "@reillymc/es-utils";
+import type { AppJobs } from "../jobs/index.ts";
 import type { AppRepositories, Database } from "../repositories/index.ts";
 import { AppError } from "../utils/logger.ts";
 
 export type CreateService<
     T,
     KRepositories extends keyof AppRepositories,
+    KJobs extends keyof AppJobs = never,
     TConfig extends Record<string, unknown> = never,
-> = [TConfig] extends [never]
-    ? (
-          database: Database,
-          repositories: Pick<AppRepositories, KRepositories>,
-      ) => T
-    : (
-          database: Database,
-          repositories: Pick<AppRepositories, KRepositories>,
-          config: TConfig,
-      ) => T;
+> = [KJobs] extends [never]
+    ? [TConfig] extends [never]
+        ? (
+              database: Database,
+              repositories: Pick<AppRepositories, KRepositories>,
+          ) => T
+        : (
+              database: Database,
+              repositories: Pick<AppRepositories, KRepositories>,
+              config: TConfig,
+          ) => T
+    : [TConfig] extends [never]
+      ? (
+            database: Database,
+            repositories: Pick<AppRepositories, KRepositories>,
+            jobs: Pick<AppJobs, KJobs>,
+        ) => T
+      : (
+            database: Database,
+            repositories: Pick<AppRepositories, KRepositories>,
+            jobs: Pick<AppJobs, KJobs>,
+            config: TConfig,
+        ) => T;
 
 type KnownEntities =
     | "attachment"

@@ -2,6 +2,7 @@ import knex from "knex";
 import { v4 } from "uuid";
 import { createLogger, transports } from "winston";
 import { setupApp } from "../../src/app.ts";
+import type { AppJobs } from "../../src/jobs/index.ts";
 import { createErrorHandlerMiddleware } from "../../src/middleware/errorHandler.ts";
 import type { AppMiddleware } from "../../src/middleware/index.ts";
 import { createLoggerMiddleware } from "../../src/middleware/logger.ts";
@@ -73,6 +74,12 @@ const defaultAppMiddleware: AppMiddleware = {
     rateLimiterRestrictive: createRateLimiterRestrictive(),
 };
 
+const defaultAppJobs: AppJobs = {
+    refreshIngredientsAsset: {
+        run: async () => true,
+    },
+};
+
 export const db = knex(testConfig);
 
 export const createTestApp = ({
@@ -80,16 +87,23 @@ export const createTestApp = ({
     repositories,
     middleware,
     services,
+    jobs,
 }: {
     database: Database;
     repositories?: Partial<AppRepositories>;
     middleware?: Partial<AppMiddleware>;
     services?: Partial<AppServices>;
+    jobs?: Partial<AppJobs>;
 }) => {
     const appRepositories = {
         ...defaultAppRepositories,
         ...repositories,
     } as AppRepositories<Database>;
+
+    const appJobs = {
+        ...defaultAppJobs,
+        ...jobs,
+    };
 
     return setupApp({
         services: {
@@ -103,6 +117,7 @@ export const createTestApp = ({
             ingredientService: createIngredientService(
                 database,
                 appRepositories,
+                appJobs,
             ),
             listService: createListService(database, appRepositories),
             mealService: createMealService(database, appRepositories),

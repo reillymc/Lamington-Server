@@ -102,6 +102,7 @@ export const createUserService: CreateService<
     | "bookRepository"
     | "recipeRepository"
     | "plannerRepository",
+    never,
     UserServiceConfig
 > = (
     database,
