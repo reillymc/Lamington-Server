@@ -1,5 +1,11 @@
 import { EnsureArray } from "@reillymc/es-utils";
-import type { ListRepository } from "../listRepository.ts";
+import type {
+    List,
+    ListIcon,
+    ListItem,
+    ListRepository,
+    ListUserStatus,
+} from "../listRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
@@ -7,6 +13,7 @@ import { withContentPermissions } from "./common/queryBuilders/withContentPermis
 import { createDeleteContent } from "./common/repositoryMethods/content.ts";
 import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
 import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
+import type { ContentAuthorColumns } from "./common/rowTypes.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     ContentMemberTable,
@@ -16,8 +23,29 @@ import {
     lamington,
 } from "./spec/index.ts";
 
+type ListRow = Pick<List, "listId" | "name" | "description"> & {
+    customisations: { icon: ListIcon } | null;
+    status: ListUserStatus | null;
+} & ContentAuthorColumns;
+
+type ListItemRow = Pick<
+    ListItem,
+    | "itemId"
+    | "listId"
+    | "name"
+    | "completed"
+    | "ingredientId"
+    | "unit"
+    | "amount"
+    | "notes"
+> & {
+    updatedAt: string;
+} & ContentAuthorColumns & {
+        status: string | null;
+    };
+
 const formatListItem = (
-    item: any,
+    item: ListItemRow,
 ): Awaited<ReturnType<ListRepository["readAllItems"]>>["items"][number] => ({
     itemId: item.itemId,
     name: item.name,
@@ -30,7 +58,7 @@ const formatListItem = (
 });
 
 const formatList = (
-    l: any,
+    l: ListRow,
 ): Awaited<ReturnType<ListRepository["read"]>>["lists"][number] => ({
     listId: l.listId,
     name: l.name,
@@ -46,7 +74,7 @@ const readItemsByIds = async (
     listId: string,
     itemIds: string[],
 ) => {
-    const result = await db(lamington.listItem)
+    const result: ListItemRow[] = await db(lamington.listItem)
         .select(
             ListItemTable.itemId,
             ListItemTable.listId,
@@ -83,7 +111,7 @@ const read: ListRepository<KnexDatabase>["read"] = async (
     db,
     { lists, userId },
 ) => {
-    const result: unknown[] = await db(lamington.list)
+    const result: ListRow[] = await db(lamington.list)
         .select(
             ListTable.listId,
             ListTable.name,
@@ -124,7 +152,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
         return { items: result, listId };
     },
     readAll: async (db, { userId, filter }) => {
-        const listItems: unknown[] = await db(lamington.list)
+        const listItems: ListRow[] = await db(lamington.list)
             .select(
                 ListTable.listId,
                 ListTable.name,
@@ -201,7 +229,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
     },
     delete: createDeleteContent("lists", "listId"),
     readAllItems: async (db, { userId, filter }) => {
-        const result = await db(lamington.listItem)
+        const result: ListItemRow[] = await db(lamington.listItem)
             .select(
                 ListItemTable.itemId,
                 ListItemTable.listId,
@@ -320,12 +348,13 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
     countOutstandingItems: async (db, request) => {
         const listIds = EnsureArray(request).map(({ listId }) => listId);
 
-        const results: any[] = await db(lamington.listItem)
-            .select(ListItemTable.listId)
-            .count({ count: ListItemTable.itemId })
-            .whereIn(ListItemTable.listId, listIds)
-            .where(ListItemTable.completed, false)
-            .groupBy(ListItemTable.listId);
+        const results: Array<{ listId: string; count: string | number }> =
+            await db(lamington.listItem)
+                .select(ListItemTable.listId)
+                .count({ count: ListItemTable.itemId })
+                .whereIn(ListItemTable.listId, listIds)
+                .where(ListItemTable.completed, false)
+                .groupBy(ListItemTable.listId);
 
         const countMap = new Map(
             results.map((r) => [r.listId, Number(r.count)]),
@@ -339,16 +368,17 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
     getLatestUpdatedTimestamp: async (db, request) => {
         const listIds = EnsureArray(request).map(({ listId }) => listId);
 
-        const results: any[] = await db(lamington.listItem)
-            .select(ListItemTable.listId)
-            .max(ContentTable.updatedAt, { as: "updatedAt" })
-            .leftJoin(
-                lamington.content,
-                ListItemTable.itemId,
-                ContentTable.contentId,
-            )
-            .whereIn(ListItemTable.listId, listIds)
-            .groupBy(ListItemTable.listId);
+        const results: Array<{ listId: string; updatedAt: string | null }> =
+            await db(lamington.listItem)
+                .select(ListItemTable.listId)
+                .max(ContentTable.updatedAt, { as: "updatedAt" })
+                .leftJoin(
+                    lamington.content,
+                    ListItemTable.itemId,
+                    ContentTable.contentId,
+                )
+                .whereIn(ListItemTable.listId, listIds)
+                .groupBy(ListItemTable.listId);
 
         const resultMap = new Map(results.map((r) => [r.listId, r.updatedAt]));
 

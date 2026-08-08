@@ -3,7 +3,7 @@ import type { Meal } from "./mealRepository.ts";
 import type { Database, RepositoryService } from "./repository.ts";
 import type { User } from "./userRepository.ts";
 
-type CookListMealCourse =
+export type CookListMealCourse =
     | "breakfast"
     | "lunch"
     | "dinner"

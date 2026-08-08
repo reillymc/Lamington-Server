@@ -1,6 +1,7 @@
 import { EnsureArray, Undefined } from "@reillymc/es-utils";
 import type { Ingredient } from "../ingredientRepository.ts";
 import type {
+    ReadTagsResponse,
     Recipe,
     RecipeIngredient,
     RecipeRating,
@@ -8,7 +9,6 @@ import type {
     RecipeRepository,
 } from "../recipeRepository.ts";
 import type { Content, ContentTag } from "../temp.ts";
-import type { User } from "../userRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { formatHeroAttachment } from "./common/dataFormatting/formatHeroAttachment.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
@@ -19,6 +19,10 @@ import { createDeleteContent } from "./common/repositoryMethods/content.ts";
 import { HeroAttachmentActions } from "./common/repositoryMethods/contentAttachment.ts";
 import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
 import { ContentTagActions } from "./common/repositoryMethods/contentTag.ts";
+import type {
+    ContentAuthorColumns,
+    HeroAttachmentColumns,
+} from "./common/rowTypes.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     BookRecipeTable,
@@ -44,7 +48,7 @@ const readTags = (
     request: {
         recipeId: Recipe["recipeId"];
     },
-) =>
+): Promise<Array<RecipeTagRow>> =>
     ContentTagActions.readByContentId(
         db,
         EnsureArray(request).map(({ recipeId }) => recipeId),
@@ -192,6 +196,48 @@ const saveRecipeRecipeRows = async (
 const ratingPersonalName = "rating_personal";
 const ratingAverageName = "rating_average";
 
+type RecipeRatingColumns = {
+    [ratingAverageName]: string | null;
+    [ratingPersonalName]: RecipeRating["rating"] | null;
+};
+
+type FullRecipeRow = Pick<
+    Recipe,
+    | "recipeId"
+    | "name"
+    | "source"
+    | "servings"
+    | "prepTime"
+    | "cookTime"
+    | "tips"
+    | "summary"
+    | "public"
+    | "method"
+    | "ingredients"
+    | "timesCooked"
+    | "nutritionalInformation"
+> & {
+    createdAt: Content["createdAt"];
+    updatedAt: Content["updatedAt"];
+} & ContentAuthorColumns &
+    HeroAttachmentColumns &
+    RecipeRatingColumns;
+
+type RecipeListItemRow = Pick<
+    Recipe,
+    "recipeId" | "name" | "timesCooked" | "cookTime" | "prepTime" | "public"
+> &
+    ContentAuthorColumns &
+    HeroAttachmentColumns &
+    RecipeRatingColumns;
+
+type RecipeTagRow = {
+    recipeId: string;
+    tagId: string;
+    parentId: string | undefined;
+    name: string;
+};
+
 const RecipeBase = (db: KnexDatabase, userId: string) => {
     const ratingsSubquery = db(lamington.recipeRating)
         .select(RecipeRatingTable.recipeId)
@@ -225,37 +271,11 @@ const RecipeBase = (db: KnexDatabase, userId: string) => {
         .modify(withHeroAttachment(RecipeTable.recipeId));
 };
 
-type GetFullRecipeResults =
-    | (Pick<
-          Recipe,
-          | "recipeId"
-          | "name"
-          | "timesCooked"
-          | "cookTime"
-          | "prepTime"
-          | "public"
-          | "tips"
-          | "ingredients"
-          | "method"
-          | "summary"
-          | "servings"
-          | "source"
-          | "nutritionalInformation"
-      > & {
-          [ratingAverageName]: string;
-          [ratingPersonalName]: RecipeRating["rating"];
-          firstName: User["firstName"];
-          createdBy: Content["createdBy"];
-          heroAttachmentId?: string;
-          heroAttachmentUri?: string;
-      })
-    | undefined;
-
 const getFullRecipe = async (
     db: KnexDatabase,
     recipeId: string,
     userId: string,
-): Promise<GetFullRecipeResults> => {
+): Promise<FullRecipeRow | undefined> => {
     const ratingsSubquery = db(lamington.recipeRating)
         .select(RecipeRatingTable.recipeId)
         .avg({ rating_average: RecipeRatingTable.rating })
@@ -301,7 +321,7 @@ const getFullRecipe = async (
     return query;
 };
 
-const formatRecipe = (recipe: any) => ({
+const formatRecipe = (recipe: FullRecipeRow) => ({
     recipeId: recipe.recipeId,
     name: recipe.name,
     cookTime: toUndefined(recipe.cookTime),
@@ -666,7 +686,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             cookTime: RecipeTable.cookTime,
         }[sort];
 
-        const recipeList = await RecipeBase(db, userId)
+        const recipeList: RecipeListItemRow[] = await RecipeBase(db, userId)
             .where((builder) => {
                 if (!filter.name) return;
                 return builder.where(
@@ -747,7 +767,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                     heroAttachmentId,
                     heroAttachmentUri,
                     ...recipe
-                }: any) => ({
+                }) => ({
                     recipeId: recipe.recipeId,
                     name: recipe.name,
                     owner: {
@@ -790,12 +810,24 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
     },
 };
 
-const ContentTagRowsToResponse = (tags: any): any =>
-    tags.reduce((acc: any, { tagId, parentId, name }: any) => {
+const ContentTagRowsToResponse = (
+    tags: ReadonlyArray<RecipeTagRow>,
+): ReadTagsResponse =>
+    tags.reduce<
+        Record<
+            string,
+            {
+                tagId: string;
+                name: string | undefined;
+                tags: Array<{ tagId: string; name: string }> | undefined;
+            }
+        >
+    >((acc, { tagId, parentId, name }) => {
         if (parentId) {
             acc[parentId] = {
                 ...acc[parentId],
                 tagId: parentId,
+                name: acc[parentId]?.name,
                 tags: [...(acc[parentId]?.tags ?? []), { tagId, name }],
             };
         } else {
@@ -803,7 +835,8 @@ const ContentTagRowsToResponse = (tags: any): any =>
                 ...acc[tagId],
                 tagId,
                 name,
+                tags: acc[tagId]?.tags,
             };
         }
         return acc;
-    }, {} as any);
+    }, {});

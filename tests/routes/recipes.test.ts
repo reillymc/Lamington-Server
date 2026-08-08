@@ -1192,7 +1192,7 @@ describe("Update a recipe", () => {
             attachment2!.attachmentId,
         );
         expect(recipeResponse!.photo!.uri).toEqual(attachment2!.uri);
-        expect(Object.keys(recipeResponse!.tags).sort()).toStrictEqual(
+        expect(Object.keys(recipeResponse!.tags ?? {}).sort()).toStrictEqual(
             updatedTags.map(({ tagId }) => tagId).sort(),
         );
     });

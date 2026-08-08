@@ -114,10 +114,6 @@ type ReadAllRequest = {
 type BaseResponse = {
     recipeId: Recipe["recipeId"];
     name: Recipe["name"];
-    public: Recipe["public"];
-    cookTime: Recipe["cookTime"];
-    prepTime: Recipe["prepTime"];
-    servings: Recipe["servings"];
     owner: {
         userId: User["userId"];
         firstName: User["firstName"];
@@ -253,12 +249,16 @@ type ReadMethodStepResponse = {
     photo: ReadAttachmentResponse;
 };
 
-type ReadTagsResponse = {
+export type ReadTagsResponse = {
     [tagGroupId: string]: {
         tagId: Tag["tagId"];
-        name: Tag["name"];
-        description: Tag["description"] | undefined;
-        tags: ReadonlyArray<Tag>;
+        name: Tag["name"] | undefined;
+        tags:
+            | ReadonlyArray<{
+                  tagId: Tag["tagId"];
+                  name: Tag["name"];
+              }>
+            | undefined;
     };
 };
 
@@ -274,6 +274,10 @@ type ReadResponse = {
     userId: User["userId"];
     recipes: ReadonlyArray<
         BaseResponse & {
+            public: Recipe["public"] | undefined;
+            cookTime: Recipe["cookTime"] | undefined;
+            prepTime: Recipe["prepTime"] | undefined;
+            servings: Recipe["servings"] | undefined;
             nutritionalInformation: Recipe["nutritionalInformation"];
             source: Recipe["source"];
             summary: Recipe["summary"];
@@ -281,7 +285,7 @@ type ReadResponse = {
             tips: Recipe["tips"];
             ingredients: Recipe["ingredients"];
             method: Recipe["method"];
-            tags: ReadTagsResponse;
+            tags: ReadTagsResponse | undefined;
         }
     >;
 };

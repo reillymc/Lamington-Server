@@ -1,17 +1,40 @@
-import type { MealRepository } from "../mealRepository.ts";
+import type { Meal, MealRepository } from "../mealRepository.ts";
 import { formatHeroAttachment } from "./common/dataFormatting/formatHeroAttachment.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
 import { withContentPermissions } from "./common/queryBuilders/withContentPermissions.ts";
 import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
+import type {
+    ContentAuthorColumns,
+    HeroAttachmentColumns,
+} from "./common/rowTypes.ts";
 import type { KnexDatabase } from "./knex.ts";
 import { ContentTable, lamington, PlannerMealTable } from "./spec/index.ts";
+
+type MealRow = Pick<
+    Meal,
+    | "mealId"
+    | "plannerId"
+    | "year"
+    | "month"
+    | "dayOfMonth"
+    | "meal"
+    | "description"
+    | "source"
+    | "sequence"
+    | "recipeId"
+    | "notes"
+> &
+    ContentAuthorColumns &
+    HeroAttachmentColumns;
+
+type MealCourse = "breakfast" | "lunch" | "dinner";
 
 export const KnexMealRepository: MealRepository<KnexDatabase> = {
     read: async (db, { userId, meals }) => {
         const mealIds = meals.map(({ mealId }) => mealId);
 
-        const result: any[] = await db(lamington.plannerMeal)
+        const result: MealRow[] = await db(lamington.plannerMeal)
             .select(
                 PlannerMealTable.mealId,
                 PlannerMealTable.plannerId,
@@ -45,7 +68,7 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
             userId,
             meals: result.map((meal) => ({
                 mealId: meal.mealId,
-                course: meal.meal.toLowerCase(),
+                course: meal.meal.toLowerCase() as MealCourse,
                 owner: {
                     userId: meal.createdBy,
                     firstName: meal.firstName,

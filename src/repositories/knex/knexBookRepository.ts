@@ -1,5 +1,11 @@
 import { EnsureArray } from "@reillymc/es-utils";
-import type { BookRepository } from "../bookRepository.ts";
+import type {
+    Book,
+    BookColor,
+    BookIcon,
+    BookRepository,
+    BookUserStatus,
+} from "../bookRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
@@ -7,6 +13,7 @@ import { withContentPermissions } from "./common/queryBuilders/withContentPermis
 import { createDeleteContent } from "./common/repositoryMethods/content.ts";
 import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
 import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
+import type { ContentAuthorColumns } from "./common/rowTypes.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     BookRecipeTable,
@@ -16,14 +23,19 @@ import {
     lamington,
 } from "./spec/index.ts";
 
+type BookRow = Pick<Book, "bookId" | "name" | "description"> & {
+    customisations: { color: BookColor; icon: BookIcon } | null;
+    status: BookUserStatus | null;
+} & ContentAuthorColumns;
+
 const formatBook = (
-    book: any,
+    book: BookRow,
 ): Awaited<ReturnType<BookRepository["read"]>>["books"][number] => ({
     bookId: book.bookId,
     name: book.name,
     description: toUndefined(book.description),
-    icon: toUndefined(book.customisations?.icon),
-    color: toUndefined(book.customisations?.color),
+    icon: book.customisations?.icon ?? "variant1",
+    color: book.customisations?.color ?? "variant1",
     owner: {
         userId: book.createdBy,
         firstName: book.firstName,
@@ -35,7 +47,7 @@ const read: BookRepository<KnexDatabase>["read"] = async (
     db,
     { books, userId },
 ) => {
-    const result: unknown[] = await db(lamington.book)
+    const result: BookRow[] = await db(lamington.book)
         .select(
             BookTable.bookId,
             BookTable.name,
@@ -116,7 +128,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         return read(db, { userId, books });
     },
     readAll: async (db, { userId }) => {
-        const bookList: unknown[] = await db(lamington.book)
+        const bookList: BookRow[] = await db(lamington.book)
             .select(
                 BookTable.bookId,
                 BookTable.name,

@@ -2443,6 +2443,7 @@ components:
         - plannerId
         - owner
         - name
+        - color
       unevaluatedProperties: false
     PlannerCreate:
       type: object
@@ -3285,6 +3286,8 @@ components:
         - bookId
         - name
         - owner
+        - color
+        - icon
       unevaluatedProperties: false
     BookCreate:
       type: object

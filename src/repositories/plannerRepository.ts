@@ -8,9 +8,9 @@ import type {
 import type { Content, ContentMember } from "./temp.ts";
 import type { User } from "./userRepository.ts";
 
-type PlannerUserStatus = "O" | "A" | "M" | "P" | "B";
-type PlannerColor = `variant${1 | 2 | 3 | 4 | 5}`;
-type PlannerMealCourse =
+export type PlannerUserStatus = "O" | "A" | "M" | "P" | "B";
+export type PlannerColor = `variant${1 | 2 | 3 | 4 | 5}`;
+export type PlannerMealCourse =
     | "breakfast"
     | "lunch"
     | "dinner"
@@ -20,7 +20,7 @@ type PlannerMealCourse =
     | "component"
     | "side";
 
-interface Planner {
+export interface Planner {
     plannerId: string;
     name: string;
     description: string | null;
@@ -154,13 +154,13 @@ type MemberResponseItem = {
 type BasePlannerResponse = {
     plannerId: Planner["plannerId"];
     name: Planner["name"];
-    description: Planner["description"];
+    description: Planner["description"] | undefined;
     color: PlannerColor;
     owner: {
         userId: User["userId"];
         firstName: User["firstName"];
     };
-    status?: PlannerUserStatus;
+    status: PlannerUserStatus | undefined;
 };
 
 type ReadAllPlannersRequest = {

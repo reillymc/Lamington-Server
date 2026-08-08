@@ -6,8 +6,8 @@ import type {
 import type { Content, ContentMember } from "./temp.ts";
 import type { User } from "./userRepository.ts";
 
-type ListUserStatus = "O" | "A" | "M" | "P" | "B";
-type ListIcon =
+export type ListUserStatus = "O" | "A" | "M" | "P" | "B";
+export type ListIcon =
     `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17}`;
 
 type NumberValue = { representation: "number"; value: string };
@@ -30,7 +30,7 @@ type ListCustomisations = ListCustomisationsV1;
 /**
  * List
  */
-type List = {
+export type List = {
     listId: string;
     name: string;
     customisations: ListCustomisations | null;
@@ -40,7 +40,7 @@ type List = {
 /**
  * ListItem
  */
-interface ListItem {
+export interface ListItem {
     itemId: string;
     listId: string;
     name: string;

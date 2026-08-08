@@ -1,11 +1,21 @@
-import type { IngredientRepository } from "../ingredientRepository.ts";
+import type {
+    Ingredient,
+    IngredientRepository,
+} from "../ingredientRepository.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
+import type { ContentAuthorColumns } from "./common/rowTypes.ts";
 import type { KnexDatabase } from "./knex.ts";
 import { ContentTable, IngredientTable, lamington } from "./spec/index.ts";
 
+type IngredientRow = Pick<
+    Ingredient,
+    "ingredientId" | "name" | "namePlural" | "description"
+> &
+    ContentAuthorColumns;
+
 const formatIngredient = (
-    ingredient: any,
+    ingredient: IngredientRow,
 ): Awaited<
     ReturnType<IngredientRepository["readAll"]>
 >["ingredients"][number] => ({
@@ -23,7 +33,7 @@ const formatIngredient = (
 
 export const KnexIngredientRepository: IngredientRepository<KnexDatabase> = {
     readAll: async (db, { userId }) => {
-        const result = await db(lamington.ingredient)
+        const result: IngredientRow[] = await db(lamington.ingredient)
             .select(
                 IngredientTable.ingredientId,
                 IngredientTable.namePlural,
