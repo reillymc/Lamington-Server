@@ -790,18 +790,18 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                         ),
                 );
             })
-            .modify((builder) => {
+            .where((builder) => {
                 if (!filter.books?.length) return;
-                builder
-                    .leftJoin(
-                        lamington.bookRecipe,
-                        RecipeTable.recipeId,
-                        BookRecipeTable.recipeId,
-                    )
-                    .whereIn(
-                        BookRecipeTable.bookId,
-                        filter.books.map(({ bookId }) => bookId),
-                    );
+                return builder.whereIn(
+                    RecipeTable.recipeId,
+                    db
+                        .select(BookRecipeTable.recipeId)
+                        .from(lamington.bookRecipe)
+                        .whereIn(
+                            BookRecipeTable.bookId,
+                            filter.books.map(({ bookId }) => bookId),
+                        ),
+                );
             })
 
             .orderBy([{ column: sortColumn, order }, RecipeTable.recipeId])

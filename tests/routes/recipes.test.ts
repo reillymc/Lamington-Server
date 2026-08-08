@@ -5,6 +5,7 @@ import request from "supertest";
 import { v4 as uuid } from "uuid";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
+import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
@@ -605,6 +606,41 @@ describe("Get recipes", () => {
 
             expect(data.length).toEqual(1);
             expect(data[0]!.recipeId).toEqual(targetRecipe!.recipeId);
+        });
+
+        it("should not duplicate recipes when filtering by multiple books", async () => {
+            const [_, user] = await PrepareAuthenticatedUser(database);
+
+            const {
+                recipes: [recipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId: user.userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const {
+                books: [book1, book2],
+            } = await KnexBookRepository.create(database, {
+                userId: user.userId,
+                books: [{ name: uuid() }, { name: uuid() }],
+            });
+
+            await KnexBookRepository.saveRecipes(database, {
+                bookId: book1!.bookId,
+                recipes: [recipe!],
+            });
+            await KnexBookRepository.saveRecipes(database, {
+                bookId: book2!.bookId,
+                recipes: [recipe!],
+            });
+
+            const { recipes } = await KnexRecipeRepository.readAll(database, {
+                userId: user.userId,
+                filter: { books: [book1!, book2!] },
+            });
+
+            expect(recipes).toHaveLength(1);
+            expect(recipes[0]!.recipeId).toEqual(recipe!.recipeId);
         });
     });
 
