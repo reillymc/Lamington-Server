@@ -1431,7 +1431,7 @@ paths:
     get:
       tags:
         - Ingredients
-      summary: Get user and system ingredients
+      summary: Get user ingredients
       operationId: getIngredients
       responses:
         200:

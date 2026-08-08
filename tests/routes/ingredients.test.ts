@@ -12,7 +12,7 @@ after(async () => {
     await db.destroy();
 });
 
-describe("Get user and system ingredients", () => {
+describe("Get user ingredients", () => {
     let database: KnexDatabase;
     let app: Express;
 
