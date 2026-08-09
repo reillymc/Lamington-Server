@@ -1,9 +1,9 @@
+import type { Knex } from "knex";
 import type { Content } from "../../../temp.ts";
-import type { KnexDatabase } from "../../knex.ts";
 import { ContentTable, lamington } from "../../spec/index.ts";
 
 export const createContentRows = async (
-    db: KnexDatabase,
+    db: Knex,
     createdBy: string,
     count: number,
 ): Promise<Array<{ contentId: string }>> =>
@@ -21,7 +21,7 @@ export const createDeleteContent =
         idKey: IdKey,
     ) =>
     async (
-        db: KnexDatabase,
+        db: Knex,
         request: Record<CollectionKey, ReadonlyArray<Record<IdKey, string>>>,
     ) => {
         const items = request[collectionKey];

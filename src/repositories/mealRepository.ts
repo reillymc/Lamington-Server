@@ -1,4 +1,4 @@
-import type { Database, RepositoryService } from "./repository.ts";
+import type { RepositoryMethod } from "./repository.ts";
 import type { HeroImage, Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
 
@@ -42,6 +42,6 @@ type ReadResponse = {
     }>;
 };
 
-export interface MealRepository<TDatabase extends Database = Database> {
-    read: RepositoryService<TDatabase, ReadRequest, ReadResponse>;
+export interface MealRepository {
+    read: RepositoryMethod<ReadRequest, ReadResponse>;
 }

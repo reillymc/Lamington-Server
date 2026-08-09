@@ -1,10 +1,6 @@
 import type { Attachment } from "./attachmentRepository.ts";
 import type { Meal } from "./mealRepository.ts";
-import type {
-    Database,
-    RepositoryBulkService,
-    RepositoryService,
-} from "./repository.ts";
+import type { RepositoryBulkMethod, RepositoryMethod } from "./repository.ts";
 import type { Content, ContentMember } from "./temp.ts";
 import type { HeroImage, MemberResponseItem, Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
@@ -238,69 +234,23 @@ type RemoveMembersResponse = {
     count: number;
 };
 
-export interface PlannerRepository<TDatabase extends Database = Database> {
-    create: RepositoryService<
-        TDatabase,
-        CreatePlannersRequest,
-        CreatePlannersResponse
-    >;
-    createMeals: RepositoryService<
-        TDatabase,
-        CreateMealsRequest,
-        CreateMealsResponse
-    >;
-    delete: RepositoryService<
-        TDatabase,
-        DeletePlannersRequest,
-        DeletePlannersResponse
-    >;
-    deleteMeals: RepositoryService<
-        TDatabase,
-        DeleteMealsRequest,
-        DeleteMealsResponse
-    >;
-    read: RepositoryService<
-        TDatabase,
-        ReadPlannersRequest,
-        ReadPlannersResponse
-    >;
-    readAll: RepositoryService<
-        TDatabase,
-        ReadAllPlannersRequest,
-        ReadAllPlannersResponse
-    >;
-    readAllMeals: RepositoryService<
-        TDatabase,
-        ReadAllMealsRequest,
-        ReadAllMealsResponse
-    >;
-    readMembers: RepositoryBulkService<
-        TDatabase,
-        ReadMembersRequest,
-        ReadMembersResponse
-    >;
-    removeMembers: RepositoryBulkService<
-        TDatabase,
+export interface PlannerRepository {
+    create: RepositoryMethod<CreatePlannersRequest, CreatePlannersResponse>;
+    createMeals: RepositoryMethod<CreateMealsRequest, CreateMealsResponse>;
+    delete: RepositoryMethod<DeletePlannersRequest, DeletePlannersResponse>;
+    deleteMeals: RepositoryMethod<DeleteMealsRequest, DeleteMealsResponse>;
+    read: RepositoryMethod<ReadPlannersRequest, ReadPlannersResponse>;
+    readAll: RepositoryMethod<ReadAllPlannersRequest, ReadAllPlannersResponse>;
+    readAllMeals: RepositoryMethod<ReadAllMealsRequest, ReadAllMealsResponse>;
+    readMembers: RepositoryBulkMethod<ReadMembersRequest, ReadMembersResponse>;
+    removeMembers: RepositoryBulkMethod<
         RemoveMembersRequest,
         RemoveMembersResponse
     >;
-    saveMembers: RepositoryBulkService<
-        TDatabase,
-        SaveMembersRequest,
-        SaveMembersResponse
-    >;
-    update: RepositoryService<
-        TDatabase,
-        UpdatePlannersRequest,
-        UpdatePlannersResponse
-    >;
-    updateMeals: RepositoryService<
-        TDatabase,
-        UpdateMealsRequest,
-        UpdateMealsResponse
-    >;
-    verifyPermissions: RepositoryService<
-        TDatabase,
+    saveMembers: RepositoryBulkMethod<SaveMembersRequest, SaveMembersResponse>;
+    update: RepositoryMethod<UpdatePlannersRequest, UpdatePlannersResponse>;
+    updateMeals: RepositoryMethod<UpdateMealsRequest, UpdateMealsResponse>;
+    verifyPermissions: RepositoryMethod<
         VerifyPermissionsRequest,
         VerifyPermissionsResponse
     >;

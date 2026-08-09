@@ -1,9 +1,5 @@
 import type { Recipe } from "./recipeRepository.ts";
-import type {
-    Database,
-    RepositoryBulkService,
-    RepositoryService,
-} from "./repository.ts";
+import type { RepositoryBulkMethod, RepositoryMethod } from "./repository.ts";
 import type { ContentMember } from "./temp.ts";
 import type { MemberResponseItem, Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
@@ -171,39 +167,24 @@ type ReadMembersResponse = {
     members: ReadonlyArray<MemberResponseItem<BookUserStatus>>;
 };
 
-export interface BookRepository<TDatabase extends Database = Database> {
-    read: RepositoryService<TDatabase, ReadRequest, ReadResponse>;
-    readAll: RepositoryService<TDatabase, ReadAllRequest, ReadAllResponse>;
-    create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;
-    update: RepositoryService<TDatabase, UpdateRequest, UpdateResponse>;
-    delete: RepositoryService<TDatabase, DeleteRequest, DeleteResponse>;
-    verifyPermissions: RepositoryService<
-        TDatabase,
+export interface BookRepository {
+    read: RepositoryMethod<ReadRequest, ReadResponse>;
+    readAll: RepositoryMethod<ReadAllRequest, ReadAllResponse>;
+    create: RepositoryMethod<CreateRequest, CreateResponse>;
+    update: RepositoryMethod<UpdateRequest, UpdateResponse>;
+    delete: RepositoryMethod<DeleteRequest, DeleteResponse>;
+    verifyPermissions: RepositoryMethod<
         VerifyPermissionsRequest,
         VerifyPermissionsResponse
     >;
-    saveRecipes: RepositoryBulkService<
-        TDatabase,
-        SaveRecipesRequest,
-        SaveRecipesResponse
-    >;
-    removeRecipes: RepositoryBulkService<
-        TDatabase,
+    saveRecipes: RepositoryBulkMethod<SaveRecipesRequest, SaveRecipesResponse>;
+    removeRecipes: RepositoryBulkMethod<
         RemoveRecipesRequest,
         RemoveRecipesResponse
     >;
-    readMembers: RepositoryBulkService<
-        TDatabase,
-        ReadMembersRequest,
-        ReadMembersResponse
-    >;
-    saveMembers: RepositoryBulkService<
-        TDatabase,
-        SaveMembersRequest,
-        SaveMembersResponse
-    >;
-    removeMembers: RepositoryBulkService<
-        TDatabase,
+    readMembers: RepositoryBulkMethod<ReadMembersRequest, ReadMembersResponse>;
+    saveMembers: RepositoryBulkMethod<SaveMembersRequest, SaveMembersResponse>;
+    removeMembers: RepositoryBulkMethod<
         RemoveMembersRequest,
         RemoveMembersResponse
     >;

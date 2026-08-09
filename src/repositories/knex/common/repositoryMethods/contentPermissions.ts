@@ -1,10 +1,10 @@
-import type { KnexDatabase } from "../../knex.ts";
+import type { Knex } from "knex";
 import { ContentTable, lamington } from "../../spec/index.ts";
 import { withContentPermissions } from "../queryBuilders/withContentPermissions.ts";
 import type { ContentMemberStatus } from "./contentMember.ts";
 
 export const verifyContentPermissions = async (
-    db: KnexDatabase,
+    db: Knex,
     userId: string,
     contentIds: string[],
     statuses:

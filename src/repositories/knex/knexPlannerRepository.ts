@@ -1,4 +1,5 @@
 import { EnsureArray } from "@reillymc/es-utils";
+import type { Knex } from "knex";
 import type { Meal } from "../mealRepository.ts";
 import type {
     Planner,
@@ -23,7 +24,7 @@ import type {
     ContentAuthorColumns,
     HeroAttachmentColumns,
 } from "./common/rowTypes.ts";
-import type { KnexDatabase } from "./knex.ts";
+import { type KnexRepoMethod, knexRepository } from "./knexRepository.ts";
 import {
     AttachmentTable,
     ContentAttachmentTable,
@@ -78,11 +79,7 @@ const formatPlannerMeal = (
             : undefined,
 });
 
-const readByIds = async (
-    db: KnexDatabase,
-    plannerId: string,
-    mealIds: string[],
-) => {
+const readByIds = async (db: Knex, plannerId: string, mealIds: string[]) => {
     const result: PlannerMealRow[] = await db(lamington.plannerMeal)
         .select(
             PlannerMealTable.mealId,
@@ -113,7 +110,7 @@ const readByIds = async (
     return result.map(formatPlannerMeal);
 };
 
-const read: PlannerRepository<KnexDatabase>["read"] = async (
+const read: KnexRepoMethod<PlannerRepository, "read"> = async (
     db,
     { planners, userId },
 ) => {
@@ -156,7 +153,7 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (
     };
 };
 
-export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
+export const createKnexPlannerRepository = knexRepository<PlannerRepository>({
     readAllMeals: async (db, { userId, filter }) => {
         const result: PlannerMealRow[] = await db(lamington.plannerMeal)
             .select(
@@ -191,7 +188,9 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
                     builder.where({ [PlannerMealTable.year]: filter.year });
                 }
                 if (filter.month !== undefined) {
-                    builder.where({ [PlannerMealTable.month]: filter.month });
+                    builder.where({
+                        [PlannerMealTable.month]: filter.month,
+                    });
                 }
             });
 
@@ -360,7 +359,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
         return read(db, { userId, planners });
     },
     delete: createDeleteContent("planners", "plannerId"),
-    readMembers: async (db, request) =>
+    readMembers: (db, request) =>
         ContentMemberActions.readByContentId(
             db,
             EnsureArray(request).map(({ plannerId }) => plannerId),
@@ -372,7 +371,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
                     .map(({ contentId, ...member }) => member),
             })),
         ),
-    saveMembers: async (db, request) =>
+    saveMembers: (db, request) =>
         ContentMemberActions.save(
             db,
             EnsureArray(request).flatMap(({ plannerId, members = [] }) =>
@@ -390,7 +389,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
                 ),
             })),
         ),
-    removeMembers: async (db, request) =>
+    removeMembers: (db, request) =>
         ContentMemberActions.delete(
             db,
             EnsureArray(request).flatMap(({ plannerId, members = [] }) =>
@@ -422,4 +421,4 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
             })),
         };
     },
-};
+});

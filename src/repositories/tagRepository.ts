@@ -1,8 +1,4 @@
-import type {
-    Database,
-    RepositoryBulkService,
-    RepositoryService,
-} from "./repository.ts";
+import type { RepositoryBulkMethod, RepositoryMethod } from "./repository.ts";
 
 export interface Tag {
     tagId: string;
@@ -21,7 +17,7 @@ type CreateRequest = {
 };
 type CreateResponse = Tag;
 
-export interface TagRepository<TDatabase extends Database = Database> {
-    readAll: RepositoryService<TDatabase, ReadRequest, ReadResponse>;
-    create: RepositoryBulkService<TDatabase, CreateRequest, CreateResponse>;
+export interface TagRepository {
+    readAll: RepositoryMethod<ReadRequest, ReadResponse>;
+    create: RepositoryBulkMethod<CreateRequest, CreateResponse>;
 }

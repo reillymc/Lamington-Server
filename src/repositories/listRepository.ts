@@ -1,8 +1,4 @@
-import type {
-    Database,
-    RepositoryBulkService,
-    RepositoryService,
-} from "./repository.ts";
+import type { RepositoryBulkMethod, RepositoryMethod } from "./repository.ts";
 import type { Content, ContentMember } from "./temp.ts";
 import type { MemberResponseItem, Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
@@ -292,85 +288,33 @@ type GetLatestUpdatedTimestampResponse = {
     updatedAt: Content["updatedAt"] | undefined;
 };
 
-export interface ListRepository<TDatabase extends Database = Database> {
-    countOutstandingItems: RepositoryBulkService<
-        TDatabase,
+export interface ListRepository {
+    countOutstandingItems: RepositoryBulkMethod<
         CountOutstandingItemsRequest,
         CountOutstandingItemsResponse
     >;
-    create: RepositoryService<
-        TDatabase,
-        CreateListsRequest,
-        CreateListsResponse
-    >;
-    createItems: RepositoryService<
-        TDatabase,
-        CreateItemsRequest,
-        CreateItemsResponse
-    >;
-    delete: RepositoryService<
-        TDatabase,
-        DeleteListsRequest,
-        DeleteListsResponse
-    >;
-    deleteItems: RepositoryService<
-        TDatabase,
-        DeleteItemsRequest,
-        DeleteItemsResponse
-    >;
-    getLatestUpdatedTimestamp: RepositoryBulkService<
-        TDatabase,
+    create: RepositoryMethod<CreateListsRequest, CreateListsResponse>;
+    createItems: RepositoryMethod<CreateItemsRequest, CreateItemsResponse>;
+    delete: RepositoryMethod<DeleteListsRequest, DeleteListsResponse>;
+    deleteItems: RepositoryMethod<DeleteItemsRequest, DeleteItemsResponse>;
+    getLatestUpdatedTimestamp: RepositoryBulkMethod<
         GetLatestUpdatedTimestampRequest,
         GetLatestUpdatedTimestampResponse
     >;
-    moveItems: RepositoryService<
-        TDatabase,
-        MoveItemsRequest,
-        MoveItemsResponse
-    >;
-    read: RepositoryService<TDatabase, ReadListsRequest, ReadListsResponse>;
-    readAll: RepositoryService<
-        TDatabase,
-        ReadAllListsRequest,
-        ReadAllListsResponse
-    >;
-    readAllItems: RepositoryService<
-        TDatabase,
-        ReadAllItemsRequest,
-        ReadAllItemsResponse
-    >;
-    readItems: RepositoryService<
-        TDatabase,
-        ReadItemsRequest,
-        ReadItemsResponse
-    >;
-    readMembers: RepositoryBulkService<
-        TDatabase,
-        ReadMembersRequest,
-        ReadMembersResponse
-    >;
-    removeMembers: RepositoryBulkService<
-        TDatabase,
+    moveItems: RepositoryMethod<MoveItemsRequest, MoveItemsResponse>;
+    read: RepositoryMethod<ReadListsRequest, ReadListsResponse>;
+    readAll: RepositoryMethod<ReadAllListsRequest, ReadAllListsResponse>;
+    readAllItems: RepositoryMethod<ReadAllItemsRequest, ReadAllItemsResponse>;
+    readItems: RepositoryMethod<ReadItemsRequest, ReadItemsResponse>;
+    readMembers: RepositoryBulkMethod<ReadMembersRequest, ReadMembersResponse>;
+    removeMembers: RepositoryBulkMethod<
         RemoveMembersRequest,
         RemoveMembersResponse
     >;
-    saveMembers: RepositoryBulkService<
-        TDatabase,
-        SaveMembersRequest,
-        SaveMembersResponse
-    >;
-    update: RepositoryService<
-        TDatabase,
-        UpdateListsRequest,
-        UpdateListsResponse
-    >;
-    updateItems: RepositoryService<
-        TDatabase,
-        UpdateItemsRequest,
-        UpdateItemsResponse
-    >;
-    verifyPermissions: RepositoryService<
-        TDatabase,
+    saveMembers: RepositoryBulkMethod<SaveMembersRequest, SaveMembersResponse>;
+    update: RepositoryMethod<UpdateListsRequest, UpdateListsResponse>;
+    updateItems: RepositoryMethod<UpdateItemsRequest, UpdateItemsResponse>;
+    verifyPermissions: RepositoryMethod<
         VerifyPermissionsRequest,
         VerifyPermissionsResponse
     >;

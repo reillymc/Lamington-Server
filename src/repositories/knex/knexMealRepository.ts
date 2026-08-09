@@ -8,7 +8,7 @@ import type {
     ContentAuthorColumns,
     HeroAttachmentColumns,
 } from "./common/rowTypes.ts";
-import type { KnexDatabase } from "./knex.ts";
+import { knexRepository } from "./knexRepository.ts";
 import { ContentTable, lamington, PlannerMealTable } from "./spec/index.ts";
 
 type MealRow = Pick<Meal, "mealId" | "meal"> & {
@@ -26,7 +26,7 @@ type MealRow = Pick<Meal, "mealId" | "meal"> & {
 
 type MealCourse = "breakfast" | "lunch" | "dinner";
 
-export const KnexMealRepository: MealRepository<KnexDatabase> = {
+export const createKnexMealRepository = knexRepository<MealRepository>({
     read: async (db, { userId, meals }) => {
         const mealIds = meals.map(({ mealId }) => mealId);
 
@@ -85,4 +85,4 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
             })),
         };
     },
-};
+});

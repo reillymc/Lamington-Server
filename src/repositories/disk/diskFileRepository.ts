@@ -11,13 +11,13 @@ export const createDiskFileRepository = (
     uploadDirectory: string,
     subPath: string,
 ): FileRepository => ({
-    delete: async (_, { path }) => {
+    delete: async ({ path }) => {
         const localPath = getLocalPath(uploadDirectory, path);
 
         if (existsSync(localPath)) await unlink(localPath);
         return true;
     },
-    create: async (_, { file, attachmentId, userId }) => {
+    create: async ({ file, attachmentId, userId }) => {
         const filePath = `${subPath}/${userId}/${attachmentId}`;
 
         const localPath = getLocalPath(uploadDirectory, filePath);

@@ -1,8 +1,4 @@
-export interface Database {
-    transaction<T>(
-        transactionScope: (trx: this) => Promise<T> | undefined,
-    ): Promise<T>;
-}
+export type TransactionRunner = <T>(fn: () => Promise<T>) => Promise<T>;
 
 /**
  *   Map optional columns from the database (null) to undefined
@@ -13,25 +9,10 @@ type NullToUndefined<T> = T extends object
       ? NonNullable<T> | undefined
       : T;
 
-/**
- *   A repository action bound to a database.
- *
- *   The method is declared with the `bivarianceHack` so that `Db` is checked
- *   bivariantly, allowing a repository bound to a concrete database type
- *   (e.g. `KnexDatabase`) to be assigned to the same repository typed against
- *   the generic `Database`.
- */
-export type RepositoryService<Db, Req, Res> = {
-    bivarianceHack(db: Db, request: Req): Promise<NullToUndefined<Res>>;
-}["bivarianceHack"];
+export type RepositoryMethod<Req, Res> = (
+    request: Req,
+) => Promise<NullToUndefined<Res>>;
 
-/**
- *   A bulk repository action bound to a database, accepting either a single
- *   request or an array of requests.
- */
-export type RepositoryBulkService<Db, Req, Res> = {
-    bivarianceHack(
-        db: Db,
-        request: ReadonlyArray<Req> | Req,
-    ): Promise<ReadonlyArray<NullToUndefined<Res>>>;
-}["bivarianceHack"];
+export type RepositoryBulkMethod<Req, Res> = (
+    request: ReadonlyArray<Req> | Req,
+) => Promise<ReadonlyArray<NullToUndefined<Res>>>;

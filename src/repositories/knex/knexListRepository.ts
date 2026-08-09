@@ -1,4 +1,5 @@
 import { EnsureArray } from "@reillymc/es-utils";
+import type { Knex } from "knex";
 import type {
     List,
     ListIcon,
@@ -17,7 +18,7 @@ import {
 import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
 import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
 import type { ContentAuthorColumns } from "./common/rowTypes.ts";
-import type { KnexDatabase } from "./knex.ts";
+import { type KnexRepoMethod, knexRepository } from "./knexRepository.ts";
 import {
     ContentMemberTable,
     ContentTable,
@@ -70,7 +71,7 @@ const formatList = (
 });
 
 const readItemsByIds = async (
-    db: KnexDatabase,
+    db: Knex,
     userId: string,
     listId: string,
     itemIds: string[],
@@ -108,7 +109,7 @@ const readItemsByIds = async (
     return result.map(formatListItem);
 };
 
-const read: ListRepository<KnexDatabase>["read"] = async (
+const read: KnexRepoMethod<ListRepository, "read"> = async (
     db,
     { lists, userId },
 ) => {
@@ -140,8 +141,8 @@ const read: ListRepository<KnexDatabase>["read"] = async (
     };
 };
 
-export const KnexListRepository: ListRepository<KnexDatabase> = {
-    read,
+export const createKnexListRepository = knexRepository<ListRepository>({
+    read: read,
     readItems: async (db, { userId, listId, items }) => {
         const result = await readItemsByIds(
             db,
@@ -384,7 +385,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
             updatedAt: toUndefined(resultMap.get(listId)),
         }));
     },
-    readMembers: async (db, request) =>
+    readMembers: (db, request) =>
         ContentMemberActions.readByContentId(
             db,
             EnsureArray(request).map(({ listId }) => listId),
@@ -396,7 +397,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
                     .map(({ contentId, ...member }) => member),
             })),
         ),
-    saveMembers: async (db, request) =>
+    saveMembers: (db, request) =>
         ContentMemberActions.save(
             db,
             EnsureArray(request).flatMap(({ listId, members = [] }) =>
@@ -414,7 +415,7 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
                 ),
             })),
         ),
-    removeMembers: async (db, request) =>
+    removeMembers: (db, request) =>
         ContentMemberActions.delete(
             db,
             EnsureArray(request).flatMap(({ listId, members = [] }) =>
@@ -446,4 +447,4 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
             })),
         };
     },
-};
+});

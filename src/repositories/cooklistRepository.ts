@@ -1,6 +1,6 @@
 import type { Attachment } from "./attachmentRepository.ts";
 import type { Meal } from "./mealRepository.ts";
-import type { Database, RepositoryService } from "./repository.ts";
+import type { RepositoryMethod } from "./repository.ts";
 import type { HeroImage, Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
 
@@ -98,29 +98,12 @@ type VerifyMealPermissionsResponse = {
     }>;
 };
 
-export interface CookListRepository<TDatabase extends Database = Database> {
-    createMeals: RepositoryService<
-        TDatabase,
-        CreateMealsRequest,
-        CreateMealsResponse
-    >;
-    deleteMeals: RepositoryService<
-        TDatabase,
-        DeleteMealsRequest,
-        DeleteMealsResponse
-    >;
-    readAllMeals: RepositoryService<
-        TDatabase,
-        ReadAllMealsRequest,
-        ReadAllMealsResponse
-    >;
-    updateMeals: RepositoryService<
-        TDatabase,
-        UpdateMealsRequest,
-        UpdateMealsResponse
-    >;
-    verifyMealPermissions: RepositoryService<
-        TDatabase,
+export interface CookListRepository {
+    createMeals: RepositoryMethod<CreateMealsRequest, CreateMealsResponse>;
+    deleteMeals: RepositoryMethod<DeleteMealsRequest, DeleteMealsResponse>;
+    readAllMeals: RepositoryMethod<ReadAllMealsRequest, ReadAllMealsResponse>;
+    updateMeals: RepositoryMethod<UpdateMealsRequest, UpdateMealsResponse>;
+    verifyMealPermissions: RepositoryMethod<
         VerifyMealPermissionsRequest,
         VerifyMealPermissionsResponse
     >;

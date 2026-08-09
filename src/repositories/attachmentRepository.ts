@@ -1,4 +1,4 @@
-import type { Database, RepositoryService } from "./repository.ts";
+import type { RepositoryMethod } from "./repository.ts";
 import type { User } from "./userRepository.ts";
 
 export interface Attachment {
@@ -34,7 +34,7 @@ type UpdateResponse = {
     attachments: ReadonlyArray<Attachment>;
 };
 
-export interface AttachmentRepository<TDatabase extends Database = Database> {
-    create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;
-    update: RepositoryService<TDatabase, UpdateRequest, UpdateResponse>;
+export interface AttachmentRepository {
+    create: RepositoryMethod<CreateRequest, CreateResponse>;
+    update: RepositoryMethod<UpdateRequest, UpdateResponse>;
 }

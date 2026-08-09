@@ -1,4 +1,4 @@
-import type { Database, RepositoryService } from "./repository.ts";
+import type { RepositoryMethod } from "./repository.ts";
 
 type UserStatus = "O" | "A" | "M" | "P" | "B";
 
@@ -117,35 +117,17 @@ type VerifyPermissionsResponse = {
     hasPermissions: boolean;
 };
 
-export interface UserRepository<TDatabase extends Database = Database> {
-    create: RepositoryService<
-        TDatabase,
-        CreateUsersRequest,
-        CreateUsersResponse
-    >;
-    delete: RepositoryService<
-        TDatabase,
-        DeleteUsersRequest,
-        DeleteUsersResponse
-    >;
-    read: RepositoryService<TDatabase, ReadUsersRequest, ReadUsersResponse>;
-    readAll: RepositoryService<
-        TDatabase,
-        ReadAllUsersRequest,
-        ReadAllUsersResponse
-    >;
-    readCredentials: RepositoryService<
-        TDatabase,
+export interface UserRepository {
+    create: RepositoryMethod<CreateUsersRequest, CreateUsersResponse>;
+    delete: RepositoryMethod<DeleteUsersRequest, DeleteUsersResponse>;
+    read: RepositoryMethod<ReadUsersRequest, ReadUsersResponse>;
+    readAll: RepositoryMethod<ReadAllUsersRequest, ReadAllUsersResponse>;
+    readCredentials: RepositoryMethod<
         ReadCredentialsRequest,
         ReadCredentialsResponse
     >;
-    update: RepositoryService<
-        TDatabase,
-        UpdateUsersRequest,
-        UpdateUsersResponse
-    >;
-    verifyPermissions: RepositoryService<
-        TDatabase,
+    update: RepositoryMethod<UpdateUsersRequest, UpdateUsersResponse>;
+    verifyPermissions: RepositoryMethod<
         VerifyPermissionsRequest,
         VerifyPermissionsResponse
     >;
