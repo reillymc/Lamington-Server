@@ -1,9 +1,8 @@
-import type { AppRepositories, Database } from "../repositories/index.ts";
+import type { AppRepositories } from "../repositories/index.ts";
 import type { Logger } from "../utils/logger.ts";
-import type { CreateJob } from "./job.ts";
+import { createJob } from "./job.ts";
 
-interface CreateUserStarterDataJobParams {
-    database: Database;
+interface CreateUserStarterDataJobConfig {
     repositories: Pick<
         AppRepositories,
         | "listRepository"
@@ -14,27 +13,24 @@ interface CreateUserStarterDataJobParams {
     logger: Logger;
 }
 
-type RunParams = [userId: string];
-
-export const createUserStarterDataJob: CreateJob<
-    CreateUserStarterDataJobParams,
-    RunParams
-> = ({
-    database,
-    repositories: {
-        listRepository,
-        bookRepository,
-        recipeRepository,
-        plannerRepository,
-    },
-    logger,
-}) => ({
-    run: async (userId) => {
-        try {
-            await database.transaction(async (trx) => {
+export const createUserStarterDataJob = createJob<
+    [userId: string],
+    CreateUserStarterDataJobConfig
+>(
+    ({
+        repositories: {
+            listRepository,
+            bookRepository,
+            recipeRepository,
+            plannerRepository,
+        },
+        logger,
+    }) => ({
+        run: async (userId) => {
+            try {
                 const {
                     lists: [list],
-                } = await listRepository.create(trx, {
+                } = await listRepository.create({
                     userId,
                     lists: [
                         {
@@ -45,7 +41,7 @@ export const createUserStarterDataJob: CreateJob<
                 });
 
                 if (list) {
-                    await listRepository.createItems(trx, {
+                    await listRepository.createItems({
                         userId,
                         listId: list.listId,
                         items: [
@@ -59,7 +55,7 @@ export const createUserStarterDataJob: CreateJob<
 
                 const {
                     books: [book],
-                } = await bookRepository.create(trx, {
+                } = await bookRepository.create({
                     userId,
                     books: [
                         {
@@ -70,7 +66,7 @@ export const createUserStarterDataJob: CreateJob<
                     ],
                 });
 
-                const { recipes } = await recipeRepository.create(trx, {
+                const { recipes } = await recipeRepository.create({
                     userId,
                     recipes: [
                         {
@@ -98,13 +94,13 @@ export const createUserStarterDataJob: CreateJob<
                 });
 
                 if (book) {
-                    await bookRepository.saveRecipes(trx, {
+                    await bookRepository.saveRecipes({
                         bookId: book.bookId,
                         recipes,
                     });
                 }
 
-                const { planners } = await plannerRepository.create(trx, {
+                const { planners } = await plannerRepository.create({
                     userId,
                     planners: [
                         {
@@ -119,7 +115,7 @@ export const createUserStarterDataJob: CreateJob<
                 const [recipe] = recipes;
 
                 if (planner && recipe) {
-                    await plannerRepository.createMeals(trx, {
+                    await plannerRepository.createMeals({
                         userId,
                         plannerId: planner.plannerId,
                         meals: [
@@ -140,12 +136,12 @@ export const createUserStarterDataJob: CreateJob<
                         ],
                     });
                 }
-            });
 
-            return true;
-        } catch (error) {
-            logger.error("Failed to create user starter data", error);
-            return false;
-        }
-    },
-});
+                return true;
+            } catch (error) {
+                logger.error("Failed to create user starter data", error);
+                throw error;
+            }
+        },
+    }),
+);

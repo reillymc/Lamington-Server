@@ -51,16 +51,6 @@ export const knexRepository =
         return wrapped as TRepository;
     };
 
-/**
- * Runs a function within the transaction store context without opening a
- * database transaction. Repository calls resolve their query builder from the
- * store, but writes are not transactional here.
- */
-export const createKnexContextRunner =
-    (db: Knex, store: KnexTxStore): TransactionRunner =>
-    <T>(fn: () => Promise<T>) =>
-        store.run(db, fn);
-
 export const createKnexTransactionRunner =
     (db: Knex, store: KnexTxStore): TransactionRunner =>
     <T>(fn: () => Promise<T>) =>

@@ -2,7 +2,7 @@ import { ForeignKeyViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
 import {
     CreatedDataFetchError,
-    type CreateService,
+    createService,
     InvalidOperationError,
     NotFoundError,
     UpdatedDataFetchError,
@@ -77,54 +77,46 @@ export interface ListService {
     declineInvite: (userId: string, listId: string) => Promise<void>;
 }
 
-export const createListService: CreateService<ListService, "listRepository"> = (
-    database,
-    { listRepository },
-) => ({
-    getAll: async (userId) => {
-        const { lists } = await listRepository.readAll(database, { userId });
-        if (lists.length === 0) {
-            return [];
-        }
+export const createListService = createService<ListService, "listRepository">(
+    ({ listRepository }) => ({
+        getAll: async (userId) => {
+            const { lists } = await listRepository.readAll({ userId });
+            if (lists.length === 0) {
+                return [];
+            }
 
-        const listIds = lists.map(({ listId }) => ({ listId }));
-        const counts = await listRepository.countOutstandingItems(
-            database,
-            listIds,
-        );
-        const timestamps = await listRepository.getLatestUpdatedTimestamp(
-            database,
-            listIds,
-        );
+            const listIds = lists.map(({ listId }) => ({ listId }));
+            const counts = await listRepository.countOutstandingItems(listIds);
+            const timestamps =
+                await listRepository.getLatestUpdatedTimestamp(listIds);
 
-        const countMap = new Map(counts.map((c) => [c.listId, c.count]));
-        const timestampMap = new Map(
-            timestamps.map((t) => [t.listId, t.updatedAt]),
-        );
+            const countMap = new Map(counts.map((c) => [c.listId, c.count]));
+            const timestampMap = new Map(
+                timestamps.map((t) => [t.listId, t.updatedAt]),
+            );
 
-        return lists.map((list) => ({
-            ...list,
-            outstandingItemCount: countMap.get(list.listId) ?? 0,
-            lastUpdated: timestampMap.get(list.listId),
-        }));
-    },
-    get: async (userId, listId) => {
-        const {
-            lists: [list],
-        } = await listRepository.read(database, {
-            userId,
-            lists: [{ listId }],
-        });
+            return lists.map((list) => ({
+                ...list,
+                outstandingItemCount: countMap.get(list.listId) ?? 0,
+                lastUpdated: timestampMap.get(list.listId),
+            }));
+        },
+        get: async (userId, listId) => {
+            const {
+                lists: [list],
+            } = await listRepository.read({
+                userId,
+                lists: [{ listId }],
+            });
 
-        if (!list) {
-            throw new NotFoundError("list", listId);
-        }
+            if (!list) {
+                throw new NotFoundError("list", listId);
+            }
 
-        return list;
-    },
-    create: (userId, request) =>
-        database.transaction(async (trx) => {
-            const { lists } = await listRepository.create(trx, {
+            return list;
+        },
+        create: async (userId, request) => {
+            const { lists } = await listRepository.create({
                 userId,
                 lists: [request],
             });
@@ -136,10 +128,9 @@ export const createListService: CreateService<ListService, "listRepository"> = (
             }
 
             return list;
-        }),
-    update: (userId, listId, request) =>
-        database.transaction(async (trx) => {
-            const permissions = await listRepository.verifyPermissions(trx, {
+        },
+        update: async (userId, listId, request) => {
+            const permissions = await listRepository.verifyPermissions({
                 userId,
                 lists: [{ listId }],
                 status: "O",
@@ -151,7 +142,7 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 throw new NotFoundError("list", listId);
             }
 
-            const { lists } = await listRepository.update(trx, {
+            const { lists } = await listRepository.update({
                 userId,
                 lists: [{ ...request, listId }],
             });
@@ -162,10 +153,9 @@ export const createListService: CreateService<ListService, "listRepository"> = (
             }
 
             return list;
-        }),
-    delete: (userId, listId) =>
-        database.transaction(async (trx) => {
-            const permissions = await listRepository.verifyPermissions(trx, {
+        },
+        delete: async (userId, listId) => {
+            const permissions = await listRepository.verifyPermissions({
                 userId,
                 lists: [{ listId }],
                 status: "O",
@@ -177,30 +167,29 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 throw new NotFoundError("list", listId);
             }
 
-            await listRepository.delete(trx, { lists: [{ listId }] });
-        }),
-    getItems: async (userId, listId) => {
-        const permissions = await listRepository.verifyPermissions(database, {
-            userId,
-            lists: [{ listId }],
-            status: ["O", "A", "M"],
-        });
+            await listRepository.delete({ lists: [{ listId }] });
+        },
+        getItems: async (userId, listId) => {
+            const permissions = await listRepository.verifyPermissions({
+                userId,
+                lists: [{ listId }],
+                status: ["O", "A", "M"],
+            });
 
-        if (permissions.lists.some(({ hasPermissions }) => !hasPermissions)) {
-            throw new NotFoundError("list", listId);
-        }
+            if (
+                permissions.lists.some(({ hasPermissions }) => !hasPermissions)
+            ) {
+                throw new NotFoundError("list", listId);
+            }
 
-        const { items } = await listRepository.readAllItems(database, {
-            userId,
-            filter: {
-                listId,
-            },
-        });
-        return items;
-    },
-    createItems: (userId, listId, items) =>
-        database.transaction(async (trx) => {
-            const permissions = await listRepository.verifyPermissions(trx, {
+            const { items } = await listRepository.readAllItems({
+                userId,
+                filter: { listId },
+            });
+            return items;
+        },
+        createItems: async (userId, listId, items) => {
+            const permissions = await listRepository.verifyPermissions({
                 userId,
                 lists: [{ listId }],
                 status: ["O", "A"],
@@ -212,16 +201,16 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 throw new NotFoundError("list", listId);
             }
 
-            const { items: createdItems } = await listRepository.createItems(
-                trx,
-                { listId, userId, items },
-            );
+            const { items: createdItems } = await listRepository.createItems({
+                listId,
+                userId,
+                items,
+            });
 
             return createdItems;
-        }),
-    updateItem: (userId, listId, itemId, request) =>
-        database.transaction(async (trx) => {
-            const permissions = await listRepository.verifyPermissions(trx, {
+        },
+        updateItem: async (userId, listId, itemId, request) => {
+            const permissions = await listRepository.verifyPermissions({
                 userId,
                 lists: [{ listId }],
                 status: ["O", "A"],
@@ -233,7 +222,7 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 throw new NotFoundError("list", listId);
             }
 
-            const { items } = await listRepository.updateItems(trx, {
+            const { items } = await listRepository.updateItems({
                 listId,
                 userId,
                 items: [{ ...request, itemId }],
@@ -244,9 +233,8 @@ export const createListService: CreateService<ListService, "listRepository"> = (
             }
 
             return item;
-        }),
-    moveItems: (userId, listId, itemIds, destinationListId) =>
-        database.transaction(async (trx) => {
+        },
+        moveItems: async (userId, listId, itemIds, destinationListId) => {
             if (listId === destinationListId) {
                 throw new InvalidOperationError(
                     "list item",
@@ -254,7 +242,7 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 );
             }
 
-            const permissions = await listRepository.verifyPermissions(trx, {
+            const permissions = await listRepository.verifyPermissions({
                 userId,
                 lists: [{ listId }, { listId: destinationListId }],
                 status: ["O", "A"],
@@ -267,14 +255,11 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 throw new NotFoundError("list", failedPermission.listId);
             }
 
-            const { items: currentItems } = await listRepository.readItems(
-                trx,
-                {
-                    userId,
-                    listId,
-                    items: itemIds.map((itemId) => ({ itemId })),
-                },
-            );
+            const { items: currentItems } = await listRepository.readItems({
+                userId,
+                listId,
+                items: itemIds.map((itemId) => ({ itemId })),
+            });
 
             if (currentItems.length !== itemIds.length) {
                 throw new NotFoundError(
@@ -283,7 +268,7 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 );
             }
 
-            const { items: movedItems } = await listRepository.moveItems(trx, {
+            const { items: movedItems } = await listRepository.moveItems({
                 userId,
                 listId: destinationListId,
                 items: itemIds.map((itemId) => ({ itemId })),
@@ -297,10 +282,9 @@ export const createListService: CreateService<ListService, "listRepository"> = (
             }
 
             return movedItems;
-        }),
-    deleteItem: (userId, listId, itemId) =>
-        database.transaction(async (trx) => {
-            const permissions = await listRepository.verifyPermissions(trx, {
+        },
+        deleteItem: async (userId, listId, itemId) => {
+            const permissions = await listRepository.verifyPermissions({
                 userId,
                 lists: [{ listId }],
                 status: ["O", "A"],
@@ -312,7 +296,7 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 throw new NotFoundError("list", listId);
             }
 
-            const { count } = await listRepository.deleteItems(trx, {
+            const { count } = await listRepository.deleteItems({
                 listId,
                 items: [{ itemId }],
             });
@@ -320,33 +304,9 @@ export const createListService: CreateService<ListService, "listRepository"> = (
             if (count === 0) {
                 throw new NotFoundError("list item", itemId);
             }
-        }),
-    getMembers: async (userId, listId) => {
-        const permissions = await listRepository.verifyPermissions(database, {
-            userId,
-            lists: [{ listId }],
-            status: "O",
-        });
-
-        if (permissions.lists.some(({ hasPermissions }) => !hasPermissions)) {
-            throw new NotFoundError("list", listId);
-        }
-
-        const [listMembers] = await listRepository.readMembers(database, {
-            listId,
-        });
-
-        if (!listMembers) {
-            throw new NotFoundError("list", listId);
-        }
-
-        const { members } = listMembers;
-
-        return members;
-    },
-    inviteMember: (userId, listId, targetUserId) =>
-        database.transaction(async (trx) => {
-            const permissions = await listRepository.verifyPermissions(trx, {
+        },
+        getMembers: async (userId, listId) => {
+            const permissions = await listRepository.verifyPermissions({
                 userId,
                 lists: [{ listId }],
                 status: "O",
@@ -358,7 +318,32 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 throw new NotFoundError("list", listId);
             }
 
-            const [currentMembers] = await listRepository.readMembers(trx, {
+            const [listMembers] = await listRepository.readMembers({
+                listId,
+            });
+
+            if (!listMembers) {
+                throw new NotFoundError("list", listId);
+            }
+
+            const { members } = listMembers;
+
+            return members;
+        },
+        inviteMember: async (userId, listId, targetUserId) => {
+            const permissions = await listRepository.verifyPermissions({
+                userId,
+                lists: [{ listId }],
+                status: "O",
+            });
+
+            if (
+                permissions.lists.some(({ hasPermissions }) => !hasPermissions)
+            ) {
+                throw new NotFoundError("list", listId);
+            }
+
+            const [currentMembers] = await listRepository.readMembers({
                 listId,
             });
             if (
@@ -371,7 +356,7 @@ export const createListService: CreateService<ListService, "listRepository"> = (
             }
 
             try {
-                await listRepository.saveMembers(trx, {
+                await listRepository.saveMembers({
                     listId,
                     members: [{ userId: targetUserId, status: "P" }],
                 });
@@ -381,10 +366,9 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 }
                 throw error;
             }
-        }),
-    updateMember: (userId, listId, memberId, status) =>
-        database.transaction(async (trx) => {
-            const permissions = await listRepository.verifyPermissions(trx, {
+        },
+        updateMember: async (userId, listId, memberId, status) => {
+            const permissions = await listRepository.verifyPermissions({
                 userId,
                 lists: [{ listId }],
                 status: "O",
@@ -396,7 +380,7 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 throw new NotFoundError("list", listId);
             }
 
-            const [currentListMembers] = await listRepository.readMembers(trx, {
+            const [currentListMembers] = await listRepository.readMembers({
                 listId,
             });
             const currentMember = currentListMembers?.members.find(
@@ -414,12 +398,12 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 );
             }
 
-            await listRepository.saveMembers(trx, {
+            await listRepository.saveMembers({
                 listId,
                 members: [{ userId: memberId, status }],
             });
 
-            const [listMembers] = await listRepository.readMembers(trx, {
+            const [listMembers] = await listRepository.readMembers({
                 listId,
             });
 
@@ -432,10 +416,9 @@ export const createListService: CreateService<ListService, "listRepository"> = (
             }
 
             return member;
-        }),
-    removeMember: (userId, listId, memberId) =>
-        database.transaction(async (trx) => {
-            const permissions = await listRepository.verifyPermissions(trx, {
+        },
+        removeMember: async (userId, listId, memberId) => {
+            const permissions = await listRepository.verifyPermissions({
                 userId,
                 lists: [{ listId }],
                 status: "O",
@@ -454,14 +437,13 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 );
             }
 
-            await listRepository.removeMembers(trx, {
+            await listRepository.removeMembers({
                 listId,
                 members: [{ userId: memberId }],
             });
-        }),
-    leaveList: (userId, listId) =>
-        database.transaction(async (trx) => {
-            const permissions = await listRepository.verifyPermissions(trx, {
+        },
+        leaveList: async (userId, listId) => {
+            const permissions = await listRepository.verifyPermissions({
                 userId,
                 lists: [{ listId }],
                 status: ["A", "M"],
@@ -472,14 +454,13 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 throw new NotFoundError("list", listId);
             }
 
-            await listRepository.removeMembers(trx, {
+            await listRepository.removeMembers({
                 listId,
                 members: [{ userId }],
             });
-        }),
-    acceptInvite: (userId, listId) =>
-        database.transaction(async (trx) => {
-            const permissions = await listRepository.verifyPermissions(trx, {
+        },
+        acceptInvite: async (userId, listId) => {
+            const permissions = await listRepository.verifyPermissions({
                 userId,
                 lists: [{ listId }],
                 status: "P",
@@ -491,14 +472,13 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 throw new NotFoundError("list", listId);
             }
 
-            await listRepository.saveMembers(trx, {
+            await listRepository.saveMembers({
                 listId,
                 members: [{ userId, status: "M" }],
             });
-        }),
-    declineInvite: (userId, listId) =>
-        database.transaction(async (trx) => {
-            const permissions = await listRepository.verifyPermissions(trx, {
+        },
+        declineInvite: async (userId, listId) => {
+            const permissions = await listRepository.verifyPermissions({
                 userId,
                 lists: [{ listId }],
                 status: "P",
@@ -510,9 +490,10 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 throw new NotFoundError("list", listId);
             }
 
-            await listRepository.removeMembers(trx, {
+            await listRepository.removeMembers({
                 listId,
                 members: [{ userId }],
             });
-        }),
-});
+        },
+    }),
+);

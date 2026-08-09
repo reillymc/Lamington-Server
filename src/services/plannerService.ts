@@ -2,7 +2,7 @@ import { ForeignKeyViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
 import {
     CreatedDataFetchError,
-    type CreateService,
+    createService,
     InvalidOperationError,
     NotFoundError,
     UpdatedDataFetchError,
@@ -73,12 +73,12 @@ export interface PlannerService {
     leavePlanner: (userId: string, plannerId: string) => Promise<void>;
 }
 
-export const createPlannerService: CreateService<
+export const createPlannerService = createService<
     PlannerService,
     "plannerRepository"
-> = (database, { plannerRepository }) => ({
+>(({ plannerRepository }) => ({
     getAll: async (userId) => {
-        const { planners } = await plannerRepository.readAll(database, {
+        const { planners } = await plannerRepository.readAll({
             userId,
         });
         return planners;
@@ -86,7 +86,7 @@ export const createPlannerService: CreateService<
     get: async (userId, plannerId) => {
         const {
             planners: [planner],
-        } = await plannerRepository.read(database, {
+        } = await plannerRepository.read({
             userId,
             planners: [{ plannerId }],
         });
@@ -97,102 +97,26 @@ export const createPlannerService: CreateService<
 
         return planner;
     },
-    create: (userId, request) =>
-        database.transaction(async (trx) => {
-            const { planners } = await plannerRepository.create(trx, {
-                userId,
-                planners: [request],
-            });
+    create: async (userId, request) => {
+        const { planners } = await plannerRepository.create({
+            userId,
+            planners: [request],
+        });
 
-            const [planner] = planners;
+        const [planner] = planners;
 
-            if (!planner) {
-                throw new CreatedDataFetchError("planner");
-            }
+        if (!planner) {
+            throw new CreatedDataFetchError("planner");
+        }
 
-            return planner;
-        }),
-    update: (userId, plannerId, request) =>
-        database.transaction(async (trx) => {
-            const permissions = await plannerRepository.verifyPermissions(trx, {
-                userId,
-                planners: [{ plannerId }],
-                status: "O",
-            });
-
-            if (
-                permissions.planners.some(
-                    ({ hasPermissions }) => !hasPermissions,
-                )
-            ) {
-                throw new NotFoundError("planner", plannerId);
-            }
-
-            const { planners } = await plannerRepository.update(trx, {
-                userId,
-                planners: [{ ...request, plannerId }],
-            });
-
-            const [planner] = planners;
-            if (!planner) {
-                throw new UpdatedDataFetchError("planner", plannerId);
-            }
-            return planner;
-        }),
-    delete: (userId, plannerId) =>
-        database.transaction(async (trx) => {
-            const permissions = await plannerRepository.verifyPermissions(trx, {
-                userId,
-                planners: [{ plannerId }],
-                status: "O",
-            });
-
-            if (
-                permissions.planners.some(
-                    ({ hasPermissions }) => !hasPermissions,
-                )
-            ) {
-                throw new NotFoundError("planner", plannerId);
-            }
-
-            await plannerRepository.delete(trx, { planners: [{ plannerId }] });
-        }),
-    createMeals: (userId, plannerId, meals) =>
-        database.transaction(async (trx) => {
-            const permissions = await plannerRepository.verifyPermissions(trx, {
-                userId,
-                planners: [{ plannerId }],
-                status: ["O", "A"],
-            });
-
-            if (
-                permissions.planners.some(
-                    ({ hasPermissions }) => !hasPermissions,
-                )
-            ) {
-                throw new NotFoundError("planner", plannerId);
-            }
-
-            const { meals: createdMeals } = await plannerRepository.createMeals(
-                trx,
-                { plannerId, userId, meals },
-            );
-
-            if (createdMeals.length !== meals.length) {
-                throw new CreatedDataFetchError("planner meal");
-            }
-
-            return createdMeals;
-        }),
-    getMeals: async (userId, plannerId, year, month) => {
-        const permissions = await plannerRepository.verifyPermissions(
-            database,
-            {
-                userId,
-                planners: [{ plannerId }],
-                status: ["O", "A", "M"],
-            },
-        );
+        return planner;
+    },
+    update: async (userId, plannerId, request) => {
+        const permissions = await plannerRepository.verifyPermissions({
+            userId,
+            planners: [{ plannerId }],
+            status: "O",
+        });
 
         if (
             permissions.planners.some(({ hasPermissions }) => !hasPermissions)
@@ -200,7 +124,71 @@ export const createPlannerService: CreateService<
             throw new NotFoundError("planner", plannerId);
         }
 
-        const { meals } = await plannerRepository.readAllMeals(database, {
+        const { planners } = await plannerRepository.update({
+            userId,
+            planners: [{ ...request, plannerId }],
+        });
+
+        const [planner] = planners;
+        if (!planner) {
+            throw new UpdatedDataFetchError("planner", plannerId);
+        }
+        return planner;
+    },
+    delete: async (userId, plannerId) => {
+        const permissions = await plannerRepository.verifyPermissions({
+            userId,
+            planners: [{ plannerId }],
+            status: "O",
+        });
+
+        if (
+            permissions.planners.some(({ hasPermissions }) => !hasPermissions)
+        ) {
+            throw new NotFoundError("planner", plannerId);
+        }
+
+        await plannerRepository.delete({ planners: [{ plannerId }] });
+    },
+    createMeals: async (userId, plannerId, meals) => {
+        const permissions = await plannerRepository.verifyPermissions({
+            userId,
+            planners: [{ plannerId }],
+            status: ["O", "A"],
+        });
+
+        if (
+            permissions.planners.some(({ hasPermissions }) => !hasPermissions)
+        ) {
+            throw new NotFoundError("planner", plannerId);
+        }
+
+        const { meals: createdMeals } = await plannerRepository.createMeals({
+            plannerId,
+            userId,
+            meals,
+        });
+
+        if (createdMeals.length !== meals.length) {
+            throw new CreatedDataFetchError("planner meal");
+        }
+
+        return createdMeals;
+    },
+    getMeals: async (userId, plannerId, year, month) => {
+        const permissions = await plannerRepository.verifyPermissions({
+            userId,
+            planners: [{ plannerId }],
+            status: ["O", "A", "M"],
+        });
+
+        if (
+            permissions.planners.some(({ hasPermissions }) => !hasPermissions)
+        ) {
+            throw new NotFoundError("planner", plannerId);
+        }
+
+        const { meals } = await plannerRepository.readAllMeals({
             userId,
             filter: {
                 plannerId,
@@ -210,67 +198,12 @@ export const createPlannerService: CreateService<
         });
         return meals;
     },
-    updateMeal: (userId, plannerId, mealId, request) =>
-        database.transaction(async (trx) => {
-            const permissions = await plannerRepository.verifyPermissions(trx, {
-                userId,
-                planners: [{ plannerId }],
-                status: ["O", "A"],
-            });
-
-            if (
-                permissions.planners.some(
-                    ({ hasPermissions }) => !hasPermissions,
-                )
-            ) {
-                throw new NotFoundError("planner", plannerId);
-            }
-
-            const { meals } = await plannerRepository.updateMeals(trx, {
-                plannerId,
-                meals: [{ ...request, mealId }],
-            });
-            const [meal] = meals;
-            if (!meal) {
-                throw new NotFoundError("planner meal", mealId);
-            }
-
-            return meal;
-        }),
-    deleteMeal: (userId, plannerId, mealId) =>
-        database.transaction(async (trx) => {
-            const permissions = await plannerRepository.verifyPermissions(trx, {
-                userId,
-                planners: [{ plannerId }],
-                status: ["O", "A"],
-            });
-
-            if (
-                permissions.planners.some(
-                    ({ hasPermissions }) => !hasPermissions,
-                )
-            ) {
-                throw new NotFoundError("planner", plannerId);
-            }
-
-            const { count } = await plannerRepository.deleteMeals(trx, {
-                plannerId,
-                meals: [{ mealId }],
-            });
-
-            if (count === 0) {
-                throw new NotFoundError("planner meal", mealId);
-            }
-        }),
-    getMembers: async (userId, plannerId) => {
-        const permissions = await plannerRepository.verifyPermissions(
-            database,
-            {
-                userId,
-                planners: [{ plannerId }],
-                status: "O",
-            },
-        );
+    updateMeal: async (userId, plannerId, mealId, request) => {
+        const permissions = await plannerRepository.verifyPermissions({
+            userId,
+            planners: [{ plannerId }],
+            status: ["O", "A"],
+        });
 
         if (
             permissions.planners.some(({ hasPermissions }) => !hasPermissions)
@@ -278,7 +211,53 @@ export const createPlannerService: CreateService<
             throw new NotFoundError("planner", plannerId);
         }
 
-        const [plannerMembers] = await plannerRepository.readMembers(database, {
+        const { meals } = await plannerRepository.updateMeals({
+            plannerId,
+            meals: [{ ...request, mealId }],
+        });
+        const [meal] = meals;
+        if (!meal) {
+            throw new NotFoundError("planner meal", mealId);
+        }
+
+        return meal;
+    },
+    deleteMeal: async (userId, plannerId, mealId) => {
+        const permissions = await plannerRepository.verifyPermissions({
+            userId,
+            planners: [{ plannerId }],
+            status: ["O", "A"],
+        });
+
+        if (
+            permissions.planners.some(({ hasPermissions }) => !hasPermissions)
+        ) {
+            throw new NotFoundError("planner", plannerId);
+        }
+
+        const { count } = await plannerRepository.deleteMeals({
+            plannerId,
+            meals: [{ mealId }],
+        });
+
+        if (count === 0) {
+            throw new NotFoundError("planner meal", mealId);
+        }
+    },
+    getMembers: async (userId, plannerId) => {
+        const permissions = await plannerRepository.verifyPermissions({
+            userId,
+            planners: [{ plannerId }],
+            status: "O",
+        });
+
+        if (
+            permissions.planners.some(({ hasPermissions }) => !hasPermissions)
+        ) {
+            throw new NotFoundError("planner", plannerId);
+        }
+
+        const [plannerMembers] = await plannerRepository.readMembers({
             plannerId,
         });
 
@@ -290,189 +269,168 @@ export const createPlannerService: CreateService<
 
         return members;
     },
-    inviteMember: (userId, plannerId, targetUserId) =>
-        database.transaction(async (trx) => {
-            const permissions = await plannerRepository.verifyPermissions(trx, {
-                userId,
-                planners: [{ plannerId }],
-                status: "O",
-            });
+    inviteMember: async (userId, plannerId, targetUserId) => {
+        const permissions = await plannerRepository.verifyPermissions({
+            userId,
+            planners: [{ plannerId }],
+            status: "O",
+        });
 
-            if (
-                permissions.planners.some(
-                    ({ hasPermissions }) => !hasPermissions,
-                )
-            ) {
-                throw new NotFoundError("planner", plannerId);
-            }
+        if (
+            permissions.planners.some(({ hasPermissions }) => !hasPermissions)
+        ) {
+            throw new NotFoundError("planner", plannerId);
+        }
 
-            const [currentMembers] = await plannerRepository.readMembers(trx, {
-                plannerId,
-            });
-            if (
-                currentMembers?.members.some((m) => m.userId === targetUserId)
-            ) {
-                throw new InvalidOperationError(
-                    "planner member",
-                    "User is already a member",
-                );
-            }
-
-            try {
-                await plannerRepository.saveMembers(trx, {
-                    plannerId,
-                    members: [{ userId: targetUserId, status: "P" }],
-                });
-            } catch (error: unknown) {
-                if (error instanceof ForeignKeyViolationError) {
-                    throw new NotFoundError("user", targetUserId);
-                }
-                throw error;
-            }
-        }),
-    updateMember: (userId, plannerId, memberId, status) =>
-        database.transaction(async (trx) => {
-            const permissions = await plannerRepository.verifyPermissions(trx, {
-                userId,
-                planners: [{ plannerId }],
-                status: "O",
-            });
-
-            if (
-                permissions.planners.some(
-                    ({ hasPermissions }) => !hasPermissions,
-                )
-            ) {
-                throw new NotFoundError("planner", plannerId);
-            }
-
-            const [currentPlannerMembers] = await plannerRepository.readMembers(
-                trx,
-                { plannerId },
+        const [currentMembers] = await plannerRepository.readMembers({
+            plannerId,
+        });
+        if (currentMembers?.members.some((m) => m.userId === targetUserId)) {
+            throw new InvalidOperationError(
+                "planner member",
+                "User is already a member",
             );
-            const currentMember = currentPlannerMembers?.members.find(
-                (m) => m.userId === memberId,
+        }
+
+        try {
+            await plannerRepository.saveMembers({
+                plannerId,
+                members: [{ userId: targetUserId, status: "P" }],
+            });
+        } catch (error: unknown) {
+            if (error instanceof ForeignKeyViolationError) {
+                throw new NotFoundError("user", targetUserId);
+            }
+            throw error;
+        }
+    },
+    updateMember: async (userId, plannerId, memberId, status) => {
+        const permissions = await plannerRepository.verifyPermissions({
+            userId,
+            planners: [{ plannerId }],
+            status: "O",
+        });
+
+        if (
+            permissions.planners.some(({ hasPermissions }) => !hasPermissions)
+        ) {
+            throw new NotFoundError("planner", plannerId);
+        }
+
+        const [currentPlannerMembers] = await plannerRepository.readMembers({
+            plannerId,
+        });
+        const currentMember = currentPlannerMembers?.members.find(
+            (m) => m.userId === memberId,
+        );
+
+        if (!currentMember) {
+            throw new NotFoundError("planner member", memberId);
+        }
+
+        if (currentMember.status === "P") {
+            throw new InvalidOperationError(
+                "planner member",
+                "Cannot update a pending member",
             );
+        }
 
-            if (!currentMember) {
-                throw new NotFoundError("planner member", memberId);
-            }
+        await plannerRepository.saveMembers({
+            plannerId,
+            members: [{ userId: memberId, status }],
+        });
 
-            if (currentMember.status === "P") {
-                throw new InvalidOperationError(
-                    "planner member",
-                    "Cannot update a pending member",
-                );
-            }
+        const [plannerMembers] = await plannerRepository.readMembers({
+            plannerId,
+        });
 
-            await plannerRepository.saveMembers(trx, {
-                plannerId,
-                members: [{ userId: memberId, status }],
-            });
+        const member = plannerMembers?.members.find(
+            (m) => m.userId === memberId,
+        );
 
-            const [plannerMembers] = await plannerRepository.readMembers(trx, {
-                plannerId,
-            });
+        if (!member) {
+            throw new NotFoundError("planner member", memberId);
+        }
 
-            const member = plannerMembers?.members.find(
-                (m) => m.userId === memberId,
+        return member;
+    },
+    removeMember: async (userId, plannerId, memberId) => {
+        const permissions = await plannerRepository.verifyPermissions({
+            userId,
+            planners: [{ plannerId }],
+            status: "O",
+        });
+
+        if (
+            permissions.planners.some(({ hasPermissions }) => !hasPermissions)
+        ) {
+            throw new NotFoundError("planner", plannerId);
+        }
+
+        if (memberId === userId) {
+            throw new InvalidOperationError(
+                "planner member",
+                "Cannot remove self from planner",
             );
+        }
 
-            if (!member) {
-                throw new NotFoundError("planner member", memberId);
-            }
+        await plannerRepository.removeMembers({
+            plannerId,
+            members: [{ userId: memberId }],
+        });
+    },
+    acceptInvite: async (userId, plannerId) => {
+        const permissions = await plannerRepository.verifyPermissions({
+            userId,
+            planners: [{ plannerId }],
+            status: "P",
+        });
 
-            return member;
-        }),
-    removeMember: (userId, plannerId, memberId) =>
-        database.transaction(async (trx) => {
-            const permissions = await plannerRepository.verifyPermissions(trx, {
-                userId,
-                planners: [{ plannerId }],
-                status: "O",
-            });
+        if (
+            permissions.planners.some(({ hasPermissions }) => !hasPermissions)
+        ) {
+            throw new NotFoundError("planner", plannerId);
+        }
 
-            if (
-                permissions.planners.some(
-                    ({ hasPermissions }) => !hasPermissions,
-                )
-            ) {
-                throw new NotFoundError("planner", plannerId);
-            }
+        await plannerRepository.saveMembers({
+            plannerId,
+            members: [{ userId, status: "M" }],
+        });
+    },
+    declineInvite: async (userId, plannerId) => {
+        const permissions = await plannerRepository.verifyPermissions({
+            userId,
+            planners: [{ plannerId }],
+            status: "P",
+        });
 
-            if (memberId === userId) {
-                throw new InvalidOperationError(
-                    "planner member",
-                    "Cannot remove self from planner",
-                );
-            }
+        if (
+            permissions.planners.some(({ hasPermissions }) => !hasPermissions)
+        ) {
+            throw new NotFoundError("planner", plannerId);
+        }
 
-            await plannerRepository.removeMembers(trx, {
-                plannerId,
-                members: [{ userId: memberId }],
-            });
-        }),
-    acceptInvite: (userId, plannerId) =>
-        database.transaction(async (trx) => {
-            const permissions = await plannerRepository.verifyPermissions(trx, {
-                userId,
-                planners: [{ plannerId }],
-                status: "P",
-            });
+        await plannerRepository.removeMembers({
+            plannerId,
+            members: [{ userId }],
+        });
+    },
+    leavePlanner: async (userId, plannerId) => {
+        const permissions = await plannerRepository.verifyPermissions({
+            userId,
+            planners: [{ plannerId }],
+            status: ["A", "M"],
+        });
 
-            if (
-                permissions.planners.some(
-                    ({ hasPermissions }) => !hasPermissions,
-                )
-            ) {
-                throw new NotFoundError("planner", plannerId);
-            }
+        if (
+            permissions.planners.some(({ hasPermissions }) => !hasPermissions)
+        ) {
+            throw new NotFoundError("planner", plannerId);
+        }
 
-            await plannerRepository.saveMembers(trx, {
-                plannerId,
-                members: [{ userId, status: "M" }],
-            });
-        }),
-    declineInvite: (userId, plannerId) =>
-        database.transaction(async (trx) => {
-            const permissions = await plannerRepository.verifyPermissions(trx, {
-                userId,
-                planners: [{ plannerId }],
-                status: "P",
-            });
-
-            if (
-                permissions.planners.some(
-                    ({ hasPermissions }) => !hasPermissions,
-                )
-            ) {
-                throw new NotFoundError("planner", plannerId);
-            }
-
-            await plannerRepository.removeMembers(trx, {
-                plannerId,
-                members: [{ userId }],
-            });
-        }),
-    leavePlanner: (userId, plannerId) =>
-        database.transaction(async (trx) => {
-            const permissions = await plannerRepository.verifyPermissions(trx, {
-                userId,
-                planners: [{ plannerId }],
-                status: ["A", "M"],
-            });
-
-            if (
-                permissions.planners.some(
-                    ({ hasPermissions }) => !hasPermissions,
-                )
-            ) {
-                throw new NotFoundError("planner", plannerId);
-            }
-
-            await plannerRepository.removeMembers(trx, {
-                plannerId,
-                members: [{ userId }],
-            });
-        }),
-});
+        await plannerRepository.removeMembers({
+            plannerId,
+            members: [{ userId }],
+        });
+    },
+}));
