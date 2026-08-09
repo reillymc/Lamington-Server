@@ -1,4 +1,4 @@
-import { EnsureArray } from "../../utils/index.ts";
+import { EnsureArray } from "@reillymc/es-utils";
 import type { TagRepository } from "../tagRepository.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import type { KnexDatabase } from "./knex.ts";
@@ -23,14 +23,11 @@ export const KnexTagRepository: TagRepository<KnexDatabase> = {
     create: async (db, params) =>
         db(lamington.tag)
             .insert(
-                EnsureArray(params).map(
-                    ({ name, tagId, description, parentId }) => ({
-                        name,
-                        tagId,
-                        description,
-                        parentId,
-                    }),
-                ),
+                EnsureArray(params).map(({ name, description, parentId }) => ({
+                    name,
+                    description,
+                    parentId,
+                })),
             )
             .returning([
                 TagTable.tagId,

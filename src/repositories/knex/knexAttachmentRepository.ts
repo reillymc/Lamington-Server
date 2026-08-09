@@ -1,4 +1,4 @@
-import { EnsureArray } from "../../utils/index.ts";
+import { EnsureArray } from "@reillymc/es-utils";
 import type { AttachmentRepository } from "../attachmentRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import type { KnexDatabase } from "./knex.ts";

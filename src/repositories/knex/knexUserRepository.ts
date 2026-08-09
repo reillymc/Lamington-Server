@@ -1,4 +1,4 @@
-import { EnsureArray, Undefined } from "../../utils/index.ts";
+import { EnsureArray, Undefined } from "@reillymc/es-utils";
 import { UniqueViolationError } from "../common/errors.ts";
 import type { UserRepository } from "../userRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";

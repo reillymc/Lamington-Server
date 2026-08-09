@@ -6,10 +6,11 @@ import type { AppMiddleware } from "./middleware/index.ts";
 import { createAppRouter } from "./routes/index.ts";
 import type { AppServices } from "./services/index.ts";
 
-interface AppConfig {
+export interface AppConfig {
     externalHost: string | undefined;
     allowedOrigin: string | undefined;
     uploadDirectory: string;
+    assetDirectory: string;
 }
 
 interface AppParams {

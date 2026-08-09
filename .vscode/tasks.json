@@ -8,7 +8,9 @@
             "option": "watch",
             "problemMatcher": ["$tsc-watch"],
             "group": "build",
-            "icon": { "id": "bracket-dot" },
+            "icon": {
+                "id": "bracket-dot"
+            },
             "presentation": {
                 "reveal": "never",
                 "echo": false,
@@ -26,7 +28,9 @@
             "type": "shell",
             "command": "npm run test -- --watch",
             "group": "test",
-            "icon": { "id": "beaker" },
+            "icon": {
+                "id": "beaker"
+            },
             "presentation": {
                 "reveal": "never",
                 "echo": false,
@@ -43,7 +47,9 @@
             "label": "watch:knip",
             "type": "shell",
             "command": "npm run knip -- --watch",
-            "icon": { "id": "search-fuzzy" },
+            "icon": {
+                "id": "search-fuzzy"
+            },
             "presentation": {
                 "reveal": "never",
                 "echo": false,
@@ -61,7 +67,9 @@
             "type": "shell",
             "command": "node",
             "args": ["./tools/Scripts/watch_spec.ts"],
-            "icon": { "id": "link" },
+            "icon": {
+                "id": "link"
+            },
             "presentation": {
                 "reveal": "never",
                 "echo": false,
@@ -72,7 +80,8 @@
             "runOptions": {
                 "runOn": "folderOpen",
                 "instanceLimit": 1
-            }
+            },
+            "problemMatcher": []
         }
     ]
 }

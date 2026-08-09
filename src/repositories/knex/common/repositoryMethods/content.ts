@@ -1,5 +1,19 @@
+import type { Content } from "../../../temp.ts";
 import type { KnexDatabase } from "../../knex.ts";
 import { ContentTable, lamington } from "../../spec/index.ts";
+
+export const createContentRows = async (
+    db: KnexDatabase,
+    createdBy: string,
+    count: number,
+): Promise<Array<{ contentId: string }>> =>
+    db<Content>(lamington.content)
+        .insert(
+            Array.from({ length: count }, () => ({
+                createdBy,
+            })),
+        )
+        .returning("contentId");
 
 export const createDeleteContent =
     <CollectionKey extends string, IdKey extends string>(

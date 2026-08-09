@@ -1,9 +1,7 @@
-import { expect } from "expect";
 import { v4 as uuid } from "uuid";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import type { components } from "../../src/routes/spec/schema.ts";
-import { Undefined } from "../../src/utils/index.ts";
 import { randomBoolean, randomNumber } from "./data.ts";
 
 const generateRandomAmount = [
@@ -32,31 +30,31 @@ const generateRandomAmount = [
 ][randomNumber(0, 2)]!;
 
 export const generateRandomRecipeIngredientSections =
-    (): components["schemas"]["RecipeSectionIngredient"][] =>
-        Array.from({ length: randomNumber() }).map(() => ({
-            sectionId: uuid(),
-            name: uuid(),
-            description: uuid(),
-            items: Array.from({ length: randomNumber() }).map(() => ({
-                id: uuid(),
+    (): components["schemas"]["RecipeIngredientSectionCreate"][] =>
+        Array.from({ length: randomNumber() }).map(
+            (): components["schemas"]["RecipeIngredientSectionCreate"] => ({
                 name: uuid(),
-                amount: generateRandomAmount(),
                 description: uuid(),
-                multiplier: randomNumber(),
-                unit: uuid(),
-                // ingredientId: uuid(), TODO: verify or remove ingredient creation support entirely
-            })),
-        }));
+                items: Array.from({ length: randomNumber() }).map(
+                    (): components["schemas"]["RecipeIngredientSectionCreate"]["items"][number] => ({
+                        amount: generateRandomAmount(),
+                        description: uuid(),
+                        multiplier: randomNumber(),
+                        unit: uuid(),
+                        name: uuid(),
+                        preparation: uuid(),
+                    }),
+                ),
+            }),
+        );
 
 export const generateRandomRecipeMethodSections =
-    (): components["schemas"]["RecipeSectionMethod"][] =>
+    (): components["schemas"]["RecipeMethodSection"][] =>
         Array.from({ length: randomNumber() }).map(() => ({
-            sectionId: uuid(),
             name: uuid(),
             description: uuid(),
             items: Array.from({ length: randomNumber() }).map(() => ({
-                id: uuid(),
-                description: uuid(),
+                content: uuid(),
             })),
         }));
 
@@ -82,86 +80,24 @@ export const generateRandomRecipeServings =
     };
 
 export const createRandomRecipeTags = async (database: KnexDatabase) => {
-    const tags = Object.fromEntries(
-        Array.from({ length: randomNumber() }).map(() => {
-            const parentTagId = uuid();
-            return [
-                parentTagId,
-                {
-                    tagId: parentTagId,
-                    name: uuid(),
-                    description: uuid(),
-                    tags: Array.from({ length: randomNumber() }).map(() => ({
-                        tagId: uuid(),
-                        name: uuid(),
-                        description: uuid(),
-                    })),
-                },
-            ];
-        }),
+    const parentTags = await KnexTagRepository.create(
+        database,
+        Array.from({ length: randomNumber() }).map(() => ({
+            name: uuid(),
+            description: uuid(),
+        })),
     );
 
-    const parentTags = Object.values(tags).map(({ tags, ...tag }) => tag);
-
-    const childTags = Object.values(tags)
-        .flatMap(({ tags, tagId }) =>
-            tags?.map((tag) => ({ ...tag, parentId: tagId })),
-        )
-        .filter(Undefined);
-
-    await KnexTagRepository.create(database, parentTags);
-    await KnexTagRepository.create(database, childTags);
+    const childTags = await KnexTagRepository.create(
+        database,
+        parentTags.flatMap(({ tagId }) =>
+            Array.from({ length: randomNumber() }).map(() => ({
+                parentId: tagId,
+                name: uuid(),
+                description: uuid(),
+            })),
+        ),
+    );
 
     return childTags.map(({ tagId }) => ({ tagId }));
-};
-
-export const assertRecipeServingsAreEqual = (
-    servings1: components["schemas"]["Servings"] | string | undefined,
-    servings2: components["schemas"]["Servings"] | string | undefined,
-) => {
-    if (!(servings1 && !!servings2) || (!servings2 && !!servings1))
-        throw new Error("Serving parameter undefined");
-    const servings1Parsed =
-        typeof servings1 === "string" ? JSON.parse(servings1) : servings1;
-    const servings2Parsed =
-        typeof servings2 === "string" ? JSON.parse(servings2) : servings2;
-
-    expect(servings1Parsed.unit).toEqual(servings2Parsed.unit);
-    expect(servings1Parsed.count.representation).toEqual(
-        servings2Parsed.count.representation,
-    );
-    expect(servings1Parsed.count.value).toEqual(servings2Parsed.count.value);
-};
-
-export const assertRecipeTagsAreEqual = (
-    tags1: components["schemas"]["Recipe"]["tags"] = {},
-    tags2: components["schemas"]["Recipe"]["tags"] = {},
-) => {
-    const tagGroups1 = Object.keys(tags1);
-    const tagGroups2 = Object.keys(tags2);
-
-    expect(tagGroups1.length).toEqual(tagGroups2.length);
-
-    tagGroups1.forEach((tagGroup) => {
-        const tag1 = tags1[tagGroup];
-        const tag2 = tags2[tagGroup];
-
-        expect(tag1?.tagId).toEqual(tag2?.tagId);
-        expect(tag1?.name).toEqual(tag2?.name);
-
-        const childTags1 = tag1?.tags ?? [];
-        const childTags2 = tag2?.tags ?? [];
-
-        expect(childTags1.length).toEqual(childTags2.length);
-
-        childTags1.forEach((childTag) => {
-            const childTag1 = childTags1.find(
-                ({ tagId }) => tagId === childTag.tagId,
-            );
-
-            expect(childTag1).toBeDefined();
-            expect(childTag1?.tagId).toEqual(childTag.tagId);
-            expect(childTag1?.name).toEqual(childTag.name);
-        });
-    });
 };

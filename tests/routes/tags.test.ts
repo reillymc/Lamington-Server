@@ -2,7 +2,6 @@ import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
-import { v4 as uuid } from "uuid";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
@@ -34,20 +33,17 @@ describe("Get all tags", () => {
     it("should return tags", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const parentTagId = uuid();
-        const childTagId = uuid();
-
-        await KnexTagRepository.create(database, [
+        const [parentTag] = await KnexTagRepository.create(database, [
             {
-                tagId: parentTagId,
                 name: "Parent Tag",
                 description: "Parent Description",
             },
+        ]);
+        const [childTag] = await KnexTagRepository.create(database, [
             {
-                tagId: childTagId,
                 name: "Child Tag",
                 description: "Child Description",
-                parentId: parentTagId,
+                parentId: parentTag!.tagId,
             },
         ]);
 
@@ -58,10 +54,12 @@ describe("Get all tags", () => {
         const tags = res.body as components["schemas"]["TagGroup"][];
         expect(tags.length).toEqual(1);
 
-        const parentTag = tags.find((t) => t.tagId === parentTagId);
-        expect(parentTag).toBeDefined();
-        expect(parentTag?.name).toEqual("Parent Tag");
-        expect(parentTag?.tags).toHaveLength(1);
-        expect(parentTag?.tags?.[0]?.tagId).toEqual(childTagId);
+        const parentTagResponse = tags.find(
+            (t) => t.tagId === parentTag!.tagId,
+        );
+        expect(parentTagResponse).toBeDefined();
+        expect(parentTagResponse?.name).toEqual("Parent Tag");
+        expect(parentTagResponse?.tags).toHaveLength(1);
+        expect(parentTagResponse?.tags?.[0]?.tagId).toEqual(childTag!.tagId);
     });
 });

@@ -14,9 +14,8 @@ export const lamington = {
     plannerMeal: "planner_meal",
     recipe: "recipe",
     recipeIngredient: "recipe_ingredient",
+    recipeRecipe: "recipe_recipe",
     recipeRating: "recipe_rating",
-    recipeSection: "recipe_section",
-    recipeStep: "recipe_step",
     tag: "tag",
     user: "user",
 } as const;
@@ -66,8 +65,7 @@ export const ContentAttachmentTable = table(lamington.contentAttachment, [
     "contentId",
     "attachmentId",
     "displayType",
-    "displayId",
-    "displayOrder",
+    "displayMetadata",
 ] as const);
 
 export const ContentMemberTable = table(lamington.contentMember, [
@@ -84,6 +82,7 @@ export const ContentTagTable = table(lamington.contentTag, [
 export const IngredientTable = table(lamington.ingredient, [
     "ingredientId",
     "name",
+    "namePlural",
     "description",
 ] as const);
 
@@ -146,41 +145,24 @@ export const RecipeTable = table(lamington.recipe, [
     "nutritionalInformation",
     "public",
     "timesCooked",
+    "ingredients",
+    "method",
 ] as const);
 
 export const RecipeIngredientTable = table(lamington.recipeIngredient, [
-    "id",
     "recipeId",
-    "sectionId",
     "ingredientId",
-    "subrecipeId",
-    "index",
-    "unit",
-    "amount",
-    "multiplier",
-    "description",
+] as const);
+
+export const RecipeRecipeTable = table(lamington.recipeRecipe, [
+    "recipeId",
+    "subRecipeId",
 ] as const);
 
 export const RecipeRatingTable = table(lamington.recipeRating, [
     "recipeId",
     "raterId",
     "rating",
-] as const);
-
-const _RecipeSectionTable = table(lamington.recipeSection, [
-    "recipeId",
-    "sectionId",
-    "index",
-    "name",
-    "description",
-] as const);
-
-export const RecipeStepTable = table(lamington.recipeStep, [
-    "id",
-    "recipeId",
-    "sectionId",
-    "index",
-    "description",
 ] as const);
 
 export const TagTable = table(lamington.tag, [

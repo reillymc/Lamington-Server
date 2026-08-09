@@ -33,7 +33,10 @@ jobs:
         uses: biomejs/setup-biome@v2
 
       - name: Run Biome
-        run: biome ci . # TODO: --errors-as-warnings when remaining issues in code are addressed
+        run: biome ci . --error-on-warnings
+
+      - name: Run typecheck
+        run: npm run typecheck
 
       - name: Run knip
         run: npm run knip

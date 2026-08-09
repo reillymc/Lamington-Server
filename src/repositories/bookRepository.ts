@@ -7,10 +7,10 @@ import type {
 import type { ContentMember } from "./temp.ts";
 import type { User } from "./userRepository.ts";
 
-type BookUserStatus = "O" | "A" | "M" | "P" | "B";
-type BookIcon = `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10}`;
+export type BookUserStatus = "O" | "A" | "M" | "P" | "B";
+export type BookIcon = `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10}`;
 
-type BookColor = `variant${1 | 2 | 3 | 4 | 5}`;
+export type BookColor = `variant${1 | 2 | 3 | 4 | 5}`;
 
 // type BookCustomisationsV1 = {
 //     color: string;
@@ -22,7 +22,7 @@ type BookColor = `variant${1 | 2 | 3 | 4 | 5}`;
 /**
  * Book
  */
-interface Book {
+export interface Book {
     bookId: string;
     name: string;
     description: string | null;
@@ -45,7 +45,7 @@ type ReadAllRequest = {
 type BaseResponse = {
     bookId: Book["bookId"];
     name: Book["name"];
-    description: Book["description"];
+    description: Book["description"] | undefined;
     color: BookColor;
     icon: BookIcon;
     owner: {

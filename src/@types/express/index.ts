@@ -1,4 +1,4 @@
-import type { components } from "../../src/routes/spec/schema.js";
+import type { components } from "../../routes/spec/schema.d.ts";
 
 type UserStatus = components["schemas"]["UserStatus"];
 

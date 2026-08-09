@@ -1,6 +1,5 @@
+import { EnsureArray } from "@reillymc/es-utils";
 import express from "express";
-
-import { EnsureArray } from "../utils/index.ts";
 import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 

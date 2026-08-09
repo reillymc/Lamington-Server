@@ -11,7 +11,8 @@ const config: Knex.Config = {
         password: process.env.DB_DEV_PASSWORD,
     },
     seeds: {
-        directory: "./seeds/development",
+        directory: ["./seeds/production", "./seeds/development"],
+        sortDirsSeparately: true,
     },
 };
 

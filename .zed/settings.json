@@ -41,6 +41,9 @@
                 "source.fixAll.biome": true,
                 "source.organizeImports.biome": true
             }
+        },
+        "YAML": {
+            "tab_size": 2
         }
     },
     "lsp": {

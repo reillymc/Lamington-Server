@@ -1,14 +1,28 @@
-import { EnsureArray } from "../../utils/index.ts";
-import type { PlannerRepository } from "../plannerRepository.ts";
+import { EnsureArray } from "@reillymc/es-utils";
+import type { Meal } from "../mealRepository.ts";
+import type {
+    Planner,
+    PlannerColor,
+    PlannerMealCourse,
+    PlannerRepository,
+    PlannerUserStatus,
+} from "../plannerRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
 import { withContentPermissions } from "./common/queryBuilders/withContentPermissions.ts";
 import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
-import { createDeleteContent } from "./common/repositoryMethods/content.ts";
+import {
+    createContentRows,
+    createDeleteContent,
+} from "./common/repositoryMethods/content.ts";
 import { HeroAttachmentActions } from "./common/repositoryMethods/contentAttachment.ts";
 import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
 import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
+import type {
+    ContentAuthorColumns,
+    HeroAttachmentColumns,
+} from "./common/rowTypes.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     AttachmentTable,
@@ -20,19 +34,35 @@ import {
     PlannerTable,
 } from "./spec/index.ts";
 
+type PlannerRow = Pick<Planner, "plannerId" | "name" | "description"> & {
+    customisations: { color: PlannerColor } | null;
+    status: PlannerUserStatus | null;
+} & ContentAuthorColumns;
+
+type PlannerMealRow = Pick<
+    Meal,
+    "mealId" | "meal" | "description" | "source" | "recipeId" | "notes"
+> & {
+    plannerId: string;
+    year: number;
+    month: number;
+    dayOfMonth: number;
+} & ContentAuthorColumns &
+    HeroAttachmentColumns;
+
 const formatPlannerMeal = (
-    meal: any,
+    meal: PlannerMealRow,
 ): Awaited<ReturnType<PlannerRepository["readAllMeals"]>>["meals"][number] => ({
     mealId: meal.mealId,
-    course: meal.meal.toLowerCase(),
+    course: meal.meal.toLowerCase() as PlannerMealCourse,
     owner: {
         userId: meal.createdBy,
         firstName: meal.firstName,
     },
-    plannerId: toUndefined(meal.plannerId),
-    year: toUndefined(meal.year),
-    month: toUndefined(meal.month),
-    dayOfMonth: toUndefined(meal.dayOfMonth),
+    plannerId: meal.plannerId,
+    year: meal.year,
+    month: meal.month,
+    dayOfMonth: meal.dayOfMonth,
     description: toUndefined(meal.description),
     source: toUndefined(meal.source),
     recipeId: toUndefined(meal.recipeId),
@@ -51,7 +81,7 @@ const readByIds = async (
     plannerId: string,
     mealIds: string[],
 ) => {
-    const result = await db(lamington.plannerMeal)
+    const result: PlannerMealRow[] = await db(lamington.plannerMeal)
         .select(
             PlannerMealTable.mealId,
             PlannerMealTable.plannerId,
@@ -85,7 +115,7 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (
     db,
     { planners, userId },
 ) => {
-    const result: any[] = await db(lamington.planner)
+    const result: PlannerRow[] = await db(lamington.planner)
         .select(
             PlannerTable.plannerId,
             PlannerTable.name,
@@ -117,7 +147,7 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (
             plannerId: p.plannerId,
             name: p.name,
             description: toUndefined(p.description),
-            color: p.customisations?.color,
+            color: p.customisations?.color ?? "variant1",
             owner: { userId: p.createdBy, firstName: p.firstName },
             status: p.status ?? "O",
         })),
@@ -126,7 +156,7 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (
 
 export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
     readAllMeals: async (db, { userId, filter }) => {
-        const result = await db(lamington.plannerMeal)
+        const result: PlannerMealRow[] = await db(lamington.plannerMeal)
             .select(
                 PlannerMealTable.mealId,
                 PlannerMealTable.plannerId,
@@ -166,13 +196,11 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
         return { meals: result.map(formatPlannerMeal) };
     },
     createMeals: async (db, { plannerId, userId, meals }) => {
-        const newContent = await db(lamington.content)
-            .insert(meals.map(() => ({ createdBy: userId })))
-            .returning("contentId");
+        const newContent = await createContentRows(db, userId, meals.length);
 
-        const mealsToCreate = meals.map((meal, index) => ({
-            ...meal,
-            mealId: newContent[index].contentId,
+        const mealsToCreate = newContent.map(({ contentId }, index) => ({
+            ...meals[index],
+            mealId: contentId,
         }));
 
         await db(lamington.plannerMeal).insert(
@@ -252,7 +280,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
     },
     read,
     readAll: async (db, { userId, filter }) => {
-        const plannerList: any[] = await db(lamington.planner)
+        const plannerList: PlannerRow[] = await db(lamington.planner)
             .select(
                 PlannerTable.plannerId,
                 PlannerTable.name,
@@ -285,16 +313,14 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
                 plannerId: p.plannerId,
                 name: p.name,
                 description: toUndefined(p.description),
-                color: p.customisations?.color,
+                color: p.customisations?.color ?? "variant1",
                 owner: { userId: p.createdBy, firstName: p.firstName },
                 status: p.status ?? "O",
             })),
         };
     },
     create: async (db, { userId, planners }) => {
-        const newContent = await db(lamington.content)
-            .insert(planners.map(() => ({ createdBy: userId })))
-            .returning("contentId");
+        const newContent = await createContentRows(db, userId, planners.length);
 
         const plannersToCreate = newContent.map(({ contentId }, index) => ({
             ...planners[index],
@@ -302,12 +328,14 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
         }));
 
         await db(lamington.planner).insert(
-            plannersToCreate.map(({ name, plannerId, color, description }) => ({
-                name,
-                plannerId,
-                customisations: { color },
-                description,
-            })),
+            plannersToCreate.map(
+                ({ name, plannerId, color = "variant1", description }) => ({
+                    name,
+                    plannerId,
+                    customisations: { color },
+                    description,
+                }),
+            ),
         );
 
         return read(db, { userId, planners: plannersToCreate });

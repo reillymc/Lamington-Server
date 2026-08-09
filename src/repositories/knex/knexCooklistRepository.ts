@@ -1,21 +1,45 @@
-import type { CookListRepository } from "../cooklistRepository.ts";
+import type {
+    CookListMealCourse,
+    CookListRepository,
+} from "../cooklistRepository.ts";
+import type { Meal } from "../mealRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
 import { withContentPermissions } from "./common/queryBuilders/withContentPermissions.ts";
 import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
-import { createDeleteContent } from "./common/repositoryMethods/content.ts";
+import {
+    createContentRows,
+    createDeleteContent,
+} from "./common/repositoryMethods/content.ts";
 import { HeroAttachmentActions } from "./common/repositoryMethods/contentAttachment.ts";
+import type {
+    ContentAuthorColumns,
+    HeroAttachmentColumns,
+} from "./common/rowTypes.ts";
 import type { KnexDatabase } from "./knex.ts";
 import { ContentTable, lamington, PlannerMealTable } from "./spec/index.ts";
 
+type CookListMealRow = Pick<
+    Meal,
+    | "mealId"
+    | "meal"
+    | "description"
+    | "source"
+    | "sequence"
+    | "recipeId"
+    | "notes"
+> &
+    ContentAuthorColumns &
+    HeroAttachmentColumns;
+
 const formatCookListMeal = (
-    meal: any,
+    meal: CookListMealRow,
 ): Awaited<
     ReturnType<CookListRepository["readAllMeals"]>
 >["meals"][number] => ({
     mealId: meal.mealId,
-    course: meal.meal.toLowerCase(),
+    course: meal.meal.toLowerCase() as CookListMealCourse,
     owner: {
         userId: meal.createdBy,
         firstName: meal.firstName,
@@ -25,16 +49,17 @@ const formatCookListMeal = (
     source: toUndefined(meal.source),
     recipeId: toUndefined(meal.recipeId),
     notes: toUndefined(meal.notes),
-    heroImage: meal.heroAttachmentId
-        ? {
-              attachmentId: meal.heroAttachmentId,
-              uri: meal.heroAttachmentUri,
-          }
-        : undefined,
+    heroImage:
+        meal.heroAttachmentId && meal.heroAttachmentUri
+            ? {
+                  attachmentId: meal.heroAttachmentId,
+                  uri: meal.heroAttachmentUri,
+              }
+            : undefined,
 });
 
 const readByIds = async (db: KnexDatabase, mealIds: string[]) => {
-    const result = await db(lamington.plannerMeal)
+    const result: CookListMealRow[] = await db(lamington.plannerMeal)
         .select(
             PlannerMealTable.mealId,
             PlannerMealTable.meal,
@@ -61,7 +86,7 @@ const readByIds = async (db: KnexDatabase, mealIds: string[]) => {
 
 export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
     readAllMeals: async (db, { userId }) => {
-        const result = await db(lamington.plannerMeal)
+        const result: CookListMealRow[] = await db(lamington.plannerMeal)
             .select(
                 PlannerMealTable.mealId,
                 PlannerMealTable.meal,
@@ -90,13 +115,11 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
         return { meals: result.map(formatCookListMeal) };
     },
     createMeals: async (db, { userId, meals }) => {
-        const newContent = await db(lamington.content)
-            .insert(meals.map(() => ({ createdBy: userId })))
-            .returning("contentId");
+        const newContent = await createContentRows(db, userId, meals.length);
 
-        const mealsToCreate = meals.map((meal, index) => ({
-            ...meal,
-            mealId: newContent[index].contentId,
+        const mealsToCreate = newContent.map(({ contentId }, index) => ({
+            ...meals[index],
+            mealId: contentId,
         }));
 
         await db(lamington.plannerMeal).insert(

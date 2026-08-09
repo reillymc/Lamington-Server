@@ -1,4 +1,4 @@
-import { after, afterEach, beforeEach, describe, it } from "node:test";
+import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
@@ -225,86 +225,64 @@ describe("Approve user", () => {
         const [user] = await CreateUsers(database, {
             status: "P",
         });
-        if (!user) throw new Error("User not created");
-
         const response = await request(app)
-            .post(`/v1/users/${user.userId}/approve`)
+            .post(`/v1/users/${user!.userId}/approve`)
             .set(adminToken);
 
         expect(response.statusCode).toEqual(204);
 
         const {
             users: [updatedUser],
-        } = await KnexUserRepository.read(database, { users: [user] });
+        } = await KnexUserRepository.read(database, { users: [user!] });
 
         expect(updatedUser?.status).toEqual("M");
     });
 
-    it("should create sample data for pending => registered user", async () => {
+    it("should trigger the starter data job when approving a pending user", async () => {
         const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
         const [user] = await CreateUsers(database, {
             status: "P",
         });
-        if (!user) throw new Error("User not created");
+
+        const runStarterData = mock.fn(async (_userId: string) => true);
+        const app = createTestApp({
+            database,
+            jobs: {
+                createUserStarterData: { run: runStarterData },
+            },
+        });
 
         const response = await request(app)
-            .post(`/v1/users/${user.userId}/approve`)
-            .set(adminToken)
-            .send({ accept: true });
+            .post(`/v1/users/${user!.userId}/approve`)
+            .set(adminToken);
+
         expect(response.statusCode).toEqual(204);
+        expect(runStarterData.mock.calls).toHaveLength(1);
+        expect(runStarterData.mock.calls[0]?.arguments).toEqual([user!.userId]);
+    });
 
-        const {
-            users: [updatedUser],
-        } = await KnexUserRepository.read(database, { users: [user] });
-        expect(updatedUser?.status).toEqual("M");
+    it("should not trigger the starter data job when approving a registered user", async () => {
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
-        const { lists } = await KnexListRepository.readAll(database, user);
-        expect(lists.length).toEqual(1);
-
-        const [list] = lists;
-        expect(list!.owner.userId).toEqual(user.userId);
-
-        const { items } = await KnexListRepository.readAllItems(database, {
-            userId: user.userId,
-            filter: list!,
+        const [user] = await CreateUsers(database, {
+            status: "M",
         });
-        expect(items.length).toEqual(1);
 
-        const { books } = await KnexBookRepository.readAll(database, user);
-        expect(books.length).toEqual(1);
-
-        const [book] = books;
-        expect(book!.owner.userId).toEqual(user.userId);
-
-        const { recipes } = await KnexRecipeRepository.readAll(database, {
-            userId: user.userId,
-            filter: { books: [book!] },
-        });
-        expect(recipes.length).toEqual(1);
-
-        const [recipe] = recipes;
-        if (!recipe) throw new Error("Recipe/BookRecipe not created");
-        expect(recipe.owner.userId).toEqual(user.userId);
-
-        const { planners } = await KnexPlannerRepository.readAll(
+        const runStarterData = mock.fn(async (_userId: string) => true);
+        const app = createTestApp({
             database,
-            user,
-        );
-        expect(planners.length).toEqual(1);
-
-        const [planner] = planners;
-        expect(planner!.owner.userId).toEqual(user.userId);
-
-        const { meals } = await KnexPlannerRepository.readAllMeals(database, {
-            userId: user.userId,
-            filter: planner!,
+            jobs: {
+                createUserStarterData: { run: runStarterData },
+            },
         });
-        expect(meals.length).toEqual(2);
 
-        const [meal1, meal2] = meals;
-        expect(meal1!.owner.userId).toEqual(user.userId);
-        expect(meal2!.owner.userId).toEqual(user.userId);
+        const response = await request(app)
+            .post(`/v1/users/${user!.userId}/approve`)
+            .set(adminToken);
+
+        expect(response.statusCode).toEqual(204);
+        expect(runStarterData.mock.calls).toHaveLength(0);
     });
 });
 
@@ -335,17 +313,15 @@ describe("Blacklist user", () => {
         const [user] = await CreateUsers(database, {
             status: "P",
         });
-        if (!user) throw new Error("User not created");
-
         const response = await request(app)
-            .post(`/v1/users/${user.userId}/blacklist`)
+            .post(`/v1/users/${user!.userId}/blacklist`)
             .set(adminToken);
 
         expect(response.statusCode).toEqual(204);
 
         const {
             users: [updatedUser],
-        } = await KnexUserRepository.read(database, { users: [user] });
+        } = await KnexUserRepository.read(database, { users: [user!] });
 
         expect(updatedUser?.status).toEqual("B");
     });
@@ -356,17 +332,15 @@ describe("Blacklist user", () => {
         const [user] = await CreateUsers(database, {
             status: "M",
         });
-        if (!user) throw new Error("User not created");
-
         const response = await request(app)
-            .post(`/v1/users/${user.userId}/blacklist`)
+            .post(`/v1/users/${user!.userId}/blacklist`)
             .set(adminToken);
 
         expect(response.statusCode).toEqual(204);
 
         const {
             users: [updatedUser],
-        } = await KnexUserRepository.read(database, { users: [user] });
+        } = await KnexUserRepository.read(database, { users: [user!] });
 
         expect(updatedUser?.status).toEqual("B");
     });
@@ -377,17 +351,15 @@ describe("Blacklist user", () => {
         const [user] = await CreateUsers(database, {
             status: "A",
         });
-        if (!user) throw new Error("User not created");
-
         const response = await request(app)
-            .post(`/v1/users/${user.userId}/blacklist`)
+            .post(`/v1/users/${user!.userId}/blacklist`)
             .set(adminToken);
 
         expect(response.statusCode).toEqual(204);
 
         const {
             users: [updatedUser],
-        } = await KnexUserRepository.read(database, { users: [user] });
+        } = await KnexUserRepository.read(database, { users: [user!] });
 
         expect(updatedUser?.status).toEqual("B");
     });

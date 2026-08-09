@@ -1,5 +1,5 @@
 import express from "express";
-import { createAssetsRouter } from "./assets.ts";
+import { type AssetsRouterConfig, createAssetsRouter } from "./assets.ts";
 import {
     type AttachmentsRouterConfig,
     createAttachmentsRouter,
@@ -10,6 +10,7 @@ import { createCooklistRouter } from "./cooklists.ts";
 import { createDocsRouter, type DocsRouterConfig } from "./docs.ts";
 import { createExtractorRouter } from "./extractor.ts";
 import { createHealthRouter } from "./health.ts";
+import { createIngredientRouter } from "./ingredients.ts";
 import { createListRouter } from "./lists.ts";
 import { createMealRouter } from "./meals.ts";
 import { createPlannerRouter } from "./planners.ts";
@@ -19,19 +20,22 @@ import type { CreateRouter } from "./route.ts";
 import { createTagsRouter } from "./tags.ts";
 import { createUserRouter } from "./users.ts";
 
-type AppRouterConfig = AttachmentsRouterConfig & DocsRouterConfig;
+type AppRouterConfig = AttachmentsRouterConfig &
+    DocsRouterConfig &
+    AssetsRouterConfig;
 
 export const createAppRouter: CreateRouter<
-    | "userService"
     | "attachmentService"
     | "bookService"
     | "contentExtractionService"
     | "cooklistService"
+    | "ingredientService"
     | "listService"
     | "mealService"
     | "plannerService"
     | "recipeService"
-    | "tagService",
+    | "tagService"
+    | "userService",
     | "rateLimiterControlled"
     | "rateLimiterLoose"
     | "rateLimiterRestrictive"
@@ -50,12 +54,13 @@ export const createAppRouter: CreateRouter<
                 .Router()
                 .use(middleware.rateLimiterLoose)
                 .use(middleware.validator)
-                .use(createAuthRouter(services, middleware))
-                .use(createAssetsRouter())
+                .use(createAssetsRouter(config))
                 .use(createAttachmentsRouter(services, middleware, config))
+                .use(createAuthRouter(services, middleware))
                 .use(createBookRouter(services))
                 .use(createCooklistRouter(services))
                 .use(createExtractorRouter(services))
+                .use(createIngredientRouter(services))
                 .use(createListRouter(services))
                 .use(createMealRouter(services))
                 .use(createPlannerRouter(services))
