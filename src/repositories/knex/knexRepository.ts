@@ -6,6 +6,11 @@ type KnexTxStore = AsyncLocalStorage<Knex>;
 
 type CreateKnexRepository<TRepository> = (store: KnexTxStore) => TRepository;
 
+/**
+ * Extracts the implementation signature for a specific repository method.
+ * Maps the public `(request) => Res` to the implementation `(db, request) => Res`.
+ * Used for module-level helper type annotations.
+ */
 export type KnexRepoMethod<
     TRepository,
     K extends keyof TRepository,
@@ -13,6 +18,10 @@ export type KnexRepoMethod<
     ? (db: Knex, request: Req) => Res
     : never;
 
+/**
+ * Creates the `AsyncLocalStorage` instance that carries the active Knex
+ * handle throughout a request lifecycle.
+ */
 export const createKnexTxStore = (): KnexTxStore => new AsyncLocalStorage();
 
 const requireDb = (store: KnexTxStore): Knex => {
@@ -32,10 +41,9 @@ type KnexRepoImpl<TRepository> = {
 };
 
 /**
- * Creates a Knex repository factory. The implementation object's methods are
- * written as `(db, request) => ...` and are automatically wrapped so the
- * active Knex query builder is injected on every call, leaving the public
- * repository methods to expose only `(request) => ...`.
+ * Wraps a repository implementation object so each method auto-resolves the
+ * active Knex query builder from `AsyncLocalStorage`. Implementation methods
+ * receive `(db, request)`; the public repository exposes only `(request)`.
  */
 export const knexRepository =
     <TRepository>(
@@ -51,6 +59,11 @@ export const knexRepository =
         return wrapped as TRepository;
     };
 
+/**
+ * Creates a `TransactionRunner` that opens a real database transaction and
+ * populates the store. In production, `db` is the Knex instance; in tests, it
+ * is a test transaction so service calls create savepoints within it.
+ */
 export const createKnexTransactionRunner =
     (db: Knex, store: KnexTxStore): TransactionRunner =>
     <T>(fn: () => Promise<T>) =>

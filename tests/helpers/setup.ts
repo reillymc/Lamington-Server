@@ -85,6 +85,10 @@ const defaultAppRepositories: AppRepositories = {
     userRepository: createKnexUserRepository(txStore),
 };
 
+/**
+ * The default set of Knex repository instances. Used by job and repository
+ * tests which don't create an app.
+ */
 export const repositories = defaultAppRepositories;
 
 export const silentLogger = createLogger({
@@ -115,6 +119,10 @@ after(async () => {
     await db.destroy();
 });
 
+/**
+ * Returns the current test transaction handle. Throws if `beginTestTransaction`
+ * hasn't been called. Used for raw Knex queries in tests.
+ */
 export const getCurrentDatabase = (): KnexDatabase => {
     if (!currentDatabase) {
         throw new Error(
@@ -124,13 +132,26 @@ export const getCurrentDatabase = (): KnexDatabase => {
     return currentDatabase;
 };
 
+/**
+ * Starts a test database transaction and sets it as the current context. All
+ * repository calls within `withCxIt` bodies resolve from this transaction.
+ */
 export const beginTestTransaction = async () => {
     setCurrentDatabase(await db.transaction());
 };
 
+/**
+ * Creates a `TransactionRunner` bound to the current test transaction. Job
+ * factories use this so the job's own `transaction()` calls create savepoints
+ * within the outer test transaction.
+ */
 export const createTransactionRunner = () =>
     createKnexTransactionRunner(getCurrentDatabase(), txStore);
 
+/**
+ * Rolls back the current test transaction, discarding any changes made during
+ * the test.
+ */
 export const rollbackTestTransaction = async () => {
     const database = currentDatabase;
     currentDatabase = undefined;
@@ -139,6 +160,12 @@ export const rollbackTestTransaction = async () => {
     }
 };
 
+/**
+ * Creates an Express app wired with real Knex repositories and services.
+ * Returns `{ app, ...repositories }`, so individual repo instances can be
+ * destructured directly. Accepts overrides for repositories, middleware,
+ * services, and jobs. Must be called after `beginTestTransaction`.
+ */
 export const createTestApp = ({
     repositories: repositoryOverrides,
     middleware,
@@ -224,6 +251,15 @@ export const createTestApp = ({
     };
 };
 
+/**
+ * The shape of a test's local context: the Express `app` plus the app's
+ * repository instances.
+ */
 export type TestContext = { app: Express } & AppRepositories;
 
+/**
+ * An empty-shell context used as a zero-cost initializer for destructuring
+ * `let { app, ...repos } = TestContext`. Real values are assigned in
+ * `beforeEach` via `createTestApp`.
+ */
 export const TestContext: TestContext = {} as unknown as TestContext;
