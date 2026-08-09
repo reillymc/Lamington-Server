@@ -1,85 +1,86 @@
-import { after, afterEach, beforeEach, it } from "node:test";
+import { afterEach, beforeEach } from "node:test";
 import { expect } from "expect";
 import { createUserStarterDataJob } from "../../src/jobs/createUserStarterData.ts";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
-import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
-import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
-import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import { CreateUsers } from "../helpers/index.ts";
-import { db, silentLogger } from "../helpers/setup.ts";
-
-let database: KnexDatabase;
+import {
+    beginTestTransaction,
+    createTransactionRunner,
+    repositories,
+    rollbackTestTransaction,
+    silentLogger,
+    withCxIt,
+} from "../helpers/setup.ts";
 
 beforeEach(async () => {
-    database = await db.transaction();
+    await beginTestTransaction();
 });
 
 afterEach(async () => {
-    await database.rollback();
+    await rollbackTestTransaction();
 });
 
-after(async () => {
-    await db.destroy();
-});
-
-const createJob = (database: KnexDatabase) =>
+const createJob = () =>
     createUserStarterDataJob({
-        database,
+        transaction: createTransactionRunner(),
         repositories: {
-            listRepository: KnexListRepository,
-            bookRepository: KnexBookRepository,
-            recipeRepository: KnexRecipeRepository,
-            plannerRepository: KnexPlannerRepository,
+            listRepository: repositories.listRepository,
+            bookRepository: repositories.bookRepository,
+            recipeRepository: repositories.recipeRepository,
+            plannerRepository: repositories.plannerRepository,
         },
         logger: silentLogger,
     });
 
-it("should create starter list, book, recipe, planner and meals for a user", async () => {
-    const [user] = await CreateUsers(database, {
-        status: "P",
-    });
+withCxIt(
+    "should create starter list, book, recipe, planner and meals for a user",
+    async () => {
+        const [user] = await CreateUsers(repositories.userRepository, {
+            status: "P",
+        });
 
-    const result = await createJob(database).run(user!.userId);
+        const result = await createJob().run(user!.userId);
 
-    expect(result).toBe(true);
+        expect(result).toBe(true);
 
-    const { lists } = await KnexListRepository.readAll(database, user!);
-    expect(lists.length).toEqual(1);
+        const { lists } = await repositories.listRepository.readAll(user!);
+        expect(lists.length).toEqual(1);
 
-    const [list] = lists;
-    expect(list!.owner.userId).toEqual(user!.userId);
+        const [list] = lists;
+        expect(list!.owner.userId).toEqual(user!.userId);
 
-    const { items } = await KnexListRepository.readAllItems(database, {
-        userId: user!.userId,
-        filter: list!,
-    });
-    expect(items.length).toEqual(1);
+        const { items } = await repositories.listRepository.readAllItems({
+            userId: user!.userId,
+            filter: list!,
+        });
+        expect(items.length).toEqual(1);
 
-    const { books } = await KnexBookRepository.readAll(database, user!);
-    expect(books.length).toEqual(1);
+        const { books } = await repositories.bookRepository.readAll(user!);
+        expect(books.length).toEqual(1);
 
-    const [book] = books;
-    expect(book!.owner.userId).toEqual(user!.userId);
+        const [book] = books;
+        expect(book!.owner.userId).toEqual(user!.userId);
 
-    const { recipes } = await KnexRecipeRepository.readAll(database, {
-        userId: user!.userId,
-        filter: { books: [book!] },
-    });
-    expect(recipes.length).toEqual(1);
+        const { recipes } = await repositories.recipeRepository.readAll({
+            userId: user!.userId,
+            filter: { books: [book!] },
+        });
+        expect(recipes.length).toEqual(1);
 
-    const [recipe] = recipes;
-    expect(recipe!.owner.userId).toEqual(user!.userId);
+        const [recipe] = recipes;
+        expect(recipe!.owner.userId).toEqual(user!.userId);
 
-    const { planners } = await KnexPlannerRepository.readAll(database, user!);
-    expect(planners.length).toEqual(1);
+        const { planners } = await repositories.plannerRepository.readAll(
+            user!,
+        );
+        expect(planners.length).toEqual(1);
 
-    const [planner] = planners;
-    expect(planner!.owner.userId).toEqual(user!.userId);
+        const [planner] = planners;
+        expect(planner!.owner.userId).toEqual(user!.userId);
 
-    const { meals } = await KnexPlannerRepository.readAllMeals(database, {
-        userId: user!.userId,
-        filter: planner!,
-    });
-    expect(meals.length).toEqual(2);
-});
+        const { meals } = await repositories.plannerRepository.readAllMeals({
+            userId: user!.userId,
+            filter: planner!,
+        });
+        expect(meals.length).toEqual(2);
+    },
+);

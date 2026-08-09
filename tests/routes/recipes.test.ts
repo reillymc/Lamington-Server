@@ -1,14 +1,7 @@
-import { after, afterEach, beforeEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe } from "node:test";
 import { expect } from "expect";
-import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
-import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
-import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
-import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
-import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import type { components, paths } from "../../src/routes/spec/index.ts";
 import {
     CreateUsers,
@@ -24,44 +17,61 @@ import {
     TEST_ITEM_COUNT,
     type TestCase,
 } from "../helpers/index.ts";
-import { createTestApp, db } from "../helpers/setup.ts";
+import {
+    beginTestTransaction,
+    createTestApp,
+    rollbackTestTransaction,
+    TestContext,
+    withCxIt,
+} from "../helpers/setup.ts";
 
-let database: KnexDatabase;
-let app: Express;
+let {
+    app,
+    attachmentRepository,
+    bookRepository,
+    ingredientRepository,
+    recipeRepository,
+    tagRepository,
+    userRepository,
+} = TestContext;
 
 beforeEach(async () => {
-    database = await db.transaction();
-    app = createTestApp({ database });
+    await beginTestTransaction();
+    ({
+        app,
+        attachmentRepository,
+        bookRepository,
+        ingredientRepository,
+        recipeRepository,
+        tagRepository,
+        userRepository,
+    } = createTestApp({}));
 });
 
 afterEach(async () => {
-    await database.rollback();
-});
-
-after(async () => {
-    await db.destroy();
+    await rollbackTestTransaction();
 });
 
 describe("Get recipes", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get("/v1/recipes");
 
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return correct recipe details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return correct recipe details", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             attachments: [attachment],
-        } = await KnexAttachmentRepository.create(database, {
+        } = await attachmentRepository.create({
             userId: user.userId,
             attachments: [{ uri: uuid() }],
         });
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user!.userId,
             recipes: [
                 {
@@ -99,14 +109,14 @@ describe("Get recipes", () => {
         expect(recipeResponse!.photo?.uri).toEqual(attachment!.uri);
     });
 
-    it("should return all public recipes from other users", async () => {
-        const [token, _] = await PrepareAuthenticatedUser(database);
-        const randomUsers = await CreateUsers(database, {
+    withCxIt("should return all public recipes from other users", async () => {
+        const [token, _] = await PrepareAuthenticatedUser(userRepository);
+        const randomUsers = await CreateUsers(userRepository, {
             count: randomNumber(),
         });
         const allCreatedRecipes = [];
         for (const user of randomUsers) {
-            const { recipes } = await KnexRecipeRepository.create(database, {
+            const { recipes } = await recipeRepository.create({
                 userId: user.userId,
                 recipes: Array.from({ length: randomNumber(1, 3) }).map(() => ({
                     name: uuid(),
@@ -125,14 +135,14 @@ describe("Get recipes", () => {
         expect(data!.length).toEqual(allCreatedRecipes.length);
     });
 
-    it("should not return private recipes", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const randomUsers = await CreateUsers(database, {
+    withCxIt("should not return private recipes", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const randomUsers = await CreateUsers(userRepository, {
             count: randomNumber(),
         });
         const otherUsersRecipes = [];
         for (const otherUser of randomUsers) {
-            const { recipes } = await KnexRecipeRepository.create(database, {
+            const { recipes } = await recipeRepository.create({
                 userId: otherUser.userId,
                 recipes: Array.from({ length: randomNumber(1, 3) }).map(() => ({
                     name: uuid(),
@@ -142,16 +152,13 @@ describe("Get recipes", () => {
             otherUsersRecipes.push(...recipes);
         }
 
-        const { recipes: myRecipes } = await KnexRecipeRepository.create(
-            database,
-            {
-                userId: user.userId,
-                recipes: Array.from({ length: randomNumber() }).map(() => ({
-                    name: uuid(),
-                    public: randomBoolean(),
-                })),
-            },
-        );
+        const { recipes: myRecipes } = await recipeRepository.create({
+            userId: user.userId,
+            recipes: Array.from({ length: randomNumber() }).map(() => ({
+                name: uuid(),
+                public: randomBoolean(),
+            })),
+        });
 
         const res = await request(app).get("/v1/recipes").set(token);
 
@@ -165,13 +172,15 @@ describe("Get recipes", () => {
         expect(data!.length).toEqual(expectedCount);
     });
 
-    it("should respect pagination", async () => {
+    withCxIt("should respect pagination", async () => {
         const PAGE_SIZE = 50;
 
-        const [token, _] = await PrepareAuthenticatedUser(database);
-        const randomUsers = await CreateUsers(database, { count: 6 });
+        const [token, _] = await PrepareAuthenticatedUser(userRepository);
+        const randomUsers = await CreateUsers(userRepository, {
+            count: 6,
+        });
         for (const user of randomUsers) {
-            await KnexRecipeRepository.create(database, {
+            await recipeRepository.create({
                 userId: user.userId,
                 recipes: Array.from({ length: 10 }).map(() => ({
                     name: uuid(),
@@ -210,14 +219,15 @@ describe("Get recipes", () => {
     });
 
     describe("filter", () => {
-        it("should return results by owner", async () => {
-            const [token, user] = await PrepareAuthenticatedUser(database);
-            const randomUsers = await CreateUsers(database, {
+        withCxIt("should return results by owner", async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const randomUsers = await CreateUsers(userRepository, {
                 count: randomNumber(),
             });
 
             for (const randomUser of randomUsers) {
-                await KnexRecipeRepository.create(database, {
+                await recipeRepository.create({
                     userId: randomUser.userId,
                     recipes: Array.from({ length: randomNumber(1, 3) }).map(
                         () => ({
@@ -228,15 +238,12 @@ describe("Get recipes", () => {
                 });
             }
 
-            const { recipes: myRecipes } = await KnexRecipeRepository.create(
-                database,
-                {
-                    userId: user.userId,
-                    recipes: Array.from({ length: randomNumber() }).map(() => ({
-                        name: uuid(),
-                    })),
-                },
-            );
+            const { recipes: myRecipes } = await recipeRepository.create({
+                userId: user.userId,
+                recipes: Array.from({ length: randomNumber() }).map(() => ({
+                    name: uuid(),
+                })),
+            });
 
             const res = await request(app)
                 .get("/v1/recipes")
@@ -250,21 +257,20 @@ describe("Get recipes", () => {
             expect(data!.length).toEqual(myRecipes.length);
         });
 
-        it("should return results by name match", async () => {
-            const [token, _] = await PrepareAuthenticatedUser(database);
-            const randomUsers = await CreateUsers(database, { count: 10 });
+        withCxIt("should return results by name match", async () => {
+            const [token, _] = await PrepareAuthenticatedUser(userRepository);
+            const randomUsers = await CreateUsers(userRepository, {
+                count: 10,
+            });
             const allCreatedRecipes = [];
             for (const user of randomUsers) {
-                const { recipes } = await KnexRecipeRepository.create(
-                    database,
-                    {
-                        userId: user.userId,
-                        recipes: Array.from({ length: 10 }).map(() => ({
-                            name: uuid(),
-                            public: true,
-                        })),
-                    },
-                );
+                const { recipes } = await recipeRepository.create({
+                    userId: user.userId,
+                    recipes: Array.from({ length: 10 }).map(() => ({
+                        name: uuid(),
+                        public: true,
+                    })),
+                });
                 allCreatedRecipes.push(...recipes);
             }
 
@@ -286,12 +292,13 @@ describe("Get recipes", () => {
             expect(recipe!.recipeId).toEqual(recipeToSearchBy.recipeId);
         });
 
-        it("should return results by name substring", async () => {
-            const [token, user] = await PrepareAuthenticatedUser(database);
+        withCxIt("should return results by name substring", async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
 
             const {
                 recipes: [recipe],
-            } = await KnexRecipeRepository.create(database, {
+            } = await recipeRepository.create({
                 userId: user.userId,
                 recipes: [
                     {
@@ -346,20 +353,21 @@ describe("Get recipes", () => {
             expect(dataMiddle![0]!.recipeId).toEqual(recipe!.recipeId);
         });
 
-        it("should return results by category", async () => {
-            const [token, user] = await PrepareAuthenticatedUser(database);
+        withCxIt("should return results by category", async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
 
-            const [parentTag] = await KnexTagRepository.create(database, {
+            const [parentTag] = await tagRepository.create({
                 name: uuid(),
             });
 
-            const childTags = await KnexTagRepository.create(database, [
+            const childTags = await tagRepository.create([
                 { parentId: parentTag!.tagId, name: "child-1" },
                 { parentId: parentTag!.tagId, name: "child-2" },
                 { parentId: parentTag!.tagId, name: "child-3" },
             ]);
 
-            const { recipes } = await KnexRecipeRepository.create(database, {
+            const { recipes } = await recipeRepository.create({
                 userId: user.userId,
                 recipes: [
                     { name: uuid(), public: true, tags: [childTags[0]!] },
@@ -398,25 +406,20 @@ describe("Get recipes", () => {
             expect(actualRecipeIds.length).toEqual(3);
         });
 
-        it("should respect ingredient filtering", async () => {
-            const [token, user] = await PrepareAuthenticatedUser(database);
+        withCxIt("should respect ingredient filtering", async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
 
-            const { ingredients } = await KnexIngredientRepository.create(
-                database,
-                {
-                    userId: user.userId,
-                    ingredients: [
-                        { name: "IngredientA" },
-                        { name: "IngredientB" },
-                    ],
-                },
-            );
+            const { ingredients } = await ingredientRepository.create({
+                userId: user.userId,
+                ingredients: [{ name: "IngredientA" }, { name: "IngredientB" }],
+            });
 
             const [includedIngredient, excludedIngredient] = ingredients;
 
             const ingredientsToFilterBy = [includedIngredient!.ingredientId];
 
-            const { recipes } = await KnexRecipeRepository.create(database, {
+            const { recipes } = await recipeRepository.create({
                 userId: user.userId,
                 recipes: [
                     {
@@ -534,123 +537,132 @@ describe("Get recipes", () => {
             expect(actualRecipeIds.length).toEqual(3);
         });
 
-        it("should respect all filters simultaneously with AND logic", async () => {
-            const [token, { userId }] =
-                await PrepareAuthenticatedUser(database);
-            const [_, otherOwner] = await PrepareAuthenticatedUser(database);
+        withCxIt(
+            "should respect all filters simultaneously with AND logic",
+            async () => {
+                const [token, { userId }] =
+                    await PrepareAuthenticatedUser(userRepository);
+                const [_, otherOwner] =
+                    await PrepareAuthenticatedUser(userRepository);
 
-            const name = uuid();
+                const name = uuid();
 
-            const [tag] = await KnexTagRepository.create(database, {
-                name: "tag",
-            });
+                const [tag] = await tagRepository.create({
+                    name: "tag",
+                });
 
-            const {
-                ingredients: [ingredient],
-            } = await KnexIngredientRepository.create(database, {
-                userId,
-                ingredients: [{ name: "ingredient" }],
-            });
+                const {
+                    ingredients: [ingredient],
+                } = await ingredientRepository.create({
+                    userId,
+                    ingredients: [{ name: "ingredient" }],
+                });
 
-            const {
-                recipes: [targetRecipe],
-            } = await KnexRecipeRepository.create(database, {
-                userId,
-                recipes: [
-                    {
-                        name,
-                        tags: [tag!],
-                        ingredients: [{ items: [{ ingredient }] }],
-                    },
-                    {
-                        name: uuid(),
-                    },
-                    {
-                        name,
-                    },
-                    {
-                        name: uuid(),
-                        tags: [tag!],
-                    },
-                    {
-                        name: uuid(),
-                        ingredients: [{ items: [{ ingredient }] }],
-                    },
-                ],
-            });
+                const {
+                    recipes: [targetRecipe],
+                } = await recipeRepository.create({
+                    userId,
+                    recipes: [
+                        {
+                            name,
+                            tags: [tag!],
+                            ingredients: [{ items: [{ ingredient }] }],
+                        },
+                        {
+                            name: uuid(),
+                        },
+                        {
+                            name,
+                        },
+                        {
+                            name: uuid(),
+                            tags: [tag!],
+                        },
+                        {
+                            name: uuid(),
+                            ingredients: [{ items: [{ ingredient }] }],
+                        },
+                    ],
+                });
 
-            await KnexRecipeRepository.create(database, {
-                userId: otherOwner.userId,
-                recipes: [
-                    {
-                        name,
-                        tags: [tag!],
-                        ingredients: [{ items: [{ ingredient }] }],
-                    },
-                ],
-            });
+                await recipeRepository.create({
+                    userId: otherOwner.userId,
+                    recipes: [
+                        {
+                            name,
+                            tags: [tag!],
+                            ingredients: [{ items: [{ ingredient }] }],
+                        },
+                    ],
+                });
 
-            const res = await request(app)
-                .get("/v1/recipes")
-                .query({
-                    ingredients: [ingredient!.ingredientId],
-                    tags: [tag!.tagId],
-                    owner: userId,
-                })
-                .set(token);
+                const res = await request(app)
+                    .get("/v1/recipes")
+                    .query({
+                        ingredients: [ingredient!.ingredientId],
+                        tags: [tag!.tagId],
+                        owner: userId,
+                    })
+                    .set(token);
 
-            expect(res.statusCode).toEqual(200);
+                expect(res.statusCode).toEqual(200);
 
-            const { recipes: data } =
-                res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
+                const { recipes: data } =
+                    res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
 
-            expect(data.length).toEqual(1);
-            expect(data[0]!.recipeId).toEqual(targetRecipe!.recipeId);
-        });
+                expect(data.length).toEqual(1);
+                expect(data[0]!.recipeId).toEqual(targetRecipe!.recipeId);
+            },
+        );
 
-        it("should not duplicate recipes when filtering by multiple books", async () => {
-            const [_, user] = await PrepareAuthenticatedUser(database);
+        withCxIt(
+            "should not duplicate recipes when filtering by multiple books",
+            async () => {
+                const [_, user] =
+                    await PrepareAuthenticatedUser(userRepository);
 
-            const {
-                recipes: [recipe],
-            } = await KnexRecipeRepository.create(database, {
-                userId: user.userId,
-                recipes: [{ name: uuid() }],
-            });
+                const {
+                    recipes: [recipe],
+                } = await recipeRepository.create({
+                    userId: user.userId,
+                    recipes: [{ name: uuid() }],
+                });
 
-            const {
-                books: [book1, book2],
-            } = await KnexBookRepository.create(database, {
-                userId: user.userId,
-                books: [{ name: uuid() }, { name: uuid() }],
-            });
+                const {
+                    books: [book1, book2],
+                } = await bookRepository.create({
+                    userId: user.userId,
+                    books: [{ name: uuid() }, { name: uuid() }],
+                });
 
-            await KnexBookRepository.saveRecipes(database, {
-                bookId: book1!.bookId,
-                recipes: [recipe!],
-            });
-            await KnexBookRepository.saveRecipes(database, {
-                bookId: book2!.bookId,
-                recipes: [recipe!],
-            });
+                await bookRepository.saveRecipes({
+                    bookId: book1!.bookId,
+                    recipes: [recipe!],
+                });
+                await bookRepository.saveRecipes({
+                    bookId: book2!.bookId,
+                    recipes: [recipe!],
+                });
 
-            const { recipes } = await KnexRecipeRepository.readAll(database, {
-                userId: user.userId,
-                filter: { books: [book1!, book2!] },
-            });
+                const { recipes } = await recipeRepository.readAll({
+                    userId: user.userId,
+                    filter: { books: [book1!, book2!] },
+                });
 
-            expect(recipes).toHaveLength(1);
-            expect(recipes[0]!.recipeId).toEqual(recipe!.recipeId);
-        });
+                expect(recipes).toHaveLength(1);
+                expect(recipes[0]!.recipeId).toEqual(recipe!.recipeId);
+            },
+        );
     });
 
     describe("sorting/ordering", () => {
-        it("should return results by name", async () => {
-            const [token, user] = await PrepareAuthenticatedUser(database);
+        withCxIt("should return results by name", async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
 
             const order = randomBoolean() ? "asc" : "desc";
 
-            await KnexRecipeRepository.create(database, {
+            await recipeRepository.create({
                 userId: user.userId,
                 recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
                     name: uuid(),
@@ -678,12 +690,13 @@ describe("Get recipes", () => {
             );
         });
 
-        it("should return results by rating", async () => {
-            const [token, user] = await PrepareAuthenticatedUser(database);
+        withCxIt("should return results by rating", async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
 
             const order = randomBoolean() ? "asc" : "desc";
 
-            await KnexRecipeRepository.create(database, {
+            await recipeRepository.create({
                 userId: user.userId,
                 recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
                     name: uuid(),
@@ -714,12 +727,13 @@ describe("Get recipes", () => {
             );
         });
 
-        it("should return results by time", async () => {
-            const [token, user] = await PrepareAuthenticatedUser(database);
+        withCxIt("should return results by time", async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
 
             const order = randomBoolean() ? "asc" : "desc";
 
-            await KnexRecipeRepository.create(database, {
+            await recipeRepository.create({
                 userId: user.userId,
                 recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
                     name: uuid(),
@@ -751,28 +765,28 @@ describe("Get recipes", () => {
 });
 
 describe("Create a recipe", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post("/v1/recipes");
 
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should save correct basic details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should save correct basic details", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             attachments: [attachment],
-        } = await KnexAttachmentRepository.create(database, {
+        } = await attachmentRepository.create({
             userId: user.userId,
             attachments: [{ uri: uuid() }],
         });
 
-        const [parentTag, soloTag] = await KnexTagRepository.create(database, [
+        const [parentTag, soloTag] = await tagRepository.create([
             { name: "parent" },
             { name: "solo" },
         ]);
 
-        const [childTag] = await KnexTagRepository.create(database, {
+        const [childTag] = await tagRepository.create({
             name: "child",
             parentId: parentTag!.tagId,
         });
@@ -903,7 +917,7 @@ describe("Create a recipe", () => {
         };
 
         runTestCases(testCases, async ({ input, expected }) => {
-            const [token] = await PrepareAuthenticatedUser(database);
+            const [token] = await PrepareAuthenticatedUser(userRepository);
 
             const res = await request(app)
                 .post("/v1/recipes")
@@ -1007,7 +1021,7 @@ describe("Create a recipe", () => {
             };
 
             runTestCases(testCases, async ({ input, expected }) => {
-                const [token] = await PrepareAuthenticatedUser(database);
+                const [token] = await PrepareAuthenticatedUser(userRepository);
 
                 const res = await request(app)
                     .post("/v1/recipes")
@@ -1023,13 +1037,13 @@ describe("Create a recipe", () => {
         });
 
         describe("reference", () => {
-            it("should save ingredient details", async () => {
+            withCxIt("should save ingredient details", async () => {
                 const [token, { userId }] =
-                    await PrepareAuthenticatedUser(database);
+                    await PrepareAuthenticatedUser(userRepository);
 
                 const {
                     ingredients: [ingredientA],
-                } = await KnexIngredientRepository.create(database, {
+                } = await ingredientRepository.create({
                     userId,
                     ingredients: [
                         { name: "ingredientA", namePlural: "ingredientsA" },
@@ -1069,13 +1083,13 @@ describe("Create a recipe", () => {
                 );
             });
 
-            it("should save sub-recipe details", async () => {
+            withCxIt("should save sub-recipe details", async () => {
                 const [token, { userId }] =
-                    await PrepareAuthenticatedUser(database);
+                    await PrepareAuthenticatedUser(userRepository);
 
                 const {
                     recipes: [recipeA],
-                } = await KnexRecipeRepository.create(database, {
+                } = await recipeRepository.create({
                     userId,
                     recipes: [{ name: "recipeA" }],
                 });
@@ -1114,19 +1128,19 @@ describe("Create a recipe", () => {
 });
 
 describe("Update a recipe", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post("/v1/recipes");
 
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should not allow editing if not recipe owner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [recipeOwner] = await CreateUsers(database);
+    withCxIt("should not allow editing if not recipe owner", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
+        const [recipeOwner] = await CreateUsers(userRepository);
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: recipeOwner!.userId,
             recipes: [{ name: uuid() }],
         });
@@ -1139,19 +1153,19 @@ describe("Update a recipe", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should update basic recipe details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should update basic recipe details", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             attachments: [attachment1, attachment2],
-        } = await KnexAttachmentRepository.create(database, {
+        } = await attachmentRepository.create({
             userId: user.userId,
             attachments: [{ uri: uuid() }, { uri: uuid() }],
         });
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user.userId,
             recipes: [
                 {
@@ -1165,15 +1179,14 @@ describe("Update a recipe", () => {
                     servings: generateRandomRecipeServings(),
                     source: uuid(),
                     summary: uuid(),
-                    tags: await createRandomRecipeTags(database),
+                    tags: await createRandomRecipeTags(tagRepository),
                     timesCooked: randomNumber(),
                     tips: uuid(),
                 },
             ],
         });
 
-        const updatedTags = await KnexTagRepository.create(
-            database,
+        const updatedTags = await tagRepository.create(
             Array.from({ length: randomNumber() }).map(() => ({
                 name: uuid(),
                 description: uuid(),
@@ -1205,7 +1218,7 @@ describe("Update a recipe", () => {
 
         const {
             recipes: [recipeResponse],
-        } = await KnexRecipeRepository.read(database, {
+        } = await recipeRepository.read({
             userId: user.userId,
             recipes: [{ recipeId: recipe!.recipeId }],
         });
@@ -1233,19 +1246,19 @@ describe("Update a recipe", () => {
         );
     });
 
-    it("should clear basic nullable fields", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should clear basic nullable fields", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             attachments: [attachment],
-        } = await KnexAttachmentRepository.create(database, {
+        } = await attachmentRepository.create({
             userId: user.userId,
             attachments: [{ uri: uuid() }],
         });
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user.userId,
             recipes: [
                 {
@@ -1260,7 +1273,7 @@ describe("Update a recipe", () => {
                     servings: generateRandomRecipeServings(),
                     source: uuid(),
                     summary: uuid(),
-                    tags: await createRandomRecipeTags(database),
+                    tags: await createRandomRecipeTags(tagRepository),
                     timesCooked: randomNumber(),
                     tips: uuid(),
                 },
@@ -1292,7 +1305,7 @@ describe("Update a recipe", () => {
 
         const {
             recipes: [updatedRecipe],
-        } = await KnexRecipeRepository.read(database, {
+        } = await recipeRepository.read({
             userId: user.userId,
             recipes: [{ recipeId: recipe!.recipeId }],
         });
@@ -1379,11 +1392,11 @@ describe("Update a recipe", () => {
 
         runTestCases(testCases, async ({ input, update, expected }) => {
             const [token, { userId }] =
-                await PrepareAuthenticatedUser(database);
+                await PrepareAuthenticatedUser(userRepository);
 
             const {
                 recipes: [baseRecipe],
-            } = await KnexRecipeRepository.create(database, {
+            } = await recipeRepository.create({
                 userId,
                 recipes: [{ name: uuid(), ingredients: input }],
             });
@@ -1402,13 +1415,13 @@ describe("Update a recipe", () => {
     });
 
     describe("ingredient ingredient reference", () => {
-        it("should add reference", async () => {
+        withCxIt("should add reference", async () => {
             const [token, { userId }] =
-                await PrepareAuthenticatedUser(database);
+                await PrepareAuthenticatedUser(userRepository);
 
             const {
                 ingredients: [ingredientA],
-            } = await KnexIngredientRepository.create(database, {
+            } = await ingredientRepository.create({
                 userId,
                 ingredients: [
                     { name: "IngredientA", namePlural: "IngredientsA" },
@@ -1417,7 +1430,7 @@ describe("Update a recipe", () => {
 
             const {
                 recipes: [baseRecipe],
-            } = await KnexRecipeRepository.create(database, {
+            } = await recipeRepository.create({
                 userId,
                 recipes: [
                     {
@@ -1463,13 +1476,13 @@ describe("Update a recipe", () => {
             );
         });
 
-        it("should remove reference", async () => {
+        withCxIt("should remove reference", async () => {
             const [token, { userId }] =
-                await PrepareAuthenticatedUser(database);
+                await PrepareAuthenticatedUser(userRepository);
 
             const {
                 ingredients: [ingredientA],
-            } = await KnexIngredientRepository.create(database, {
+            } = await ingredientRepository.create({
                 userId,
                 ingredients: [
                     { name: "IngredientA", namePlural: "IngredientsA" },
@@ -1478,7 +1491,7 @@ describe("Update a recipe", () => {
 
             const {
                 recipes: [baseRecipe],
-            } = await KnexRecipeRepository.create(database, {
+            } = await recipeRepository.create({
                 userId,
                 recipes: [
                     {
@@ -1525,55 +1538,77 @@ describe("Update a recipe", () => {
             expect(responseIngredientItem.ingredient).toBeUndefined();
         });
 
-        it("should not affect other recipe ingredient references", async () => {
-            const [token, { userId }] =
-                await PrepareAuthenticatedUser(database);
+        withCxIt(
+            "should not affect other recipe ingredient references",
+            async () => {
+                const [token, { userId }] =
+                    await PrepareAuthenticatedUser(userRepository);
 
-            const {
-                ingredients: [ingredientA, ingredientB],
-            } = await KnexIngredientRepository.create(database, {
-                userId,
-                ingredients: [
-                    { name: "IngredientA", namePlural: "IngredientsA" },
-                    { name: "IngredientB", namePlural: "IngredientsB" },
-                ],
-            });
+                const {
+                    ingredients: [ingredientA, ingredientB],
+                } = await ingredientRepository.create({
+                    userId,
+                    ingredients: [
+                        { name: "IngredientA", namePlural: "IngredientsA" },
+                        { name: "IngredientB", namePlural: "IngredientsB" },
+                    ],
+                });
 
-            const {
-                recipes: [baseRecipe, otherRecipe],
-            } = await KnexRecipeRepository.create(database, {
-                userId,
-                recipes: [
-                    {
-                        name: uuid(),
+                const {
+                    recipes: [baseRecipe, otherRecipe],
+                } = await recipeRepository.create({
+                    userId,
+                    recipes: [
+                        {
+                            name: uuid(),
+                            ingredients: [
+                                {
+                                    items: [
+                                        {
+                                            name: "ingredientA",
+                                            ingredient: {
+                                                ingredientId:
+                                                    ingredientA!.ingredientId,
+                                            },
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                        {
+                            name: uuid(),
+                            ingredients: [
+                                {
+                                    items: [
+                                        {
+                                            name: "ingredientA",
+                                            ingredient: {
+                                                ingredientId:
+                                                    ingredientA!.ingredientId,
+                                            },
+                                        },
+                                        {
+                                            name: "ingredientB",
+                                            ingredient: {
+                                                ingredientId:
+                                                    ingredientB!.ingredientId,
+                                            },
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                });
+
+                const res = await request(app)
+                    .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                    .set(token)
+                    .send({
                         ingredients: [
                             {
                                 items: [
                                     {
-                                        name: "ingredientA",
-                                        ingredient: {
-                                            ingredientId:
-                                                ingredientA!.ingredientId,
-                                        },
-                                    },
-                                ],
-                            },
-                        ],
-                    },
-                    {
-                        name: uuid(),
-                        ingredients: [
-                            {
-                                items: [
-                                    {
-                                        name: "ingredientA",
-                                        ingredient: {
-                                            ingredientId:
-                                                ingredientA!.ingredientId,
-                                        },
-                                    },
-                                    {
-                                        name: "ingredientB",
                                         ingredient: {
                                             ingredientId:
                                                 ingredientB!.ingredientId,
@@ -1582,63 +1617,46 @@ describe("Update a recipe", () => {
                                 ],
                             },
                         ],
-                    },
-                ],
-            });
+                    });
 
-            const res = await request(app)
-                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
-                .set(token)
-                .send({
-                    ingredients: [
-                        {
-                            items: [
-                                {
-                                    ingredient: {
-                                        ingredientId: ingredientB!.ingredientId,
-                                    },
-                                },
-                            ],
-                        },
-                    ],
+                expect(res.statusCode).toEqual(200);
+
+                const response = res.body as components["schemas"]["Recipe"];
+
+                const responseIngredientItem =
+                    response.ingredients![0]!.items![0]!;
+
+                expect(
+                    responseIngredientItem.ingredient!.ingredientId,
+                ).toStrictEqual(ingredientB!.ingredientId);
+
+                const {
+                    recipes: [otherRecipePostRequest],
+                } = await recipeRepository.read({
+                    userId,
+                    recipes: [otherRecipe!],
                 });
 
-            expect(res.statusCode).toEqual(200);
-
-            const response = res.body as components["schemas"]["Recipe"];
-
-            const responseIngredientItem = response.ingredients![0]!.items![0]!;
-
-            expect(
-                responseIngredientItem.ingredient!.ingredientId,
-            ).toStrictEqual(ingredientB!.ingredientId);
-
-            const {
-                recipes: [otherRecipePostRequest],
-            } = await KnexRecipeRepository.read(database, {
-                userId,
-                recipes: [otherRecipe!],
-            });
-
-            expect(otherRecipe).toStrictEqual(otherRecipePostRequest);
-        });
+                expect(otherRecipe).toStrictEqual(otherRecipePostRequest);
+            },
+        );
     });
 
     describe("ingredient recipe reference", () => {
-        it("should add reference", async () => {
+        withCxIt("should add reference", async () => {
             const [token, { userId }] =
-                await PrepareAuthenticatedUser(database);
+                await PrepareAuthenticatedUser(userRepository);
 
             const {
                 recipes: [subRecipe],
-            } = await KnexRecipeRepository.create(database, {
+            } = await recipeRepository.create({
                 userId,
                 recipes: [{ name: uuid() }],
             });
 
             const {
                 recipes: [baseRecipe],
-            } = await KnexRecipeRepository.create(database, {
+            } = await recipeRepository.create({
                 userId,
                 recipes: [
                     {
@@ -1679,20 +1697,20 @@ describe("Update a recipe", () => {
             );
         });
 
-        it("should remove reference", async () => {
+        withCxIt("should remove reference", async () => {
             const [token, { userId }] =
-                await PrepareAuthenticatedUser(database);
+                await PrepareAuthenticatedUser(userRepository);
 
             const {
                 recipes: [subRecipe],
-            } = await KnexRecipeRepository.create(database, {
+            } = await recipeRepository.create({
                 userId,
                 recipes: [{ name: uuid() }],
             });
 
             const {
                 recipes: [baseRecipe],
-            } = await KnexRecipeRepository.create(database, {
+            } = await recipeRepository.create({
                 userId,
                 recipes: [
                     {
@@ -1738,46 +1756,67 @@ describe("Update a recipe", () => {
             expect(responseIngredientItem.recipe).toBeUndefined();
         });
 
-        it("should not affect other recipe recipe references", async () => {
-            const [token, { userId }] =
-                await PrepareAuthenticatedUser(database);
+        withCxIt(
+            "should not affect other recipe recipe references",
+            async () => {
+                const [token, { userId }] =
+                    await PrepareAuthenticatedUser(userRepository);
 
-            const {
-                recipes: [subRecipeA, subRecipeB],
-            } = await KnexRecipeRepository.create(database, {
-                userId,
-                recipes: [{ name: uuid() }, { name: uuid() }],
-            });
+                const {
+                    recipes: [subRecipeA, subRecipeB],
+                } = await recipeRepository.create({
+                    userId,
+                    recipes: [{ name: uuid() }, { name: uuid() }],
+                });
 
-            const {
-                recipes: [baseRecipe, otherRecipe],
-            } = await KnexRecipeRepository.create(database, {
-                userId,
-                recipes: [
-                    {
-                        name: uuid(),
+                const {
+                    recipes: [baseRecipe, otherRecipe],
+                } = await recipeRepository.create({
+                    userId,
+                    recipes: [
+                        {
+                            name: uuid(),
+                            ingredients: [
+                                {
+                                    items: [
+                                        {
+                                            recipe: {
+                                                recipeId: subRecipeA!.recipeId,
+                                            },
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                        {
+                            name: uuid(),
+                            ingredients: [
+                                {
+                                    items: [
+                                        {
+                                            recipe: {
+                                                recipeId: subRecipeA!.recipeId,
+                                            },
+                                        },
+                                        {
+                                            recipe: {
+                                                recipeId: subRecipeB!.recipeId,
+                                            },
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                });
+
+                const res = await request(app)
+                    .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                    .set(token)
+                    .send({
                         ingredients: [
                             {
                                 items: [
-                                    {
-                                        recipe: {
-                                            recipeId: subRecipeA!.recipeId,
-                                        },
-                                    },
-                                ],
-                            },
-                        ],
-                    },
-                    {
-                        name: uuid(),
-                        ingredients: [
-                            {
-                                items: [
-                                    {
-                                        recipe: {
-                                            recipeId: subRecipeA!.recipeId,
-                                        },
-                                    },
                                     {
                                         recipe: {
                                             recipeId: subRecipeB!.recipeId,
@@ -1786,55 +1825,39 @@ describe("Update a recipe", () => {
                                 ],
                             },
                         ],
-                    },
-                ],
-            });
+                    });
 
-            const res = await request(app)
-                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
-                .set(token)
-                .send({
-                    ingredients: [
-                        {
-                            items: [
-                                {
-                                    recipe: {
-                                        recipeId: subRecipeB!.recipeId,
-                                    },
-                                },
-                            ],
-                        },
-                    ],
+                expect(res.statusCode).toEqual(200);
+
+                const response = res.body as components["schemas"]["Recipe"];
+
+                const responseIngredientItem =
+                    response.ingredients![0]!.items![0]!;
+
+                expect(responseIngredientItem.recipe!.recipeId).toStrictEqual(
+                    subRecipeB!.recipeId,
+                );
+
+                const {
+                    recipes: [otherRecipePostRequest],
+                } = await recipeRepository.read({
+                    userId,
+                    recipes: [otherRecipe!],
                 });
 
-            expect(res.statusCode).toEqual(200);
-
-            const response = res.body as components["schemas"]["Recipe"];
-
-            const responseIngredientItem = response.ingredients![0]!.items![0]!;
-
-            expect(responseIngredientItem.recipe!.recipeId).toStrictEqual(
-                subRecipeB!.recipeId,
-            );
-
-            const {
-                recipes: [otherRecipePostRequest],
-            } = await KnexRecipeRepository.read(database, {
-                userId,
-                recipes: [otherRecipe!],
-            });
-
-            expect(otherRecipe).toStrictEqual(otherRecipePostRequest);
-        });
+                expect(otherRecipe).toStrictEqual(otherRecipePostRequest);
+            },
+        );
     });
 
-    it("should not affect other recipe ratings", async () => {
-        const [token, { userId }] = await PrepareAuthenticatedUser(database);
-        const [_, otherUser] = await PrepareAuthenticatedUser(database);
+    withCxIt("should not affect other recipe ratings", async () => {
+        const [token, { userId }] =
+            await PrepareAuthenticatedUser(userRepository);
+        const [_, otherUser] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             recipes: [recipe, otherRecipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId,
             recipes: [
                 { name: uuid(), rating: randomNumber() },
@@ -1844,7 +1867,7 @@ describe("Update a recipe", () => {
 
         const otherRating = randomNumber();
 
-        await KnexRecipeRepository.saveRating(database, {
+        await recipeRepository.saveRating({
             userId: otherUser.userId,
             ratings: [{ ...recipe!, rating: otherRating }],
         });
@@ -1865,7 +1888,7 @@ describe("Update a recipe", () => {
 
         const {
             recipes: [otherRecipeRes],
-        } = await KnexRecipeRepository.read(database, {
+        } = await recipeRepository.read({
             userId,
             recipes: [otherRecipe!],
         });
@@ -1877,7 +1900,7 @@ describe("Update a recipe", () => {
 
         const {
             recipes: [otherUserRecipeRes],
-        } = await KnexRecipeRepository.read(database, {
+        } = await recipeRepository.read({
             userId: otherUser.userId,
             recipes: [recipe!],
         });
@@ -1886,17 +1909,18 @@ describe("Update a recipe", () => {
         expect(otherUserRecipeRes!.rating.personal).toEqual(otherRating);
     });
 
-    it("should not affect other recipe tags", async () => {
-        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+    withCxIt("should not affect other recipe tags", async () => {
+        const [token, { userId }] =
+            await PrepareAuthenticatedUser(userRepository);
 
-        const [tagA, tagB] = await KnexTagRepository.create(database, [
+        const [tagA, tagB] = await tagRepository.create([
             { name: "tagA" },
             { name: "tagB" },
         ]);
 
         const {
             recipes: [recipe, otherRecipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId,
             recipes: [
                 { name: uuid(), tags: [{ tagId: tagA!.tagId }] },
@@ -1921,7 +1945,7 @@ describe("Update a recipe", () => {
 
         const {
             recipes: [otherRecipeRes],
-        } = await KnexRecipeRepository.read(database, {
+        } = await recipeRepository.read({
             userId,
             recipes: [otherRecipe!],
         });
@@ -1932,19 +1956,20 @@ describe("Update a recipe", () => {
         );
     });
 
-    it("should not affect other recipe photo", async () => {
-        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+    withCxIt("should not affect other recipe photo", async () => {
+        const [token, { userId }] =
+            await PrepareAuthenticatedUser(userRepository);
 
         const {
             attachments: [attachmentA, attachmentB],
-        } = await KnexAttachmentRepository.create(database, {
+        } = await attachmentRepository.create({
             userId,
             attachments: [{ uri: uuid() }, { uri: uuid() }],
         });
 
         const {
             recipes: [recipe, otherRecipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId,
             recipes: [
                 {
@@ -1973,7 +1998,7 @@ describe("Update a recipe", () => {
 
         const {
             recipes: [otherRecipeRes],
-        } = await KnexRecipeRepository.read(database, {
+        } = await recipeRepository.read({
             userId,
             recipes: [otherRecipe!],
         });
@@ -1987,13 +2012,13 @@ describe("Update a recipe", () => {
 });
 
 describe("Get a recipe", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get(`/v1/recipes/${uuid()}`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent recipe", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent recipe", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .delete(`/v1/recipes/${uuid()}`)
@@ -2002,25 +2027,23 @@ describe("Get a recipe", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should return correct recipe details", async () => {
+    withCxIt("should return correct recipe details", async () => {
         const [token, { userId, firstName }] =
-            await PrepareAuthenticatedUser(database);
-        const [_, otherUser] = await PrepareAuthenticatedUser(database);
+            await PrepareAuthenticatedUser(userRepository);
+        const [_, otherUser] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             attachments: [attachment],
-        } = await KnexAttachmentRepository.create(database, {
+        } = await attachmentRepository.create({
             userId,
             attachments: [{ uri: uuid() }],
         });
 
-        const [tag] = await KnexTagRepository.create(database, [
-            { name: uuid() },
-        ]);
+        const [tag] = await tagRepository.create([{ name: uuid() }]);
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId,
             recipes: [
                 {
@@ -2044,7 +2067,7 @@ describe("Get a recipe", () => {
 
         const {
             ratings: [otherRating],
-        } = await KnexRecipeRepository.saveRating(database, {
+        } = await recipeRepository.saveRating({
             userId: otherUser.userId,
             ratings: [{ recipeId: recipe!.recipeId, rating: randomNumber() }],
         });
@@ -2086,13 +2109,13 @@ describe("Get a recipe", () => {
 });
 
 describe("Delete a recipe", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).delete(`/v1/recipes/${uuid()}`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent recipe", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent recipe", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .delete(`/v1/recipes/${uuid()}`)
@@ -2101,12 +2124,12 @@ describe("Delete a recipe", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should delete a recipe", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should delete a recipe", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user.userId,
             recipes: [{ name: uuid() }],
         });
@@ -2117,26 +2140,26 @@ describe("Delete a recipe", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const { recipes } = await KnexRecipeRepository.read(database, {
+        const { recipes } = await recipeRepository.read({
             userId: user.userId,
             recipes: [{ recipeId: recipe!.recipeId }],
         });
         expect(recipes).toHaveLength(0);
     });
 
-    it("should delete a recipe with linked ingredients", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should delete a recipe with linked ingredients", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             ingredients: [ingredient],
-        } = await KnexIngredientRepository.create(database, {
+        } = await ingredientRepository.create({
             userId: user.userId,
             ingredients: [{ name: uuid() }],
         });
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user.userId,
             recipes: [
                 {
@@ -2162,26 +2185,26 @@ describe("Delete a recipe", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const { recipes } = await KnexRecipeRepository.read(database, {
+        const { recipes } = await recipeRepository.read({
             userId: user.userId,
             recipes: [{ recipeId: recipe!.recipeId }],
         });
         expect(recipes).toHaveLength(0);
     });
 
-    it("should delete a recipe used as a sub-recipe", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should delete a recipe used as a sub-recipe", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             recipes: [subRecipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user.userId,
             recipes: [{ name: uuid() }],
         });
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user.userId,
             recipes: [
                 {
@@ -2203,36 +2226,33 @@ describe("Delete a recipe", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const { recipes } = await KnexRecipeRepository.read(database, {
+        const { recipes } = await recipeRepository.read({
             userId: user.userId,
             recipes: [subRecipe!],
         });
         expect(recipes).toHaveLength(0);
 
         // Parent recipe remains readable without the sub-recipe reference
-        const { recipes: parentRecipes } = await KnexRecipeRepository.read(
-            database,
-            {
-                userId: user.userId,
-                recipes: [recipe!],
-            },
-        );
+        const { recipes: parentRecipes } = await recipeRepository.read({
+            userId: user.userId,
+            recipes: [recipe!],
+        });
         expect(parentRecipes).toHaveLength(1);
     });
 });
 
 describe("Rate a recipe", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post(`/v1/recipes/${uuid()}/rating`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should rate a recipe", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should rate a recipe", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user.userId,
             recipes: [{ name: uuid() }],
         });
@@ -2248,7 +2268,7 @@ describe("Rate a recipe", () => {
 
         const {
             recipes: [updatedRecipe],
-        } = await KnexRecipeRepository.read(database, {
+        } = await recipeRepository.read({
             userId: user.userId,
             recipes: [{ recipeId: recipe!.recipeId }],
         });

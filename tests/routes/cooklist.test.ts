@@ -1,13 +1,7 @@
-import { after, afterEach, beforeEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe } from "node:test";
 import { expect } from "expect";
-import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
-import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
-import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
-import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import {
     CreateUsers,
@@ -18,37 +12,52 @@ import {
     randomYear,
 } from "../helpers/index.ts";
 import { randomCourse } from "../helpers/meal.ts";
-import { createTestApp, db } from "../helpers/setup.ts";
+import {
+    beginTestTransaction,
+    createTestApp,
+    rollbackTestTransaction,
+    TestContext,
+    withCxIt,
+} from "../helpers/setup.ts";
 
-let database: KnexDatabase;
-let app: Express;
+let {
+    app,
+    attachmentRepository,
+    cooklistRepository,
+    plannerRepository,
+    recipeRepository,
+    userRepository,
+} = TestContext;
 
 beforeEach(async () => {
-    database = await db.transaction();
-    app = createTestApp({ database });
+    await beginTestTransaction();
+    ({
+        app,
+        attachmentRepository,
+        cooklistRepository,
+        plannerRepository,
+        recipeRepository,
+        userRepository,
+    } = createTestApp({}));
 });
 
 afterEach(async () => {
-    await database.rollback();
-});
-
-after(async () => {
-    await db.destroy();
+    await rollbackTestTransaction();
 });
 
 describe("Add meal to cook list", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post("/v1/cooklist/meals");
 
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should create a new meal", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should create a new meal", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             attachments: [attachment],
-        } = await KnexAttachmentRepository.create(database, {
+        } = await attachmentRepository.create({
             userId: user.userId,
             attachments: [{ uri: uuid() }],
         });
@@ -69,10 +78,8 @@ describe("Add meal to cook list", () => {
             .send(meals);
         expect(res.statusCode).toEqual(201);
 
-        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(
-            database,
-            user,
-        );
+        const { meals: mealsRead } =
+            await cooklistRepository.readAllMeals(user);
 
         expect(mealsRead.length).toEqual(meals.length);
 
@@ -93,12 +100,12 @@ describe("Add meal to cook list", () => {
         });
     });
 
-    it("should create a new meal with a recipe", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should create a new meal with a recipe", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user.userId,
             recipes: [{ name: uuid() }],
         });
@@ -117,16 +124,14 @@ describe("Add meal to cook list", () => {
             .send(meal);
         expect(res.statusCode).toEqual(201);
 
-        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(
-            database,
-            user,
-        );
+        const { meals: mealsRead } =
+            await cooklistRepository.readAllMeals(user);
         expect(mealsRead).toHaveLength(1);
         expect(mealsRead[0]!.recipeId).toEqual(recipe!.recipeId);
     });
 
-    it("should create multiple cooklist meals", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should create multiple cooklist meals", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const meals = [
             {
@@ -154,72 +159,81 @@ describe("Add meal to cook list", () => {
         expect(returnedMeals).toHaveLength(2);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
 
-        const res = await request(app)
-            .post("/v1/cooklist/meals")
-            .set(token)
-            .send({
-                description: uuid(),
-                course: randomCourse(),
-                extra: "invalid",
-            });
-        expect(res.statusCode).toEqual(400);
-    });
+            const res = await request(app)
+                .post("/v1/cooklist/meals")
+                .set(token)
+                .send({
+                    description: uuid(),
+                    course: randomCourse(),
+                    extra: "invalid",
+                });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
 
-        const res = await request(app)
-            .post("/v1/cooklist/meals")
-            .set(token)
-            .send({
-                description: uuid(),
-                course: "invalid_course",
-            });
+            const res = await request(app)
+                .post("/v1/cooklist/meals")
+                .set(token)
+                .send({
+                    description: uuid(),
+                    course: "invalid_course",
+                });
 
-        expect(res.statusCode).toEqual(400);
-    });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 
-    it("should return 400 if the request body is an empty array", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt(
+        "should return 400 if the request body is an empty array",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
 
-        const res = await request(app)
-            .post("/v1/cooklist/meals")
-            .set(token)
-            .send([]);
+            const res = await request(app)
+                .post("/v1/cooklist/meals")
+                .set(token)
+                .send([]);
 
-        expect(res.statusCode).toEqual(400);
-    });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 });
 
 describe("Update meal in cook list", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).patch(`/v1/cooklist/meals/${uuid()}`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should update the meal", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should update the meal", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             attachments: [originalAttachment, updatedAttachment],
-        } = await KnexAttachmentRepository.create(database, {
+        } = await attachmentRepository.create({
             userId: user.userId,
             attachments: [{ uri: uuid() }, { uri: uuid() }],
         });
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user.userId,
             recipes: [{ name: uuid() }],
         });
 
         const {
             meals: [createdMeal],
-        } = await KnexCookListRepository.createMeals(database, {
+        } = await cooklistRepository.createMeals({
             userId: user.userId,
             meals: [
                 {
@@ -246,12 +260,9 @@ describe("Update meal in cook list", () => {
             .send(mealUpdate);
         expect(res.statusCode).toEqual(200);
 
-        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(
-            database,
-            {
-                userId: user.userId,
-            },
-        );
+        const { meals: mealsRead } = await cooklistRepository.readAllMeals({
+            userId: user.userId,
+        });
 
         expect(mealsRead.length).toEqual(1);
 
@@ -269,26 +280,26 @@ describe("Update meal in cook list", () => {
         expect(updatedMeal!.heroImage!.uri).toEqual(updatedAttachment!.uri);
     });
 
-    it("should clear optional fields when set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should clear optional fields when set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             attachments: [attachment],
-        } = await KnexAttachmentRepository.create(database, {
+        } = await attachmentRepository.create({
             userId: user.userId,
             attachments: [{ uri: uuid() }],
         });
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user.userId,
             recipes: [{ name: uuid() }],
         });
 
         const {
             meals: [createdMeal],
-        } = await KnexCookListRepository.createMeals(database, {
+        } = await cooklistRepository.createMeals({
             userId: user.userId,
             meals: [
                 {
@@ -322,130 +333,144 @@ describe("Update meal in cook list", () => {
         expect(updatedMeal.heroImage).toBeUndefined();
     });
 
-    it("should fail to update a meal belonging to another user", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [otherUser] = await CreateUsers(database);
+    withCxIt(
+        "should fail to update a meal belonging to another user",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
+            const [otherUser] = await CreateUsers(userRepository);
 
-        const {
-            meals: [createdMeal],
-        } = await KnexCookListRepository.createMeals(database, {
-            userId: otherUser!.userId,
-            meals: [
-                {
-                    description: uuid(),
-                    course: randomCourse(),
-                    sequence: randomNumber(),
-                    source: uuid(),
-                },
-            ],
-        });
-
-        const mealUpdate = {
-            description: uuid(),
-            sequence: randomNumber(),
-            source: uuid(),
-        } satisfies components["schemas"]["CookListMealUpdate"];
-
-        const res = await request(app)
-            .patch(`/v1/cooklist/meals/${createdMeal!.mealId}`)
-            .set(token)
-            .send(mealUpdate);
-        expect(res.statusCode).toEqual(404);
-
-        const { meals: mealsRead } = await KnexCookListRepository.readAllMeals(
-            database,
-            {
+            const {
+                meals: [createdMeal],
+            } = await cooklistRepository.createMeals({
                 userId: otherUser!.userId,
-            },
-        );
+                meals: [
+                    {
+                        description: uuid(),
+                        course: randomCourse(),
+                        sequence: randomNumber(),
+                        source: uuid(),
+                    },
+                ],
+            });
 
-        expect(mealsRead.length).toEqual(1);
-
-        const [unchangedMeal] = mealsRead;
-
-        expect(unchangedMeal!.description).toEqual(createdMeal!.description);
-    });
-
-    it("should fail to update a planner meal via cooklist endpoint", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const {
-            meals: [plannerMeal],
-        } = await KnexPlannerRepository.createMeals(database, {
-            userId: user.userId,
-            plannerId: planner!.plannerId,
-            meals: [
-                {
-                    course: randomCourse(),
-                    description: uuid(),
-                    dayOfMonth: randomDay(),
-                    month: randomMonth(),
-                    year: randomYear(),
-                },
-            ],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/cooklist/meals/${plannerMeal!.mealId}`)
-            .set(token)
-            .send({ description: "Updated" });
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            meals: [meal],
-        } = await KnexCookListRepository.createMeals(database, {
-            userId: user.userId,
-            meals: [{ course: randomCourse(), description: uuid() }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/cooklist/meals/${meal!.mealId}`)
-            .set(token)
-            .send({
+            const mealUpdate = {
                 description: uuid(),
-                extra: "invalid",
-            });
-        expect(res.statusCode).toEqual(400);
-    });
+                sequence: randomNumber(),
+                source: uuid(),
+            } satisfies components["schemas"]["CookListMealUpdate"];
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+            const res = await request(app)
+                .patch(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+                .set(token)
+                .send(mealUpdate);
+            expect(res.statusCode).toEqual(404);
+
+            const { meals: mealsRead } = await cooklistRepository.readAllMeals({
+                userId: otherUser!.userId,
+            });
+
+            expect(mealsRead.length).toEqual(1);
+
+            const [unchangedMeal] = mealsRead;
+
+            expect(unchangedMeal!.description).toEqual(
+                createdMeal!.description,
+            );
+        },
+    );
+
+    withCxIt(
+        "should fail to update a planner meal via cooklist endpoint",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+
+            const {
+                meals: [plannerMeal],
+            } = await plannerRepository.createMeals({
+                userId: user.userId,
+                plannerId: planner!.plannerId,
+                meals: [
+                    {
+                        course: randomCourse(),
+                        description: uuid(),
+                        dayOfMonth: randomDay(),
+                        month: randomMonth(),
+                        year: randomYear(),
+                    },
+                ],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/cooklist/meals/${plannerMeal!.mealId}`)
+                .set(token)
+                .send({ description: "Updated" });
+
+            expect(res.statusCode).toEqual(404);
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const {
+                meals: [meal],
+            } = await cooklistRepository.createMeals({
+                userId: user.userId,
+                meals: [{ course: randomCourse(), description: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/cooklist/meals/${meal!.mealId}`)
+                .set(token)
+                .send({
+                    description: uuid(),
+                    extra: "invalid",
+                });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const {
+                meals: [meal],
+            } = await cooklistRepository.createMeals({
+                userId: user.userId,
+                meals: [{ course: randomCourse(), description: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/cooklist/meals/${meal!.mealId}`)
+                .set(token)
+                .send({
+                    course: "invalid_course",
+                });
+
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt("should fail if a required field is set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             meals: [meal],
-        } = await KnexCookListRepository.createMeals(database, {
-            userId: user.userId,
-            meals: [{ course: randomCourse(), description: uuid() }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/cooklist/meals/${meal!.mealId}`)
-            .set(token)
-            .send({
-                course: "invalid_course",
-            });
-
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            meals: [meal],
-        } = await KnexCookListRepository.createMeals(database, {
+        } = await cooklistRepository.createMeals({
             userId: user.userId,
             meals: [{ course: randomCourse(), description: uuid() }],
         });
@@ -459,18 +484,18 @@ describe("Update meal in cook list", () => {
 });
 
 describe("Remove meal from cook list", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).delete(`/v1/cooklist/meals/${uuid()}`);
 
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should delete a meal belonging to the user", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should delete a meal belonging to the user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             meals: [createdMeal],
-        } = await KnexCookListRepository.createMeals(database, {
+        } = await cooklistRepository.createMeals({
             userId: user.userId,
             meals: [
                 {
@@ -489,20 +514,20 @@ describe("Remove meal from cook list", () => {
         expect(res.statusCode).toEqual(204);
 
         const { meals: mealsAfterDeletion } =
-            await KnexCookListRepository.readAllMeals(database, {
+            await cooklistRepository.readAllMeals({
                 userId: user.userId,
             });
 
         expect(mealsAfterDeletion.length).toEqual(0);
     });
 
-    it("should not delete a meal belonging to another user", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [otherUser] = await CreateUsers(database);
+    withCxIt("should not delete a meal belonging to another user", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
+        const [otherUser] = await CreateUsers(userRepository);
 
         const {
             meals: [createdMeal],
-        } = await KnexCookListRepository.createMeals(database, {
+        } = await cooklistRepository.createMeals({
             userId: otherUser!.userId,
             meals: [
                 {
@@ -521,61 +546,65 @@ describe("Remove meal from cook list", () => {
         expect(res.statusCode).toEqual(404);
 
         const { meals: mealsAfterDeletion } =
-            await KnexCookListRepository.readAllMeals(database, {
+            await cooklistRepository.readAllMeals({
                 userId: otherUser!.userId,
             });
 
         expect(mealsAfterDeletion.length).toEqual(1);
     });
 
-    it("should fail to delete a planner meal via cooklist endpoint", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt(
+        "should fail to delete a planner meal via cooklist endpoint",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
 
-        const {
-            meals: [plannerMeal],
-        } = await KnexPlannerRepository.createMeals(database, {
-            userId: user.userId,
-            plannerId: planner!.plannerId,
-            meals: [
-                {
-                    course: randomCourse(),
-                    description: uuid(),
-                    dayOfMonth: randomDay(),
-                    month: randomMonth(),
-                    year: randomYear(),
-                },
-            ],
-        });
+            const {
+                meals: [plannerMeal],
+            } = await plannerRepository.createMeals({
+                userId: user.userId,
+                plannerId: planner!.plannerId,
+                meals: [
+                    {
+                        course: randomCourse(),
+                        description: uuid(),
+                        dayOfMonth: randomDay(),
+                        month: randomMonth(),
+                        year: randomYear(),
+                    },
+                ],
+            });
 
-        const res = await request(app)
-            .delete(`/v1/cooklist/meals/${plannerMeal!.mealId}`)
-            .set(token)
-            .send();
+            const res = await request(app)
+                .delete(`/v1/cooklist/meals/${plannerMeal!.mealId}`)
+                .set(token)
+                .send();
 
-        expect(res.statusCode).toEqual(404);
-    });
+            expect(res.statusCode).toEqual(404);
+        },
+    );
 });
 
 describe("Get cook list meals", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get("/v1/cooklist/meals");
 
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return cook list meals for a user", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return cook list meals for a user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             meals: [createdMeal],
-        } = await KnexCookListRepository.createMeals(database, {
+        } = await cooklistRepository.createMeals({
             userId: user.userId,
             meals: [
                 {
@@ -606,11 +635,11 @@ describe("Get cook list meals", () => {
         expect(meal!.recipeId).toEqual(undefined);
     });
 
-    it("should not return cook list meals for other users", async () => {
-        const [_, user] = await PrepareAuthenticatedUser(database);
-        const [otherUserToken] = await PrepareAuthenticatedUser(database);
+    withCxIt("should not return cook list meals for other users", async () => {
+        const [_, user] = await PrepareAuthenticatedUser(userRepository);
+        const [otherUserToken] = await PrepareAuthenticatedUser(userRepository);
 
-        await KnexCookListRepository.createMeals(database, {
+        await cooklistRepository.createMeals({
             userId: user.userId,
             meals: [
                 {
@@ -634,17 +663,17 @@ describe("Get cook list meals", () => {
         expect(cookListMealData.length).toEqual(0);
     });
 
-    it("should not return planner meals", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should not return planner meals", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        await KnexPlannerRepository.createMeals(database, {
+        await plannerRepository.createMeals({
             userId: user.userId,
             plannerId: planner!.plannerId,
             meals: [

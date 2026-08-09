@@ -1,46 +1,43 @@
-import { after, afterEach, before, beforeEach, describe, it } from "node:test";
+import { after, afterEach, before, beforeEach, describe } from "node:test";
 import { expect } from "expect";
-import type { Express } from "express";
 import jwt from "jsonwebtoken";
 import request from "supertest";
 import { v4 } from "uuid";
-import type { KnexDatabase } from "../src/repositories/knex/knex.ts";
 import { CreateUsers } from "./helpers/index.ts";
-import { accessSecret, createTestApp, db } from "./helpers/setup.ts";
-
-let database: KnexDatabase;
-let app: Express;
-
-after(async () => {
-    await db.destroy();
-});
+import {
+    accessSecret,
+    beginTestTransaction,
+    createTestApp,
+    rollbackTestTransaction,
+    TestContext,
+    withCxIt,
+} from "./helpers/setup.ts";
 
 describe("Authentication Middleware", () => {
-    let database: KnexDatabase;
-    let app: Express;
+    let { app, userRepository } = TestContext;
 
     beforeEach(async () => {
-        database = await db.transaction();
-        app = createTestApp({ database });
+        await beginTestTransaction();
+        ({ app, userRepository } = createTestApp({}));
     });
 
     afterEach(async () => {
-        await database.rollback();
+        await rollbackTestTransaction();
     });
 
-    it("should return 401 if no token provided", async () => {
+    withCxIt("should return 401 if no token provided", async () => {
         const res = await request(app).get("/v1/profile");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 401 if token verification fails", async () => {
+    withCxIt("should return 401 if token verification fails", async () => {
         const res = await request(app)
             .get("/v1/profile")
             .set("Authorization", "Bearer invalid-token");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 401 if user status is Pending (P)", async () => {
+    withCxIt("should return 401 if user status is Pending (P)", async () => {
         const payload = { userId: v4(), status: "P" };
         const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
@@ -54,7 +51,7 @@ describe("Authentication Middleware", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 401 if user status is Blocked (B)", async () => {
+    withCxIt("should return 401 if user status is Blocked (B)", async () => {
         const payload = { userId: v4(), status: "B" };
         const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
@@ -68,7 +65,7 @@ describe("Authentication Middleware", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 401 if token format is invalid", async () => {
+    withCxIt("should return 401 if token format is invalid", async () => {
         const payload = { userName: v4(), status: "B" };
         const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
@@ -82,8 +79,8 @@ describe("Authentication Middleware", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should authorise valid user", async () => {
-        const [user] = await CreateUsers(database, { status: "M" });
+    withCxIt("should authorise valid user", async () => {
+        const [user] = await CreateUsers(userRepository, { status: "M" });
         const payload = { userId: user!.userId, status: "M" };
         const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
@@ -100,10 +97,12 @@ describe("Authentication Middleware", () => {
 });
 
 describe("Rate Limiter Middleware", () => {
+    let { app } = TestContext;
+
     before(async () => {
         // App setup with default rate limiter
-        database = await db.transaction();
-        app = createTestApp({ database });
+        await beginTestTransaction();
+        ({ app } = createTestApp({}));
 
         // Exceed rate limit for general endpoints
         const responses = await Promise.all(
@@ -114,40 +113,48 @@ describe("Rate Limiter Middleware", () => {
     });
 
     after(async () => {
-        await database.rollback();
+        await rollbackTestTransaction();
     });
 
-    it("books should trigger 429 response after 150 requests", async () => {
-        const res = await request(app).get("/v1/books");
-        expect(res.statusCode).toEqual(429);
-    });
+    withCxIt(
+        "books should trigger 429 response after 150 requests",
+        async () => {
+            const res = await request(app).get("/v1/books");
+            expect(res.statusCode).toEqual(429);
+        },
+    );
 
-    it("planners should trigger 429 response after 150 requests", async () => {
-        const res = await request(app).get("/v1/planners");
-        expect(res.statusCode).toEqual(429);
-    });
+    withCxIt(
+        "planners should trigger 429 response after 150 requests",
+        async () => {
+            const res = await request(app).get("/v1/planners");
+            expect(res.statusCode).toEqual(429);
+        },
+    );
 
-    it("lists should trigger 429 response after 150 requests", async () => {
-        const res = await request(app).delete(`/v1/lists/${v4()}`);
+    withCxIt(
+        "lists should trigger 429 response after 150 requests",
+        async () => {
+            const res = await request(app).delete(`/v1/lists/${v4()}`);
 
-        expect(res.statusCode).toEqual(429);
-    });
+            expect(res.statusCode).toEqual(429);
+        },
+    );
 });
 
 describe("Health Check", () => {
-    let database: KnexDatabase;
-    let app: Express;
+    let { app } = TestContext;
 
     beforeEach(async () => {
-        database = await db.transaction();
-        app = createTestApp({ database });
+        await beginTestTransaction();
+        ({ app } = createTestApp({}));
     });
 
     afterEach(async () => {
-        await database.rollback();
+        await rollbackTestTransaction();
     });
 
-    it("should return 204", async () => {
+    withCxIt("should return 204", async () => {
         const res = await request(app).get("/health");
         expect(res.statusCode).toEqual(204);
     });

@@ -1,7 +1,9 @@
+import { after, it } from "node:test";
+import type { Express } from "express";
 import knex from "knex";
 import { v4 } from "uuid";
 import { createLogger, transports } from "winston";
-import { setupApp } from "../../src/app.ts";
+import { type AppParams, setupApp } from "../../src/app.ts";
 import type { AppJobs } from "../../src/jobs/index.ts";
 import { createErrorHandlerMiddleware } from "../../src/middleware/errorHandler.ts";
 import type { AppMiddleware } from "../../src/middleware/index.ts";
@@ -12,20 +14,22 @@ import {
     createRateLimiterRestrictive,
 } from "../../src/middleware/rateLimiters.ts";
 import { createValidatorMiddleware } from "../../src/middleware/validator.ts";
-import type {
-    AppRepositories,
-    Database,
-} from "../../src/repositories/index.ts";
-import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
-import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
-import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
-import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
-import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
-import { KnexMealRepository } from "../../src/repositories/knex/knexMealRepository.ts";
-import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
-import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
-import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
-import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
+import type { AppRepositories } from "../../src/repositories/index.ts";
+import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
+import { createKnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
+import { createKnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
+import { createKnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
+import { createKnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
+import { createKnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
+import { createKnexMealRepository } from "../../src/repositories/knex/knexMealRepository.ts";
+import { createKnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
+import { createKnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
+import {
+    createKnexTransactionRunner,
+    createKnexTxStore,
+} from "../../src/repositories/knex/knexRepository.ts";
+import { createKnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
+import { createKnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import { createAttachmentService } from "../../src/services/attachmentService.ts";
 import { createBookService } from "../../src/services/bookService.ts";
 import { createContentExtractionService } from "../../src/services/contentExtractionService.ts";
@@ -43,22 +47,45 @@ import testConfig from "./knexfile.testing.ts";
 export const accessSecret = v4();
 export const refreshSecret = v4();
 
+const txStore = createKnexTxStore();
+
+let currentDatabase: KnexDatabase | undefined;
+
+const setCurrentDatabase = (database: KnexDatabase) => {
+    currentDatabase = database;
+};
+
+/**
+ * Runs a test body within the current test transaction context, so repository
+ * calls resolve their transaction from the AsyncLocalStorage store.
+ */
+export const withCxIt = (name: string, fn: () => Promise<void> | void) => {
+    it(name, () => {
+        if (!currentDatabase) {
+            return fn();
+        }
+        return txStore.run(currentDatabase, fn);
+    });
+};
+
 const defaultAppRepositories: AppRepositories = {
-    attachmentRepository: KnexAttachmentRepository,
-    bookRepository: KnexBookRepository,
-    cooklistRepository: KnexCookListRepository,
+    attachmentRepository: createKnexAttachmentRepository(txStore),
+    bookRepository: createKnexBookRepository(txStore),
+    cooklistRepository: createKnexCookListRepository(txStore),
     fileRepository: {
         create: async () => "uri://",
         delete: async () => true,
     },
-    ingredientRepository: KnexIngredientRepository,
-    listRepository: KnexListRepository,
-    mealRepository: KnexMealRepository,
-    plannerRepository: KnexPlannerRepository,
-    recipeRepository: KnexRecipeRepository,
-    tagRepository: KnexTagRepository,
-    userRepository: KnexUserRepository,
+    ingredientRepository: createKnexIngredientRepository(txStore),
+    listRepository: createKnexListRepository(txStore),
+    mealRepository: createKnexMealRepository(txStore),
+    plannerRepository: createKnexPlannerRepository(txStore),
+    recipeRepository: createKnexRecipeRepository(txStore),
+    tagRepository: createKnexTagRepository(txStore),
+    userRepository: createKnexUserRepository(txStore),
 };
+
+export const repositories = defaultAppRepositories;
 
 export const silentLogger = createLogger({
     transports: [new transports.Console({ silent: true })],
@@ -82,56 +109,98 @@ const defaultAppJobs: AppJobs = {
     },
 };
 
-export const db = knex(testConfig);
+const db = knex(testConfig);
+
+after(async () => {
+    await db.destroy();
+});
+
+export const getCurrentDatabase = (): KnexDatabase => {
+    if (!currentDatabase) {
+        throw new Error(
+            "No test transaction — call beginTestTransaction first",
+        );
+    }
+    return currentDatabase;
+};
+
+export const beginTestTransaction = async () => {
+    setCurrentDatabase(await db.transaction());
+};
+
+export const createTransactionRunner = () =>
+    createKnexTransactionRunner(getCurrentDatabase(), txStore);
+
+export const rollbackTestTransaction = async () => {
+    const database = currentDatabase;
+    currentDatabase = undefined;
+    if (database) {
+        await database.rollback();
+    }
+};
 
 export const createTestApp = ({
-    database,
-    repositories,
+    repositories: repositoryOverrides,
     middleware,
     services,
     jobs,
 }: {
-    database: Database;
     repositories?: Partial<AppRepositories>;
     middleware?: Partial<AppMiddleware>;
     services?: Partial<AppServices>;
     jobs?: Partial<AppJobs>;
 }) => {
+    if (!currentDatabase) {
+        throw new Error(
+            "No test transaction — call beginTestTransaction before createTestApp",
+        );
+    }
+
     const appRepositories = {
         ...defaultAppRepositories,
-        ...repositories,
+        ...repositoryOverrides,
     };
+
+    const transaction = createKnexTransactionRunner(currentDatabase, txStore);
 
     const appJobs = {
         ...defaultAppJobs,
         ...jobs,
     };
 
-    return setupApp({
+    const appParams: AppParams = {
         services: {
             attachmentService: createAttachmentService(
-                database,
+                transaction,
                 appRepositories,
             ),
-            bookService: createBookService(database, appRepositories),
+            bookService: createBookService(transaction, appRepositories),
             contentExtractionService: createContentExtractionService(),
-            cooklistService: createCooklistService(database, appRepositories),
+            cooklistService: createCooklistService(
+                transaction,
+                appRepositories,
+            ),
             ingredientService: createIngredientService(
-                database,
+                transaction,
                 appRepositories,
                 appJobs,
             ),
-            listService: createListService(database, appRepositories),
-            mealService: createMealService(database, appRepositories),
-            plannerService: createPlannerService(database, appRepositories),
-            recipeService: createRecipeService(database, appRepositories),
-            tagService: createTagService(database, appRepositories),
-            userService: createUserService(database, appRepositories, appJobs, {
-                accessExpiration: 1000,
-                accessSecret,
-                refreshExpiration: 1000,
-                refreshSecret,
-            }),
+            listService: createListService(transaction, appRepositories),
+            mealService: createMealService(transaction, appRepositories),
+            plannerService: createPlannerService(transaction, appRepositories),
+            recipeService: createRecipeService(transaction, appRepositories),
+            tagService: createTagService(transaction, appRepositories),
+            userService: createUserService(
+                transaction,
+                appRepositories,
+                appJobs,
+                {
+                    accessExpiration: 1000,
+                    accessSecret,
+                    refreshExpiration: 1000,
+                    refreshSecret,
+                },
+            ),
             ...services,
         },
         middleware: {
@@ -147,5 +216,14 @@ export const createTestApp = ({
             uploadDirectory: "uploads",
             assetDirectory: "tests/resources/testAssets",
         },
-    });
+    };
+
+    return {
+        app: setupApp(appParams),
+        ...appRepositories,
+    };
 };
+
+export type TestContext = { app: Express } & AppRepositories;
+
+export const TestContext: TestContext = {} as unknown as TestContext;

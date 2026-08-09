@@ -1,45 +1,43 @@
-import { after, afterEach, beforeEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe } from "node:test";
 import { expect } from "expect";
-import type { Express } from "express";
 import request from "supertest";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
-import { createTestApp, db } from "../helpers/setup.ts";
-
-after(async () => {
-    await db.destroy();
-});
+import {
+    beginTestTransaction,
+    createTestApp,
+    rollbackTestTransaction,
+    TestContext,
+    withCxIt,
+} from "../helpers/setup.ts";
 
 describe("Get all tags", () => {
-    let database: KnexDatabase;
-    let app: Express;
+    let { app, tagRepository, userRepository } = TestContext;
 
     beforeEach(async () => {
-        database = await db.transaction();
-        app = createTestApp({ database });
+        await beginTestTransaction();
+        ({ app, tagRepository, userRepository } = createTestApp({}));
     });
 
     afterEach(async () => {
-        await database.rollback();
+        await rollbackTestTransaction();
     });
 
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get("/v1/tags");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return tags", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return tags", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
-        const [parentTag] = await KnexTagRepository.create(database, [
+        const [parentTag] = await tagRepository.create([
             {
                 name: "Parent Tag",
                 description: "Parent Description",
             },
         ]);
-        const [childTag] = await KnexTagRepository.create(database, [
+        const [childTag] = await tagRepository.create([
             {
                 name: "Child Tag",
                 description: "Child Description",

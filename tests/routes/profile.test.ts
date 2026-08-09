@@ -1,37 +1,35 @@
-import { after, afterEach, beforeEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe } from "node:test";
 import { expect } from "expect";
-import type { Express } from "express";
 import request from "supertest";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
-import { createTestApp, db } from "../helpers/setup.ts";
+import {
+    beginTestTransaction,
+    createTestApp,
+    rollbackTestTransaction,
+    TestContext,
+    withCxIt,
+} from "../helpers/setup.ts";
 
-let database: KnexDatabase;
-let app: Express;
+let { app, userRepository } = TestContext;
 
 beforeEach(async () => {
-    database = await db.transaction();
-    app = createTestApp({ database });
+    await beginTestTransaction();
+    ({ app, userRepository } = createTestApp({}));
 });
 
 afterEach(async () => {
-    await database.rollback();
-});
-
-after(async () => {
-    await db.destroy();
+    await rollbackTestTransaction();
 });
 
 describe("Get current user profile", () => {
-    it("route should require authentication", async () => {
+    withCxIt("route should require authentication", async () => {
         const res = await request(app).get("/v1/profile");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return current user profile", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return current user profile", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app).get("/v1/profile").set(token);
 
@@ -48,19 +46,19 @@ describe("Get current user profile", () => {
 });
 
 describe("Delete current user profile", () => {
-    it("route should require authentication", async () => {
+    withCxIt("route should require authentication", async () => {
         const res = await request(app).delete("/v1/profile");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should delete current user profile", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should delete current user profile", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app).delete("/v1/profile").set(token);
 
         expect(res.statusCode).toEqual(204);
 
-        const { users } = await KnexUserRepository.read(database, {
+        const { users } = await userRepository.read({
             users: [{ userId: user.userId }],
         });
         expect(users.length).toEqual(0);

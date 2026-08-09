@@ -1,36 +1,35 @@
-import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
+import { afterEach, beforeEach, describe, mock } from "node:test";
 import { expect } from "expect";
-import type { Express } from "express";
 import request from "supertest";
 import { v4 } from "uuid";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { ContentExtractionService } from "../../src/services/contentExtractionService.ts";
 import { PrepareAuthenticatedUser, randomNumber } from "../helpers/index.ts";
-import { createTestApp, db } from "../helpers/setup.ts";
+import {
+    beginTestTransaction,
+    createTestApp,
+    rollbackTestTransaction,
+    TestContext,
+    withCxIt,
+} from "../helpers/setup.ts";
 
-let database: KnexDatabase;
-let app: Express;
+let { app, userRepository } = TestContext;
 
 beforeEach(async () => {
-    database = await db.transaction();
-    app = createTestApp({ database });
+    await beginTestTransaction();
+    ({ app, userRepository } = createTestApp({}));
 });
 
 afterEach(async () => {
-    await database.rollback();
-});
-
-after(async () => {
-    await db.destroy();
+    await rollbackTestTransaction();
 });
 
 describe("Extract recipe metadata", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get("/v1/extractor/recipeMetadata");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should extract metadata from a URL", async () => {
+    withCxIt("should extract metadata from a URL", async () => {
         const extractRecipeMetadataMock = mock.fn(
             async (): ReturnType<
                 ContentExtractionService["extractRecipeMetadata"]
@@ -40,17 +39,16 @@ describe("Extract recipe metadata", () => {
             }),
         );
 
-        app = createTestApp({
-            database,
+        ({ app, userRepository } = createTestApp({
             services: {
                 contentExtractionService: {
                     extractRecipeMetadata: extractRecipeMetadataMock,
                     extractRecipe: mock.fn(),
                 },
             },
-        });
+        }));
 
-        const [token] = await PrepareAuthenticatedUser(database);
+        const [token] = await PrepareAuthenticatedUser(userRepository);
         const url = "https://example.com/recipe";
 
         const res = await request(app)
@@ -69,7 +67,7 @@ describe("Extract recipe metadata", () => {
         ).toEqual(url);
     });
 
-    it("should return 500 if extraction fails", async () => {
+    withCxIt("should return 500 if extraction fails", async () => {
         const extractRecipeMetadataMock = mock.fn(
             async (): ReturnType<
                 ContentExtractionService["extractRecipeMetadata"]
@@ -78,17 +76,16 @@ describe("Extract recipe metadata", () => {
             },
         );
 
-        app = createTestApp({
-            database,
+        ({ app, userRepository } = createTestApp({
             services: {
                 contentExtractionService: {
                     extractRecipeMetadata: extractRecipeMetadataMock,
                     extractRecipe: mock.fn(),
                 },
             },
-        });
+        }));
 
-        const [token] = await PrepareAuthenticatedUser(database);
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .get("/v1/extractor/recipeMetadata")
@@ -100,12 +97,12 @@ describe("Extract recipe metadata", () => {
 });
 
 describe("Extract full recipe", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get("/v1/extractor/recipe");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should extract full recipe from a URL", async () => {
+    withCxIt("should extract full recipe from a URL", async () => {
         const mockRecipe: Awaited<
             ReturnType<ContentExtractionService["extractRecipe"]>
         > = {
@@ -120,17 +117,16 @@ describe("Extract full recipe", () => {
                 mockRecipe,
         );
 
-        app = createTestApp({
-            database,
+        ({ app, userRepository } = createTestApp({
             services: {
                 contentExtractionService: {
                     extractRecipeMetadata: mock.fn(),
                     extractRecipe: extractRecipeMock,
                 },
             },
-        });
+        }));
 
-        const [token] = await PrepareAuthenticatedUser(database);
+        const [token] = await PrepareAuthenticatedUser(userRepository);
         const url = "https://example.com/recipe";
 
         const res = await request(app)
@@ -144,24 +140,23 @@ describe("Extract full recipe", () => {
         expect(extractRecipeMock.mock.calls[0]!.arguments.at(0)).toEqual(url);
     });
 
-    it("should return 500 if extraction fails", async () => {
+    withCxIt("should return 500 if extraction fails", async () => {
         const extractRecipeMock = mock.fn(
             async (): ReturnType<ContentExtractionService["extractRecipe"]> => {
                 throw new Error("Extraction failed");
             },
         );
 
-        app = createTestApp({
-            database,
+        ({ app, userRepository } = createTestApp({
             services: {
                 contentExtractionService: {
                     extractRecipeMetadata: mock.fn(),
                     extractRecipe: extractRecipeMock,
                 },
             },
-        });
+        }));
 
-        const [token] = await PrepareAuthenticatedUser(database);
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .get("/v1/extractor/recipe")

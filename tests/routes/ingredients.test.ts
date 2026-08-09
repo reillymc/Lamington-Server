@@ -1,39 +1,38 @@
-import { after, afterEach, beforeEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe } from "node:test";
 import { expect } from "expect";
-import type { Express } from "express";
 import request from "supertest";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
-import { createTestApp, db } from "../helpers/setup.ts";
-
-after(async () => {
-    await db.destroy();
-});
+import {
+    beginTestTransaction,
+    createTestApp,
+    rollbackTestTransaction,
+    TestContext,
+    withCxIt,
+} from "../helpers/setup.ts";
 
 describe("Get user ingredients", () => {
-    let database: KnexDatabase;
-    let app: Express;
+    let { app, ingredientRepository, userRepository } = TestContext;
 
     beforeEach(async () => {
-        database = await db.transaction();
-        app = createTestApp({ database });
+        await beginTestTransaction();
+        ({ app, ingredientRepository, userRepository } = createTestApp({}));
     });
 
     afterEach(async () => {
-        await database.rollback();
+        await rollbackTestTransaction();
     });
 
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get("/v1/ingredients");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return user ingredients", async () => {
-        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return user ingredients", async () => {
+        const [token, { userId }] =
+            await PrepareAuthenticatedUser(userRepository);
 
-        await KnexIngredientRepository.create(database, {
+        await ingredientRepository.create({
             userId,
             ingredients: [
                 {
