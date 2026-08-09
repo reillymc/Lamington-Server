@@ -1,4 +1,5 @@
 import express from "express";
+import { getSession } from "../middleware/session.ts";
 import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
@@ -22,13 +23,13 @@ export const createAttachmentsRouter: CreateRouter<
         >(
             "/attachments/image",
             ...middleware.rateLimiterControlled,
-            async ({ session, files }, res) => {
+            async ({ files }, res) => {
                 const file = Array.isArray(files)
                     ? files?.find((f) => f.fieldname === "image")
                     : files?.image?.[0];
 
                 const attachmentEntry = await attachmentService.create(
-                    session.userId,
+                    getSession().userId,
                     file,
                 );
 

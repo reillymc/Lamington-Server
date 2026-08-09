@@ -10,6 +10,7 @@ import {
     UnauthorizedError,
     ValidationError,
 } from "./middleware.ts";
+import { type Session, sessionStore } from "./session.ts";
 
 const { JsonWebTokenError, NotBeforeError, TokenExpiredError } = jwt;
 
@@ -30,7 +31,7 @@ const fileFilter = (
 
 const isAccessToken = (
     decoded: string | undefined | JwtPayload,
-): decoded is Request["session"] => {
+): decoded is Session => {
     if (decoded === undefined || typeof decoded === "string") return false;
 
     if ("userId" in decoded) return true;
@@ -71,7 +72,7 @@ export const createValidatorMiddleware: CreateMiddleware<
                 throw new UnauthorizedError("Access Denied");
             }
 
-            request.session = decoded;
+            sessionStore.enterWith(decoded);
             return true;
         } catch (e: unknown) {
             if (e instanceof TokenExpiredError) {
