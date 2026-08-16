@@ -22,12 +22,9 @@ export const createErrorHandlerMiddleware: CreateMiddleware<
         if (error instanceof AppError) {
             status = error.status;
             message = error.message;
-            innerError = error.innerError as Error;
-        }
-
-        if (error instanceof Error) {
-            message = error.message;
-            innerError = error.cause;
+            innerError = error.innerError;
+        } else if (error instanceof Error) {
+            innerError = error;
         }
 
         logger.log({
