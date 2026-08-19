@@ -1,11 +1,16 @@
 import { load } from "cheerio";
 import type { components } from "../routes/spec/index.ts";
 import {
+    createIngredientMatcher,
+    type IngredientCandidate,
+    matchRecipeIngredients,
+} from "../utils/ingredientMatcher.ts";
+import {
     convertRecipe,
     findRecipe,
     isRecipe,
 } from "../utils/recipeConverter.ts";
-import { UnknownError } from "./service.ts";
+import { type CreateService, UnknownError } from "./service.ts";
 
 export interface ContentExtractionService {
     extractRecipeMetadata: (
@@ -13,10 +18,14 @@ export interface ContentExtractionService {
     ) => Promise<components["schemas"]["ExtractedRecipeMetadata"]>;
     extractRecipe: (
         url: string,
+        userId: string,
     ) => Promise<components["schemas"]["ExtractedRecipe"]>;
 }
 
-export const createContentExtractionService = (): ContentExtractionService => ({
+export const createContentExtractionService: CreateService<
+    ContentExtractionService,
+    "ingredientRepository"
+> = (database, { ingredientRepository }) => ({
     extractRecipeMetadata: async (url: string) => {
         try {
             const response = await fetch(url);
@@ -47,7 +56,7 @@ export const createContentExtractionService = (): ContentExtractionService => ({
             });
         }
     },
-    extractRecipe: async (url: string) => {
+    extractRecipe: async (url: string, userId: string) => {
         const response = await fetch(url);
         if (!response.ok) {
             throw new UnknownError({
@@ -82,7 +91,14 @@ export const createContentExtractionService = (): ContentExtractionService => ({
         }
 
         try {
-            return convertRecipe(recipeData);
+            const { ingredients } = await ingredientRepository.readAll(
+                database,
+                { userId },
+            );
+
+            const matcher = createIngredientMatcher(ingredients);
+
+            return matchRecipeIngredients(convertRecipe(recipeData), matcher);
         } catch (e) {
             throw new UnknownError(e);
         }

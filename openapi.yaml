@@ -3359,6 +3359,11 @@ components:
             - name
           unevaluatedProperties: false
 
+        ingredientCandidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeIngredientMatch"
+
         amount:
           $ref: "#/components/schemas/ItemAmount"
 
@@ -3386,6 +3391,23 @@ components:
           - recipe
           - ingredient
 
+      unevaluatedProperties: false
+    RecipeIngredientMatch:
+      type: object
+      properties:
+        ingredientId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+          maxLength: 255
+        namePlural:
+          type: string
+          maxLength: 255
+        score:
+          type: number
+      required:
+        - ingredientId
+        - name
       unevaluatedProperties: false
     RecipeSectionBase:
       type: object

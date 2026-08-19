@@ -33,7 +33,7 @@ const formatIngredient = (
 });
 
 export const KnexIngredientRepository: IngredientRepository<KnexDatabase> = {
-    readAll: async (db, { userId }) => {
+    readAll: async (db, { userId, filter = {} }) => {
         const result: IngredientRow[] = await db(lamington.ingredient)
             .select(
                 IngredientTable.ingredientId,
@@ -46,11 +46,26 @@ export const KnexIngredientRepository: IngredientRepository<KnexDatabase> = {
                 IngredientTable.ingredientId,
                 ContentTable.contentId,
             )
-            .where((builder) =>
-                userId !== undefined
-                    ? builder.where({ [ContentTable.createdBy]: userId })
-                    : builder.whereNull(ContentTable.createdBy),
-            )
+            .where((builder) => {
+                builder.where((visibility) => {
+                    visibility.whereNull(ContentTable.createdBy);
+                    if (userId !== undefined) {
+                        visibility.orWhere({
+                            [ContentTable.createdBy]: userId,
+                        });
+                    }
+                });
+
+                if (filter.owner === null) {
+                    builder.andWhere({
+                        [ContentTable.createdBy]: null,
+                    });
+                } else if (filter.owner !== undefined) {
+                    builder.andWhere({
+                        [ContentTable.createdBy]: filter.owner,
+                    });
+                }
+            })
             .modify(withContentAuthor);
 
         return {

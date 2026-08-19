@@ -189,7 +189,7 @@ const jobs: AppJobs = {
 const services: AppServices = {
     attachmentService: createAttachmentService(db, repositories),
     bookService: createBookService(db, repositories),
-    contentExtractionService: createContentExtractionService(),
+    contentExtractionService: createContentExtractionService(db, repositories),
     cooklistService: createCooklistService(db, repositories),
     ingredientService: createIngredientService(db, repositories, jobs),
     listService: createListService(db, repositories),

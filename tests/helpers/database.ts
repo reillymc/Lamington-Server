@@ -42,3 +42,43 @@ export const CreateUsers = async (
         password: passwordByEmail.get(user.email)!,
     }));
 };
+
+export const CreateSystemIngredients = async (
+    database: KnexDatabase,
+    ingredients: ReadonlyArray<{
+        ingredientId?: string;
+        name: string;
+        namePlural?: string;
+        description?: string;
+    }>,
+) => {
+    const ingredientsToInsert = ingredients.map((ingredient) => ({
+        ...ingredient,
+        ingredientId: ingredient.ingredientId ?? uuid(),
+    }));
+
+    await database("content")
+        .insert(
+            ingredientsToInsert.map(({ ingredientId }) => ({
+                contentId: ingredientId,
+            })),
+        )
+        .onConflict("contentId")
+        .ignore();
+
+    await database("ingredient")
+        .insert(
+            ingredientsToInsert.map(
+                ({ ingredientId, name, namePlural, description }) => ({
+                    ingredientId,
+                    name,
+                    namePlural,
+                    description,
+                }),
+            ),
+        )
+        .onConflict("ingredientId")
+        .merge();
+
+    return ingredientsToInsert;
+};

@@ -12,8 +12,13 @@ export interface Ingredient {
     } | null;
 }
 
+type ReadFilters = {
+    owner?: User["userId"] | null;
+};
+
 type ReadRequest = {
     userId?: User["userId"];
+    filter?: ReadFilters;
 };
 
 type ReadResponse = {

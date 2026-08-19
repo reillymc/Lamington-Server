@@ -18,7 +18,9 @@ export const createRefreshIngredientsAssetJob: CreateJob<
     run: async () => {
         try {
             const { ingredients } =
-                await repositories.ingredientRepository.readAll(database, {});
+                await repositories.ingredientRepository.readAll(database, {
+                    filter: { owner: null },
+                });
 
             const filePath = path.join(assetDirectory, "ingredients.json");
 

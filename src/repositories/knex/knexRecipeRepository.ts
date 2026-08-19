@@ -161,9 +161,10 @@ const saveRecipeIngredientRows = async (
     );
 
     if (ingredients.length > 0) {
-        await db<RecipeIngredient>(lamington.recipeIngredient).insert(
-            ingredients,
-        );
+        await db<RecipeIngredient>(lamington.recipeIngredient)
+            .insert(ingredients)
+            .onConflict(["recipeId", "ingredientId"])
+            .ignore();
     }
 };
 
@@ -189,7 +190,10 @@ const saveRecipeRecipeRows = async (
     );
 
     if (recipes.length > 0) {
-        await db<RecipeRecipe>(lamington.recipeRecipe).insert(recipes);
+        await db<RecipeRecipe>(lamington.recipeRecipe)
+            .insert(recipes)
+            .onConflict(["recipeId", "subRecipeId"])
+            .ignore();
     }
 };
 

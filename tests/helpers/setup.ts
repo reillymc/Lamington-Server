@@ -114,7 +114,10 @@ export const createTestApp = ({
                 appRepositories,
             ),
             bookService: createBookService(database, appRepositories),
-            contentExtractionService: createContentExtractionService(),
+            contentExtractionService: createContentExtractionService(
+                database,
+                appRepositories,
+            ),
             cooklistService: createCooklistService(database, appRepositories),
             ingredientService: createIngredientService(
                 database,
