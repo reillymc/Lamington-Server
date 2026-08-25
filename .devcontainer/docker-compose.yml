@@ -12,6 +12,7 @@ services:
             - $PORT:$PORT
         volumes:
             - ..:/workspace:cached
+            - ${GIT_REPO}:${GIT_REPO}
         stdin_open: true
         tty: true
 

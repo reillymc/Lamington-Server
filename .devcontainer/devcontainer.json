@@ -18,5 +18,6 @@
             ]
         }
     },
+    "initializeCommand": "sh .devcontainer/init.sh",
     "remoteUser": "node"
 }
