@@ -1,7 +1,7 @@
-name: "lamington-server"
+name: "lamington-server-${WORKTREE_SLUG:-master}"
 services:
     app:
-        image: app:latest
+        image: app:latest-${WORKTREE_SLUG:-master}
         depends_on:
             - db_development
             - db_testing
