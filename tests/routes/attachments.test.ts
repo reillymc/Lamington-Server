@@ -97,6 +97,17 @@ describe("Upload an image", () => {
         expect(res.statusCode).toEqual(415);
     });
 
+    it("should return 413 for uploads exceeding the size limit", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/attachments/image")
+            .set(token)
+            .attach("image", Buffer.alloc(6 * 1024 * 1024), "large.jpg");
+
+        expect(res.statusCode).toEqual(413);
+    });
+
     it("should upload valid image", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 

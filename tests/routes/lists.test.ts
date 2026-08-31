@@ -690,6 +690,30 @@ describe("Add item to list", () => {
         expect(returnedItem!.name).toEqual(itemData.name);
     });
 
+    it("should reject batches of more than 50 items", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid(), description: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const items = Array.from({ length: 51 }).map(
+            () =>
+                ({
+                    name: uuid(),
+                }) satisfies components["schemas"]["ListItemCreate"],
+        );
+
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/items`)
+            .set(token)
+            .send(items);
+
+        expect(res.statusCode).toEqual(400);
+    });
+
     it("should not allow adding an item if the user is a list member, pending, or blacklisted", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [listOwner] = await CreateUsers(database);

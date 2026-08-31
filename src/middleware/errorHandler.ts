@@ -28,6 +28,23 @@ export const createErrorHandlerMiddleware: CreateMiddleware<
         if (error instanceof Error) {
             message = error.message;
             innerError = error.cause;
+
+            if (!(error instanceof AppError)) {
+                // Framework errors (body-parser, http-errors, express-openapi-validator
+                // HttpError) carry their status on `status`/`statusCode` instead of
+                // being AppErrors. Without this, oversized payloads surface as 500.
+                const errorWithStatus = error as
+                    | {
+                          status?: unknown;
+                          statusCode?: unknown;
+                      }
+                    | undefined;
+                if (typeof errorWithStatus?.status === "number") {
+                    status = errorWithStatus.status;
+                } else if (typeof errorWithStatus?.statusCode === "number") {
+                    status = errorWithStatus.statusCode;
+                }
+            }
         }
 
         logger.log({

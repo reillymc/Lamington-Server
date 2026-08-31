@@ -114,7 +114,13 @@ export const createValidatorMiddleware: CreateMiddleware<
         fileUploader: {
             storage: multer.memoryStorage(),
             fileFilter,
-            limits: {},
+            limits: {
+                fileSize: 5 * 1024 * 1024,
+                files: 1,
+                fields: 10,
+                fieldSize: 1024 * 1024,
+                fieldNameSize: 100,
+            },
         },
     });
 

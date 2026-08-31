@@ -17,6 +17,21 @@ type RecipeServings = {
     count: RangeValue | NumberValue;
 };
 
+export type RecipeNutrition = {
+    servingSize?: string;
+    calories?: string;
+    carbohydrateContent?: string;
+    sugarContent?: string;
+    fiberContent?: string;
+    proteinContent?: string;
+    fatContent?: string;
+    saturatedFatContent?: string;
+    transFatContent?: string;
+    unsaturatedFatContent?: string;
+    cholesterolContent?: string;
+    sodiumContent?: string;
+};
+
 /**
  * Recipe
  */
@@ -31,7 +46,7 @@ export interface Recipe {
         | ReadonlyArray<RecipeSection<RecipeIngredientItemResponse>>
         | undefined;
     method: ReadonlyArray<RecipeSection<RecipeMethodStepResponse>> | undefined;
-    nutritionalInformation: Record<string, never> | undefined;
+    nutritionalInformation: RecipeNutrition | undefined;
     summary: string | undefined;
     tips: string | undefined;
     public: boolean | undefined;

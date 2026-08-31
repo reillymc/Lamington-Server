@@ -2255,3 +2255,186 @@ describe("Rate a recipe", () => {
         expect(updatedRecipe!.rating!.personal).toEqual(rating);
     });
 });
+
+describe("Recipe JSON field parsing", () => {
+    it("should save nutritional information with known keys", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const nutritionalInformation: components["schemas"]["RecipeNutrition"] =
+            {
+                servingSize: "2 slices",
+                calories: "450 kCal",
+                carbohydrateContent: "50 g",
+                sugarContent: "5 g",
+                fiberContent: "3 g",
+                proteinContent: "20 g",
+                fatContent: "12 g",
+                saturatedFatContent: "4 g",
+                transFatContent: "0 g",
+                unsaturatedFatContent: "8 g",
+                cholesterolContent: "30 mg",
+                sodiumContent: "500 mg",
+            };
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), nutritionalInformation });
+
+        expect(res.statusCode).toEqual(201);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: res.body.recipeId }],
+        });
+
+        expect(recipe!.nutritionalInformation).toEqual(nutritionalInformation);
+    });
+
+    it("should save empty nutritional information", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), nutritionalInformation: {} });
+
+        expect(res.statusCode).toEqual(201);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: res.body.recipeId }],
+        });
+
+        expect(recipe!.nutritionalInformation).toEqual({});
+    });
+
+    it("should reject oversized nutritional information values", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({
+                name: uuid(),
+                nutritionalInformation: { calories: "a".repeat(101) },
+            });
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should reject unknown nutritional information keys", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({
+                name: uuid(),
+                nutritionalInformation: { vitaminC: "10 mg" },
+            });
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should reject more than 10 ingredient sections", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const ingredients = Array.from({ length: 11 }).map((_, index) => ({
+            name: `Section ${index}`,
+            items: [{ name: uuid() }],
+        }));
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), ingredients });
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should reject more than 50 items in an ingredient section", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const ingredients = [
+            {
+                name: "Section",
+                items: Array.from({ length: 51 }).map(() => ({ name: uuid() })),
+            },
+        ];
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), ingredients });
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should reject more than 10 method sections", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const method = Array.from({ length: 11 }).map((_, index) => ({
+            name: `Section ${index}`,
+            items: [{ content: uuid() }],
+        }));
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), method });
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should reject more than 50 steps in a method section", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const method = [
+            {
+                name: "Section",
+                items: Array.from({ length: 51 }).map(() => ({
+                    content: uuid(),
+                })),
+            },
+        ];
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), method });
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should accept 10 sections with 50 items each", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const ingredients = Array.from({ length: 10 }).map((_, index) => ({
+            name: `Section ${index}`,
+            items: Array.from({ length: 50 }).map(() => ({ name: uuid() })),
+        }));
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), ingredients });
+
+        expect(res.statusCode).toEqual(201);
+        expect(res.body.ingredients.length).toEqual(10);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: res.body.recipeId }],
+        });
+
+        expect(recipe!.ingredients?.length).toEqual(10);
+        expect(recipe!.ingredients?.[0]?.items.length).toEqual(50);
+    });
+});
