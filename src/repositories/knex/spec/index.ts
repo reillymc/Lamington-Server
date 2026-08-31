@@ -37,6 +37,7 @@ const table = <T extends ReadonlyArray<string>>(
 export const AttachmentTable = table(lamington.attachment, [
     "attachmentId",
     "uri",
+    "preview",
     "createdBy",
     "createdAt",
     "updatedAt",
