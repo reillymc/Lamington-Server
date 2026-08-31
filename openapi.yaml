@@ -1609,6 +1609,7 @@ paths:
                 - type: array
                   items:
                     $ref: "#/components/schemas/ListItemCreate"
+                  maxItems: 50
       responses:
         201:
           description: Created
@@ -2553,6 +2554,7 @@ components:
           type: array
           items:
             type: string
+            maxLength: 4
           minItems: 3
           maxItems: 3
       required:
@@ -2569,6 +2571,7 @@ components:
           type: array
           items:
             type: string
+            maxLength: 4
           minItems: 2
           maxItems: 2
       required:
@@ -2583,6 +2586,7 @@ components:
           enum: [number]
         value:
           type: string
+          maxLength: 4
       required:
         - representation
         - value
@@ -2594,6 +2598,7 @@ components:
           $ref: "#/components/schemas/Uuid"
         name:
           type: string
+          maxLength: 255
         updatedAt:
           type: string
           format: date-time
@@ -2603,6 +2608,7 @@ components:
           type: string
         unit:
           type: string
+          maxLength: 50
         amount:
           $ref: "#/components/schemas/ItemAmount"
         notes:
@@ -2866,8 +2872,37 @@ components:
     RecipeTimesCooked:
       type: integer
 
+    RecipeNutritionValue:
+      type: string
+      maxLength: 100
+
     RecipeNutrition:
       type: object
+      properties:
+        servingSize:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        calories:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        carbohydrateContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        sugarContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        fiberContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        proteinContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        fatContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        saturatedFatContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        transFatContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        unsaturatedFatContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        cholesterolContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        sodiumContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
       unevaluatedProperties: false
 
     RecipeRating:
@@ -2875,21 +2910,25 @@ components:
 
     RecipeIngredientSections:
       type: array
+      maxItems: 10
       items:
         $ref: "#/components/schemas/RecipeIngredientSection"
 
     RecipeIngredientSectionsCreate:
       type: array
+      maxItems: 10
       items:
         $ref: "#/components/schemas/RecipeIngredientSectionCreate"
 
     RecipeIngredientSectionsUpdate:
       type: array
+      maxItems: 10
       items:
         $ref: "#/components/schemas/RecipeIngredientSectionUpdate"
 
     RecipeMethod:
       type: array
+      maxItems: 10
       items:
         $ref: "#/components/schemas/RecipeMethodSection"
 
@@ -2919,13 +2958,9 @@ components:
         timesCooked:
           $ref: "#/components/schemas/RecipeTimesCooked"
         ingredients:
-          type: array
-          items:
-            $ref: "#/components/schemas/RecipeIngredientSection"
+          $ref: "#/components/schemas/RecipeIngredientSections"
         method:
-          type: array
-          items:
-            $ref: "#/components/schemas/RecipeMethodSection"
+          $ref: "#/components/schemas/RecipeMethod"
         rating:
           type: object
           properties:
@@ -3047,13 +3082,9 @@ components:
         timesCooked:
           $ref: "#/components/schemas/RecipeTimesCooked"
         ingredients:
-          type: array
-          items:
-            $ref: "#/components/schemas/RecipeIngredientSectionCreate"
+          $ref: "#/components/schemas/RecipeIngredientSectionsCreate"
         method:
-          type: array
-          items:
-            $ref: "#/components/schemas/RecipeMethodSection"
+          $ref: "#/components/schemas/RecipeMethod"
         rating:
           type: number
         tags:
@@ -3114,15 +3145,11 @@ components:
             - type: "null"
         ingredients:
           anyOf:
-            - type: array
-              items:
-                $ref: "#/components/schemas/RecipeIngredientSectionUpdate"
+            - $ref: "#/components/schemas/RecipeIngredientSectionsUpdate"
             - type: "null"
         method:
           anyOf:
-            - type: array
-              items:
-                $ref: "#/components/schemas/RecipeMethodSection"
+            - $ref: "#/components/schemas/RecipeMethod"
             - type: "null"
         rating:
           anyOf:
@@ -3311,6 +3338,7 @@ components:
       properties:
         unit:
           type: string
+          maxLength: 255
         count:
           oneOf:
             - $ref: "#/components/schemas/AmountRange"
@@ -3403,6 +3431,7 @@ components:
           properties:
             items:
               type: array
+              maxItems: 50
               items:
                 $ref: "#/components/schemas/RecipeIngredientItem"
           required:
@@ -3455,6 +3484,7 @@ components:
           properties:
             items:
               type: array
+              maxItems: 50
               items:
                 $ref: "#/components/schemas/RecipeIngredientItemCreate"
           required:
@@ -3507,6 +3537,7 @@ components:
           properties:
             items:
               type: array
+              maxItems: 50
               items:
                 $ref: "#/components/schemas/RecipeIngredientItemUpdate"
           required:
@@ -3528,6 +3559,7 @@ components:
           properties:
             items:
               type: array
+              maxItems: 50
               items:
                 $ref: "#/components/schemas/RecipeMethodStep"
           required:

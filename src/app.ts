@@ -21,8 +21,8 @@ interface AppParams {
 
 export const setupApp = ({ services, middleware, config }: AppParams) =>
     express()
-        .use(express.json())
-        .use(express.urlencoded({ extended: false }))
+        .use(express.json({ limit: "1mb" }))
+        .use(express.urlencoded({ extended: false, limit: "1mb" }))
         .use(
             cors({
                 origin: config.allowedOrigin,
