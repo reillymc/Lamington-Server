@@ -8,8 +8,6 @@ services:
         build: .
         restart: unless-stopped
         env_file: .env
-        ports:
-            - $PORT:$PORT
         volumes:
             - ..:/workspace:cached
             - ${GIT_REPO}:${GIT_REPO}
