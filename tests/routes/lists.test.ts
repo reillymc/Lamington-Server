@@ -9,10 +9,12 @@ import type { components } from "../../src/routes/spec/index.ts";
 import { CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
 import { createTestApp, db } from "../helpers/setup.ts";
 
-const randomIcon = () =>
-    (["variant1", "variant2", "variant3"] as const)[
+const randomIcon = (): components["schemas"]["Icon"] => ({
+    type: "icon",
+    value: (["variant1", "variant2", "variant3"] as const)[
         Math.floor(Math.random() * 3)
-    ];
+    ]!,
+});
 
 let database: KnexDatabase;
 let app: Express;
@@ -374,6 +376,75 @@ describe("Update a list", () => {
         expect(savedList?.name).toEqual(updatedList.name);
         expect(savedList?.description).toEqual(updatedList.description);
         expect(savedList?.icon).toEqual(updatedList.icon);
+    });
+
+    it("should only update the icon when partially patching, preserving other fields", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [
+                {
+                    name: uuid(),
+                    description: uuid(),
+                    color: "variant5",
+                    icon: { type: "icon", value: "variant2" },
+                },
+            ],
+        });
+        const list = lists[0]!;
+
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send({
+                icon: { type: "custom", value: "😀" },
+            } satisfies components["schemas"]["ListUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            lists: [savedList],
+        } = await KnexListRepository.read(database, {
+            lists: [list],
+            userId: user.userId,
+        });
+
+        expect(savedList?.icon).toEqual({ type: "custom", value: "😀" });
+        expect(savedList?.name).toEqual(list.name);
+        expect(savedList?.description).toEqual(list.description);
+    });
+
+    it("should preserve the icon when partially patching the name", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [
+                { name: uuid(), icon: { type: "icon", value: "variant2" } },
+            ],
+        });
+        const list = lists[0]!;
+
+        const updatedName = uuid();
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send({
+                name: updatedName,
+            } satisfies components["schemas"]["ListUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            lists: [savedList],
+        } = await KnexListRepository.read(database, {
+            lists: [list],
+            userId: user.userId,
+        });
+
+        expect(savedList?.name).toEqual(updatedName);
+        expect(savedList?.icon).toEqual({ type: "icon", value: "variant2" });
     });
 
     it("should fail if the request contains extraneous properties", async () => {

@@ -2518,26 +2518,22 @@ components:
       required:
         - userId
       unevaluatedProperties: false
-    ListIcon:
-      type: string
-      enum:
-        - variant1
-        - variant2
-        - variant3
-        - variant4
-        - variant5
-        - variant6
-        - variant7
-        - variant8
-        - variant9
-        - variant10
-        - variant11
-        - variant12
-        - variant13
-        - variant14
-        - variant15
-        - variant16
-        - variant17
+    Icon:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - icon
+            - custom
+        value:
+          type: string
+          minLength: 1
+          maxLength: 32
+      required:
+        - type
+        - value
+      unevaluatedProperties: false
     ItemAmount:
       oneOf:
         - $ref: "#/components/schemas/AmountFraction"
@@ -2676,7 +2672,7 @@ components:
         description:
           type: string
         icon:
-          $ref: "#/components/schemas/ListIcon"
+          $ref: "#/components/schemas/Icon"
         status:
           $ref: "#/components/schemas/UserStatus"
       required:
@@ -2711,7 +2707,7 @@ components:
           type: string
           maxLength: 255
         icon:
-          $ref: "#/components/schemas/ListIcon"
+          $ref: "#/components/schemas/Icon"
       required:
         - name
       unevaluatedProperties: false
@@ -2729,7 +2725,7 @@ components:
           minLength: 1
           maxLength: 255
         icon:
-          $ref: "#/components/schemas/ListIcon"
+          $ref: "#/components/schemas/Icon"
       unevaluatedProperties: false
     PlannerMeal:
       allOf:
@@ -3252,19 +3248,6 @@ components:
         - variant3
         - variant4
         - variant5
-    BookIcon:
-      type: string
-      enum:
-        - variant1
-        - variant2
-        - variant3
-        - variant4
-        - variant5
-        - variant6
-        - variant7
-        - variant8
-        - variant9
-        - variant10
     Book:
       type: object
       properties:
@@ -3279,7 +3262,7 @@ components:
         color:
           $ref: "#/components/schemas/BookColor"
         icon:
-          $ref: "#/components/schemas/BookIcon"
+          $ref: "#/components/schemas/Icon"
         status:
           $ref: "#/components/schemas/UserStatus"
       required:
@@ -3302,7 +3285,7 @@ components:
         color:
           $ref: "#/components/schemas/BookColor"
         icon:
-          $ref: "#/components/schemas/BookIcon"
+          $ref: "#/components/schemas/Icon"
       required:
         - name
       unevaluatedProperties: false
@@ -3549,7 +3532,7 @@ components:
         color:
           $ref: "#/components/schemas/BookColor"
         icon:
-          $ref: "#/components/schemas/BookIcon"
+          $ref: "#/components/schemas/Icon"
       unevaluatedProperties: false
     BookRecipeCreate:
       type: object
