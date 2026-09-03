@@ -22,6 +22,7 @@
         "setup:dev": "npm run rollback:dev && npm run migrate:dev && npm run seed:dev",
         "rollback:test": "knex migrate:rollback --all --knexfile tests/helpers/knexfile.testing.ts",
         "setup:test": "knex migrate:rollback --all --knexfile tests/helpers/knexfile.testing.ts && knex migrate:latest --knexfile tests/helpers/knexfile.testing.ts",
+        "migrate:make": "knex migrate:make --knexfile src/database/knexfile.production.ts",
         "postinstall": "npm run generate:spec"
     },
     "dependencies": {
