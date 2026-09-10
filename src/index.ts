@@ -19,16 +19,20 @@ import {
 import { createValidatorMiddleware } from "./middleware/validator.ts";
 import { createDiskFileRepository } from "./repositories/disk/diskFileRepository.ts";
 import type { AppRepositories } from "./repositories/index.ts";
-import { KnexAttachmentRepository } from "./repositories/knex/knexAttachmentRepository.ts";
-import { KnexBookRepository } from "./repositories/knex/knexBookRepository.ts";
-import { KnexCookListRepository } from "./repositories/knex/knexCooklistRepository.ts";
-import { KnexIngredientRepository } from "./repositories/knex/knexIngredientRepository.ts";
-import { KnexListRepository } from "./repositories/knex/knexListRepository.ts";
-import { KnexMealRepository } from "./repositories/knex/knexMealRepository.ts";
-import { KnexPlannerRepository } from "./repositories/knex/knexPlannerRepository.ts";
-import { KnexRecipeRepository } from "./repositories/knex/knexRecipeRepository.ts";
-import { KnexTagRepository } from "./repositories/knex/knexTagRepository.ts";
-import { KnexUserRepository } from "./repositories/knex/knexUserRepository.ts";
+import { createKnexAttachmentRepository } from "./repositories/knex/knexAttachmentRepository.ts";
+import { createKnexBookRepository } from "./repositories/knex/knexBookRepository.ts";
+import { createKnexCookListRepository } from "./repositories/knex/knexCooklistRepository.ts";
+import { createKnexIngredientRepository } from "./repositories/knex/knexIngredientRepository.ts";
+import { createKnexListRepository } from "./repositories/knex/knexListRepository.ts";
+import { createKnexMealRepository } from "./repositories/knex/knexMealRepository.ts";
+import { createKnexPlannerRepository } from "./repositories/knex/knexPlannerRepository.ts";
+import { createKnexRecipeRepository } from "./repositories/knex/knexRecipeRepository.ts";
+import {
+    createKnexTransactionRunner,
+    createKnexTxStore,
+} from "./repositories/knex/knexRepository.ts";
+import { createKnexTagRepository } from "./repositories/knex/knexTagRepository.ts";
+import { createKnexUserRepository } from "./repositories/knex/knexUserRepository.ts";
 import { createS3FileRepository } from "./repositories/s3/s3FileRepository.ts";
 import { createAttachmentService } from "./services/attachmentService.ts";
 import { createBookService } from "./services/bookService.ts";
@@ -145,18 +149,21 @@ awsBucketName: ${awsBucketName ? "provided" : "missing"}`,
     );
 }
 
+const txStore = createKnexTxStore();
+const transactionRunner = createKnexTransactionRunner(db, txStore);
+
 const repositories: AppRepositories = {
-    attachmentRepository: KnexAttachmentRepository,
-    bookRepository: KnexBookRepository,
-    cooklistRepository: KnexCookListRepository,
+    attachmentRepository: createKnexAttachmentRepository(txStore),
+    bookRepository: createKnexBookRepository(txStore),
+    cooklistRepository: createKnexCookListRepository(txStore),
     fileRepository,
-    ingredientRepository: KnexIngredientRepository,
-    listRepository: KnexListRepository,
-    mealRepository: KnexMealRepository,
-    plannerRepository: KnexPlannerRepository,
-    recipeRepository: KnexRecipeRepository,
-    tagRepository: KnexTagRepository,
-    userRepository: KnexUserRepository,
+    ingredientRepository: createKnexIngredientRepository(txStore),
+    listRepository: createKnexListRepository(txStore),
+    mealRepository: createKnexMealRepository(txStore),
+    plannerRepository: createKnexPlannerRepository(txStore),
+    recipeRepository: createKnexRecipeRepository(txStore),
+    tagRepository: createKnexTagRepository(txStore),
+    userRepository: createKnexUserRepository(txStore),
 };
 
 const accessSecret = process.env.JWT_SECRET;
@@ -174,30 +181,34 @@ if (!accessSecret || !refreshSecret) {
 
 const jobs: AppJobs = {
     refreshIngredientsAsset: createRefreshIngredientsAssetJob({
-        database: db,
+        transaction: transactionRunner,
         repositories,
         assetDirectory,
         logger,
     }),
     createUserStarterData: createUserStarterDataJob({
-        database: db,
+        transaction: transactionRunner,
         repositories,
         logger,
     }),
 };
 
 const services: AppServices = {
-    attachmentService: createAttachmentService(db, repositories),
-    bookService: createBookService(db, repositories),
+    attachmentService: createAttachmentService(transactionRunner, repositories),
+    bookService: createBookService(transactionRunner, repositories),
     contentExtractionService: createContentExtractionService(),
-    cooklistService: createCooklistService(db, repositories),
-    ingredientService: createIngredientService(db, repositories, jobs),
-    listService: createListService(db, repositories),
-    mealService: createMealService(db, repositories),
-    plannerService: createPlannerService(db, repositories),
-    recipeService: createRecipeService(db, repositories),
-    tagService: createTagService(db, repositories),
-    userService: createUserService(db, repositories, jobs, {
+    cooklistService: createCooklistService(transactionRunner, repositories),
+    ingredientService: createIngredientService(
+        transactionRunner,
+        repositories,
+        jobs,
+    ),
+    listService: createListService(transactionRunner, repositories),
+    mealService: createMealService(transactionRunner, repositories),
+    plannerService: createPlannerService(transactionRunner, repositories),
+    recipeService: createRecipeService(transactionRunner, repositories),
+    tagService: createTagService(transactionRunner, repositories),
+    userService: createUserService(transactionRunner, repositories, jobs, {
         accessExpiration,
         accessSecret,
         refreshExpiration,

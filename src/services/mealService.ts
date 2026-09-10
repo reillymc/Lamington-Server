@@ -1,5 +1,5 @@
 import type { components } from "../routes/spec/index.ts";
-import { type CreateService, NotFoundError } from "./service.ts";
+import { createService, NotFoundError } from "./service.ts";
 
 export interface MealService {
     get: (
@@ -8,12 +8,12 @@ export interface MealService {
     ) => Promise<components["schemas"]["Meal"]>;
 }
 
-export const createMealService: CreateService<
+export const createMealService = createService<
     MealService,
     "mealRepository" | "plannerRepository"
-> = (database, { mealRepository }) => ({
+>(({ mealRepository }) => ({
     get: async (userId, mealId) => {
-        const { meals } = await mealRepository.read(database, {
+        const { meals } = await mealRepository.read({
             userId,
             meals: [{ mealId }],
         });
@@ -25,4 +25,4 @@ export const createMealService: CreateService<
 
         return meal;
     },
-});
+}));

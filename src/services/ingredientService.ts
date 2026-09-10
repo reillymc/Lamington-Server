@@ -1,5 +1,5 @@
 import type { components } from "../routes/spec/index.ts";
-import type { CreateService } from "./service.ts";
+import { createService } from "./service.ts";
 
 export interface IngredientService {
     getAll: (
@@ -11,26 +11,26 @@ export interface IngredientService {
     ) => Promise<ReadonlyArray<components["schemas"]["Ingredient"]>>;
 }
 
-export const createIngredientService: CreateService<
+export const createIngredientService = createService<
     IngredientService,
     "ingredientRepository",
     "refreshIngredientsAsset"
-> = (database, { ingredientRepository }, { refreshIngredientsAsset }) => ({
+>(({ ingredientRepository }, { refreshIngredientsAsset }) => ({
     getAll: async (userId) => {
-        const { ingredients } = await ingredientRepository.readAll(database, {
+        const { ingredients } = await ingredientRepository.readAll({
             userId,
         });
 
         return ingredients;
     },
     create: async (userId, ingredients) => {
-        const { ingredients: created } = await ingredientRepository.create(
-            database,
-            { userId, ingredients },
-        );
+        const { ingredients: created } = await ingredientRepository.create({
+            userId,
+            ingredients,
+        });
 
         refreshIngredientsAsset.run();
 
         return created;
     },
-});
+}));

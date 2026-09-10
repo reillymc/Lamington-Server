@@ -1,6 +1,6 @@
+import type { Knex } from "knex";
 import { ForeignKeyViolationError } from "../../../common/errors.ts";
 import type { ContentMember } from "../../../temp.ts";
-import type { KnexDatabase } from "../../knex.ts";
 import { ContentMemberTable, lamington, UserTable } from "../../spec/index.ts";
 import { toUndefined } from "../dataFormatting/toUndefined.ts";
 import { isForeignKeyViolation } from "../postgresErrors.ts";
@@ -21,10 +21,7 @@ const parseStatus = (status?: string): ContentMemberStatus | undefined => {
 };
 
 export const ContentMemberActions = {
-    readByContentId: async (
-        db: KnexDatabase,
-        contentIds: string | string[],
-    ) => {
+    readByContentId: async (db: Knex, contentIds: string | string[]) => {
         const contentIdList = Array.isArray(contentIds)
             ? contentIds
             : [contentIds];
@@ -54,7 +51,7 @@ export const ContentMemberActions = {
     },
 
     save: async (
-        db: KnexDatabase,
+        db: Knex,
         items: Array<{
             contentId: string;
             userId: string;
@@ -82,7 +79,7 @@ export const ContentMemberActions = {
     },
 
     delete: async (
-        db: KnexDatabase,
+        db: Knex,
         items: Array<{
             contentId: string;
             userId: string;

@@ -1,3 +1,4 @@
+import type { Knex } from "knex";
 import type {
     CookListMealCourse,
     CookListRepository,
@@ -17,20 +18,16 @@ import type {
     ContentAuthorColumns,
     HeroAttachmentColumns,
 } from "./common/rowTypes.ts";
-import type { KnexDatabase } from "./knex.ts";
+import { knexRepository } from "./knexRepository.ts";
 import { ContentTable, lamington, PlannerMealTable } from "./spec/index.ts";
 
-type CookListMealRow = Pick<
-    Meal,
-    | "mealId"
-    | "meal"
-    | "description"
-    | "source"
-    | "sequence"
-    | "recipeId"
-    | "notes"
-> &
-    ContentAuthorColumns &
+type CookListMealRow = Pick<Meal, "mealId" | "meal"> & {
+    description: Meal["description"] | null;
+    source: Meal["source"] | null;
+    sequence: Meal["sequence"] | null;
+    recipeId: Meal["recipeId"] | null;
+    notes: Meal["notes"] | null;
+} & ContentAuthorColumns &
     HeroAttachmentColumns;
 
 const formatCookListMeal = (
@@ -58,7 +55,7 @@ const formatCookListMeal = (
             : undefined,
 });
 
-const readByIds = async (db: KnexDatabase, mealIds: string[]) => {
+const readByIds = async (db: Knex, mealIds: string[]) => {
     const result: CookListMealRow[] = await db(lamington.plannerMeal)
         .select(
             PlannerMealTable.mealId,
@@ -84,7 +81,7 @@ const readByIds = async (db: KnexDatabase, mealIds: string[]) => {
     return { meals: result.map(formatCookListMeal) };
 };
 
-export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
+export const createKnexCookListRepository = knexRepository<CookListRepository>({
     readAllMeals: async (db, { userId }) => {
         const result: CookListMealRow[] = await db(lamington.plannerMeal)
             .select(
@@ -203,4 +200,4 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
             })),
         };
     },
-};
+});

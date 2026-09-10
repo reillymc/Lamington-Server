@@ -1,35 +1,34 @@
-import { after, afterEach, beforeEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe } from "node:test";
 import { expect } from "expect";
-import type { Express } from "express";
 import request from "supertest";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
-import { createTestApp, db } from "../helpers/setup.ts";
-
-after(async () => {
-    await db.destroy();
-});
+import {
+    beginTestTransaction,
+    createTestApp,
+    rollbackTestTransaction,
+    TestContext,
+    withCxIt,
+} from "../helpers/setup.ts";
 
 describe("Get preset ingredients", () => {
-    let database: KnexDatabase;
-    let app: Express;
+    let { app, userRepository } = TestContext;
 
     beforeEach(async () => {
-        database = await db.transaction();
-        app = createTestApp({ database });
+        await beginTestTransaction();
+        ({ app, userRepository } = createTestApp({}));
     });
 
     afterEach(async () => {
-        await database.rollback();
+        await rollbackTestTransaction();
     });
 
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get("/v1/assets/ingredients.json");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return ingredients list", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return ingredients list", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
         const res = await request(app)
             .get("/v1/assets/ingredients.json")
             .set(token);

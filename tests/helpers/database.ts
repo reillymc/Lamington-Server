@@ -1,14 +1,13 @@
 import { v4 as uuid } from "uuid";
 
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
+import type { UserRepository } from "../../src/repositories/userRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { hashPassword } from "../../src/services/userService.ts";
 
 const randomEmail = () => `${uuid()}@${uuid()}.${uuid()}`;
 
 export const CreateUsers = async (
-    database: KnexDatabase,
+    userRepository: UserRepository,
     {
         count = 1,
         status = "M",
@@ -33,7 +32,7 @@ export const CreateUsers = async (
         seedUsers.map((user) => [user.email, user.password]),
     );
 
-    const { users: createdUsers } = await KnexUserRepository.create(database, {
+    const { users: createdUsers } = await userRepository.create({
         users: usersToInsert,
     });
 

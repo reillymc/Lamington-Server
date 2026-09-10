@@ -1,15 +1,13 @@
-import type { Database, RepositoryService } from "./repository.ts";
+import type { RepositoryMethod } from "./repository.ts";
+import type { Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
 
 export interface Ingredient {
     ingredientId: string;
     name: string;
-    namePlural: string | null;
-    description: string | null;
-    owner: {
-        userId: User["userId"];
-        firstName: User["firstName"];
-    } | null;
+    namePlural: string | undefined;
+    description: string | undefined;
+    owner: Owner | undefined;
 }
 
 type ReadRequest = {
@@ -35,7 +33,7 @@ type CreateResponse = {
     ingredients: ReadonlyArray<Ingredient>;
 };
 
-export interface IngredientRepository<TDatabase extends Database = Database> {
-    readAll: RepositoryService<TDatabase, ReadRequest, ReadResponse>;
-    create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;
+export interface IngredientRepository {
+    readAll: RepositoryMethod<ReadRequest, ReadResponse>;
+    create: RepositoryMethod<CreateRequest, CreateResponse>;
 }

@@ -1,4 +1,5 @@
 import express from "express";
+import { getSession } from "../middleware/session.ts";
 import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
@@ -13,9 +14,9 @@ export const createUserRouter: CreateRouter<"userService"> = ({
             paths["/users"]["get"]["responses"]["200"]["content"]["application/json"],
             paths["/users"]["get"]["requestBody"],
             paths["/users"]["get"]["parameters"]["query"]
-        >("/users", async ({ session, query }, res) => {
+        >("/users", async ({ query }, res) => {
             const data = await userService.getAll(
-                session.userId,
+                getSession().userId,
                 query?.status,
             );
             return res.status(200).json(data);
@@ -26,8 +27,8 @@ export const createUserRouter: CreateRouter<"userService"> = ({
             paths["/users/{userId}/approve"]["post"]["responses"]["204"]["content"],
             paths["/users/{userId}/approve"]["post"]["requestBody"],
             paths["/users/{userId}/approve"]["post"]["parameters"]["query"]
-        >("/users/:userId/approve", async ({ params, session }, res) => {
-            await userService.approve(session.userId, params.userId);
+        >("/users/:userId/approve", async ({ params }, res) => {
+            await userService.approve(getSession().userId, params.userId);
             return res.status(204).send();
         })
         .post<
@@ -36,8 +37,8 @@ export const createUserRouter: CreateRouter<"userService"> = ({
             paths["/users/{userId}/blacklist"]["post"]["responses"]["204"]["content"],
             paths["/users/{userId}/blacklist"]["post"]["requestBody"],
             paths["/users/{userId}/blacklist"]["post"]["parameters"]["query"]
-        >("/users/:userId/blacklist", async ({ params, session }, res) => {
-            await userService.blacklist(session.userId, params.userId);
+        >("/users/:userId/blacklist", async ({ params }, res) => {
+            await userService.blacklist(getSession().userId, params.userId);
             return res.status(204).send();
         })
         .delete<
@@ -46,7 +47,7 @@ export const createUserRouter: CreateRouter<"userService"> = ({
             paths["/users/{userId}"]["delete"]["responses"]["204"]["content"],
             paths["/users/{userId}"]["delete"]["requestBody"],
             paths["/users/{userId}"]["delete"]["parameters"]["query"]
-        >("/users/:userId", async ({ params, session }, res) => {
-            await userService.delete(session.userId, params.userId);
+        >("/users/:userId", async ({ params }, res) => {
+            await userService.delete(getSession().userId, params.userId);
             return res.status(204).send();
         });

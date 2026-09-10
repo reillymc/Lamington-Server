@@ -1,4 +1,5 @@
 import { EnsureArray, Undefined } from "@reillymc/es-utils";
+import type { Knex } from "knex";
 import type { Ingredient } from "../ingredientRepository.ts";
 import type {
     ReadTagsResponse,
@@ -29,7 +30,7 @@ import type {
     ContentAuthorColumns,
     HeroAttachmentColumns,
 } from "./common/rowTypes.ts";
-import type { KnexDatabase } from "./knex.ts";
+import { type KnexRepoMethod, knexRepository } from "./knexRepository.ts";
 import {
     BookRecipeTable,
     ContentTable,
@@ -54,13 +55,13 @@ const groupBy = <T, K>(rows: ReadonlyArray<T>, key: (row: T) => K) => {
 };
 
 const readTags = (
-    db: KnexDatabase,
+    db: Knex,
     recipeIds: ReadonlyArray<Recipe["recipeId"]>,
 ): Promise<Map<Recipe["recipeId"], ReadTagsResponse>> =>
     ContentTagActions.readByContentId(db, recipeIds);
 
 const saveTags = (
-    db: KnexDatabase,
+    db: Knex,
     items: ReadonlyArray<{
         recipeId: Recipe["recipeId"];
         tags: ReadonlyArray<{ tagId: string }>;
@@ -92,7 +93,7 @@ type RecipeIngredientRow = Pick<
 };
 
 const queryRecipeIngredients = (
-    db: KnexDatabase,
+    db: Knex,
     recipeIds: ReadonlyArray<Recipe["recipeId"]>,
 ): Promise<Array<RecipeIngredientRow>> =>
     db(lamington.recipeIngredient)
@@ -116,7 +117,7 @@ type RecipeSubRecipeRow = {
 };
 
 const queryRecipeSubRecipes = (
-    db: KnexDatabase,
+    db: Knex,
     recipeIds: ReadonlyArray<Recipe["recipeId"]>,
 ): Promise<Array<RecipeSubRecipeRow>> =>
     db(lamington.recipeRecipe)
@@ -138,7 +139,7 @@ const queryRecipeSubRecipes = (
  * @param recipeIngredients ingredients to include in recipe
  */
 const saveRecipeIngredientRows = async (
-    db: KnexDatabase,
+    db: Knex,
     params: ReadonlyArray<
         Pick<Recipe, "recipeId"> & {
             ingredients: Array<RecipeIngredient["ingredientId"]>;
@@ -168,7 +169,7 @@ const saveRecipeIngredientRows = async (
 };
 
 const saveRecipeRecipeRows = async (
-    db: KnexDatabase,
+    db: Knex,
     params: ReadonlyArray<
         Pick<Recipe, "recipeId"> & {
             recipes: Array<RecipeRecipe["recipeId"]>;
@@ -249,7 +250,7 @@ type RecipeListItemRow = Pick<
     HeroAttachmentColumns &
     RecipeRatingColumns;
 
-const buildRecipeQuery = (db: KnexDatabase) => {
+const buildRecipeQuery = (db: Knex) => {
     const ratingsSubquery = db(lamington.recipeRating)
         .select(RecipeRatingTable.recipeId)
         .avg({ rating_average: RecipeRatingTable.rating })
@@ -267,7 +268,7 @@ const buildRecipeQuery = (db: KnexDatabase) => {
         .modify(withHeroAttachment(RecipeTable.recipeId));
 };
 
-const withPersonalRating = (db: KnexDatabase, userId: string) =>
+const withPersonalRating = (db: Knex, userId: string) =>
     db(lamington.recipeRating)
         .select(RecipeRatingTable.rating)
         .whereRaw('"recipe_rating"."recipeId" = "recipe"."recipeId"')
@@ -276,7 +277,7 @@ const withPersonalRating = (db: KnexDatabase, userId: string) =>
         .as(ratingPersonalName);
 
 const queryFullRecipes = (
-    db: KnexDatabase,
+    db: Knex,
     recipeIds: ReadonlyArray<Recipe["recipeId"]>,
     userId: string,
 ): Promise<FullRecipeRow[]> =>
@@ -366,7 +367,7 @@ const extractSubRecipeIds = (sections: RecipeRow["ingredients"] | undefined) =>
             .filter(Undefined),
     );
 
-const read: RecipeRepository<KnexDatabase>["read"] = async (
+const read: KnexRepoMethod<RecipeRepository, "read"> = async (
     db,
     { userId, recipes },
 ) => {
@@ -501,7 +502,7 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
     };
 };
 
-export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
+export const createKnexRecipeRepository = knexRepository<RecipeRepository>({
     create: async (db, { userId, recipes }) => {
         const newContent = await createContentRows(db, userId, recipes.length);
 
@@ -821,4 +822,4 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             ratings: savedRatings,
         };
     },
-};
+});

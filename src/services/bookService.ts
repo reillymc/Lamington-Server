@@ -2,7 +2,7 @@ import { ForeignKeyViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
 import {
     CreatedDataFetchError,
-    type CreateService,
+    createService,
     InvalidOperationError,
     NotFoundError,
     UpdatedDataFetchError,
@@ -72,12 +72,12 @@ export interface BookService {
     declineInvite: (userId: string, bookId: string) => Promise<void>;
 }
 
-export const createBookService: CreateService<
+export const createBookService = createService<
     BookService,
     "bookRepository" | "recipeRepository"
-> = (database, { bookRepository, recipeRepository }) => ({
+>(({ bookRepository, recipeRepository }) => ({
     getAll: async (userId) => {
-        const { books } = await bookRepository.readAll(database, {
+        const { books } = await bookRepository.readAll({
             userId,
         });
 
@@ -86,7 +86,7 @@ export const createBookService: CreateService<
     get: async (userId, bookId) => {
         const {
             books: [book],
-        } = await bookRepository.read(database, {
+        } = await bookRepository.read({
             userId,
             books: [{ bookId }],
         });
@@ -97,147 +97,51 @@ export const createBookService: CreateService<
 
         return book;
     },
-    create: (userId, request) =>
-        database.transaction(async (trx) => {
-            const { books } = await bookRepository.create(trx, {
-                userId,
-                books: [
-                    {
-                        name: request.name,
-                        description: request.description,
-                        color: request.color ?? "variant1",
-                        icon: request.icon ?? "variant1",
-                    },
-                ],
-            });
+    create: async (userId, request) => {
+        const { books } = await bookRepository.create({
+            userId,
+            books: [
+                {
+                    name: request.name,
+                    description: request.description,
+                    color: request.color ?? "variant1",
+                    icon: request.icon ?? "variant1",
+                },
+            ],
+        });
 
-            const [book] = books;
+        const [book] = books;
 
-            if (!book) {
-                throw new CreatedDataFetchError("book");
-            }
+        if (!book) {
+            throw new CreatedDataFetchError("book");
+        }
 
-            return book;
-        }),
-    update: (userId, bookId, request) =>
-        database.transaction(async (trx) => {
-            const permissions = await bookRepository.verifyPermissions(trx, {
-                userId,
-                books: [{ bookId }],
-                status: "O",
-            });
-
-            if (
-                permissions.books.some(({ hasPermissions }) => !hasPermissions)
-            ) {
-                throw new NotFoundError("book", bookId);
-            }
-
-            const { books } = await bookRepository.update(trx, {
-                userId,
-                books: [{ ...request, bookId }],
-            });
-
-            const [book] = books;
-            if (!book) {
-                throw new UpdatedDataFetchError("book", bookId);
-            }
-            return book;
-        }),
-    delete: (userId, bookId) =>
-        database.transaction(async (trx) => {
-            const permissions = await bookRepository.verifyPermissions(trx, {
-                userId,
-                books: [{ bookId }],
-                status: "O",
-            });
-
-            const [permission] = permissions.books;
-
-            if (!permission?.hasPermissions) {
-                throw new NotFoundError("book", bookId);
-            }
-
-            const { count } = await bookRepository.delete(trx, {
-                books: [{ bookId }],
-            });
-
-            if (count === 0) {
-                throw new NotFoundError("book", bookId);
-            }
-        }),
-    getRecipes: async (userId, bookId, page, search, sort, order) => {
-        const permissions = await bookRepository.verifyPermissions(database, {
+        return book;
+    },
+    update: async (userId, bookId, request) => {
+        const permissions = await bookRepository.verifyPermissions({
             userId,
             books: [{ bookId }],
-            status: ["O", "A", "M"],
+            status: "O",
         });
 
         if (permissions.books.some(({ hasPermissions }) => !hasPermissions)) {
             throw new NotFoundError("book", bookId);
         }
 
-        return recipeRepository.readAll(database, {
+        const { books } = await bookRepository.update({
             userId,
-            filter: {
-                books: [{ bookId }],
-                name: search,
-            },
-            page,
-            sort,
-            order,
+            books: [{ ...request, bookId }],
         });
+
+        const [book] = books;
+        if (!book) {
+            throw new UpdatedDataFetchError("book", bookId);
+        }
+        return book;
     },
-    addRecipe: (userId, bookId, request) =>
-        database.transaction(async (trx) => {
-            const permissions = await bookRepository.verifyPermissions(trx, {
-                userId,
-                books: [{ bookId }],
-                status: ["O", "A"],
-            });
-
-            const [permission] = permissions.books;
-
-            if (!permission?.hasPermissions) {
-                throw new NotFoundError("book", bookId);
-            }
-
-            const [result] = await bookRepository.saveRecipes(trx, {
-                bookId,
-                recipes: [{ recipeId: request.recipeId }],
-            });
-
-            const recipe = result?.recipes?.[0];
-            if (!recipe) {
-                throw new CreatedDataFetchError("book recipe");
-            }
-            return { recipeId: recipe.recipeId };
-        }),
-    removeRecipe: (userId, bookId, recipeId) =>
-        database.transaction(async (trx) => {
-            const permissions = await bookRepository.verifyPermissions(trx, {
-                userId,
-                books: [{ bookId }],
-                status: ["O", "A"],
-            });
-
-            const [permission] = permissions.books;
-
-            if (!permission?.hasPermissions) {
-                throw new NotFoundError("book", bookId);
-            }
-
-            const [result] = await bookRepository.removeRecipes(trx, {
-                bookId,
-                recipes: [{ recipeId }],
-            });
-
-            if (result?.count === 0) {
-                throw new NotFoundError("book recipe", recipeId);
-            }
-        }),
-    getMembers: async (userId, bookId) => {
-        const permissions = await bookRepository.verifyPermissions(database, {
+    delete: async (userId, bookId) => {
+        const permissions = await bookRepository.verifyPermissions({
             userId,
             books: [{ bookId }],
             status: "O",
@@ -249,7 +153,96 @@ export const createBookService: CreateService<
             throw new NotFoundError("book", bookId);
         }
 
-        const [bookMembers] = await bookRepository.readMembers(database, {
+        const { count } = await bookRepository.delete({
+            books: [{ bookId }],
+        });
+
+        if (count === 0) {
+            throw new NotFoundError("book", bookId);
+        }
+    },
+    getRecipes: async (userId, bookId, page, search, sort, order) => {
+        const permissions = await bookRepository.verifyPermissions({
+            userId,
+            books: [{ bookId }],
+            status: ["O", "A", "M"],
+        });
+
+        if (permissions.books.some(({ hasPermissions }) => !hasPermissions)) {
+            throw new NotFoundError("book", bookId);
+        }
+
+        return recipeRepository.readAll({
+            userId,
+            filter: {
+                books: [{ bookId }],
+                name: search,
+            },
+            page,
+            sort,
+            order,
+        });
+    },
+    addRecipe: async (userId, bookId, request) => {
+        const permissions = await bookRepository.verifyPermissions({
+            userId,
+            books: [{ bookId }],
+            status: ["O", "A"],
+        });
+
+        const [permission] = permissions.books;
+
+        if (!permission?.hasPermissions) {
+            throw new NotFoundError("book", bookId);
+        }
+
+        const [result] = await bookRepository.saveRecipes({
+            bookId,
+            recipes: [{ recipeId: request.recipeId }],
+        });
+
+        const recipe = result?.recipes?.[0];
+        if (!recipe) {
+            throw new CreatedDataFetchError("book recipe");
+        }
+        return { recipeId: recipe.recipeId };
+    },
+    removeRecipe: async (userId, bookId, recipeId) => {
+        const permissions = await bookRepository.verifyPermissions({
+            userId,
+            books: [{ bookId }],
+            status: ["O", "A"],
+        });
+
+        const [permission] = permissions.books;
+
+        if (!permission?.hasPermissions) {
+            throw new NotFoundError("book", bookId);
+        }
+
+        const [result] = await bookRepository.removeRecipes({
+            bookId,
+            recipes: [{ recipeId }],
+        });
+
+        if (result?.count === 0) {
+            throw new NotFoundError("book recipe", recipeId);
+        }
+    },
+    getMembers: async (userId, bookId) => {
+        const permissions = await bookRepository.verifyPermissions({
+            userId,
+            books: [{ bookId }],
+            status: "O",
+        });
+
+        const [permission] = permissions.books;
+
+        if (!permission?.hasPermissions) {
+            throw new NotFoundError("book", bookId);
+        }
+
+        const [bookMembers] = await bookRepository.readMembers({
             bookId,
         });
 
@@ -259,171 +252,158 @@ export const createBookService: CreateService<
 
         return bookMembers.members;
     },
-    inviteMember: (userId, bookId, targetUserId) =>
-        database.transaction(async (trx) => {
-            const permissions = await bookRepository.verifyPermissions(trx, {
-                userId,
-                books: [{ bookId }],
-                status: "O",
-            });
+    inviteMember: async (userId, bookId, targetUserId) => {
+        const permissions = await bookRepository.verifyPermissions({
+            userId,
+            books: [{ bookId }],
+            status: "O",
+        });
 
-            const [permission] = permissions.books;
-            if (!permission?.hasPermissions) {
-                throw new NotFoundError("book", bookId);
-            }
+        const [permission] = permissions.books;
+        if (!permission?.hasPermissions) {
+            throw new NotFoundError("book", bookId);
+        }
 
-            const [currentMembers] = await bookRepository.readMembers(trx, {
-                bookId,
-            });
-            if (
-                currentMembers?.members.some((m) => m.userId === targetUserId)
-            ) {
-                throw new InvalidOperationError(
-                    "book member",
-                    "User is already a member",
-                );
-            }
-
-            try {
-                await bookRepository.saveMembers(trx, {
-                    bookId,
-                    members: [{ userId: targetUserId, status: "P" }],
-                });
-            } catch (error: unknown) {
-                if (error instanceof ForeignKeyViolationError) {
-                    throw new NotFoundError("user", targetUserId);
-                }
-                throw error;
-            }
-        }),
-    updateMember: (userId, bookId, memberId, status) =>
-        database.transaction(async (trx) => {
-            const permissions = await bookRepository.verifyPermissions(trx, {
-                userId,
-                books: [{ bookId }],
-                status: "O",
-            });
-
-            if (
-                permissions.books.some(({ hasPermissions }) => !hasPermissions)
-            ) {
-                throw new NotFoundError("book", bookId);
-            }
-
-            const [currentPlannerMembers] = await bookRepository.readMembers(
-                trx,
-                { bookId },
+        const [currentMembers] = await bookRepository.readMembers({
+            bookId,
+        });
+        if (currentMembers?.members.some((m) => m.userId === targetUserId)) {
+            throw new InvalidOperationError(
+                "book member",
+                "User is already a member",
             );
-            const currentMember = currentPlannerMembers?.members.find(
-                (m) => m.userId === memberId,
+        }
+
+        try {
+            await bookRepository.saveMembers({
+                bookId,
+                members: [{ userId: targetUserId, status: "P" }],
+            });
+        } catch (error: unknown) {
+            if (error instanceof ForeignKeyViolationError) {
+                throw new NotFoundError("user", targetUserId);
+            }
+            throw error;
+        }
+    },
+    updateMember: async (userId, bookId, memberId, status) => {
+        const permissions = await bookRepository.verifyPermissions({
+            userId,
+            books: [{ bookId }],
+            status: "O",
+        });
+
+        if (permissions.books.some(({ hasPermissions }) => !hasPermissions)) {
+            throw new NotFoundError("book", bookId);
+        }
+
+        const [currentPlannerMembers] = await bookRepository.readMembers({
+            bookId,
+        });
+        const currentMember = currentPlannerMembers?.members.find(
+            (m) => m.userId === memberId,
+        );
+
+        if (!currentMember) {
+            throw new NotFoundError("book member", memberId);
+        }
+
+        if (currentMember.status === "P") {
+            throw new InvalidOperationError(
+                "book member",
+                "Cannot update a pending member",
             );
+        }
 
-            if (!currentMember) {
-                throw new NotFoundError("book member", memberId);
-            }
+        await bookRepository.saveMembers({
+            bookId,
+            members: [{ userId: memberId, status }],
+        });
 
-            if (currentMember.status === "P") {
-                throw new InvalidOperationError(
-                    "book member",
-                    "Cannot update a pending member",
-                );
-            }
+        const [bookMembers] = await bookRepository.readMembers({
+            bookId,
+        });
 
-            await bookRepository.saveMembers(trx, {
-                bookId,
-                members: [{ userId: memberId, status }],
-            });
+        const member = bookMembers?.members.find((m) => m.userId === memberId);
 
-            const [bookMembers] = await bookRepository.readMembers(trx, {
-                bookId,
-            });
+        if (!member) {
+            throw new NotFoundError("book member", memberId);
+        }
 
-            const member = bookMembers?.members.find(
-                (m) => m.userId === memberId,
+        return member;
+    },
+    removeMember: async (userId, bookId, memberId) => {
+        const permissions = await bookRepository.verifyPermissions({
+            userId,
+            books: [{ bookId }],
+            status: "O",
+        });
+
+        const [permission] = permissions.books;
+        if (!permission?.hasPermissions) {
+            throw new NotFoundError("book", bookId);
+        }
+
+        if (memberId === userId) {
+            throw new InvalidOperationError(
+                "book member",
+                "Cannot remove self from book",
             );
+        }
 
-            if (!member) {
-                throw new NotFoundError("book member", memberId);
-            }
+        await bookRepository.removeMembers({
+            bookId,
+            members: [{ userId: memberId }],
+        });
+    },
+    leaveBook: async (userId, bookId) => {
+        const permissions = await bookRepository.verifyPermissions({
+            userId,
+            books: [{ bookId }],
+            status: ["A", "M"],
+        });
+        const [permission] = permissions.books;
+        if (!permission?.hasPermissions) {
+            throw new NotFoundError("book", bookId);
+        }
 
-            return member;
-        }),
-    removeMember: (userId, bookId, memberId) =>
-        database.transaction(async (trx) => {
-            const permissions = await bookRepository.verifyPermissions(trx, {
-                userId,
-                books: [{ bookId }],
-                status: "O",
-            });
+        await bookRepository.removeMembers({
+            bookId,
+            members: [{ userId }],
+        });
+    },
+    acceptInvite: async (userId, bookId) => {
+        const permissions = await bookRepository.verifyPermissions({
+            userId,
+            books: [{ bookId }],
+            status: "P",
+        });
 
-            const [permission] = permissions.books;
-            if (!permission?.hasPermissions) {
-                throw new NotFoundError("book", bookId);
-            }
+        const [permission] = permissions.books;
+        if (!permission?.hasPermissions) {
+            throw new NotFoundError("book", bookId);
+        }
 
-            if (memberId === userId) {
-                throw new InvalidOperationError(
-                    "book member",
-                    "Cannot remove self from book",
-                );
-            }
+        await bookRepository.saveMembers({
+            bookId,
+            members: [{ userId, status: "M" }],
+        });
+    },
+    declineInvite: async (userId, bookId) => {
+        const permissions = await bookRepository.verifyPermissions({
+            userId,
+            books: [{ bookId }],
+            status: "P",
+        });
 
-            await bookRepository.removeMembers(trx, {
-                bookId,
-                members: [{ userId: memberId }],
-            });
-        }),
-    leaveBook: (userId, bookId) =>
-        database.transaction(async (trx) => {
-            const permissions = await bookRepository.verifyPermissions(trx, {
-                userId,
-                books: [{ bookId }],
-                status: ["A", "M"],
-            });
-            const [permission] = permissions.books;
-            if (!permission?.hasPermissions) {
-                throw new NotFoundError("book", bookId);
-            }
+        const [permission] = permissions.books;
+        if (!permission?.hasPermissions) {
+            throw new NotFoundError("book", bookId);
+        }
 
-            await bookRepository.removeMembers(trx, {
-                bookId,
-                members: [{ userId }],
-            });
-        }),
-    acceptInvite: (userId, bookId) =>
-        database.transaction(async (trx) => {
-            const permissions = await bookRepository.verifyPermissions(trx, {
-                userId,
-                books: [{ bookId }],
-                status: "P",
-            });
-
-            const [permission] = permissions.books;
-            if (!permission?.hasPermissions) {
-                throw new NotFoundError("book", bookId);
-            }
-
-            await bookRepository.saveMembers(trx, {
-                bookId,
-                members: [{ userId, status: "M" }],
-            });
-        }),
-    declineInvite: (userId, bookId) =>
-        database.transaction(async (trx) => {
-            const permissions = await bookRepository.verifyPermissions(trx, {
-                userId,
-                books: [{ bookId }],
-                status: "P",
-            });
-
-            const [permission] = permissions.books;
-            if (!permission?.hasPermissions) {
-                throw new NotFoundError("book", bookId);
-            }
-
-            await bookRepository.removeMembers(trx, {
-                bookId,
-                members: [{ userId }],
-            });
-        }),
-});
+        await bookRepository.removeMembers({
+            bookId,
+            members: [{ userId }],
+        });
+    },
+}));

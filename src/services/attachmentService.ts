@@ -2,7 +2,7 @@ import sharp from "sharp";
 import type { components } from "../routes/spec/schema.js";
 import {
     CreatedDataFetchError,
-    type CreateService,
+    createService,
     InsufficientDataError,
 } from "./service.ts";
 
@@ -21,56 +21,54 @@ export interface AttachmentService {
     ) => Promise<components["schemas"]["ImageAttachment"]>;
 }
 
-export const createAttachmentService: CreateService<
+export const createAttachmentService = createService<
     AttachmentService,
     "attachmentRepository" | "fileRepository"
-> = (database, { attachmentRepository, fileRepository }) => ({
+>(({ attachmentRepository, fileRepository }) => ({
     create: async (userId, file) => {
         if (!file) {
             throw new InsufficientDataError("attachment");
         }
 
-        return database.transaction(async (trx) => {
-            const {
-                attachments: [attachmentEntry],
-            } = await attachmentRepository.create(trx, {
-                userId,
-                attachments: [{ uri: "" }],
-            });
-
-            if (!attachmentEntry) {
-                throw new CreatedDataFetchError("attachment");
-            }
-
-            const compressedImage = await compressImage(file.buffer);
-
-            const result = await fileRepository.create(undefined, {
-                file: compressedImage,
-                userId,
-                attachmentId: attachmentEntry.attachmentId,
-            });
-
-            if (!result) {
-                throw new CreatedDataFetchError("attachment");
-            }
-
-            const {
-                attachments: [finalAttachmentEntry],
-            } = await attachmentRepository.update(trx, {
-                userId,
-                attachments: [
-                    { attachmentId: attachmentEntry.attachmentId, uri: result },
-                ],
-            });
-
-            if (!finalAttachmentEntry) {
-                throw new CreatedDataFetchError("attachment");
-            }
-
-            return {
-                attachmentId: finalAttachmentEntry.attachmentId,
-                uri: finalAttachmentEntry.uri,
-            };
+        const {
+            attachments: [attachmentEntry],
+        } = await attachmentRepository.create({
+            userId,
+            attachments: [{ uri: "" }],
         });
+
+        if (!attachmentEntry) {
+            throw new CreatedDataFetchError("attachment");
+        }
+
+        const compressedImage = await compressImage(file.buffer);
+
+        const result = await fileRepository.create({
+            file: compressedImage,
+            userId,
+            attachmentId: attachmentEntry.attachmentId,
+        });
+
+        if (!result) {
+            throw new CreatedDataFetchError("attachment");
+        }
+
+        const {
+            attachments: [finalAttachmentEntry],
+        } = await attachmentRepository.update({
+            userId,
+            attachments: [
+                { attachmentId: attachmentEntry.attachmentId, uri: result },
+            ],
+        });
+
+        if (!finalAttachmentEntry) {
+            throw new CreatedDataFetchError("attachment");
+        }
+
+        return {
+            attachmentId: finalAttachmentEntry.attachmentId,
+            uri: finalAttachmentEntry.uri,
+        };
     },
-});
+}));

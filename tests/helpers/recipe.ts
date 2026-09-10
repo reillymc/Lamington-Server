@@ -1,6 +1,5 @@
 import { v4 as uuid } from "uuid";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
+import type { TagRepository } from "../../src/repositories/tagRepository.ts";
 import type { components } from "../../src/routes/spec/schema.ts";
 import { randomBoolean, randomNumber } from "./data.ts";
 
@@ -79,17 +78,15 @@ export const generateRandomRecipeServings =
         };
     };
 
-export const createRandomRecipeTags = async (database: KnexDatabase) => {
-    const parentTags = await KnexTagRepository.create(
-        database,
+export const createRandomRecipeTags = async (tagRepository: TagRepository) => {
+    const parentTags = await tagRepository.create(
         Array.from({ length: randomNumber() }).map(() => ({
             name: uuid(),
             description: uuid(),
         })),
     );
 
-    const childTags = await KnexTagRepository.create(
-        database,
+    const childTags = await tagRepository.create(
         parentTags.flatMap(({ tagId }) =>
             Array.from({ length: randomNumber() }).map(() => ({
                 parentId: tagId,

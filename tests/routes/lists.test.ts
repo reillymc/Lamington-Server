@@ -1,45 +1,43 @@
-import { after, afterEach, beforeEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe } from "node:test";
 import { expect } from "expect";
-import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
-import { createTestApp, db } from "../helpers/setup.ts";
+import {
+    beginTestTransaction,
+    createTestApp,
+    rollbackTestTransaction,
+    TestContext,
+    withCxIt,
+} from "../helpers/setup.ts";
 
 const randomIcon = () =>
     (["variant1", "variant2", "variant3"] as const)[
         Math.floor(Math.random() * 3)
     ];
 
-let database: KnexDatabase;
-let app: Express;
+let { app, listRepository, userRepository } = TestContext;
 
 beforeEach(async () => {
-    database = await db.transaction();
-    app = createTestApp({ database });
+    await beginTestTransaction();
+    ({ app, listRepository, userRepository } = createTestApp({}));
 });
 
 afterEach(async () => {
-    await database.rollback();
-});
-
-after(async () => {
-    await db.destroy();
+    await rollbackTestTransaction();
 });
 
 describe("Get user lists", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get("/v1/lists");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return all lists created by the user", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return all lists created by the user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid() }, { name: uuid() }, { name: uuid() }],
         });
@@ -56,17 +54,17 @@ describe("Get user lists", () => {
         expect(ids).toContain(lists[2]!.listId);
     });
 
-    it("should return lists a user is a member of", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [otherUser] = await CreateUsers(database);
+    withCxIt("should return lists a user is a member of", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [otherUser] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: otherUser!.userId,
             lists: [{ name: uuid() }, { name: uuid() }, { name: uuid() }],
         });
         const [adminList, memberList, pendingList] = lists;
 
-        await KnexListRepository.saveMembers(database, [
+        await listRepository.saveMembers([
             {
                 listId: adminList!.listId,
                 members: [{ userId: user.userId, status: "A" }],
@@ -92,37 +90,41 @@ describe("Get user lists", () => {
         expect(ids).toContain(pendingList!.listId);
     });
 
-    it("should not return lists where the user is blacklisted", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [otherUser] = await CreateUsers(database);
+    withCxIt(
+        "should not return lists where the user is blacklisted",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [otherUser] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
-            userId: otherUser!.userId,
-            lists: [{ name: uuid() }],
-        });
-        const [blockedList] = lists;
+            const { lists } = await listRepository.create({
+                userId: otherUser!.userId,
+                lists: [{ name: uuid() }],
+            });
+            const [blockedList] = lists;
 
-        await KnexListRepository.saveMembers(database, [
-            {
-                listId: blockedList!.listId,
-                members: [{ userId: user.userId, status: "B" }],
-            },
-        ]);
+            await listRepository.saveMembers([
+                {
+                    listId: blockedList!.listId,
+                    members: [{ userId: user.userId, status: "B" }],
+                },
+            ]);
 
-        const res = await request(app).get("/v1/lists").set(token);
-        expect(res.statusCode).toEqual(200);
+            const res = await request(app).get("/v1/lists").set(token);
+            expect(res.statusCode).toEqual(200);
 
-        const body = res.body as components["schemas"]["ListSummary"][];
-        const ids = body.map((l) => l.listId);
+            const body = res.body as components["schemas"]["ListSummary"][];
+            const ids = body.map((l) => l.listId);
 
-        expect(ids).not.toContain(blockedList!.listId);
-    });
+            expect(ids).not.toContain(blockedList!.listId);
+        },
+    );
 
-    it("should not return lists belonging to other users", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [otherUser] = await CreateUsers(database);
+    withCxIt("should not return lists belonging to other users", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
+        const [otherUser] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: otherUser!.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
@@ -137,13 +139,13 @@ describe("Get user lists", () => {
 });
 
 describe("Create a list", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post("/v1/lists");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should successfully create a new list", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should successfully create a new list", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const listData = {
             name: uuid(),
@@ -158,10 +160,9 @@ describe("Create a list", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const { lists: savedLists } = await KnexListRepository.readAll(
-            database,
-            { userId: user.userId },
-        );
+        const { lists: savedLists } = await listRepository.readAll({
+            userId: user.userId,
+        });
         expect(savedLists.length).toEqual(1);
 
         const [savedList] = savedLists;
@@ -171,57 +172,66 @@ describe("Create a list", () => {
         expect(savedList?.owner.userId).toEqual(user.userId);
     });
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app).post("/v1/lists").set(token).send({
-            name: 12345,
-            description: uuid(),
-        });
-        expect(res.statusCode).toEqual(400);
-    });
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
+            const res = await request(app).post("/v1/lists").set(token).send({
+                name: 12345,
+                description: uuid(),
+            });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app).post("/v1/lists").set(token).send({
-            name: uuid(),
-            extra: "invalid",
-        });
-        expect(res.statusCode).toEqual(400);
-    });
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
+            const res = await request(app).post("/v1/lists").set(token).send({
+                name: uuid(),
+                extra: "invalid",
+            });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 });
 
 describe("Get a list", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get(`/v1/lists/${uuid()}`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent list", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent list", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
         const res = await request(app).get(`/v1/lists/${uuid()}`).set(token);
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not return a list the user doesn't have access to", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [listOwner] = await CreateUsers(database);
+    withCxIt(
+        "should not return a list the user doesn't have access to",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
+            const [listOwner] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
-            userId: listOwner!.userId,
-            lists: [{ name: uuid(), description: uuid() }],
-        });
+            const { lists } = await listRepository.create({
+                userId: listOwner!.userId,
+                lists: [{ name: uuid(), description: uuid() }],
+            });
 
-        const res = await request(app)
-            .get(`/v1/lists/${lists[0]!.listId}`)
-            .set(token);
+            const res = await request(app)
+                .get(`/v1/lists/${lists[0]!.listId}`)
+                .set(token);
 
-        expect(res.statusCode).toEqual(404);
-    });
+            expect(res.statusCode).toEqual(404);
+        },
+    );
 
-    it("should return correct list details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return correct list details", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
@@ -242,73 +252,81 @@ describe("Get a list", () => {
         expect(data.status).toEqual("O");
     });
 
-    it("should return the list for allowed member statuses (A, M)", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [listOwner] = await CreateUsers(database);
+    withCxIt(
+        "should return the list for allowed member statuses (A, M)",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [listOwner] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M"] as const;
+            const statuses = ["A", "M"] as const;
 
-        for (const status of statuses) {
-            const {
-                lists: [list],
-            } = await KnexListRepository.create(database, {
-                userId: listOwner!.userId,
-                lists: [{ name: uuid(), description: uuid() }],
-            });
+            for (const status of statuses) {
+                const {
+                    lists: [list],
+                } = await listRepository.create({
+                    userId: listOwner!.userId,
+                    lists: [{ name: uuid(), description: uuid() }],
+                });
 
-            await KnexListRepository.saveMembers(database, {
-                listId: list!.listId,
-                members: [{ userId: user.userId, status }],
-            });
+                await listRepository.saveMembers({
+                    listId: list!.listId,
+                    members: [{ userId: user.userId, status }],
+                });
 
-            const res = await request(app)
-                .get(`/v1/lists/${list!.listId}`)
-                .set(token);
+                const res = await request(app)
+                    .get(`/v1/lists/${list!.listId}`)
+                    .set(token);
 
-            expect(res.statusCode).toEqual(200);
+                expect(res.statusCode).toEqual(200);
 
-            const data = res.body as components["schemas"]["List"];
-            expect(data?.listId).toEqual(list!.listId);
-            expect(data?.status).toEqual(status);
-        }
-    });
+                const data = res.body as components["schemas"]["List"];
+                expect(data?.listId).toEqual(list!.listId);
+                expect(data?.status).toEqual(status);
+            }
+        },
+    );
 
-    it("should return 404 for disallowed member statuses (P, B)", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [listOwner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 for disallowed member statuses (P, B)",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [listOwner] = await CreateUsers(userRepository);
 
-        const statuses = ["P", "B"] as const;
+            const statuses = ["P", "B"] as const;
 
-        for (const status of statuses) {
-            const {
-                lists: [list],
-            } = await KnexListRepository.create(database, {
-                userId: listOwner!.userId,
-                lists: [{ name: uuid(), description: uuid() }],
-            });
+            for (const status of statuses) {
+                const {
+                    lists: [list],
+                } = await listRepository.create({
+                    userId: listOwner!.userId,
+                    lists: [{ name: uuid(), description: uuid() }],
+                });
 
-            await KnexListRepository.saveMembers(database, {
-                listId: list!.listId,
-                members: [{ userId: user.userId, status }],
-            });
+                await listRepository.saveMembers({
+                    listId: list!.listId,
+                    members: [{ userId: user.userId, status }],
+                });
 
-            const res = await request(app)
-                .get(`/v1/lists/${list!.listId}`)
-                .set(token);
+                const res = await request(app)
+                    .get(`/v1/lists/${list!.listId}`)
+                    .set(token);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Update a list", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).patch(`/v1/lists/${uuid()}`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent list", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent list", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
         const res = await request(app)
             .patch(`/v1/lists/${uuid()}`)
             .set(token)
@@ -316,104 +334,120 @@ describe("Update a list", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not allow update if the user is not the list owner (A, M, P, B)", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
+    withCxIt(
+        "should not allow update if the user is not the list owner (A, M, P, B)",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "P", "B"] as const;
+            const statuses = ["A", "M", "P", "B"] as const;
 
-        for (const status of statuses) {
-            const { lists } = await KnexListRepository.create(database, {
-                userId: owner!.userId,
+            for (const status of statuses) {
+                const { lists } = await listRepository.create({
+                    userId: owner!.userId,
+                    lists: [{ name: uuid(), description: uuid() }],
+                });
+                const list = lists[0]!;
+
+                await listRepository.saveMembers({
+                    listId: list.listId,
+                    members: [{ userId: user.userId, status }],
+                });
+
+                const res = await request(app)
+                    .patch(`/v1/lists/${list.listId}`)
+                    .set(token)
+                    .send({ name: uuid() });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
+
+    withCxIt(
+        "should save updated list details when the user is the list owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const { lists } = await listRepository.create({
+                userId: user.userId,
                 lists: [{ name: uuid(), description: uuid() }],
             });
             const list = lists[0]!;
 
-            await KnexListRepository.saveMembers(database, {
-                listId: list.listId,
-                members: [{ userId: user.userId, status }],
-            });
+            const updatedList = {
+                name: uuid(),
+                description: uuid(),
+                icon: randomIcon(),
+            } satisfies components["schemas"]["ListUpdate"];
 
             const res = await request(app)
                 .patch(`/v1/lists/${list.listId}`)
                 .set(token)
-                .send({ name: uuid() });
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                .send(updatedList);
 
-    it("should save updated list details when the user is the list owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+            expect(res.statusCode).toEqual(200);
 
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid(), description: uuid() }],
-        });
-        const list = lists[0]!;
-
-        const updatedList = {
-            name: uuid(),
-            description: uuid(),
-            icon: randomIcon(),
-        } satisfies components["schemas"]["ListUpdate"];
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}`)
-            .set(token)
-            .send(updatedList);
-
-        expect(res.statusCode).toEqual(200);
-
-        const {
-            lists: [savedList],
-        } = await KnexListRepository.read(database, {
-            lists: [list],
-            userId: user.userId,
-        });
-
-        expect(savedList?.name).toEqual(updatedList.name);
-        expect(savedList?.description).toEqual(updatedList.description);
-        expect(savedList?.icon).toEqual(updatedList.icon);
-    });
-
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}`)
-            .set(token)
-            .send({
-                name: uuid(),
-                extra: "invalid",
+            const {
+                lists: [savedList],
+            } = await listRepository.read({
+                lists: [list],
+                userId: user.userId,
             });
-        expect(res.statusCode).toEqual(400);
-    });
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+            expect(savedList?.name).toEqual(updatedList.name);
+            expect(savedList?.description).toEqual(updatedList.description);
+            expect(savedList?.icon).toEqual(updatedList.icon);
+        },
+    );
 
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
 
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}`)
-            .set(token)
-            .send({ name: 12345 });
-        expect(res.statusCode).toEqual(400);
-    });
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            });
+            const list = lists[0]!;
 
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
+            const res = await request(app)
+                .patch(`/v1/lists/${list.listId}`)
+                .set(token)
+                .send({
+                    name: uuid(),
+                    extra: "invalid",
+                });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            });
+            const list = lists[0]!;
+
+            const res = await request(app)
+                .patch(`/v1/lists/${list.listId}`)
+                .set(token)
+                .send({ name: 12345 });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt("should fail if a required field is set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid() }],
         });
@@ -427,13 +461,13 @@ describe("Update a list", () => {
 });
 
 describe("Delete a list", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).delete(`/v1/lists/${uuid()}`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent list", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent list", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
         const res = await request(app)
             .delete(`/v1/lists/${uuid()}`)
             .set(token)
@@ -441,49 +475,56 @@ describe("Delete a list", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not allow deletion if the user is not the list owner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
+    withCxIt(
+        "should not allow deletion if the user is not the list owner",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
-            userId: owner!.userId,
-            lists: [{ name: uuid(), description: uuid() }],
-        });
-        const list = lists[0]!;
+            const { lists } = await listRepository.create({
+                userId: owner!.userId,
+                lists: [{ name: uuid(), description: uuid() }],
+            });
+            const list = lists[0]!;
 
-        const res = await request(app)
-            .delete(`/v1/lists/${list.listId}`)
-            .set(token)
-            .send();
-        expect(res.statusCode).toEqual(404);
-    });
+            const res = await request(app)
+                .delete(`/v1/lists/${list.listId}`)
+                .set(token)
+                .send();
+            expect(res.statusCode).toEqual(404);
+        },
+    );
 
-    it("should not allow deletion if the user is a list member but not the owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
+    withCxIt(
+        "should not allow deletion if the user is a list member but not the owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
-            userId: owner!.userId,
-            lists: [{ name: uuid(), description: uuid() }],
-        });
-        const list = lists[0]!;
+            const { lists } = await listRepository.create({
+                userId: owner!.userId,
+                lists: [{ name: uuid(), description: uuid() }],
+            });
+            const list = lists[0]!;
 
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: user.userId, status: "A" }],
-        });
+            await listRepository.saveMembers({
+                listId: list.listId,
+                members: [{ userId: user.userId, status: "A" }],
+            });
 
-        const res = await request(app)
-            .delete(`/v1/lists/${list.listId}`)
-            .set(token)
-            .send();
-        expect(res.statusCode).toEqual(404);
-    });
+            const res = await request(app)
+                .delete(`/v1/lists/${list.listId}`)
+                .set(token)
+                .send();
+            expect(res.statusCode).toEqual(404);
+        },
+    );
 
-    it("should successfully delete the list", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should successfully delete the list", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
@@ -495,7 +536,7 @@ describe("Delete a list", () => {
             .send();
         expect(res.statusCode).toEqual(204);
 
-        const { lists: savedLists } = await KnexListRepository.read(database, {
+        const { lists: savedLists } = await listRepository.read({
             lists: [list],
             userId: user.userId,
         });
@@ -504,21 +545,21 @@ describe("Delete a list", () => {
 });
 
 describe("Get list items", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get(`/v1/lists/${uuid()}/items`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return list items", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return list items", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
         const list = lists[0]!;
 
-        const { items } = await KnexListRepository.createItems(database, {
+        const { items } = await listRepository.createItems({
             userId: user.userId,
             listId: list.listId,
             items: [{ name: uuid() }, { name: uuid() }],
@@ -537,81 +578,89 @@ describe("Get list items", () => {
         expect(listItemData.map((i) => i.itemId)).toContain(items[1]!.itemId);
     });
 
-    it("should return list items for allowed member statuses (A, M)", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [listOwner] = await CreateUsers(database);
+    withCxIt(
+        "should return list items for allowed member statuses (A, M)",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [listOwner] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M"] as const;
+            const statuses = ["A", "M"] as const;
 
-        for (const status of statuses) {
-            const {
-                lists: [list],
-            } = await KnexListRepository.create(database, {
-                userId: listOwner!.userId,
-                lists: [{ name: uuid(), description: uuid() }],
-            });
+            for (const status of statuses) {
+                const {
+                    lists: [list],
+                } = await listRepository.create({
+                    userId: listOwner!.userId,
+                    lists: [{ name: uuid(), description: uuid() }],
+                });
 
-            await KnexListRepository.saveMembers(database, {
-                listId: list!.listId,
-                members: [{ userId: user.userId, status }],
-            });
+                await listRepository.saveMembers({
+                    listId: list!.listId,
+                    members: [{ userId: user.userId, status }],
+                });
 
-            const { items } = await KnexListRepository.createItems(database, {
-                userId: listOwner!.userId,
-                listId: list!.listId,
-                items: [{ name: uuid() }],
-            });
+                const { items } = await listRepository.createItems({
+                    userId: listOwner!.userId,
+                    listId: list!.listId,
+                    items: [{ name: uuid() }],
+                });
 
-            const res = await request(app)
-                .get(`/v1/lists/${list!.listId}/items`)
-                .set(token);
+                const res = await request(app)
+                    .get(`/v1/lists/${list!.listId}/items`)
+                    .set(token);
 
-            expect(res.statusCode).toEqual(200);
-            const listItemData =
-                res.body as components["schemas"]["ListItem"][];
-            expect(listItemData).toHaveLength(1);
-            expect(listItemData[0]!.itemId).toEqual(items[0]!.itemId);
-        }
-    });
+                expect(res.statusCode).toEqual(200);
+                const listItemData =
+                    res.body as components["schemas"]["ListItem"][];
+                expect(listItemData).toHaveLength(1);
+                expect(listItemData[0]!.itemId).toEqual(items[0]!.itemId);
+            }
+        },
+    );
 
-    it("should return 404 for list items if the user is blacklisted or pending", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [listOwner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 for list items if the user is blacklisted or pending",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [listOwner] = await CreateUsers(userRepository);
 
-        const statuses = ["P", "B"] as const;
+            const statuses = ["P", "B"] as const;
 
-        for (const status of statuses) {
-            const {
-                lists: [list],
-            } = await KnexListRepository.create(database, {
-                userId: listOwner!.userId,
-                lists: [{ name: uuid(), description: uuid() }],
-            });
+            for (const status of statuses) {
+                const {
+                    lists: [list],
+                } = await listRepository.create({
+                    userId: listOwner!.userId,
+                    lists: [{ name: uuid(), description: uuid() }],
+                });
 
-            await KnexListRepository.saveMembers(database, {
-                listId: list!.listId,
-                members: [{ userId: user.userId, status }],
-            });
+                await listRepository.saveMembers({
+                    listId: list!.listId,
+                    members: [{ userId: user.userId, status }],
+                });
 
-            const res = await request(app)
-                .get(`/v1/lists/${list!.listId}/items`)
-                .set(token);
+                const res = await request(app)
+                    .get(`/v1/lists/${list!.listId}/items`)
+                    .set(token);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Add item to list", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post(`/v1/lists/${uuid()}/items`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should create a list item", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should create a list item", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
@@ -635,10 +684,10 @@ describe("Add item to list", () => {
         expect(returnedItem!.notes).toEqual(itemData.notes);
     });
 
-    // it("should create a list item with ingredient", async () => {
-    //     const [token, user] = await PrepareAuthenticatedUser(database);
+    // withTxIt("should create a list item with ingredient", async () => {
+    //     const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
-    //     const { lists } = await KnexListRepository.create(database, {
+    //     const { lists } = await listRepository.create({
     //         userId: user.userId,
     //         lists: [{ name: uuid(), description: uuid() }],
     //     });
@@ -660,52 +709,22 @@ describe("Add item to list", () => {
     //     expect(returnedItem!.ingredientId).toEqual(ingredient.ingredientId);
     // });
 
-    it("should allow adding an item if the user is a list administrator", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [listOwner] = await CreateUsers(database);
+    withCxIt(
+        "should allow adding an item if the user is a list administrator",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [listOwner] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
-            userId: listOwner!.userId,
-            lists: [{ name: uuid(), description: uuid() }],
-        });
-        const list = lists[0]!;
-
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: user.userId, status: "A" }],
-        });
-
-        const itemData = {
-            name: uuid(),
-        } satisfies components["schemas"]["ListItemCreate"];
-
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/items`)
-            .set(token)
-            .send(itemData);
-
-        expect(res.statusCode).toEqual(201);
-        const [returnedItem] = res.body as components["schemas"]["ListItem"][];
-
-        expect(returnedItem!.name).toEqual(itemData.name);
-    });
-
-    it("should not allow adding an item if the user is a list member, pending, or blacklisted", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [listOwner] = await CreateUsers(database);
-
-        const statuses = ["M", "P", "B"] as const;
-
-        for (const status of statuses) {
-            const { lists } = await KnexListRepository.create(database, {
+            const { lists } = await listRepository.create({
                 userId: listOwner!.userId,
                 lists: [{ name: uuid(), description: uuid() }],
             });
             const list = lists[0]!;
 
-            await KnexListRepository.saveMembers(database, {
+            await listRepository.saveMembers({
                 listId: list.listId,
-                members: [{ userId: user.userId, status }],
+                members: [{ userId: user.userId, status: "A" }],
             });
 
             const itemData = {
@@ -717,64 +736,111 @@ describe("Add item to list", () => {
                 .set(token)
                 .send(itemData);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+            expect(res.statusCode).toEqual(201);
+            const [returnedItem] =
+                res.body as components["schemas"]["ListItem"][];
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
+            expect(returnedItem!.name).toEqual(itemData.name);
+        },
+    );
 
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/items`)
-            .set(token)
-            .send({
-                name: uuid(),
-                extra: "invalid",
+    withCxIt(
+        "should not allow adding an item if the user is a list member, pending, or blacklisted",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [listOwner] = await CreateUsers(userRepository);
+
+            const statuses = ["M", "P", "B"] as const;
+
+            for (const status of statuses) {
+                const { lists } = await listRepository.create({
+                    userId: listOwner!.userId,
+                    lists: [{ name: uuid(), description: uuid() }],
+                });
+                const list = lists[0]!;
+
+                await listRepository.saveMembers({
+                    listId: list.listId,
+                    members: [{ userId: user.userId, status }],
+                });
+
+                const itemData = {
+                    name: uuid(),
+                } satisfies components["schemas"]["ListItemCreate"];
+
+                const res = await request(app)
+                    .post(`/v1/lists/${list.listId}/items`)
+                    .set(token)
+                    .send(itemData);
+
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }],
             });
-        expect(res.statusCode).toEqual(400);
-    });
+            const list = lists[0]!;
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
+            const res = await request(app)
+                .post(`/v1/lists/${list.listId}/items`)
+                .set(token)
+                .send({
+                    name: uuid(),
+                    extra: "invalid",
+                });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/items`)
-            .set(token)
-            .send({
-                name: 12345,
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }],
             });
-        expect(res.statusCode).toEqual(400);
-    });
+            const list = lists[0]!;
+
+            const res = await request(app)
+                .post(`/v1/lists/${list.listId}/items`)
+                .set(token)
+                .send({
+                    name: 12345,
+                });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 });
 
 describe("Update list item", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).patch(
             `/v1/lists/${uuid()}/items/${uuid()}`,
         );
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should update a list item", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should update a list item", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
         const list = lists[0]!;
 
-        const { items } = await KnexListRepository.createItems(database, {
+        const { items } = await listRepository.createItems({
             userId: user.userId,
             listId: list.listId,
             items: [{ name: uuid() }],
@@ -798,62 +864,25 @@ describe("Update list item", () => {
         expect(returnedItem.completed).toEqual(true);
     });
 
-    it("should allow updating an item if the user is a list administrator", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [listOwner] = await CreateUsers(database);
+    withCxIt(
+        "should allow updating an item if the user is a list administrator",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [listOwner] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
-            userId: listOwner!.userId,
-            lists: [{ name: uuid(), description: uuid() }],
-        });
-        const list = lists[0]!;
-
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: user.userId, status: "A" }],
-        });
-
-        const { items } = await KnexListRepository.createItems(database, {
-            userId: listOwner!.userId,
-            listId: list.listId,
-            items: [{ name: uuid() }],
-        });
-        const item = items[0]!;
-
-        const updateData = {
-            name: uuid(),
-        } satisfies components["schemas"]["ListItemUpdate"];
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
-            .set(token)
-            .send(updateData);
-
-        expect(res.statusCode).toEqual(200);
-        const returnedItem = res.body as components["schemas"]["ListItem"];
-
-        expect(returnedItem.name).toEqual(updateData.name);
-    });
-
-    it("should not allow updating an item if the user is a list member, pending, or blacklisted", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [listOwner] = await CreateUsers(database);
-
-        const statuses = ["M", "P", "B"] as const;
-
-        for (const status of statuses) {
-            const { lists } = await KnexListRepository.create(database, {
+            const { lists } = await listRepository.create({
                 userId: listOwner!.userId,
                 lists: [{ name: uuid(), description: uuid() }],
             });
             const list = lists[0]!;
 
-            await KnexListRepository.saveMembers(database, {
+            await listRepository.saveMembers({
                 listId: list.listId,
-                members: [{ userId: user.userId, status }],
+                members: [{ userId: user.userId, status: "A" }],
             });
 
-            const { items } = await KnexListRepository.createItems(database, {
+            const { items } = await listRepository.createItems({
                 userId: listOwner!.userId,
                 listId: list.listId,
                 items: [{ name: uuid() }],
@@ -869,95 +898,152 @@ describe("Update list item", () => {
                 .set(token)
                 .send(updateData);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+            expect(res.statusCode).toEqual(200);
+            const returnedItem = res.body as components["schemas"]["ListItem"];
 
-    it("should not allow updating an item that belongs to another list", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+            expect(returnedItem.name).toEqual(updateData.name);
+        },
+    );
 
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }, { name: uuid() }],
-        });
-        const [list1, list2] = lists;
+    withCxIt(
+        "should not allow updating an item if the user is a list member, pending, or blacklisted",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [listOwner] = await CreateUsers(userRepository);
 
-        const { items } = await KnexListRepository.createItems(database, {
-            userId: user.userId,
-            listId: list2!.listId,
-            items: [{ name: uuid() }],
-        });
-        const itemOnList2 = items[0]!;
+            const statuses = ["M", "P", "B"] as const;
 
-        const updateData = {
-            name: uuid(),
-        } satisfies components["schemas"]["ListItemUpdate"];
+            for (const status of statuses) {
+                const { lists } = await listRepository.create({
+                    userId: listOwner!.userId,
+                    lists: [{ name: uuid(), description: uuid() }],
+                });
+                const list = lists[0]!;
 
-        const res = await request(app)
-            .patch(`/v1/lists/${list1!.listId}/items/${itemOnList2.itemId}`)
-            .set(token)
-            .send(updateData);
+                await listRepository.saveMembers({
+                    listId: list.listId,
+                    members: [{ userId: user.userId, status }],
+                });
 
-        expect(res.statusCode).toEqual(404);
-    });
+                const { items } = await listRepository.createItems({
+                    userId: listOwner!.userId,
+                    listId: list.listId,
+                    items: [{ name: uuid() }],
+                });
+                const item = items[0]!;
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
+                const updateData = {
+                    name: uuid(),
+                } satisfies components["schemas"]["ListItemUpdate"];
 
-        const { items } = await KnexListRepository.createItems(database, {
-            userId: user.userId,
-            listId: list.listId,
-            items: [{ name: uuid() }],
-        });
-        const item = items[0]!;
+                const res = await request(app)
+                    .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+                    .set(token)
+                    .send(updateData);
 
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
-            .set(token)
-            .send({
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
+
+    withCxIt(
+        "should not allow updating an item that belongs to another list",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }, { name: uuid() }],
+            });
+            const [list1, list2] = lists;
+
+            const { items } = await listRepository.createItems({
+                userId: user.userId,
+                listId: list2!.listId,
+                items: [{ name: uuid() }],
+            });
+            const itemOnList2 = items[0]!;
+
+            const updateData = {
                 name: uuid(),
-                extra: "invalid",
-            });
-        expect(res.statusCode).toEqual(400);
-    });
+            } satisfies components["schemas"]["ListItemUpdate"];
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
+            const res = await request(app)
+                .patch(`/v1/lists/${list1!.listId}/items/${itemOnList2.itemId}`)
+                .set(token)
+                .send(updateData);
+
+            expect(res.statusCode).toEqual(404);
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            });
+            const list = lists[0]!;
+
+            const { items } = await listRepository.createItems({
+                userId: user.userId,
+                listId: list.listId,
+                items: [{ name: uuid() }],
+            });
+            const item = items[0]!;
+
+            const res = await request(app)
+                .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+                .set(token)
+                .send({
+                    name: uuid(),
+                    extra: "invalid",
+                });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            });
+            const list = lists[0]!;
+
+            const { items } = await listRepository.createItems({
+                userId: user.userId,
+                listId: list.listId,
+                items: [{ name: uuid() }],
+            });
+            const item = items[0]!;
+
+            const res = await request(app)
+                .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+                .set(token)
+                .send({
+                    name: 12345,
+                });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt("should fail if a required field is set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid() }],
         });
         const list = lists[0]!;
-
-        const { items } = await KnexListRepository.createItems(database, {
-            userId: user.userId,
-            listId: list.listId,
-            items: [{ name: uuid() }],
-        });
-        const item = items[0]!;
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
-            .set(token)
-            .send({
-                name: 12345,
-            });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-        const { items } = await KnexListRepository.createItems(database, {
+        const { items } = await listRepository.createItems({
             userId: user.userId,
             listId: list.listId,
             items: [{ name: uuid() }],
@@ -975,23 +1061,23 @@ describe("Update list item", () => {
 });
 
 describe("Delete list item", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).delete(
             `/v1/lists/${uuid()}/items/${uuid()}`,
         );
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should delete a list item", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should delete a list item", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
         const list = lists[0]!;
 
-        const { items } = await KnexListRepository.createItems(database, {
+        const { items } = await listRepository.createItems({
             userId: user.userId,
             listId: list.listId,
             items: [{ name: uuid() }],
@@ -1005,74 +1091,32 @@ describe("Delete list item", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const { items: remainingItems } = await KnexListRepository.readAllItems(
-            database,
-            {
-                userId: user.userId,
-                filter: { listId: list.listId },
-            },
-        );
+        const { items: remainingItems } = await listRepository.readAllItems({
+            userId: user.userId,
+            filter: { listId: list.listId },
+        });
         expect(remainingItems.length).toEqual(0);
     });
 
-    it("should allow deleting an item if the user is a list administrator", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [listOwner] = await CreateUsers(database);
+    withCxIt(
+        "should allow deleting an item if the user is a list administrator",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [listOwner] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
-            userId: listOwner!.userId,
-            lists: [{ name: uuid(), description: uuid() }],
-        });
-        const list = lists[0]!;
-
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: user.userId, status: "A" }],
-        });
-
-        const { items } = await KnexListRepository.createItems(database, {
-            userId: listOwner!.userId,
-            listId: list.listId,
-            items: [{ name: uuid() }],
-        });
-        const item = items[0]!;
-
-        const res = await request(app)
-            .delete(`/v1/lists/${list.listId}/items/${item.itemId}`)
-            .set(token)
-            .send();
-
-        expect(res.statusCode).toEqual(204);
-
-        const { items: remainingItems } = await KnexListRepository.readAllItems(
-            database,
-            {
-                userId: listOwner!.userId,
-                filter: { listId: list.listId },
-            },
-        );
-        expect(remainingItems.length).toEqual(0);
-    });
-
-    it("should not allow deleting an item if the user is a list member, pending, or blacklisted", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [listOwner] = await CreateUsers(database);
-
-        const statuses = ["M", "P", "B"] as const;
-
-        for (const status of statuses) {
-            const { lists } = await KnexListRepository.create(database, {
+            const { lists } = await listRepository.create({
                 userId: listOwner!.userId,
                 lists: [{ name: uuid(), description: uuid() }],
             });
             const list = lists[0]!;
 
-            await KnexListRepository.saveMembers(database, {
+            await listRepository.saveMembers({
                 listId: list.listId,
-                members: [{ userId: user.userId, status }],
+                members: [{ userId: user.userId, status: "A" }],
             });
 
-            const { items } = await KnexListRepository.createItems(database, {
+            const { items } = await listRepository.createItems({
                 userId: listOwner!.userId,
                 listId: list.listId,
                 items: [{ name: uuid() }],
@@ -1084,52 +1128,104 @@ describe("Delete list item", () => {
                 .set(token)
                 .send();
 
+            expect(res.statusCode).toEqual(204);
+
+            const { items: remainingItems } = await listRepository.readAllItems(
+                {
+                    userId: listOwner!.userId,
+                    filter: { listId: list.listId },
+                },
+            );
+            expect(remainingItems.length).toEqual(0);
+        },
+    );
+
+    withCxIt(
+        "should not allow deleting an item if the user is a list member, pending, or blacklisted",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [listOwner] = await CreateUsers(userRepository);
+
+            const statuses = ["M", "P", "B"] as const;
+
+            for (const status of statuses) {
+                const { lists } = await listRepository.create({
+                    userId: listOwner!.userId,
+                    lists: [{ name: uuid(), description: uuid() }],
+                });
+                const list = lists[0]!;
+
+                await listRepository.saveMembers({
+                    listId: list.listId,
+                    members: [{ userId: user.userId, status }],
+                });
+
+                const { items } = await listRepository.createItems({
+                    userId: listOwner!.userId,
+                    listId: list.listId,
+                    items: [{ name: uuid() }],
+                });
+                const item = items[0]!;
+
+                const res = await request(app)
+                    .delete(`/v1/lists/${list.listId}/items/${item.itemId}`)
+                    .set(token)
+                    .send();
+
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
+
+    withCxIt(
+        "should not allow deleting an item that belongs to another list",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }, { name: uuid() }],
+            });
+            const [list1, list2] = lists;
+
+            const { items } = await listRepository.createItems({
+                userId: user.userId,
+                listId: list2!.listId,
+                items: [{ name: uuid() }],
+            });
+            const itemOnList2 = items[0]!;
+
+            const res = await request(app)
+                .delete(
+                    `/v1/lists/${list1!.listId}/items/${itemOnList2.itemId}`,
+                )
+                .set(token)
+                .send();
+
             expect(res.statusCode).toEqual(404);
-        }
-    });
-
-    it("should not allow deleting an item that belongs to another list", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }, { name: uuid() }],
-        });
-        const [list1, list2] = lists;
-
-        const { items } = await KnexListRepository.createItems(database, {
-            userId: user.userId,
-            listId: list2!.listId,
-            items: [{ name: uuid() }],
-        });
-        const itemOnList2 = items[0]!;
-
-        const res = await request(app)
-            .delete(`/v1/lists/${list1!.listId}/items/${itemOnList2.itemId}`)
-            .set(token)
-            .send();
-
-        expect(res.statusCode).toEqual(404);
-    });
+        },
+    );
 });
 
 describe("Get list members", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get(`/v1/lists/${uuid()}/members`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return list members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
+    withCxIt("should return list members", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [member] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
         const list = lists[0]!;
 
-        await KnexListRepository.saveMembers(database, {
+        await listRepository.saveMembers({
             listId: list.listId,
             members: [{ userId: member!.userId, status: "M" }],
         });
@@ -1144,44 +1240,48 @@ describe("Get list members", () => {
         expect(members[0]!.userId).toEqual(member!.userId);
     });
 
-    it("should return 404 for the member list if the user is not the owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [listOwner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 for the member list if the user is not the owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [listOwner] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "P", "B"] as const;
+            const statuses = ["A", "M", "P", "B"] as const;
 
-        for (const status of statuses) {
-            const { lists } = await KnexListRepository.create(database, {
-                userId: listOwner!.userId,
-                lists: [{ name: uuid(), description: uuid() }],
-            });
-            const list = lists[0]!;
+            for (const status of statuses) {
+                const { lists } = await listRepository.create({
+                    userId: listOwner!.userId,
+                    lists: [{ name: uuid(), description: uuid() }],
+                });
+                const list = lists[0]!;
 
-            await KnexListRepository.saveMembers(database, {
-                listId: list.listId,
-                members: [{ userId: user.userId, status }],
-            });
+                await listRepository.saveMembers({
+                    listId: list.listId,
+                    members: [{ userId: user.userId, status }],
+                });
 
-            const res = await request(app)
-                .get(`/v1/lists/${list.listId}/members`)
-                .set(token);
+                const res = await request(app)
+                    .get(`/v1/lists/${list.listId}/members`)
+                    .set(token);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Invite member to list", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post(`/v1/lists/${uuid()}/members`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should invite a member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [invitee] = await CreateUsers(database);
+    withCxIt("should invite a member", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [invitee] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
@@ -1194,24 +1294,24 @@ describe("Invite member to list", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexListRepository.readMembers(database, {
+        const [members] = await listRepository.readMembers({
             listId: list.listId,
         });
         expect(members!.members).toHaveLength(1);
         expect(members!.members[0]!.status).toEqual("P");
     });
 
-    it("should return 400 if the user is already a member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
+    withCxIt("should return 400 if the user is already a member", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [member] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid() }],
         });
         const list = lists[0]!;
 
-        await KnexListRepository.saveMembers(database, {
+        await listRepository.saveMembers({
             listId: list.listId,
             members: [{ userId: member!.userId, status: "M" }],
         });
@@ -1224,37 +1324,41 @@ describe("Invite member to list", () => {
         expect(res.statusCode).toEqual(400);
     });
 
-    it("should return 404 for an invite if the user is not the owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [listOwner] = await CreateUsers(database);
-        const [invitee] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 for an invite if the user is not the owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [listOwner] = await CreateUsers(userRepository);
+            const [invitee] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "P", "B"] as const;
+            const statuses = ["A", "M", "P", "B"] as const;
 
-        for (const status of statuses) {
-            const { lists } = await KnexListRepository.create(database, {
-                userId: listOwner!.userId,
-                lists: [{ name: uuid(), description: uuid() }],
-            });
-            const list = lists[0]!;
+            for (const status of statuses) {
+                const { lists } = await listRepository.create({
+                    userId: listOwner!.userId,
+                    lists: [{ name: uuid(), description: uuid() }],
+                });
+                const list = lists[0]!;
 
-            await KnexListRepository.saveMembers(database, {
-                listId: list.listId,
-                members: [{ userId: user.userId, status }],
-            });
+                await listRepository.saveMembers({
+                    listId: list.listId,
+                    members: [{ userId: user.userId, status }],
+                });
 
-            const res = await request(app)
-                .post(`/v1/lists/${list.listId}/members`)
-                .set(token)
-                .send({ userId: invitee!.userId });
+                const res = await request(app)
+                    .post(`/v1/lists/${list.listId}/members`)
+                    .set(token)
+                    .send({ userId: invitee!.userId });
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 
-    it("should return 404 if the user does not exist", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
+    withCxIt("should return 404 if the user does not exist", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid() }],
         });
@@ -1267,56 +1371,64 @@ describe("Invite member to list", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            });
+            const list = lists[0]!;
 
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/members`)
-            .set(token)
-            .send({ userId: uuid(), extra: "invalid" });
-        expect(res.statusCode).toEqual(400);
-    });
+            const res = await request(app)
+                .post(`/v1/lists/${list.listId}/members`)
+                .set(token)
+                .send({ userId: uuid(), extra: "invalid" });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            });
+            const list = lists[0]!;
 
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/members`)
-            .set(token)
-            .send({ userId: 12345 });
-        expect(res.statusCode).toEqual(400);
-    });
+            const res = await request(app)
+                .post(`/v1/lists/${list.listId}/members`)
+                .set(token)
+                .send({ userId: 12345 });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 });
 
 describe("Update list member", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).patch(
             `/v1/lists/${uuid()}/members/${uuid()}`,
         );
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should update member status", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
+    withCxIt("should update member status", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [member] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
         const list = lists[0]!;
 
-        await KnexListRepository.saveMembers(database, {
+        await listRepository.saveMembers({
             listId: list.listId,
             members: [{ userId: member!.userId, status: "M" }],
         });
@@ -1331,138 +1443,158 @@ describe("Update list member", () => {
         expect(updatedMember.status).toEqual("A");
     });
 
-    it("should not allow non-owners (A, M, P, B) to update a member status", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
-        const [member] = await CreateUsers(database);
+    withCxIt(
+        "should not allow non-owners (A, M, P, B) to update a member status",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
+            const [member] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "P", "B"] as const;
+            const statuses = ["A", "M", "P", "B"] as const;
 
-        for (const status of statuses) {
-            const { lists } = await KnexListRepository.create(database, {
-                userId: owner!.userId,
-                lists: [{ name: uuid(), description: uuid() }],
+            for (const status of statuses) {
+                const { lists } = await listRepository.create({
+                    userId: owner!.userId,
+                    lists: [{ name: uuid(), description: uuid() }],
+                });
+                const list = lists[0]!;
+
+                await listRepository.saveMembers([
+                    {
+                        listId: list.listId,
+                        members: [
+                            { userId: user.userId, status },
+                            { userId: member!.userId, status: "M" },
+                        ],
+                    },
+                ]);
+
+                const res = await request(app)
+                    .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
+                    .set(token)
+                    .send({ status: "A" });
+
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
+
+    withCxIt(
+        "should fail when trying to update a member to restricted statuses (O, P)",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [member] = await CreateUsers(userRepository);
+
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }],
             });
             const list = lists[0]!;
 
-            await KnexListRepository.saveMembers(database, [
-                {
-                    listId: list.listId,
-                    members: [
-                        { userId: user.userId, status },
-                        { userId: member!.userId, status: "M" },
-                    ],
-                },
-            ]);
+            await listRepository.saveMembers({
+                listId: list.listId,
+                members: [{ userId: member!.userId, status: "M" }],
+            });
+
+            const restrictedStatuses = ["O", "P"];
+
+            for (const status of restrictedStatuses) {
+                const res = await request(app)
+                    .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
+                    .set(token)
+                    .send({ status });
+
+                expect(res.statusCode).toEqual(400);
+            }
+        },
+    );
+
+    withCxIt(
+        "should return 400 when trying to update a pending member",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [member] = await CreateUsers(userRepository);
+
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            });
+            const list = lists[0]!;
+
+            await listRepository.saveMembers({
+                listId: list.listId,
+                members: [{ userId: member!.userId, status: "P" }],
+            });
 
             const res = await request(app)
                 .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
                 .set(token)
-                .send({ status: "A" });
-
-            expect(res.statusCode).toEqual(404);
-        }
-    });
-
-    it("should fail when trying to update a member to restricted statuses (O, P)", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const restrictedStatuses = ["O", "P"];
-
-        for (const status of restrictedStatuses) {
-            const res = await request(app)
-                .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
-                .set(token)
-                .send({ status });
+                .send({ status: "M" });
 
             expect(res.statusCode).toEqual(400);
-        }
-    });
+        },
+    );
 
-    it("should return 400 when trying to update a pending member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [member] = await CreateUsers(userRepository);
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            });
+            const list = lists[0]!;
+            await listRepository.saveMembers({
+                listId: list.listId,
+                members: [{ userId: member!.userId, status: "M" }],
+            });
 
-        const { lists } = await KnexListRepository.create(database, {
+            const res = await request(app)
+                .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
+                .set(token)
+                .send({ status: "A", extra: "invalid" });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [member] = await CreateUsers(userRepository);
+            const { lists } = await listRepository.create({
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            });
+            const list = lists[0]!;
+            await listRepository.saveMembers({
+                listId: list.listId,
+                members: [{ userId: member!.userId, status: "M" }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
+                .set(token)
+                .send({ status: "INVALID" });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt("should fail if a required field is set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [member] = await CreateUsers(userRepository);
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid() }],
         });
         const list = lists[0]!;
-
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: member!.userId, status: "P" }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: "M" });
-
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: "A", extra: "invalid" });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: "INVALID" });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-        await KnexListRepository.saveMembers(database, {
+        await listRepository.saveMembers({
             listId: list.listId,
             members: [{ userId: member!.userId, status: "M" }],
         });
@@ -1476,24 +1608,24 @@ describe("Update list member", () => {
 });
 
 describe("Remove member from list", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).delete(
             `/v1/lists/${uuid()}/members/${uuid()}`,
         );
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should remove a member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
+    withCxIt("should remove a member", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [member] = await CreateUsers(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
         const list = lists[0]!;
 
-        await KnexListRepository.saveMembers(database, {
+        await listRepository.saveMembers({
             listId: list.listId,
             members: [{ userId: member!.userId, status: "M" }],
         });
@@ -1504,64 +1636,70 @@ describe("Remove member from list", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexListRepository.readMembers(database, {
+        const [members] = await listRepository.readMembers({
             listId: list.listId,
         });
         expect(members!.members).toHaveLength(0);
     });
 
-    it("should not allow non-owners (A, M, P, B) to remove a member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
-        const [member] = await CreateUsers(database);
+    withCxIt(
+        "should not allow non-owners (A, M, P, B) to remove a member",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
+            const [member] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "P", "B"] as const;
+            const statuses = ["A", "M", "P", "B"] as const;
 
-        for (const status of statuses) {
-            const { lists } = await KnexListRepository.create(database, {
-                userId: owner!.userId,
-                lists: [{ name: uuid(), description: uuid() }],
-            });
-            const list = lists[0]!;
+            for (const status of statuses) {
+                const { lists } = await listRepository.create({
+                    userId: owner!.userId,
+                    lists: [{ name: uuid(), description: uuid() }],
+                });
+                const list = lists[0]!;
 
-            await KnexListRepository.saveMembers(database, [
-                {
-                    listId: list.listId,
-                    members: [
-                        { userId: user.userId, status },
-                        { userId: member!.userId, status: "M" },
-                    ],
-                },
-            ]);
+                await listRepository.saveMembers([
+                    {
+                        listId: list.listId,
+                        members: [
+                            { userId: user.userId, status },
+                            { userId: member!.userId, status: "M" },
+                        ],
+                    },
+                ]);
 
-            const res = await request(app)
-                .delete(`/v1/lists/${list.listId}/members/${member!.userId}`)
-                .set(token);
+                const res = await request(app)
+                    .delete(
+                        `/v1/lists/${list.listId}/members/${member!.userId}`,
+                    )
+                    .set(token);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Accept list invitation", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post(
             `/v1/lists/${uuid()}/invite/accept`,
         );
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should accept invitation", async () => {
-        const [owner] = await CreateUsers(database);
-        const [token, invitee] = await PrepareAuthenticatedUser(database);
+    withCxIt("should accept invitation", async () => {
+        const [owner] = await CreateUsers(userRepository);
+        const [token, invitee] = await PrepareAuthenticatedUser(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: owner!.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
         const list = lists[0]!;
 
-        await KnexListRepository.saveMembers(database, {
+        await listRepository.saveMembers({
             listId: list.listId,
             members: [{ userId: invitee.userId, status: "P" }],
         });
@@ -1572,59 +1710,62 @@ describe("Accept list invitation", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexListRepository.readMembers(database, {
+        const [members] = await listRepository.readMembers({
             listId: list.listId,
         });
         expect(members!.members[0]!.status).toEqual("M");
     });
 
-    it("should return 404 when accepting an invite if the user is already a member (A, M) or blacklisted (B)", async () => {
-        const [inviteeToken, invitee] =
-            await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 when accepting an invite if the user is already a member (A, M) or blacklisted (B)",
+        async () => {
+            const [inviteeToken, invitee] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "B"] as const;
+            const statuses = ["A", "M", "B"] as const;
 
-        for (const status of statuses) {
-            const { lists } = await KnexListRepository.create(database, {
-                userId: owner!.userId,
-                lists: [{ name: uuid() }],
-            });
-            const list = lists[0]!;
+            for (const status of statuses) {
+                const { lists } = await listRepository.create({
+                    userId: owner!.userId,
+                    lists: [{ name: uuid() }],
+                });
+                const list = lists[0]!;
 
-            await KnexListRepository.saveMembers(database, {
-                listId: list.listId,
-                members: [{ userId: invitee.userId, status }],
-            });
+                await listRepository.saveMembers({
+                    listId: list.listId,
+                    members: [{ userId: invitee.userId, status }],
+                });
 
-            const res = await request(app)
-                .post(`/v1/lists/${list.listId}/invite/accept`)
-                .set(inviteeToken);
+                const res = await request(app)
+                    .post(`/v1/lists/${list.listId}/invite/accept`)
+                    .set(inviteeToken);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Decline list invitation", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post(
             `/v1/lists/${uuid()}/invite/decline`,
         );
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should decline invitation", async () => {
-        const [owner] = await CreateUsers(database);
-        const [token, invitee] = await PrepareAuthenticatedUser(database);
+    withCxIt("should decline invitation", async () => {
+        const [owner] = await CreateUsers(userRepository);
+        const [token, invitee] = await PrepareAuthenticatedUser(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: owner!.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
         const list = lists[0]!;
 
-        await KnexListRepository.saveMembers(database, {
+        await listRepository.saveMembers({
             listId: list.listId,
             members: [{ userId: invitee.userId, status: "P" }],
         });
@@ -1635,57 +1776,60 @@ describe("Decline list invitation", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexListRepository.readMembers(database, {
+        const [members] = await listRepository.readMembers({
             listId: list.listId,
         });
         expect(members!.members).toHaveLength(0);
     });
 
-    it("should return 404 when declining an invite if the user is already a member (A, M) or blacklisted (B)", async () => {
-        const [inviteeToken, invitee] =
-            await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 when declining an invite if the user is already a member (A, M) or blacklisted (B)",
+        async () => {
+            const [inviteeToken, invitee] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "B"] as const;
+            const statuses = ["A", "M", "B"] as const;
 
-        for (const status of statuses) {
-            const { lists } = await KnexListRepository.create(database, {
-                userId: owner!.userId,
-                lists: [{ name: uuid() }],
-            });
-            const list = lists[0]!;
+            for (const status of statuses) {
+                const { lists } = await listRepository.create({
+                    userId: owner!.userId,
+                    lists: [{ name: uuid() }],
+                });
+                const list = lists[0]!;
 
-            await KnexListRepository.saveMembers(database, {
-                listId: list.listId,
-                members: [{ userId: invitee.userId, status }],
-            });
+                await listRepository.saveMembers({
+                    listId: list.listId,
+                    members: [{ userId: invitee.userId, status }],
+                });
 
-            const res = await request(app)
-                .post(`/v1/lists/${list.listId}/invite/decline`)
-                .set(inviteeToken);
+                const res = await request(app)
+                    .post(`/v1/lists/${list.listId}/invite/decline`)
+                    .set(inviteeToken);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Leave list", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post(`/v1/lists/${uuid()}/leave`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should leave list", async () => {
-        const [owner] = await CreateUsers(database);
-        const [token, member] = await PrepareAuthenticatedUser(database);
+    withCxIt("should leave list", async () => {
+        const [owner] = await CreateUsers(userRepository);
+        const [token, member] = await PrepareAuthenticatedUser(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: owner!.userId,
             lists: [{ name: uuid(), description: uuid() }],
         });
         const list = lists[0]!;
 
-        await KnexListRepository.saveMembers(database, {
+        await listRepository.saveMembers({
             listId: list.listId,
             members: [{ userId: member.userId, status: "M" }],
         });
@@ -1696,71 +1840,80 @@ describe("Leave list", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexListRepository.readMembers(database, {
+        const [members] = await listRepository.readMembers({
             listId: list.listId,
         });
         expect(members!.members).toHaveLength(0);
     });
 
-    it("should return 404 if the owner tries to leave the list", async () => {
-        const [ownerToken, owner] = await PrepareAuthenticatedUser(database);
+    withCxIt(
+        "should return 404 if the owner tries to leave the list",
+        async () => {
+            const [ownerToken, owner] =
+                await PrepareAuthenticatedUser(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
-            userId: owner.userId,
-            lists: [{ name: uuid(), description: uuid() }],
-        });
-        const list = lists[0]!;
-
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/leave`)
-            .set(ownerToken);
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should return 404 if a pending or blacklisted user tries to leave the list", async () => {
-        const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
-        const [userToken, user] = await PrepareAuthenticatedUser(database);
-
-        const statuses = ["P", "B"] as const;
-
-        for (const status of statuses) {
-            const { lists } = await KnexListRepository.create(database, {
+            const { lists } = await listRepository.create({
                 userId: owner.userId,
-                lists: [{ name: uuid() }],
+                lists: [{ name: uuid(), description: uuid() }],
             });
             const list = lists[0]!;
 
-            await KnexListRepository.saveMembers(database, {
-                listId: list.listId,
-                members: [{ userId: user.userId, status }],
-            });
-
             const res = await request(app)
                 .post(`/v1/lists/${list.listId}/leave`)
-                .set(userToken);
+                .set(ownerToken);
 
             expect(res.statusCode).toEqual(404);
-        }
-    });
+        },
+    );
+
+    withCxIt(
+        "should return 404 if a pending or blacklisted user tries to leave the list",
+        async () => {
+            const [_ownerToken, owner] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [userToken, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const statuses = ["P", "B"] as const;
+
+            for (const status of statuses) {
+                const { lists } = await listRepository.create({
+                    userId: owner.userId,
+                    lists: [{ name: uuid() }],
+                });
+                const list = lists[0]!;
+
+                await listRepository.saveMembers({
+                    listId: list.listId,
+                    members: [{ userId: user.userId, status }],
+                });
+
+                const res = await request(app)
+                    .post(`/v1/lists/${list.listId}/leave`)
+                    .set(userToken);
+
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Move list items to another list", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post(`/v1/lists/${uuid()}/items/move`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should move items to another list", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should move items to another list", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
-        const { lists } = await KnexListRepository.create(database, {
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid() }, { name: uuid() }],
         });
         const [sourceList, destList] = lists;
 
-        const { items } = await KnexListRepository.createItems(database, {
+        const { items } = await listRepository.createItems({
             userId: user.userId,
             listId: sourceList!.listId,
             items: [{ name: uuid(), notes: "test notes" }],
@@ -1783,35 +1936,29 @@ describe("Move list items to another list", () => {
         expect(movedItem!.notes).toEqual("test notes");
 
         // Verify removed from source
-        const { items: sourceItems } = await KnexListRepository.readAllItems(
-            database,
-            {
-                userId: user.userId,
-                filter: { listId: sourceList!.listId },
-            },
-        );
+        const { items: sourceItems } = await listRepository.readAllItems({
+            userId: user.userId,
+            filter: { listId: sourceList!.listId },
+        });
         expect(sourceItems).toHaveLength(0);
 
         // Verify added to destination
-        const { items: destItems } = await KnexListRepository.readAllItems(
-            database,
-            {
-                userId: user.userId,
-                filter: { listId: destList!.listId },
-            },
-        );
+        const { items: destItems } = await listRepository.readAllItems({
+            userId: user.userId,
+            filter: { listId: destList!.listId },
+        });
         expect(destItems).toHaveLength(1);
         expect(destItems[0]!.itemId).toEqual(item.itemId);
     });
 
-    it("should fail if moving to the same list", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
+    withCxIt("should fail if moving to the same list", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid() }],
         });
         const list = lists[0]!;
-        const { items } = await KnexListRepository.createItems(database, {
+        const { items } = await listRepository.createItems({
             userId: user.userId,
             listId: list.listId,
             items: [{ name: uuid() }],
@@ -1826,46 +1973,47 @@ describe("Move list items to another list", () => {
         expect(res.statusCode).toEqual(400);
     });
 
-    it("should fail if user does not have access to destination list", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [otherUser] = await CreateUsers(database);
+    withCxIt(
+        "should fail if user does not have access to destination list",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [otherUser] = await CreateUsers(userRepository);
 
-        const { lists: sourceLists } = await KnexListRepository.create(
-            database,
-            {
+            const { lists: sourceLists } = await listRepository.create({
                 userId: user.userId,
                 lists: [{ name: uuid() }],
-            },
-        );
-        const { lists: destLists } = await KnexListRepository.create(database, {
-            userId: otherUser!.userId,
-            lists: [{ name: uuid() }],
-        });
-
-        const sourceList = sourceLists[0]!;
-        const destList = destLists[0]!;
-
-        const { items } = await KnexListRepository.createItems(database, {
-            userId: user.userId,
-            listId: sourceList.listId,
-            items: [{ name: uuid() }],
-        });
-        const item = items[0]!;
-
-        const res = await request(app)
-            .post(`/v1/lists/${sourceList.listId}/items/move`)
-            .set(token)
-            .send({
-                destinationListId: destList.listId,
-                itemIds: [item.itemId],
+            });
+            const { lists: destLists } = await listRepository.create({
+                userId: otherUser!.userId,
+                lists: [{ name: uuid() }],
             });
 
-        expect(res.statusCode).toEqual(404);
-    });
+            const sourceList = sourceLists[0]!;
+            const destList = destLists[0]!;
 
-    it("should fail if item does not exist in source list", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
+            const { items } = await listRepository.createItems({
+                userId: user.userId,
+                listId: sourceList.listId,
+                items: [{ name: uuid() }],
+            });
+            const item = items[0]!;
+
+            const res = await request(app)
+                .post(`/v1/lists/${sourceList.listId}/items/move`)
+                .set(token)
+                .send({
+                    destinationListId: destList.listId,
+                    itemIds: [item.itemId],
+                });
+
+            expect(res.statusCode).toEqual(404);
+        },
+    );
+
+    withCxIt("should fail if item does not exist in source list", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const { lists } = await listRepository.create({
             userId: user.userId,
             lists: [{ name: uuid() }, { name: uuid() }],
         });

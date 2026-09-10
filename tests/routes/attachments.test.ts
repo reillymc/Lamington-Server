@@ -1,14 +1,18 @@
-import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
+import { afterEach, beforeEach, describe, mock } from "node:test";
 import { expect } from "expect";
-import type { Express } from "express";
 import request from "supertest";
 import type { AttachmentRepository } from "../../src/repositories/attachmentRepository.ts";
 import type { FileRepository } from "../../src/repositories/fileRepository.ts";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { readAllAttachments } from "../helpers/attachment.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
-import { createTestApp, db } from "../helpers/setup.ts";
+import {
+    beginTestTransaction,
+    createTestApp,
+    rollbackTestTransaction,
+    TestContext,
+    withCxIt,
+} from "../helpers/setup.ts";
 
 const MockSuccessfulFileRepository: FileRepository = {
     create: mock.fn(async () => "uri://"),
@@ -29,23 +33,17 @@ const MockFailingAttachmentRepository: AttachmentRepository = {
     },
 };
 
-let database: KnexDatabase;
-let app: Express;
+let { app, userRepository } = TestContext;
 
 beforeEach(async () => {
-    database = await db.transaction();
-    app = createTestApp({
-        database,
+    await beginTestTransaction();
+    ({ app, userRepository } = createTestApp({
         repositories: { fileRepository: MockSuccessfulFileRepository },
-    });
+    }));
 });
 
 afterEach(async () => {
-    await database.rollback();
-});
-
-after(async () => {
-    await db.destroy();
+    await rollbackTestTransaction();
 });
 
 describe("Upload an image", () => {
@@ -53,7 +51,7 @@ describe("Upload an image", () => {
         mock.reset();
     });
 
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app)
             .post("/v1/attachments/image")
             .attach("image", Buffer.from("fake"), "test.jpg");
@@ -61,13 +59,12 @@ describe("Upload an image", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should respect controlled rate limit", async () => {
-        app = createTestApp({
-            database,
+    withCxIt("should respect controlled rate limit", async () => {
+        ({ app, userRepository } = createTestApp({
             repositories: { fileRepository: MockSuccessfulFileRepository },
-        });
+        }));
 
-        const [token] = await PrepareAuthenticatedUser(database);
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         // Exceed rate limit
         const responses = await Promise.all(
@@ -89,16 +86,16 @@ describe("Upload an image", () => {
         expect(res.statusCode).toEqual(429);
     });
 
-    it("should fail when no file is provided", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should fail when no file is provided", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app).post("/v1/attachments/image").set(token);
 
         expect(res.statusCode).toEqual(415);
     });
 
-    it("should upload valid image", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should upload valid image", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .post("/v1/attachments/image")
@@ -112,20 +109,19 @@ describe("Upload an image", () => {
         expect(data.attachmentId).toBeTruthy();
         expect(data.uri).toBeTruthy();
 
-        const attachmentReadResponse = await readAllAttachments(database);
+        const attachmentReadResponse = await readAllAttachments();
         expect(attachmentReadResponse).toHaveLength(1);
         expect(data.attachmentId).toEqual(
             attachmentReadResponse[0]!.attachmentId,
         );
     });
 
-    it("should not save to db when upload fails", async () => {
-        app = createTestApp({
-            database,
+    withCxIt("should not save to db when upload fails", async () => {
+        ({ app, userRepository } = createTestApp({
             repositories: { fileRepository: MockFailingFileRepository },
-        });
+        }));
 
-        const [token] = await PrepareAuthenticatedUser(database);
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .post("/v1/attachments/image")
@@ -134,16 +130,15 @@ describe("Upload an image", () => {
 
         expect(res.statusCode).toEqual(500);
 
-        const attachmentReadResponse = await readAllAttachments(database);
+        const attachmentReadResponse = await readAllAttachments();
 
         expect(attachmentReadResponse).toHaveLength(0);
     });
 
-    it("should not upload when save to db fails", async () => {
+    withCxIt("should not upload when save to db fails", async () => {
         const mockCreate = mock.fn(async () => "uri://");
 
-        app = createTestApp({
-            database,
+        ({ app, userRepository } = createTestApp({
             repositories: {
                 attachmentRepository: MockFailingAttachmentRepository,
                 fileRepository: {
@@ -151,9 +146,9 @@ describe("Upload an image", () => {
                     create: mockCreate,
                 },
             },
-        });
+        }));
 
-        const [token] = await PrepareAuthenticatedUser(database);
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .post("/v1/attachments/image")
@@ -167,7 +162,7 @@ describe("Upload an image", () => {
 });
 
 describe("Get an image", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get(
             "/v1/attachments/image/test/test/test",
         );

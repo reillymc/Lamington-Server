@@ -1,4 +1,5 @@
 import express from "express";
+import { getSession } from "../middleware/session.ts";
 import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
@@ -13,9 +14,9 @@ export const createRecipeRouter: CreateRouter<"recipeService"> = ({
             paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"],
             paths["/recipes"]["get"]["requestBody"],
             paths["/recipes"]["get"]["parameters"]["query"]
-        >("/recipes", async ({ query, session }, res) => {
+        >("/recipes", async ({ query }, res) => {
             const data = await recipeService.getAll(
-                session.userId,
+                getSession().userId,
                 query?.page,
                 query?.search,
                 query?.sort,
@@ -32,9 +33,9 @@ export const createRecipeRouter: CreateRouter<"recipeService"> = ({
             paths["/recipes/{recipeId}"]["get"]["responses"]["200"]["content"]["application/json"],
             paths["/recipes/{recipeId}"]["get"]["requestBody"],
             paths["/recipes/{recipeId}"]["get"]["parameters"]["query"]
-        >("/recipes/:recipeId", async ({ params, session }, res) => {
+        >("/recipes/:recipeId", async ({ params }, res) => {
             const data = await recipeService.get(
-                session.userId,
+                getSession().userId,
                 params.recipeId,
             );
             return res.status(200).json(data);
@@ -45,8 +46,8 @@ export const createRecipeRouter: CreateRouter<"recipeService"> = ({
             paths["/recipes/{recipeId}"]["delete"]["responses"]["204"]["content"],
             paths["/recipes/{recipeId}"]["delete"]["requestBody"],
             paths["/recipes/{recipeId}"]["delete"]["parameters"]["query"]
-        >("/recipes/:recipeId", async ({ session, params }, res) => {
-            await recipeService.delete(session.userId, params.recipeId);
+        >("/recipes/:recipeId", async ({ params }, res) => {
+            await recipeService.delete(getSession().userId, params.recipeId);
             return res.status(204).send();
         })
         .post<
@@ -55,8 +56,8 @@ export const createRecipeRouter: CreateRouter<"recipeService"> = ({
             paths["/recipes"]["post"]["responses"]["201"]["content"]["application/json"],
             paths["/recipes"]["post"]["requestBody"]["content"]["application/json"],
             paths["/recipes"]["post"]["parameters"]["query"]
-        >("/recipes", async ({ body, session }, res) => {
-            const data = await recipeService.create(session.userId, body);
+        >("/recipes", async ({ body }, res) => {
+            const data = await recipeService.create(getSession().userId, body);
             return res.status(201).json(data);
         })
         .patch<
@@ -65,9 +66,9 @@ export const createRecipeRouter: CreateRouter<"recipeService"> = ({
             paths["/recipes/{recipeId}"]["patch"]["responses"]["200"]["content"]["application/json"],
             paths["/recipes/{recipeId}"]["patch"]["requestBody"]["content"]["application/json"],
             paths["/recipes/{recipeId}"]["patch"]["parameters"]["query"]
-        >("/recipes/:recipeId", async ({ body, session, params }, res) => {
+        >("/recipes/:recipeId", async ({ body, params }, res) => {
             const data = await recipeService.update(
-                session.userId,
+                getSession().userId,
                 params.recipeId,
                 body,
             );
@@ -79,14 +80,11 @@ export const createRecipeRouter: CreateRouter<"recipeService"> = ({
             paths["/recipes/{recipeId}/rating"]["post"]["responses"]["200"]["content"]["application/json"],
             paths["/recipes/{recipeId}/rating"]["post"]["requestBody"]["content"]["application/json"],
             paths["/recipes/{recipeId}/rating"]["post"]["parameters"]["query"]
-        >(
-            "/recipes/:recipeId/rating",
-            async ({ body, session, params }, res) => {
-                const data = await recipeService.saveRating(
-                    session.userId,
-                    params.recipeId,
-                    body.rating,
-                );
-                return res.status(200).json(data);
-            },
-        );
+        >("/recipes/:recipeId/rating", async ({ body, params }, res) => {
+            const data = await recipeService.saveRating(
+                getSession().userId,
+                params.recipeId,
+                body.rating,
+            );
+            return res.status(200).json(data);
+        });

@@ -1,10 +1,7 @@
 import type { Recipe } from "./recipeRepository.ts";
-import type {
-    Database,
-    RepositoryBulkService,
-    RepositoryService,
-} from "./repository.ts";
+import type { RepositoryBulkMethod, RepositoryMethod } from "./repository.ts";
 import type { ContentMember } from "./temp.ts";
+import type { MemberResponseItem, Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
 
 export type BookUserStatus = "O" | "A" | "M" | "P" | "B";
@@ -12,30 +9,18 @@ export type BookIcon = `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10}`;
 
 export type BookColor = `variant${1 | 2 | 3 | 4 | 5}`;
 
-// type BookCustomisationsV1 = {
-//     color: string;
-//     icon: BookUserStatus;
-// };
-
-// type BookCustomisations = BookCustomisationsV1;
-
 /**
  * Book
  */
 export interface Book {
     bookId: string;
     name: string;
-    description: string | null;
+    description: string | undefined;
 }
 
 type MemberItem = {
     userId: ContentMember["userId"];
     status: BookUserStatus | undefined;
-};
-
-type MemberResponseItem = MemberItem & {
-    firstName: User["firstName"];
-    lastName: User["lastName"];
 };
 
 type ReadAllRequest = {
@@ -45,13 +30,10 @@ type ReadAllRequest = {
 type BaseResponse = {
     bookId: Book["bookId"];
     name: Book["name"];
-    description: Book["description"] | undefined;
+    description: Book["description"];
     color: BookColor;
     icon: BookIcon;
-    owner: {
-        userId: User["userId"];
-        firstName: User["firstName"];
-    };
+    owner: Owner;
     status: BookUserStatus | undefined;
 };
 
@@ -97,7 +79,7 @@ type UpdateRequest = {
     books: ReadonlyArray<{
         bookId: Book["bookId"];
         name?: Book["name"];
-        description?: Book["description"];
+        description?: Book["description"] | null;
         color?: BookColor;
         icon?: BookIcon;
     }>;
@@ -161,7 +143,7 @@ type SaveMembersRequest = {
 
 type SaveMembersResponse = {
     bookId: Book["bookId"];
-    members: ReadonlyArray<MemberResponseItem>;
+    members: ReadonlyArray<MemberResponseItem<BookUserStatus>>;
 };
 
 type RemoveMembersRequest = {
@@ -182,42 +164,27 @@ type ReadMembersRequest = {
 
 type ReadMembersResponse = {
     bookId: Book["bookId"];
-    members: ReadonlyArray<MemberResponseItem>;
+    members: ReadonlyArray<MemberResponseItem<BookUserStatus>>;
 };
 
-export interface BookRepository<TDatabase extends Database = Database> {
-    read: RepositoryService<TDatabase, ReadRequest, ReadResponse>;
-    readAll: RepositoryService<TDatabase, ReadAllRequest, ReadAllResponse>;
-    create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;
-    update: RepositoryService<TDatabase, UpdateRequest, UpdateResponse>;
-    delete: RepositoryService<TDatabase, DeleteRequest, DeleteResponse>;
-    verifyPermissions: RepositoryService<
-        TDatabase,
+export interface BookRepository {
+    read: RepositoryMethod<ReadRequest, ReadResponse>;
+    readAll: RepositoryMethod<ReadAllRequest, ReadAllResponse>;
+    create: RepositoryMethod<CreateRequest, CreateResponse>;
+    update: RepositoryMethod<UpdateRequest, UpdateResponse>;
+    delete: RepositoryMethod<DeleteRequest, DeleteResponse>;
+    verifyPermissions: RepositoryMethod<
         VerifyPermissionsRequest,
         VerifyPermissionsResponse
     >;
-    saveRecipes: RepositoryBulkService<
-        TDatabase,
-        SaveRecipesRequest,
-        SaveRecipesResponse
-    >;
-    removeRecipes: RepositoryBulkService<
-        TDatabase,
+    saveRecipes: RepositoryBulkMethod<SaveRecipesRequest, SaveRecipesResponse>;
+    removeRecipes: RepositoryBulkMethod<
         RemoveRecipesRequest,
         RemoveRecipesResponse
     >;
-    readMembers: RepositoryBulkService<
-        TDatabase,
-        ReadMembersRequest,
-        ReadMembersResponse
-    >;
-    saveMembers: RepositoryBulkService<
-        TDatabase,
-        SaveMembersRequest,
-        SaveMembersResponse
-    >;
-    removeMembers: RepositoryBulkService<
-        TDatabase,
+    readMembers: RepositoryBulkMethod<ReadMembersRequest, ReadMembersResponse>;
+    saveMembers: RepositoryBulkMethod<SaveMembersRequest, SaveMembersResponse>;
+    removeMembers: RepositoryBulkMethod<
         RemoveMembersRequest,
         RemoveMembersResponse
     >;

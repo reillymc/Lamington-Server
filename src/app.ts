@@ -13,7 +13,7 @@ export interface AppConfig {
     assetDirectory: string;
 }
 
-interface AppParams {
+export interface AppParams {
     services: AppServices;
     middleware: AppMiddleware;
     config: AppConfig;

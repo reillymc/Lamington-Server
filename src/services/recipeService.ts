@@ -1,7 +1,7 @@
 import type { components } from "../routes/spec/index.ts";
 import {
     CreatedDataFetchError,
-    type CreateService,
+    createService,
     NotFoundError,
     UpdatedDataFetchError,
 } from "./service.ts";
@@ -41,10 +41,10 @@ export interface RecipeService {
     delete: (userId: string, recipeId: string) => Promise<void>;
 }
 
-export const createRecipeService: CreateService<
+export const createRecipeService = createService<
     RecipeService,
     "recipeRepository"
-> = (database, { recipeRepository }) => ({
+>(({ recipeRepository }) => ({
     getAll: async (
         userId,
         page,
@@ -55,7 +55,7 @@ export const createRecipeService: CreateService<
         tags,
         ingredients,
     ) => {
-        const { recipes, nextPage } = await recipeRepository.readAll(database, {
+        const { recipes, nextPage } = await recipeRepository.readAll({
             userId,
             page,
             sort,
@@ -72,7 +72,7 @@ export const createRecipeService: CreateService<
         return { recipes, nextPage };
     },
     get: async (userId, recipeId) => {
-        const { recipes } = await recipeRepository.read(database, {
+        const { recipes } = await recipeRepository.read({
             userId,
             recipes: [{ recipeId }],
         });
@@ -84,70 +84,67 @@ export const createRecipeService: CreateService<
 
         return recipe;
     },
-    create: (userId, request) =>
-        database.transaction(async (trx) => {
-            const { recipes } = await recipeRepository.create(trx, {
-                userId,
-                recipes: [request],
-            });
-            const [recipe] = recipes;
-            if (!recipe) {
-                throw new CreatedDataFetchError("recipe");
-            }
-            return recipe;
-        }),
-    update: (userId, recipeId, request) =>
-        database.transaction(async (trx) => {
-            const permissions = await recipeRepository.verifyPermissions(trx, {
-                userId,
-                recipes: [{ recipeId }],
-                status: "O",
-            });
-            const missingPermissions = permissions.recipes.some(
-                ({ hasPermissions }) => !hasPermissions,
-            );
+    create: async (userId, request) => {
+        const { recipes } = await recipeRepository.create({
+            userId,
+            recipes: [request],
+        });
+        const [recipe] = recipes;
+        if (!recipe) {
+            throw new CreatedDataFetchError("recipe");
+        }
+        return recipe;
+    },
+    update: async (userId, recipeId, request) => {
+        const permissions = await recipeRepository.verifyPermissions({
+            userId,
+            recipes: [{ recipeId }],
+            status: "O",
+        });
+        const missingPermissions = permissions.recipes.some(
+            ({ hasPermissions }) => !hasPermissions,
+        );
 
-            if (missingPermissions) {
-                throw new NotFoundError("recipe", recipeId);
-            }
+        if (missingPermissions) {
+            throw new NotFoundError("recipe", recipeId);
+        }
 
-            const { recipes } = await recipeRepository.update(trx, {
-                userId,
-                recipes: [{ ...request, recipeId }],
-            });
-            const [recipe] = recipes;
-            if (!recipe) {
-                throw new UpdatedDataFetchError("recipe", recipeId);
-            }
-            return recipe;
-        }),
-    delete: (userId, recipeId) =>
-        database.transaction(async (trx) => {
-            const permissions = await recipeRepository.verifyPermissions(trx, {
-                userId,
-                recipes: [{ recipeId }],
-                status: "O",
-            });
-            const missingPermissions = permissions.recipes.some(
-                ({ hasPermissions }) => !hasPermissions,
-            );
+        const { recipes } = await recipeRepository.update({
+            userId,
+            recipes: [{ ...request, recipeId }],
+        });
+        const [recipe] = recipes;
+        if (!recipe) {
+            throw new UpdatedDataFetchError("recipe", recipeId);
+        }
+        return recipe;
+    },
+    delete: async (userId, recipeId) => {
+        const permissions = await recipeRepository.verifyPermissions({
+            userId,
+            recipes: [{ recipeId }],
+            status: "O",
+        });
+        const missingPermissions = permissions.recipes.some(
+            ({ hasPermissions }) => !hasPermissions,
+        );
 
-            if (missingPermissions) {
-                throw new NotFoundError("recipe", recipeId);
-            }
+        if (missingPermissions) {
+            throw new NotFoundError("recipe", recipeId);
+        }
 
-            const { count } = await recipeRepository.delete(trx, {
-                recipes: [{ recipeId }],
-            });
+        const { count } = await recipeRepository.delete({
+            recipes: [{ recipeId }],
+        });
 
-            if (count !== 1) {
-                throw new NotFoundError("recipe", recipeId);
-            }
-        }),
+        if (count !== 1) {
+            throw new NotFoundError("recipe", recipeId);
+        }
+    },
     saveRating: async (userId, recipeId, ratingValue) => {
         const {
             ratings: [rating],
-        } = await recipeRepository.saveRating(database, {
+        } = await recipeRepository.saveRating({
             userId,
             ratings: [{ recipeId, rating: ratingValue }],
         });
@@ -158,4 +155,4 @@ export const createRecipeService: CreateService<
 
         return { rating: rating.rating };
     },
-});
+}));

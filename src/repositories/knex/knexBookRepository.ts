@@ -17,7 +17,7 @@ import {
 import { ContentMemberActions } from "./common/repositoryMethods/contentMember.ts";
 import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
 import type { ContentAuthorColumns } from "./common/rowTypes.ts";
-import type { KnexDatabase } from "./knex.ts";
+import { type KnexRepoMethod, knexRepository } from "./knexRepository.ts";
 import {
     BookRecipeTable,
     BookTable,
@@ -26,7 +26,8 @@ import {
     lamington,
 } from "./spec/index.ts";
 
-type BookRow = Pick<Book, "bookId" | "name" | "description"> & {
+type BookRow = Pick<Book, "bookId" | "name"> & {
+    description: Book["description"] | null;
     customisations: { color: BookColor; icon: BookIcon } | null;
     status: BookUserStatus | null;
 } & ContentAuthorColumns;
@@ -46,7 +47,7 @@ const formatBook = (
     status: book.status ?? "O",
 });
 
-const read: BookRepository<KnexDatabase>["read"] = async (
+const read: KnexRepoMethod<BookRepository, "read"> = async (
     db,
     { books, userId },
 ) => {
@@ -78,7 +79,7 @@ const read: BookRepository<KnexDatabase>["read"] = async (
     };
 };
 
-export const KnexBookRepository: BookRepository<KnexDatabase> = {
+export const createKnexBookRepository = knexRepository<BookRepository>({
     create: async (db, { userId, books }) => {
         const newContent = await createContentRows(db, userId, books.length);
 
@@ -156,7 +157,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
             books: bookList.map(formatBook),
         };
     },
-    read,
+    read: read,
     delete: createDeleteContent("books", "bookId"),
     saveRecipes: async (db, request) => {
         const allBookRecipes = EnsureArray(request).flatMap(
@@ -214,7 +215,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
             count: countsByBookId[bookId] || 0,
         }));
     },
-    readMembers: async (db, request) =>
+    readMembers: (db, request) =>
         ContentMemberActions.readByContentId(
             db,
             EnsureArray(request).map(({ bookId }) => bookId),
@@ -226,7 +227,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
                     .map(({ contentId, ...member }) => member),
             })),
         ),
-    saveMembers: async (db, request) =>
+    saveMembers: (db, request) =>
         ContentMemberActions.save(
             db,
             EnsureArray(request).flatMap(({ bookId, members = [] }) =>
@@ -244,7 +245,7 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
                 ),
             })),
         ),
-    removeMembers: async (db, request) =>
+    removeMembers: (db, request) =>
         ContentMemberActions.delete(
             db,
             EnsureArray(request).flatMap(({ bookId, members = [] }) =>
@@ -276,4 +277,4 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
             })),
         };
     },
-};
+});

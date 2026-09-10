@@ -10,7 +10,7 @@ export const createS3FileRepository = (
     bucket: string,
     subPath: string,
 ): FileRepository => ({
-    delete: async (_, { path }) => {
+    delete: async ({ path }) => {
         const command = new DeleteObjectCommand({
             Bucket: bucket,
             Key: path,
@@ -23,7 +23,7 @@ export const createS3FileRepository = (
 
         return true;
     },
-    create: async (_, { file, attachmentId, userId }) => {
+    create: async ({ file, attachmentId, userId }) => {
         const key = `${subPath}/${userId}/${attachmentId}`;
 
         const command = new PutObjectCommand({

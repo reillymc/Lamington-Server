@@ -4,7 +4,7 @@ import { UniqueViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
 import {
     CreatedDataFetchError,
-    type CreateService,
+    createService,
     InvalidOperationError,
     NotFoundError,
     PermissionError,
@@ -95,42 +95,36 @@ type UserServiceConfig = {
     refreshExpiration: number;
 };
 
-export const createUserService: CreateService<
+export const createUserService = createService<
     UserService,
     "userRepository",
     "createUserStarterData",
     UserServiceConfig
-> = (database, { userRepository }, { createUserStarterData }, config) => ({
+>(({ userRepository }, { createUserStarterData }, config) => ({
     getAll: async (userId, status) => {
-        const { hasPermissions } = await userRepository.verifyPermissions(
-            database,
-            {
-                userId,
-                status: ["A", "O"],
-            },
-        );
+        const { hasPermissions } = await userRepository.verifyPermissions({
+            userId,
+            status: ["A", "O"],
+        });
         if (!hasPermissions) {
             throw new PermissionError("user");
         }
-        const { users } = await userRepository.readAll(database, {
+        const { users } = await userRepository.readAll({
             filter: { status },
         });
         return users.filter((u) => u.userId !== userId);
     },
     approve: async (userId, userToApproveId) => {
-        const { hasPermissions } = await userRepository.verifyPermissions(
-            database,
-            {
-                userId,
-                status: ["A", "O"],
-            },
-        );
+        const { hasPermissions } = await userRepository.verifyPermissions({
+            userId,
+            status: ["A", "O"],
+        });
         if (!hasPermissions) {
             throw new PermissionError("user");
         }
         const {
             users: [user],
-        } = await userRepository.read(database, {
+        } = await userRepository.read({
             users: [{ userId: userToApproveId }],
         });
 
@@ -140,7 +134,7 @@ export const createUserService: CreateService<
 
         const {
             users: [updatedUser],
-        } = await userRepository.update(database, {
+        } = await userRepository.update({
             users: [{ userId: userToApproveId, status: "M" }],
         });
 
@@ -149,19 +143,16 @@ export const createUserService: CreateService<
         }
     },
     blacklist: async (userId, userToBlacklistId) => {
-        const { hasPermissions } = await userRepository.verifyPermissions(
-            database,
-            {
-                userId,
-                status: ["A", "O"],
-            },
-        );
+        const { hasPermissions } = await userRepository.verifyPermissions({
+            userId,
+            status: ["A", "O"],
+        });
         if (!hasPermissions) {
             throw new PermissionError("user");
         }
         const {
             users: [user],
-        } = await userRepository.read(database, {
+        } = await userRepository.read({
             users: [{ userId: userToBlacklistId }],
         });
 
@@ -169,41 +160,38 @@ export const createUserService: CreateService<
             throw new NotFoundError("user", userId);
         }
 
-        await userRepository.update(database, {
+        await userRepository.update({
             users: [{ userId: userToBlacklistId, status: "B" }],
         });
     },
     delete: async (userId, userToDeleteId) => {
-        const { hasPermissions } = await userRepository.verifyPermissions(
-            database,
-            {
-                userId,
-                status: ["A", "O"],
-            },
-        );
+        const { hasPermissions } = await userRepository.verifyPermissions({
+            userId,
+            status: ["A", "O"],
+        });
         if (!hasPermissions) {
             throw new PermissionError("user");
         }
-        await userRepository.delete(database, {
+        await userRepository.delete({
             users: [{ userId: userToDeleteId }],
         });
     },
     getProfile: async (userId) => {
         const {
             users: [user],
-        } = await userRepository.read(database, { users: [{ userId }] });
+        } = await userRepository.read({ users: [{ userId }] });
         if (!user) {
             throw new NotFoundError("user", userId);
         }
         return user;
     },
     deleteProfile: async (userId) => {
-        await userRepository.delete(database, { users: [{ userId }] });
+        await userRepository.delete({ users: [{ userId }] });
     },
     register: async (user) => {
         const password = await hashPassword(user.password);
         try {
-            const { users } = await userRepository.create(database, {
+            const { users } = await userRepository.create({
                 users: [
                     {
                         ...user,
@@ -237,7 +225,7 @@ export const createUserService: CreateService<
     login: async ({ email, password }) => {
         const {
             users: [user],
-        } = await userRepository.readCredentials(database, {
+        } = await userRepository.readCredentials({
             users: [{ email }],
         });
 
@@ -277,7 +265,7 @@ export const createUserService: CreateService<
         };
     },
     readCredentials: async (filter) => {
-        const { users } = await userRepository.readCredentials(database, {
+        const { users } = await userRepository.readCredentials({
             users: [filter],
         });
         return users;
@@ -296,7 +284,7 @@ export const createUserService: CreateService<
 
         const {
             users: [user],
-        } = await userRepository.read(database, { users: [{ userId }] });
+        } = await userRepository.read({ users: [{ userId }] });
 
         if (!user) {
             throw new UnauthorizedError("User not found");
@@ -326,4 +314,4 @@ export const createUserService: CreateService<
             },
         };
     },
-});
+}));

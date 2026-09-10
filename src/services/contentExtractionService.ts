@@ -5,7 +5,7 @@ import {
     findRecipe,
     isRecipe,
 } from "../utils/recipeConverter.ts";
-import { UnknownError } from "./service.ts";
+import { createService, UnknownError } from "./service.ts";
 
 export interface ContentExtractionService {
     extractRecipeMetadata: (
@@ -16,7 +16,10 @@ export interface ContentExtractionService {
     ) => Promise<components["schemas"]["ExtractedRecipe"]>;
 }
 
-export const createContentExtractionService = (): ContentExtractionService => ({
+export const createContentExtractionService = createService<
+    ContentExtractionService,
+    never
+>(() => ({
     extractRecipeMetadata: async (url: string) => {
         try {
             const response = await fetch(url);
@@ -87,4 +90,4 @@ export const createContentExtractionService = (): ContentExtractionService => ({
             throw new UnknownError(e);
         }
     },
-});
+}));

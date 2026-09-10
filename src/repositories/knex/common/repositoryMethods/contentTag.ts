@@ -1,7 +1,7 @@
 import { EnsureArray } from "@reillymc/es-utils";
+import type { Knex } from "knex";
 import type { ReadTagsResponse } from "../../../recipeRepository.ts";
 import type { ContentTag } from "../../../temp.ts";
-import type { KnexDatabase } from "../../knex.ts";
 import { ContentTagTable, lamington, TagTable } from "../../spec/index.ts";
 
 type TagRow = {
@@ -32,7 +32,7 @@ const groupToResponse = (tags: ReadonlyArray<TagRow>): ReadTagsResponse =>
 
 export const ContentTagActions = {
     readByContentId: async (
-        db: KnexDatabase,
+        db: Knex,
         contentIds: string | ReadonlyArray<string>,
     ): Promise<Map<string, ReadTagsResponse>> => {
         const contentIdList = EnsureArray(contentIds);
@@ -106,7 +106,7 @@ export const ContentTagActions = {
         );
     },
     save: async (
-        db: KnexDatabase,
+        db: Knex,
         items: Array<{
             contentId: string;
             tags: ReadonlyArray<{ tagId: string }>;

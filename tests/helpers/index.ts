@@ -1,4 +1,4 @@
-import { it } from "node:test";
+import { withCxIt } from "./setup.ts";
 
 export * from "./auth.ts";
 export * from "./data.ts";
@@ -21,5 +21,5 @@ export const runTestCases = <TExpected, TInput, TUpdate>(
     }) => Promise<void> | void,
 ) =>
     testCases.forEach(({ name, ...rest }) => {
-        it(name, () => testFn(rest));
+        withCxIt(name, () => testFn(rest));
     });

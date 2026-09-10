@@ -1,11 +1,7 @@
-import { after, afterEach, beforeEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe } from "node:test";
 import { expect } from "expect";
-import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid, v4 } from "uuid";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
-import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import type { components, paths } from "../../src/routes/spec/index.ts";
 import {
     CreateUsers,
@@ -13,22 +9,25 @@ import {
     randomBoolean,
     randomNumber,
 } from "../helpers/index.ts";
-import { createTestApp, db } from "../helpers/setup.ts";
+import {
+    beginTestTransaction,
+    createTestApp,
+    rollbackTestTransaction,
+    TestContext,
+    withCxIt,
+} from "../helpers/setup.ts";
 
-let database: KnexDatabase;
-let app: Express;
+let { app, bookRepository, recipeRepository, userRepository } = TestContext;
 
 beforeEach(async () => {
-    database = await db.transaction();
-    app = createTestApp({ database });
+    await beginTestTransaction();
+    ({ app, bookRepository, recipeRepository, userRepository } = createTestApp(
+        {},
+    ));
 });
 
 afterEach(async () => {
-    await database.rollback();
-});
-
-after(async () => {
-    await db.destroy();
+    await rollbackTestTransaction();
 });
 
 const randomVariant = () =>
@@ -37,15 +36,15 @@ const randomVariant = () =>
     ];
 
 describe("Get user books", () => {
-    it("route should require authentication", async () => {
+    withCxIt("route should require authentication", async () => {
         const res = await request(app).get("/v1/books");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return all books created by the user", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return all books created by the user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
-        const { books } = await KnexBookRepository.create(database, {
+        const { books } = await bookRepository.create({
             userId: user.userId,
             books: [{ name: uuid() }, { name: uuid() }, { name: uuid() }],
         });
@@ -62,17 +61,17 @@ describe("Get user books", () => {
         expect(ids).toContain(books[2]!.bookId);
     });
 
-    it("should return books a user is a member of", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [otherUser] = await CreateUsers(database);
+    withCxIt("should return books a user is a member of", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [otherUser] = await CreateUsers(userRepository);
 
-        const { books } = await KnexBookRepository.create(database, {
+        const { books } = await bookRepository.create({
             userId: otherUser!.userId,
             books: [{ name: uuid() }, { name: uuid() }, { name: uuid() }],
         });
         const [adminBook, memberBook, pendingBook] = books;
 
-        await KnexBookRepository.saveMembers(database, [
+        await bookRepository.saveMembers([
             {
                 bookId: adminBook!.bookId,
                 members: [{ userId: user.userId, status: "A" }],
@@ -98,54 +97,58 @@ describe("Get user books", () => {
         expect(ids).toContain(pendingBook!.bookId);
     });
 
-    it("should not return books where the user is blacklisted", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [otherUser] = await CreateUsers(database);
+    withCxIt(
+        "should not return books where the user is blacklisted",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [otherUser] = await CreateUsers(userRepository);
 
-        const { books } = await KnexBookRepository.create(database, {
-            userId: otherUser!.userId,
-            books: [{ name: uuid() }],
-        });
-        const [blockedBook] = books;
+            const { books } = await bookRepository.create({
+                userId: otherUser!.userId,
+                books: [{ name: uuid() }],
+            });
+            const [blockedBook] = books;
 
-        await KnexBookRepository.saveMembers(database, [
-            {
-                bookId: blockedBook!.bookId,
-                members: [{ userId: user.userId, status: "B" }],
-            },
-        ]);
+            await bookRepository.saveMembers([
+                {
+                    bookId: blockedBook!.bookId,
+                    members: [{ userId: user.userId, status: "B" }],
+                },
+            ]);
 
-        const res = await request(app).get("/v1/books").set(token);
-        expect(res.statusCode).toEqual(200);
+            const res = await request(app).get("/v1/books").set(token);
+            expect(res.statusCode).toEqual(200);
 
-        const body = res.body as components["schemas"]["Book"][];
-        const ids = body.map((b) => b.bookId);
+            const body = res.body as components["schemas"]["Book"][];
+            const ids = body.map((b) => b.bookId);
 
-        expect(ids).not.toContain(blockedBook!.bookId);
-    });
+            expect(ids).not.toContain(blockedBook!.bookId);
+        },
+    );
 });
 
 describe("Delete a book", () => {
-    it("route should require authentication", async () => {
+    withCxIt("route should require authentication", async () => {
         const res = await request(app).delete(`/v1/books/${uuid()}`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent book", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent book", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app).delete(`/v1/books/${uuid()}`).set(token);
 
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not allow deletion if not book owner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt("should not allow deletion if not book owner", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
+        const [bookOwner] = await CreateUsers(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: bookOwner!.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
@@ -157,40 +160,44 @@ describe("Delete a book", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not allow deletion if book member but not book owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt(
+        "should not allow deletion if book member but not book owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [bookOwner] = await CreateUsers(userRepository);
+
+            const {
+                books: [book],
+            } = await bookRepository.create({
+                userId: bookOwner!.userId,
+                books: [{ name: uuid(), description: uuid() }],
+            });
+
+            await bookRepository.saveMembers({
+                bookId: book!.bookId,
+                members: [
+                    {
+                        userId: user!.userId,
+                        status: "A",
+                    },
+                ],
+            });
+
+            const res = await request(app)
+                .delete(`/v1/books/${book!.bookId}`)
+                .set(token);
+
+            expect(res.statusCode).toEqual(404);
+        },
+    );
+
+    withCxIt("should delete book", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
-            userId: bookOwner!.userId,
-            books: [{ name: uuid(), description: uuid() }],
-        });
-
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book!.bookId,
-            members: [
-                {
-                    userId: user!.userId,
-                    status: "A",
-                },
-            ],
-        });
-
-        const res = await request(app)
-            .delete(`/v1/books/${book!.bookId}`)
-            .set(token);
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should delete book", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: user!.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
@@ -201,7 +208,7 @@ describe("Delete a book", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const { books } = await KnexBookRepository.read(database, {
+        const { books } = await bookRepository.read({
             userId: user.userId,
             books: [book!],
         });
@@ -211,7 +218,7 @@ describe("Delete a book", () => {
 });
 
 describe("Remove member from book", () => {
-    it("route should require authentication", async () => {
+    withCxIt("route should require authentication", async () => {
         const res = await request(app).delete(
             `/v1/books/${uuid()}/members/${uuid()}`,
         );
@@ -219,8 +226,8 @@ describe("Remove member from book", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent book", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent book", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .delete(`/v1/books/${uuid()}/members/${uuid()}`)
@@ -230,18 +237,19 @@ describe("Remove member from book", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should allow book owner to remove member", async () => {
-        const [token, bookOwner] = await PrepareAuthenticatedUser(database);
-        const [user] = await CreateUsers(database);
+    withCxIt("should allow book owner to remove member", async () => {
+        const [token, bookOwner] =
+            await PrepareAuthenticatedUser(userRepository);
+        const [user] = await CreateUsers(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: bookOwner!.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
 
-        await KnexBookRepository.saveMembers(database, {
+        await bookRepository.saveMembers({
             bookId: book!.bookId,
             members: [{ userId: user!.userId, status: "P" }],
         });
@@ -253,48 +261,54 @@ describe("Remove member from book", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [bookMembers] = await KnexBookRepository.readMembers(database, {
+        const [bookMembers] = await bookRepository.readMembers({
             bookId: book!.bookId,
         });
 
         expect(bookMembers!.members).toHaveLength(0);
     });
 
-    it("should not allow removing other member if book member with edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [bookOwner, otherMember] = await CreateUsers(database, {
-            count: 2,
-        });
+    withCxIt(
+        "should not allow removing other member if book member with edit permission",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [bookOwner, otherMember] = await CreateUsers(userRepository, {
+                count: 2,
+            });
 
-        const {
-            books: [book],
-        } = await KnexBookRepository.create(database, {
-            userId: bookOwner!.userId,
-            books: [{ name: uuid(), description: uuid() }],
-        });
+            const {
+                books: [book],
+            } = await bookRepository.create({
+                userId: bookOwner!.userId,
+                books: [{ name: uuid(), description: uuid() }],
+            });
 
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book!.bookId,
-            members: [
-                { userId: user!.userId, status: "A" },
-                {
-                    userId: otherMember!.userId,
-                    status: randomBoolean() ? "A" : "M",
-                },
-            ],
-        });
+            await bookRepository.saveMembers({
+                bookId: book!.bookId,
+                members: [
+                    { userId: user!.userId, status: "A" },
+                    {
+                        userId: otherMember!.userId,
+                        status: randomBoolean() ? "A" : "M",
+                    },
+                ],
+            });
 
-        const res = await request(app)
-            .delete(`/v1/books/${book!.bookId}/members/${otherMember!.userId}`)
-            .set(token)
-            .send();
+            const res = await request(app)
+                .delete(
+                    `/v1/books/${book!.bookId}/members/${otherMember!.userId}`,
+                )
+                .set(token)
+                .send();
 
-        expect(res.statusCode).toEqual(404);
-    });
+            expect(res.statusCode).toEqual(404);
+        },
+    );
 });
 
 describe("Remove recipe from book", () => {
-    it("route should require authentication", async () => {
+    withCxIt("route should require authentication", async () => {
         const res = await request(app).delete(
             `/v1/books/${uuid()}/recipes/${uuid()}`,
         );
@@ -302,8 +316,8 @@ describe("Remove recipe from book", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent book", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent book", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .delete(`/v1/books/${uuid()}/recipes/${uuid()}`)
@@ -313,25 +327,25 @@ describe("Remove recipe from book", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not allow deletion if not book owner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt("should not allow deletion if not book owner", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
+        const [bookOwner] = await CreateUsers(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: bookOwner!.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: bookOwner!.userId,
             recipes: [{ name: uuid(), public: randomBoolean() }],
         });
 
-        await KnexBookRepository.saveRecipes(database, {
+        await bookRepository.saveRecipes({
             bookId: book!.bookId,
             recipes: [recipe!],
         });
@@ -344,78 +358,123 @@ describe("Remove recipe from book", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not allow deletion if book member without edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt(
+        "should not allow deletion if book member without edit permission",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [bookOwner] = await CreateUsers(userRepository);
+
+            const {
+                books: [book],
+            } = await bookRepository.create({
+                userId: bookOwner!.userId,
+                books: [{ name: uuid(), description: uuid() }],
+            });
+
+            const {
+                recipes: [recipe],
+            } = await recipeRepository.create({
+                userId: bookOwner!.userId,
+                recipes: [{ name: uuid(), public: randomBoolean() }],
+            });
+
+            await bookRepository.saveRecipes({
+                bookId: book!.bookId,
+                recipes: [recipe!],
+            });
+
+            await bookRepository.saveMembers({
+                bookId: book!.bookId,
+                members: [
+                    {
+                        userId: user!.userId,
+                        status: "M",
+                    },
+                ],
+            });
+
+            const res = await request(app)
+                .delete(`/v1/books/${book!.bookId}/recipes/${recipe!.recipeId}`)
+                .set(token)
+                .send();
+
+            expect(res.statusCode).toEqual(404);
+        },
+    );
+
+    withCxIt(
+        "should allow deletion if book member with edit permission",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [bookOwner] = await CreateUsers(userRepository);
+
+            const {
+                books: [book],
+            } = await bookRepository.create({
+                userId: bookOwner!.userId,
+                books: [{ name: uuid(), description: uuid() }],
+            });
+
+            const {
+                recipes: [recipe],
+            } = await recipeRepository.create({
+                userId: bookOwner!.userId,
+                recipes: [{ name: uuid(), public: randomBoolean() }],
+            });
+
+            await bookRepository.saveRecipes({
+                bookId: book!.bookId,
+                recipes: [recipe!],
+            });
+
+            await bookRepository.saveMembers({
+                bookId: book!.bookId,
+                members: [
+                    {
+                        userId: user!.userId,
+                        status: "A",
+                    },
+                ],
+            });
+
+            const res = await request(app)
+                .delete(`/v1/books/${book!.bookId}/recipes/${recipe!.recipeId}`)
+                .set(token)
+                .send();
+
+            expect(res.statusCode).toEqual(204);
+
+            const { recipes: bookRecipes } = await recipeRepository.readAll({
+                userId: user.userId,
+                filter: { books: [book!] },
+            });
+
+            expect(bookRecipes.length).toEqual(0);
+        },
+    );
+
+    withCxIt("should allow deletion if book owner", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
-            userId: bookOwner!.userId,
+        } = await bookRepository.create({
+            userId: user.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
-            userId: bookOwner!.userId,
+        } = await recipeRepository.create({
+            userId: user.userId,
             recipes: [{ name: uuid(), public: randomBoolean() }],
         });
 
-        await KnexBookRepository.saveRecipes(database, {
+        await bookRepository.saveRecipes({
             bookId: book!.bookId,
             recipes: [recipe!],
-        });
-
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book!.bookId,
-            members: [
-                {
-                    userId: user!.userId,
-                    status: "M",
-                },
-            ],
-        });
-
-        const res = await request(app)
-            .delete(`/v1/books/${book!.bookId}/recipes/${recipe!.recipeId}`)
-            .set(token)
-            .send();
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should allow deletion if book member with edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
-
-        const {
-            books: [book],
-        } = await KnexBookRepository.create(database, {
-            userId: bookOwner!.userId,
-            books: [{ name: uuid(), description: uuid() }],
-        });
-
-        const {
-            recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
-            userId: bookOwner!.userId,
-            recipes: [{ name: uuid(), public: randomBoolean() }],
-        });
-
-        await KnexBookRepository.saveRecipes(database, {
-            bookId: book!.bookId,
-            recipes: [recipe!],
-        });
-
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book!.bookId,
-            members: [
-                {
-                    userId: user!.userId,
-                    status: "A",
-                },
-            ],
         });
 
         const res = await request(app)
@@ -425,74 +484,31 @@ describe("Remove recipe from book", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(
-            database,
-            {
-                userId: user.userId,
-                filter: { books: [book!] },
-            },
-        );
-
+        const { recipes: bookRecipes } = await recipeRepository.readAll({
+            userId: user.userId,
+            filter: { books: [book!] },
+        });
         expect(bookRecipes.length).toEqual(0);
     });
 
-    it("should allow deletion if book owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            books: [book],
-        } = await KnexBookRepository.create(database, {
-            userId: user.userId,
-            books: [{ name: uuid(), description: uuid() }],
-        });
-
-        const {
-            recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
-            userId: user.userId,
-            recipes: [{ name: uuid(), public: randomBoolean() }],
-        });
-
-        await KnexBookRepository.saveRecipes(database, {
-            bookId: book!.bookId,
-            recipes: [recipe!],
-        });
-
-        const res = await request(app)
-            .delete(`/v1/books/${book!.bookId}/recipes/${recipe!.recipeId}`)
-            .set(token)
-            .send();
-
-        expect(res.statusCode).toEqual(204);
-
-        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(
-            database,
-            {
-                userId: user.userId,
-                filter: { books: [book!] },
-            },
-        );
-        expect(bookRecipes.length).toEqual(0);
-    });
-
-    it("should delete recipe only from specified book", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should delete recipe only from specified book", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             books: [book1, book2],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: user.userId,
             books: [{ name: uuid() }, { name: uuid() }],
         });
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user.userId,
             recipes: [{ name: uuid(), public: randomBoolean() }],
         });
 
-        await KnexBookRepository.saveRecipes(database, [
+        await bookRepository.saveRecipes([
             { bookId: book1!.bookId, recipes: [recipe!] },
             { bookId: book2!.bookId, recipes: [recipe!] },
         ]);
@@ -504,48 +520,42 @@ describe("Remove recipe from book", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const { recipes: book1Recipes } = await KnexRecipeRepository.readAll(
-            database,
-            {
-                userId: user.userId,
-                filter: { books: [book1!] },
-            },
-        );
+        const { recipes: book1Recipes } = await recipeRepository.readAll({
+            userId: user.userId,
+            filter: { books: [book1!] },
+        });
         expect(book1Recipes.length).toEqual(0);
 
-        const { recipes: book2Recipes } = await KnexRecipeRepository.readAll(
-            database,
-            {
-                userId: user.userId,
-                filter: { books: [book2!] },
-            },
-        );
+        const { recipes: book2Recipes } = await recipeRepository.readAll({
+            userId: user.userId,
+            filter: { books: [book2!] },
+        });
 
         expect(book2Recipes.length).toEqual(1);
     });
 });
 
 describe("Get a book", () => {
-    it("route should require authentication", async () => {
+    withCxIt("route should require authentication", async () => {
         const res = await request(app).get(`/v1/books/${uuid()}`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent book", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent book", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app).get(`/v1/books/${uuid()}`).set(token);
 
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not return book user doesn't have access to", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt("should not return book user doesn't have access to", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
+        const [bookOwner] = await CreateUsers(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: bookOwner!.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
@@ -557,12 +567,12 @@ describe("Get a book", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should return correct book details for book id", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return correct book details for book id", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: user.userId,
             books: [
                 {
@@ -591,13 +601,13 @@ describe("Get a book", () => {
         expect(data.owner.firstName).toEqual(user.firstName);
     });
 
-    it("should return a book that a user is a member of", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt("should return a book that a user is a member of", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [bookOwner] = await CreateUsers(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: bookOwner!.userId,
             books: [
                 {
@@ -607,7 +617,7 @@ describe("Get a book", () => {
             ],
         });
 
-        await KnexBookRepository.saveMembers(database, {
+        await bookRepository.saveMembers({
             bookId: book!.bookId,
             members: [{ userId: user.userId, status: "M" }],
         });
@@ -625,13 +635,13 @@ describe("Get a book", () => {
 });
 
 describe("Create a book", () => {
-    it("route should require authentication", async () => {
+    withCxIt("route should require authentication", async () => {
         const res = await request(app).post("/v1/books");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should create book", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should create book", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const bookData = {
             name: uuid(),
@@ -658,18 +668,18 @@ describe("Create a book", () => {
 });
 
 describe("Update a book", () => {
-    it("route should require authentication", async () => {
+    withCxIt("route should require authentication", async () => {
         const res = await request(app).patch(`/v1/books/${uuid()}`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should not allow editing if not book owner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt("should not allow editing if not book owner", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
+        const [bookOwner] = await CreateUsers(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: bookOwner!.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
@@ -682,40 +692,44 @@ describe("Update a book", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not allow editing if book member but not book owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt(
+        "should not allow editing if book member but not book owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [bookOwner] = await CreateUsers(userRepository);
+
+            const {
+                books: [book],
+            } = await bookRepository.create({
+                userId: bookOwner!.userId,
+                books: [{ name: uuid(), description: uuid() }],
+            });
+            await bookRepository.saveMembers({
+                bookId: book!.bookId,
+                members: [
+                    {
+                        userId: user!.userId,
+                        status: "A",
+                    },
+                ],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/books/${book!.bookId}`)
+                .set(token)
+                .send({ name: uuid() });
+
+            expect(res.statusCode).toEqual(404);
+        },
+    );
+
+    withCxIt("should save updated book details as book owner", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
-            userId: bookOwner!.userId,
-            books: [{ name: uuid(), description: uuid() }],
-        });
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book!.bookId,
-            members: [
-                {
-                    userId: user!.userId,
-                    status: "A",
-                },
-            ],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/books/${book!.bookId}`)
-            .set(token)
-            .send({ name: uuid() });
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should save updated book details as book owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: user.userId,
             books: [
                 {
@@ -747,23 +761,23 @@ describe("Update a book", () => {
 });
 
 describe("Get book members", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get(`/v1/books/${uuid()}/members`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return book members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
+    withCxIt("should return book members", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [member] = await CreateUsers(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: user.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
 
-        await KnexBookRepository.saveMembers(database, {
+        await bookRepository.saveMembers({
             bookId: book!.bookId,
             members: [{ userId: member!.userId, status: "M" }],
         });
@@ -778,43 +792,47 @@ describe("Get book members", () => {
         expect(members[0]!.userId).toEqual(member!.userId);
     });
 
-    it("should return 404 for the member list if the user is not the owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 for the member list if the user is not the owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [bookOwner] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "P", "B"] as const;
+            const statuses = ["A", "M", "P", "B"] as const;
 
-        for (const status of statuses) {
-            const {
-                books: [book],
-            } = await KnexBookRepository.create(database, {
-                userId: bookOwner!.userId,
-                books: [{ name: uuid(), description: uuid() }],
-            });
+            for (const status of statuses) {
+                const {
+                    books: [book],
+                } = await bookRepository.create({
+                    userId: bookOwner!.userId,
+                    books: [{ name: uuid(), description: uuid() }],
+                });
 
-            await KnexBookRepository.saveMembers(database, {
-                bookId: book!.bookId,
-                members: [{ userId: user.userId, status }],
-            });
+                await bookRepository.saveMembers({
+                    bookId: book!.bookId,
+                    members: [{ userId: user.userId, status }],
+                });
 
-            const res = await request(app)
-                .get(`/v1/books/${book!.bookId}/members`)
-                .set(token);
+                const res = await request(app)
+                    .get(`/v1/books/${book!.bookId}/members`)
+                    .set(token);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Invite member to book", () => {
-    it("route should require authentication", async () => {
+    withCxIt("route should require authentication", async () => {
         const res = await request(app).post(`/v1/books/${uuid()}/members`);
 
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent book", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent book", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .post(`/v1/books/${uuid()}/members`)
@@ -824,13 +842,13 @@ describe("Invite member to book", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not allow invite if not book owner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt("should not allow invite if not book owner", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
+        const [bookOwner] = await CreateUsers(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: bookOwner!.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
@@ -843,11 +861,11 @@ describe("Invite member to book", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should allow invite if book owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [invitee] = await CreateUsers(database);
+    withCxIt("should allow invite if book owner", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [invitee] = await CreateUsers(userRepository);
 
-        const { books } = await KnexBookRepository.create(database, {
+        const { books } = await bookRepository.create({
             userId: user.userId,
             books: [{ name: uuid() }],
         });
@@ -860,7 +878,7 @@ describe("Invite member to book", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexBookRepository.readMembers(database, {
+        const [members] = await bookRepository.readMembers({
             bookId: book.bookId,
         });
         expect(members!.members).toHaveLength(1);
@@ -870,24 +888,24 @@ describe("Invite member to book", () => {
 });
 
 describe("Update book member", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).patch(
             `/v1/books/${uuid()}/members/${uuid()}`,
         );
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should update member status", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
+    withCxIt("should update member status", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [member] = await CreateUsers(userRepository);
 
-        const { books } = await KnexBookRepository.create(database, {
+        const { books } = await bookRepository.create({
             userId: user.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
         const book = books[0]!;
 
-        await KnexBookRepository.saveMembers(database, {
+        await bookRepository.saveMembers({
             bookId: book.bookId,
             members: [{ userId: member!.userId, status: "M" }],
         });
@@ -902,138 +920,158 @@ describe("Update book member", () => {
         expect(updatedMember.status).toEqual("A");
     });
 
-    it("should not allow non-owners (A, M, P, B) to update a member status", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
-        const [member] = await CreateUsers(database);
+    withCxIt(
+        "should not allow non-owners (A, M, P, B) to update a member status",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
+            const [member] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "P", "B"] as const;
+            const statuses = ["A", "M", "P", "B"] as const;
 
-        for (const status of statuses) {
-            const { books } = await KnexBookRepository.create(database, {
-                userId: owner!.userId,
-                books: [{ name: uuid(), description: uuid() }],
+            for (const status of statuses) {
+                const { books } = await bookRepository.create({
+                    userId: owner!.userId,
+                    books: [{ name: uuid(), description: uuid() }],
+                });
+                const book = books[0]!;
+
+                await bookRepository.saveMembers([
+                    {
+                        bookId: book.bookId,
+                        members: [
+                            { userId: user.userId, status },
+                            { userId: member!.userId, status: "M" },
+                        ],
+                    },
+                ]);
+
+                const res = await request(app)
+                    .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
+                    .set(token)
+                    .send({ status: "A" });
+
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
+
+    withCxIt(
+        "should fail when trying to update a member to restricted statuses (O, P)",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [member] = await CreateUsers(userRepository);
+
+            const { books } = await bookRepository.create({
+                userId: user.userId,
+                books: [{ name: uuid() }],
             });
             const book = books[0]!;
 
-            await KnexBookRepository.saveMembers(database, [
-                {
-                    bookId: book.bookId,
-                    members: [
-                        { userId: user.userId, status },
-                        { userId: member!.userId, status: "M" },
-                    ],
-                },
-            ]);
+            await bookRepository.saveMembers({
+                bookId: book.bookId,
+                members: [{ userId: member!.userId, status: "M" }],
+            });
+
+            const restrictedStatuses = ["O", "P"];
+
+            for (const status of restrictedStatuses) {
+                const res = await request(app)
+                    .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
+                    .set(token)
+                    .send({ status });
+
+                expect(res.statusCode).toEqual(400);
+            }
+        },
+    );
+
+    withCxIt(
+        "should return 400 when trying to update a pending member",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [member] = await CreateUsers(userRepository);
+
+            const { books } = await bookRepository.create({
+                userId: user.userId,
+                books: [{ name: uuid() }],
+            });
+            const book = books[0]!;
+
+            await bookRepository.saveMembers({
+                bookId: book.bookId,
+                members: [{ userId: member!.userId, status: "P" }],
+            });
 
             const res = await request(app)
                 .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
                 .set(token)
-                .send({ status: "A" });
-
-            expect(res.statusCode).toEqual(404);
-        }
-    });
-
-    it("should fail when trying to update a member to restricted statuses (O, P)", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-
-        const { books } = await KnexBookRepository.create(database, {
-            userId: user.userId,
-            books: [{ name: uuid() }],
-        });
-        const book = books[0]!;
-
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book.bookId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const restrictedStatuses = ["O", "P"];
-
-        for (const status of restrictedStatuses) {
-            const res = await request(app)
-                .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
-                .set(token)
-                .send({ status });
+                .send({ status: "M" });
 
             expect(res.statusCode).toEqual(400);
-        }
-    });
+        },
+    );
 
-    it("should return 400 when trying to update a pending member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [member] = await CreateUsers(userRepository);
+            const { books } = await bookRepository.create({
+                userId: user.userId,
+                books: [{ name: uuid() }],
+            });
+            const book = books[0]!;
+            await bookRepository.saveMembers({
+                bookId: book.bookId,
+                members: [{ userId: member!.userId, status: "M" }],
+            });
 
-        const { books } = await KnexBookRepository.create(database, {
+            const res = await request(app)
+                .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
+                .set(token)
+                .send({ status: "A", extra: "invalid" });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [member] = await CreateUsers(userRepository);
+            const { books } = await bookRepository.create({
+                userId: user.userId,
+                books: [{ name: uuid() }],
+            });
+            const book = books[0]!;
+            await bookRepository.saveMembers({
+                bookId: book.bookId,
+                members: [{ userId: member!.userId, status: "M" }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
+                .set(token)
+                .send({ status: "INVALID" });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt("should fail if a required field is set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [member] = await CreateUsers(userRepository);
+        const { books } = await bookRepository.create({
             userId: user.userId,
             books: [{ name: uuid() }],
         });
         const book = books[0]!;
-
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book.bookId,
-            members: [{ userId: member!.userId, status: "P" }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: "M" });
-
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { books } = await KnexBookRepository.create(database, {
-            userId: user.userId,
-            books: [{ name: uuid() }],
-        });
-        const book = books[0]!;
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book.bookId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: "A", extra: "invalid" });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { books } = await KnexBookRepository.create(database, {
-            userId: user.userId,
-            books: [{ name: uuid() }],
-        });
-        const book = books[0]!;
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book.bookId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: "INVALID" });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { books } = await KnexBookRepository.create(database, {
-            userId: user.userId,
-            books: [{ name: uuid() }],
-        });
-        const book = books[0]!;
-        await KnexBookRepository.saveMembers(database, {
+        await bookRepository.saveMembers({
             bookId: book.bookId,
             members: [{ userId: member!.userId, status: "M" }],
         });
@@ -1047,7 +1085,7 @@ describe("Update book member", () => {
 });
 
 describe("Accept book invitation", () => {
-    it("route should require authentication", async () => {
+    withCxIt("route should require authentication", async () => {
         const res = await request(app)
             .post(`/v1/books/${v4()}/invite/accept`)
             .send();
@@ -1055,8 +1093,8 @@ describe("Accept book invitation", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent book", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent book", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .post(`/v1/books/${v4()}/invite/accept`)
@@ -1066,13 +1104,13 @@ describe("Accept book invitation", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should allow accepting if pending book member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt("should allow accepting if pending book member", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [bookOwner] = await CreateUsers(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: bookOwner!.userId,
             books: [
                 {
@@ -1082,7 +1120,7 @@ describe("Accept book invitation", () => {
             ],
         });
 
-        await KnexBookRepository.saveMembers(database, {
+        await bookRepository.saveMembers({
             bookId: book!.bookId,
             members: [{ userId: user!.userId, status: "P" }],
         });
@@ -1094,7 +1132,7 @@ describe("Accept book invitation", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [bookMembers] = await KnexBookRepository.readMembers(database, {
+        const [bookMembers] = await bookRepository.readMembers({
             bookId: book!.bookId,
         });
 
@@ -1102,42 +1140,17 @@ describe("Accept book invitation", () => {
         expect(bookMembers!.members[0]!.status).toEqual("M");
     });
 
-    it("should return 404 if user is not a member of the book", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 if user is not a member of the book",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
+            const [bookOwner] = await CreateUsers(userRepository);
 
-        const {
-            books: [book],
-        } = await KnexBookRepository.create(database, {
-            userId: bookOwner!.userId,
-            books: [{ name: uuid() }],
-        });
-
-        const res = await request(app)
-            .post(`/v1/books/${book!.bookId}/invite/accept`)
-            .set(token)
-            .send();
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should return 404 if user status is not pending (M, A, B) or is owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
-
-        const statuses = ["M", "A", "B"] as const;
-
-        for (const status of statuses) {
             const {
                 books: [book],
-            } = await KnexBookRepository.create(database, {
+            } = await bookRepository.create({
                 userId: bookOwner!.userId,
                 books: [{ name: uuid() }],
-            });
-
-            await KnexBookRepository.saveMembers(database, {
-                bookId: book!.bookId,
-                members: [{ userId: user.userId, status }],
             });
 
             const res = await request(app)
@@ -1146,43 +1159,75 @@ describe("Accept book invitation", () => {
                 .send();
 
             expect(res.statusCode).toEqual(404);
-        }
+        },
+    );
 
-        const {
-            books: [ownBook],
-        } = await KnexBookRepository.create(database, {
-            userId: user.userId,
-            books: [{ name: uuid() }],
-        });
+    withCxIt(
+        "should return 404 if user status is not pending (M, A, B) or is owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [bookOwner] = await CreateUsers(userRepository);
 
-        const resOwner = await request(app)
-            .post(`/v1/books/${ownBook!.bookId}/invite/accept`)
-            .set(token)
-            .send();
+            const statuses = ["M", "A", "B"] as const;
 
-        expect(resOwner.statusCode).toEqual(404);
-    });
+            for (const status of statuses) {
+                const {
+                    books: [book],
+                } = await bookRepository.create({
+                    userId: bookOwner!.userId,
+                    books: [{ name: uuid() }],
+                });
+
+                await bookRepository.saveMembers({
+                    bookId: book!.bookId,
+                    members: [{ userId: user.userId, status }],
+                });
+
+                const res = await request(app)
+                    .post(`/v1/books/${book!.bookId}/invite/accept`)
+                    .set(token)
+                    .send();
+
+                expect(res.statusCode).toEqual(404);
+            }
+
+            const {
+                books: [ownBook],
+            } = await bookRepository.create({
+                userId: user.userId,
+                books: [{ name: uuid() }],
+            });
+
+            const resOwner = await request(app)
+                .post(`/v1/books/${ownBook!.bookId}/invite/accept`)
+                .set(token)
+                .send();
+
+            expect(resOwner.statusCode).toEqual(404);
+        },
+    );
 });
 
 describe("Decline book invitation", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post(
             `/v1/books/${uuid()}/invite/decline`,
         );
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should decline invitation", async () => {
-        const [owner] = await CreateUsers(database);
-        const [token, invitee] = await PrepareAuthenticatedUser(database);
+    withCxIt("should decline invitation", async () => {
+        const [owner] = await CreateUsers(userRepository);
+        const [token, invitee] = await PrepareAuthenticatedUser(userRepository);
 
-        const { books } = await KnexBookRepository.create(database, {
+        const { books } = await bookRepository.create({
             userId: owner!.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
         const book = books[0]!;
 
-        await KnexBookRepository.saveMembers(database, {
+        await bookRepository.saveMembers({
             bookId: book.bookId,
             members: [{ userId: invitee.userId, status: "P" }],
         });
@@ -1193,57 +1238,60 @@ describe("Decline book invitation", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexBookRepository.readMembers(database, {
+        const [members] = await bookRepository.readMembers({
             bookId: book.bookId,
         });
         expect(members!.members).toHaveLength(0);
     });
 
-    it("should return 404 when declining an invite if the user is already a member (A, M) or blacklisted (B)", async () => {
-        const [inviteeToken, invitee] =
-            await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 when declining an invite if the user is already a member (A, M) or blacklisted (B)",
+        async () => {
+            const [inviteeToken, invitee] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "B"] as const;
+            const statuses = ["A", "M", "B"] as const;
 
-        for (const status of statuses) {
-            const { books } = await KnexBookRepository.create(database, {
-                userId: owner!.userId,
-                books: [{ name: uuid() }],
-            });
-            const book = books[0]!;
+            for (const status of statuses) {
+                const { books } = await bookRepository.create({
+                    userId: owner!.userId,
+                    books: [{ name: uuid() }],
+                });
+                const book = books[0]!;
 
-            await KnexBookRepository.saveMembers(database, {
-                bookId: book.bookId,
-                members: [{ userId: invitee.userId, status }],
-            });
+                await bookRepository.saveMembers({
+                    bookId: book.bookId,
+                    members: [{ userId: invitee.userId, status }],
+                });
 
-            const res = await request(app)
-                .post(`/v1/books/${book.bookId}/invite/decline`)
-                .set(inviteeToken);
+                const res = await request(app)
+                    .post(`/v1/books/${book.bookId}/invite/decline`)
+                    .set(inviteeToken);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Leave book", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post(`/v1/books/${uuid()}/leave`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should leave book", async () => {
-        const [owner] = await CreateUsers(database);
-        const [token, member] = await PrepareAuthenticatedUser(database);
+    withCxIt("should leave book", async () => {
+        const [owner] = await CreateUsers(userRepository);
+        const [token, member] = await PrepareAuthenticatedUser(userRepository);
 
-        const { books } = await KnexBookRepository.create(database, {
+        const { books } = await bookRepository.create({
             userId: owner!.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
         const book = books[0]!;
 
-        await KnexBookRepository.saveMembers(database, {
+        await bookRepository.saveMembers({
             bookId: book.bookId,
             members: [{ userId: member.userId, status: "M" }],
         });
@@ -1254,64 +1302,73 @@ describe("Leave book", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexBookRepository.readMembers(database, {
+        const [members] = await bookRepository.readMembers({
             bookId: book.bookId,
         });
         expect(members!.members).toHaveLength(0);
     });
 
-    it("should return 404 if the owner tries to leave the book", async () => {
-        const [ownerToken, owner] = await PrepareAuthenticatedUser(database);
+    withCxIt(
+        "should return 404 if the owner tries to leave the book",
+        async () => {
+            const [ownerToken, owner] =
+                await PrepareAuthenticatedUser(userRepository);
 
-        const { books } = await KnexBookRepository.create(database, {
-            userId: owner.userId,
-            books: [{ name: uuid(), description: uuid() }],
-        });
-        const book = books[0]!;
-
-        const res = await request(app)
-            .post(`/v1/books/${book.bookId}/leave`)
-            .set(ownerToken);
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should return 404 if a pending or blacklisted user tries to leave the book", async () => {
-        const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
-        const [userToken, user] = await PrepareAuthenticatedUser(database);
-
-        const statuses = ["P", "B"] as const;
-
-        for (const status of statuses) {
-            const { books } = await KnexBookRepository.create(database, {
+            const { books } = await bookRepository.create({
                 userId: owner.userId,
-                books: [{ name: uuid() }],
+                books: [{ name: uuid(), description: uuid() }],
             });
             const book = books[0]!;
 
-            await KnexBookRepository.saveMembers(database, {
-                bookId: book.bookId,
-                members: [{ userId: user.userId, status }],
-            });
-
             const res = await request(app)
                 .post(`/v1/books/${book.bookId}/leave`)
-                .set(userToken);
+                .set(ownerToken);
 
             expect(res.statusCode).toEqual(404);
-        }
-    });
+        },
+    );
+
+    withCxIt(
+        "should return 404 if a pending or blacklisted user tries to leave the book",
+        async () => {
+            const [_ownerToken, owner] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [userToken, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const statuses = ["P", "B"] as const;
+
+            for (const status of statuses) {
+                const { books } = await bookRepository.create({
+                    userId: owner.userId,
+                    books: [{ name: uuid() }],
+                });
+                const book = books[0]!;
+
+                await bookRepository.saveMembers({
+                    bookId: book.bookId,
+                    members: [{ userId: user.userId, status }],
+                });
+
+                const res = await request(app)
+                    .post(`/v1/books/${book.bookId}/leave`)
+                    .set(userToken);
+
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Add recipe to book", () => {
-    it("route should require authentication", async () => {
+    withCxIt("route should require authentication", async () => {
         const res = await request(app).post(`/v1/books/${uuid()}/recipes`);
 
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent book", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent book", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .post(`/v1/books/${uuid()}/recipes`)
@@ -1321,13 +1378,13 @@ describe("Add recipe to book", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not allow adding recipe if not book owner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt("should not allow adding recipe if not book owner", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
+        const [bookOwner] = await CreateUsers(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: bookOwner!.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
@@ -1339,78 +1396,119 @@ describe("Add recipe to book", () => {
 
         expect(res.statusCode).toEqual(404);
 
-        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(
-            database,
-            {
-                userId: bookOwner!.userId,
-                filter: { books: [book!] },
-            },
-        );
+        const { recipes: bookRecipes } = await recipeRepository.readAll({
+            userId: bookOwner!.userId,
+            filter: { books: [book!] },
+        });
         expect(bookRecipes.length).toEqual(0);
     });
 
-    it("should not allow adding recipe if book member without edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt(
+        "should not allow adding recipe if book member without edit permission",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [bookOwner] = await CreateUsers(userRepository);
+
+            const {
+                books: [book],
+            } = await bookRepository.create({
+                userId: bookOwner!.userId,
+                books: [{ name: uuid(), description: uuid() }],
+            });
+
+            const {
+                recipes: [recipe],
+            } = await recipeRepository.create({
+                userId: user!.userId,
+                recipes: [{ name: uuid(), public: randomBoolean() }],
+            });
+
+            await bookRepository.saveMembers({
+                bookId: book!.bookId,
+                members: [
+                    {
+                        userId: user!.userId,
+                        status: "M",
+                    },
+                ],
+            });
+
+            const res = await request(app)
+                .post(`/v1/books/${book!.bookId}/recipes`)
+                .set(token)
+                .send({ recipeId: recipe!.recipeId });
+
+            expect(res.statusCode).toEqual(404);
+        },
+    );
+
+    withCxIt(
+        "should allow adding recipe if book member with edit permission",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [bookOwner] = await CreateUsers(userRepository);
+
+            const {
+                books: [book],
+            } = await bookRepository.create({
+                userId: bookOwner!.userId,
+                books: [{ name: uuid(), description: uuid() }],
+            });
+
+            const {
+                recipes: [recipe],
+            } = await recipeRepository.create({
+                userId: user!.userId,
+                recipes: [{ name: uuid(), public: randomBoolean() }],
+            });
+
+            await bookRepository.saveMembers({
+                bookId: book!.bookId,
+                members: [
+                    {
+                        userId: user!.userId,
+                        status: "A",
+                    },
+                ],
+            });
+
+            const res = await request(app)
+                .post(`/v1/books/${book!.bookId}/recipes`)
+                .set(token)
+                .send({ recipeId: recipe!.recipeId });
+
+            expect(res.statusCode).toEqual(201);
+
+            const { recipes: bookRecipes } = await recipeRepository.readAll({
+                userId: user.userId,
+                filter: { books: [book!] },
+            });
+
+            expect(bookRecipes.length).toEqual(1);
+
+            const [bookRecipe] = bookRecipes;
+
+            expect(bookRecipe!.recipeId).toEqual(recipe!.recipeId);
+        },
+    );
+
+    withCxIt("should allow adding recipe if book owner", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
-            userId: bookOwner!.userId,
+        } = await bookRepository.create({
+            userId: user.userId,
             books: [{ name: uuid(), description: uuid() }],
         });
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
-            userId: user!.userId,
+        } = await recipeRepository.create({
+            userId: user.userId,
             recipes: [{ name: uuid(), public: randomBoolean() }],
-        });
-
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book!.bookId,
-            members: [
-                {
-                    userId: user!.userId,
-                    status: "M",
-                },
-            ],
-        });
-
-        const res = await request(app)
-            .post(`/v1/books/${book!.bookId}/recipes`)
-            .set(token)
-            .send({ recipeId: recipe!.recipeId });
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should allow adding recipe if book member with edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
-
-        const {
-            books: [book],
-        } = await KnexBookRepository.create(database, {
-            userId: bookOwner!.userId,
-            books: [{ name: uuid(), description: uuid() }],
-        });
-
-        const {
-            recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
-            userId: user!.userId,
-            recipes: [{ name: uuid(), public: randomBoolean() }],
-        });
-
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book!.bookId,
-            members: [
-                {
-                    userId: user!.userId,
-                    status: "A",
-                },
-            ],
         });
 
         const res = await request(app)
@@ -1420,52 +1518,10 @@ describe("Add recipe to book", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(
-            database,
-            {
-                userId: user.userId,
-                filter: { books: [book!] },
-            },
-        );
-
-        expect(bookRecipes.length).toEqual(1);
-
-        const [bookRecipe] = bookRecipes;
-
-        expect(bookRecipe!.recipeId).toEqual(recipe!.recipeId);
-    });
-
-    it("should allow adding recipe if book owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            books: [book],
-        } = await KnexBookRepository.create(database, {
+        const { recipes: bookRecipes } = await recipeRepository.readAll({
             userId: user.userId,
-            books: [{ name: uuid(), description: uuid() }],
+            filter: { books: [book!] },
         });
-
-        const {
-            recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
-            userId: user.userId,
-            recipes: [{ name: uuid(), public: randomBoolean() }],
-        });
-
-        const res = await request(app)
-            .post(`/v1/books/${book!.bookId}/recipes`)
-            .set(token)
-            .send({ recipeId: recipe!.recipeId });
-
-        expect(res.statusCode).toEqual(201);
-
-        const { recipes: bookRecipes } = await KnexRecipeRepository.readAll(
-            database,
-            {
-                userId: user.userId,
-                filter: { books: [book!] },
-            },
-        );
         expect(bookRecipes.length).toEqual(1);
 
         const [bookRecipe] = bookRecipes;
@@ -1475,61 +1531,58 @@ describe("Add recipe to book", () => {
 });
 
 describe("Get book recipes", () => {
-    it("route should require authentication", async () => {
+    withCxIt("route should require authentication", async () => {
         const res = await request(app).get(`/v1/books/${uuid()}/recipes`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for a book the user cannot access", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [bookOwner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 for a book the user cannot access",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
+            const [bookOwner] = await CreateUsers(userRepository);
+
+            const {
+                books: [book],
+            } = await bookRepository.create({
+                userId: bookOwner!.userId,
+                books: [{ name: uuid() }],
+            });
+
+            const res = await request(app)
+                .get(`/v1/books/${book!.bookId}/recipes`)
+                .set(token);
+            expect(res.statusCode).toEqual(404);
+        },
+    );
+
+    withCxIt("should return only recipes for the specified book", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             books: [book],
-        } = await KnexBookRepository.create(database, {
-            userId: bookOwner!.userId,
-            books: [{ name: uuid() }],
-        });
-
-        const res = await request(app)
-            .get(`/v1/books/${book!.bookId}/recipes`)
-            .set(token);
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should return only recipes for the specified book", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            books: [book],
-        } = await KnexBookRepository.create(database, {
+        } = await bookRepository.create({
             userId: user.userId,
             books: [{ name: uuid() }],
         });
 
-        const { recipes: recipesInBook } = await KnexRecipeRepository.create(
-            database,
-            {
-                userId: user.userId,
-                recipes: Array.from({ length: randomNumber() }).map(() => ({
-                    name: uuid(),
-                    public: randomBoolean(),
-                })),
-            },
-        );
+        const { recipes: recipesInBook } = await recipeRepository.create({
+            userId: user.userId,
+            recipes: Array.from({ length: randomNumber() }).map(() => ({
+                name: uuid(),
+                public: randomBoolean(),
+            })),
+        });
 
-        const { recipes: recipesNotInBook } = await KnexRecipeRepository.create(
-            database,
-            {
-                userId: user.userId,
-                recipes: Array.from({ length: randomNumber() }).map(() => ({
-                    name: uuid(),
-                    public: randomBoolean(),
-                })),
-            },
-        );
+        const { recipes: recipesNotInBook } = await recipeRepository.create({
+            userId: user.userId,
+            recipes: Array.from({ length: randomNumber() }).map(() => ({
+                name: uuid(),
+                public: randomBoolean(),
+            })),
+        });
 
-        await KnexBookRepository.saveRecipes(database, {
+        await bookRepository.saveRecipes({
             bookId: book!.bookId,
             recipes: recipesInBook,
         });

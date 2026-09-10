@@ -7,7 +7,6 @@ import type { ListRepository } from "./listRepository.ts";
 import type { MealRepository } from "./mealRepository.ts";
 import type { PlannerRepository } from "./plannerRepository.ts";
 import type { RecipeRepository } from "./recipeRepository.ts";
-import type { Database } from "./repository.ts";
 import type { TagRepository } from "./tagRepository.ts";
 import type { UserRepository } from "./userRepository.ts";
 
@@ -24,5 +23,3 @@ export type AppRepositories = {
     tagRepository: TagRepository;
     userRepository: UserRepository;
 };
-
-export type { Database };

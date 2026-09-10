@@ -1,6 +1,7 @@
 import type { Attachment } from "./attachmentRepository.ts";
 import type { Meal } from "./mealRepository.ts";
-import type { Database, RepositoryService } from "./repository.ts";
+import type { RepositoryMethod } from "./repository.ts";
+import type { HeroImage, Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
 
 export type CookListMealCourse =
@@ -16,19 +17,13 @@ export type CookListMealCourse =
 type CookListMealResponse = {
     mealId: Meal["mealId"];
     course: CookListMealCourse;
-    owner: {
-        userId: User["userId"];
-        firstName: User["firstName"];
-    };
-    sequence: Meal["sequence"] | null;
-    description: Meal["description"] | null;
-    source: Meal["source"] | null;
-    recipeId: Meal["recipeId"] | null;
-    notes: Meal["notes"] | null;
-    heroImage: {
-        attachmentId: string;
-        uri: string;
-    } | null;
+    owner: Owner;
+    sequence: Meal["sequence"];
+    description: Meal["description"];
+    source: Meal["source"];
+    recipeId: Meal["recipeId"];
+    notes: Meal["notes"];
+    heroImage: HeroImage | undefined;
 };
 
 type ReadAllMealsRequest = {
@@ -41,11 +36,11 @@ type ReadAllMealsResponse = {
 
 type CreateCookListMealPayload = {
     course: CookListMealCourse;
-    sequence?: Meal["sequence"];
-    description?: Meal["description"];
-    source?: Meal["source"];
-    recipeId?: Meal["recipeId"];
-    notes?: Meal["notes"];
+    sequence?: Meal["sequence"] | null;
+    description?: Meal["description"] | null;
+    source?: Meal["source"] | null;
+    recipeId?: Meal["recipeId"] | null;
+    notes?: Meal["notes"] | null;
     heroImage?: Attachment["attachmentId"];
 };
 
@@ -60,11 +55,11 @@ type CreateMealsResponse = {
 
 type UpdateCookListMealPayload = {
     course?: CookListMealCourse | null;
-    sequence?: Meal["sequence"];
-    description?: Meal["description"];
-    source?: Meal["source"];
-    recipeId?: Meal["recipeId"];
-    notes?: Meal["notes"];
+    sequence?: Meal["sequence"] | null;
+    description?: Meal["description"] | null;
+    source?: Meal["source"] | null;
+    recipeId?: Meal["recipeId"] | null;
+    notes?: Meal["notes"] | null;
     heroImage?: Attachment["attachmentId"] | null;
     mealId: Meal["mealId"];
 };
@@ -103,29 +98,12 @@ type VerifyMealPermissionsResponse = {
     }>;
 };
 
-export interface CookListRepository<TDatabase extends Database = Database> {
-    createMeals: RepositoryService<
-        TDatabase,
-        CreateMealsRequest,
-        CreateMealsResponse
-    >;
-    deleteMeals: RepositoryService<
-        TDatabase,
-        DeleteMealsRequest,
-        DeleteMealsResponse
-    >;
-    readAllMeals: RepositoryService<
-        TDatabase,
-        ReadAllMealsRequest,
-        ReadAllMealsResponse
-    >;
-    updateMeals: RepositoryService<
-        TDatabase,
-        UpdateMealsRequest,
-        UpdateMealsResponse
-    >;
-    verifyMealPermissions: RepositoryService<
-        TDatabase,
+export interface CookListRepository {
+    createMeals: RepositoryMethod<CreateMealsRequest, CreateMealsResponse>;
+    deleteMeals: RepositoryMethod<DeleteMealsRequest, DeleteMealsResponse>;
+    readAllMeals: RepositoryMethod<ReadAllMealsRequest, ReadAllMealsResponse>;
+    updateMeals: RepositoryMethod<UpdateMealsRequest, UpdateMealsResponse>;
+    verifyMealPermissions: RepositoryMethod<
         VerifyMealPermissionsRequest,
         VerifyMealPermissionsResponse
     >;

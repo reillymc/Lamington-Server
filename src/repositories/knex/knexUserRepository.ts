@@ -3,10 +3,10 @@ import { UniqueViolationError } from "../common/errors.ts";
 import type { UserRepository } from "../userRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { isUniqueViolation } from "./common/postgresErrors.ts";
-import type { KnexDatabase } from "./knex.ts";
+import { knexRepository } from "./knexRepository.ts";
 import { lamington, UserTable } from "./spec/index.ts";
 
-export const KnexUserRepository: UserRepository<KnexDatabase> = {
+export const createKnexUserRepository = knexRepository<UserRepository>({
     read: async (db, { users }) => {
         const userIds = users.map((u) => u.userId);
         const result = await db(lamington.user)
@@ -162,4 +162,4 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
             hasPermissions: result ? statuses.includes(result.status) : false,
         };
     },
-};
+});

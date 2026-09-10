@@ -1,10 +1,10 @@
 import { Undefined } from "@reillymc/es-utils";
-import type { KnexDatabase } from "../../knex.ts";
+import type { Knex } from "knex";
 import { ContentAttachmentTable, lamington } from "../../spec/index.ts";
 
 export const HeroAttachmentActions = {
     save: async (
-        db: KnexDatabase,
+        db: Knex,
         items: Array<{ contentId: string; attachmentId?: string | null }>,
     ) => {
         const itemsToProcess = items.filter(

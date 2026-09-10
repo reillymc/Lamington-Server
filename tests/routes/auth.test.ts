@@ -1,36 +1,35 @@
-import { after, afterEach, beforeEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe } from "node:test";
 import { expect } from "expect";
-import type { Express } from "express";
 import jwt from "jsonwebtoken";
 import request from "supertest";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { comparePassword } from "../../src/services/userService.ts";
 import { CreateUsers } from "../helpers/index.ts";
-import { createTestApp, db, refreshSecret } from "../helpers/setup.ts";
+import {
+    beginTestTransaction,
+    createTestApp,
+    refreshSecret,
+    rollbackTestTransaction,
+    TestContext,
+    withCxIt,
+} from "../helpers/setup.ts";
 
-let database: KnexDatabase;
-let app: Express;
+let { app, userRepository } = TestContext;
 
 beforeEach(async () => {
-    database = await db.transaction();
-    app = createTestApp({ database });
+    await beginTestTransaction();
+    ({ app, userRepository } = createTestApp({}));
 });
 
 afterEach(async () => {
-    await database.rollback();
-});
-
-after(async () => {
-    await db.destroy();
+    await rollbackTestTransaction();
 });
 
 describe("Login a user", () => {
-    it("login respect restrictive rate limit", async () => {
-        app = createTestApp({ database });
+    withCxIt("login respect restrictive rate limit", async () => {
+        ({ app, userRepository } = createTestApp({}));
 
-        const [user] = await CreateUsers(database);
+        const [user] = await CreateUsers(userRepository);
 
         const requestBody: components["schemas"]["AuthLogin"] = {
             email: user!.email,
@@ -50,8 +49,8 @@ describe("Login a user", () => {
         expect(res.statusCode).toEqual(429);
     });
 
-    it("should fail login with invalid email", async () => {
-        const [user] = await CreateUsers(database);
+    withCxIt("should fail login with invalid email", async () => {
+        const [user] = await CreateUsers(userRepository);
 
         if (!user) throw new Error("User not created");
 
@@ -65,8 +64,8 @@ describe("Login a user", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should fail login with invalid password", async () => {
-        const [user] = await CreateUsers(database);
+    withCxIt("should fail login with invalid password", async () => {
+        const [user] = await CreateUsers(userRepository);
 
         if (!user) throw new Error("User not created");
 
@@ -80,8 +79,8 @@ describe("Login a user", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should login with valid credentials", async () => {
-        const [user] = await CreateUsers(database);
+    withCxIt("should login with valid credentials", async () => {
+        const [user] = await CreateUsers(userRepository);
 
         if (!user) throw new Error("User not created");
 
@@ -104,50 +103,61 @@ describe("Login a user", () => {
         expect(data.authorization?.refresh).toBeTruthy();
     });
 
-    it("should return pending error message when logging in with pending account", async () => {
-        const [user] = await CreateUsers(database, {
-            status: "P",
-        });
+    withCxIt(
+        "should return pending error message when logging in with pending account",
+        async () => {
+            const [user] = await CreateUsers(userRepository, {
+                status: "P",
+            });
 
-        if (!user) throw new Error("User not created");
+            if (!user) throw new Error("User not created");
 
-        const requestBody: components["schemas"]["AuthLogin"] = {
-            email: user.email,
-            password: user.password,
-        };
+            const requestBody: components["schemas"]["AuthLogin"] = {
+                email: user.email,
+                password: user.password,
+            };
 
-        const res = await request(app).post("/v1/auth/login").send(requestBody);
+            const res = await request(app)
+                .post("/v1/auth/login")
+                .send(requestBody);
 
-        expect(res.statusCode).toEqual(200);
+            expect(res.statusCode).toEqual(200);
 
-        const { message } = res.body as components["schemas"]["AuthResponse"];
+            const { message } =
+                res.body as components["schemas"]["AuthResponse"];
 
-        expect(message).toEqual("Account is pending approval");
-    });
+            expect(message).toEqual("Account is pending approval");
+        },
+    );
 
-    it("should login successfully but return Blacklisted status for blacklisted user", async () => {
-        const [user] = await CreateUsers(database, {
-            status: "B",
-        });
-        if (!user) throw new Error("User not created");
+    withCxIt(
+        "should login successfully but return Blacklisted status for blacklisted user",
+        async () => {
+            const [user] = await CreateUsers(userRepository, {
+                status: "B",
+            });
+            if (!user) throw new Error("User not created");
 
-        const requestBody: components["schemas"]["AuthLogin"] = {
-            email: user.email,
-            password: user.password,
-        };
+            const requestBody: components["schemas"]["AuthLogin"] = {
+                email: user.email,
+                password: user.password,
+            };
 
-        const res = await request(app).post("/v1/auth/login").send(requestBody);
+            const res = await request(app)
+                .post("/v1/auth/login")
+                .send(requestBody);
 
-        expect(res.statusCode).toEqual(200);
-        const data = res.body as components["schemas"]["AuthResponse"];
-        expect(data.user.status).toEqual("B");
-        expect(data.authorization).toBeUndefined();
-    });
+            expect(res.statusCode).toEqual(200);
+            const data = res.body as components["schemas"]["AuthResponse"];
+            expect(data.user.status).toEqual("B");
+            expect(data.authorization).toBeUndefined();
+        },
+    );
 });
 
 describe("Register a new user", () => {
-    it("should respect restrictive rate limit", async () => {
-        app = createTestApp({ database });
+    withCxIt("should respect restrictive rate limit", async () => {
+        ({ app, userRepository } = createTestApp({}));
 
         const requestBody: components["schemas"]["AuthRegister"] = {
             email: "test@example.com",
@@ -171,7 +181,7 @@ describe("Register a new user", () => {
         expect(res.statusCode).toEqual(429);
     });
 
-    it("should fail register missing password", async () => {
+    withCxIt("should fail register missing password", async () => {
         const requestBody: Partial<components["schemas"]["AuthRegister"]> = {
             email: "user@email.com",
             firstName: "John",
@@ -185,7 +195,7 @@ describe("Register a new user", () => {
         expect(res.statusCode).toEqual(400);
     });
 
-    it("should fail register missing email", async () => {
+    withCxIt("should fail register missing email", async () => {
         const requestBody: Partial<components["schemas"]["AuthRegister"]> = {
             firstName: "John",
             lastName: "Doe",
@@ -199,7 +209,7 @@ describe("Register a new user", () => {
         expect(res.statusCode).toEqual(400);
     });
 
-    it("should fail register with short password", async () => {
+    withCxIt("should fail register with short password", async () => {
         const requestBody: components["schemas"]["AuthRegister"] = {
             email: "user@email.com",
             firstName: "John",
@@ -214,38 +224,38 @@ describe("Register a new user", () => {
         expect(res.statusCode).toEqual(400);
     });
 
-    it("should register new user with valid request and set to pending", async () => {
-        const requestBody: components["schemas"]["AuthRegister"] = {
-            email: "user@email.com",
-            firstName: "John",
-            lastName: "Doe",
-            password: "secure_password",
-        };
+    withCxIt(
+        "should register new user with valid request and set to pending",
+        async () => {
+            const requestBody: components["schemas"]["AuthRegister"] = {
+                email: "user@email.com",
+                firstName: "John",
+                lastName: "Doe",
+                password: "secure_password",
+            };
 
-        const res = await request(app)
-            .post("/v1/auth/register")
-            .send(requestBody);
+            const res = await request(app)
+                .post("/v1/auth/register")
+                .send(requestBody);
 
-        expect(res.statusCode).toEqual(200);
+            expect(res.statusCode).toEqual(200);
 
-        const { users: pendingUsers } = await KnexUserRepository.readAll(
-            database,
-            {
+            const { users: pendingUsers } = await userRepository.readAll({
                 filter: { status: "P" },
-            },
-        );
+            });
 
-        expect(pendingUsers.length).toEqual(1);
+            expect(pendingUsers.length).toEqual(1);
 
-        const [user] = pendingUsers;
+            const [user] = pendingUsers;
 
-        expect(user?.email).toEqual(requestBody.email);
-        expect(user?.firstName).toEqual(requestBody.firstName);
-        expect(user?.lastName).toEqual(requestBody.lastName);
-        expect(user?.status).toEqual("P");
-    });
+            expect(user?.email).toEqual(requestBody.email);
+            expect(user?.firstName).toEqual(requestBody.firstName);
+            expect(user?.lastName).toEqual(requestBody.lastName);
+            expect(user?.status).toEqual("P");
+        },
+    );
 
-    it("should convert email to lower case", async () => {
+    withCxIt("should convert email to lower case", async () => {
         const requestBody: components["schemas"]["AuthRegister"] = {
             email: "Email_Address@hosT.CoM",
             firstName: "John",
@@ -259,12 +269,9 @@ describe("Register a new user", () => {
 
         expect(res.statusCode).toEqual(200);
 
-        const { users: pendingUsers } = await KnexUserRepository.readAll(
-            database,
-            {
-                filter: { status: "P" },
-            },
-        );
+        const { users: pendingUsers } = await userRepository.readAll({
+            filter: { status: "P" },
+        });
 
         expect(pendingUsers.length).toEqual(1);
 
@@ -273,39 +280,42 @@ describe("Register a new user", () => {
         expect(user?.email).toEqual(requestBody.email?.toLowerCase());
     });
 
-    it("hashed password should not equal plain text password", async () => {
-        const requestBody = {
-            email: "user@email.com",
-            firstName: "John",
-            lastName: "Doe",
-            password: "secure_password",
-        } satisfies components["schemas"]["AuthRegister"];
+    withCxIt(
+        "hashed password should not equal plain text password",
+        async () => {
+            const requestBody = {
+                email: "user@email.com",
+                firstName: "John",
+                lastName: "Doe",
+                password: "secure_password",
+            } satisfies components["schemas"]["AuthRegister"];
 
-        const res = await request(app)
-            .post("/v1/auth/register")
-            .send(requestBody);
+            const res = await request(app)
+                .post("/v1/auth/register")
+                .send(requestBody);
 
-        expect(res.statusCode).toEqual(200);
+            expect(res.statusCode).toEqual(200);
 
-        const {
-            users: [user],
-        } = await KnexUserRepository.readCredentials(database, {
-            users: [{ email: requestBody.email }],
-        });
+            const {
+                users: [user],
+            } = await userRepository.readCredentials({
+                users: [{ email: requestBody.email }],
+            });
 
-        if (!user) throw new Error("User not created");
+            if (!user) throw new Error("User not created");
 
-        expect(user.password).not.toEqual("password");
+            expect(user.password).not.toEqual("password");
 
-        const passwordCorrect = await comparePassword(
-            requestBody.password,
-            user.password,
-        );
+            const passwordCorrect = await comparePassword(
+                requestBody.password,
+                user.password,
+            );
 
-        expect(passwordCorrect).toBeTruthy();
-    });
+            expect(passwordCorrect).toBeTruthy();
+        },
+    );
 
-    it("should fail to register with existing email", async () => {
+    withCxIt("should fail to register with existing email", async () => {
         const user = {
             email: "duplicate@example.com",
             firstName: "John",
@@ -329,8 +339,8 @@ describe("Refresh authentication token", () => {
         });
     };
 
-    it("should respect general rate limit", async () => {
-        app = createTestApp({ database });
+    withCxIt("should respect general rate limit", async () => {
+        ({ app, userRepository } = createTestApp({}));
 
         const requestBody = { refreshToken: "some-token" };
 
@@ -349,8 +359,8 @@ describe("Refresh authentication token", () => {
         expect(res.statusCode).toEqual(429);
     });
 
-    it("should refresh tokens with a valid refresh token", async () => {
-        const [user] = await CreateUsers(database);
+    withCxIt("should refresh tokens with a valid refresh token", async () => {
+        const [user] = await CreateUsers(userRepository);
         if (!user) throw new Error("User not created");
 
         const refreshToken = createValidRefreshToken(user.userId);
@@ -368,7 +378,7 @@ describe("Refresh authentication token", () => {
         expect(data.user.userId).toEqual(user.userId);
     });
 
-    it("should fail with invalid refresh token", async () => {
+    withCxIt("should fail with invalid refresh token", async () => {
         const res = await request(app)
             .post("/v1/auth/refresh")
             .send({ refreshToken: "invalid-token" });
@@ -376,7 +386,7 @@ describe("Refresh authentication token", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should fail with expired refresh token", async () => {
+    withCxIt("should fail with expired refresh token", async () => {
         const expiredToken = jwt.sign({ userId: "some-id" }, refreshSecret, {
             noTimestamp: true,
             expiresIn: "-1s",
@@ -389,7 +399,7 @@ describe("Refresh authentication token", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should fail if user does not exist", async () => {
+    withCxIt("should fail if user does not exist", async () => {
         const nonExistentId = "00000000-0000-0000-0000-000000000000";
         const refreshToken = createValidRefreshToken(nonExistentId);
 
@@ -400,8 +410,8 @@ describe("Refresh authentication token", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should fail if user is Blacklisted", async () => {
-        const [user] = await CreateUsers(database, {
+    withCxIt("should fail if user is Blacklisted", async () => {
+        const [user] = await CreateUsers(userRepository, {
             status: "B",
         });
 
@@ -414,8 +424,8 @@ describe("Refresh authentication token", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should fail if user is Pending", async () => {
-        const [user] = await CreateUsers(database, {
+    withCxIt("should fail if user is Pending", async () => {
+        const [user] = await CreateUsers(userRepository, {
             status: "P",
         });
 

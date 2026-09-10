@@ -1,8 +1,9 @@
 import type { Attachment } from "./attachmentRepository.ts";
 import type { Ingredient } from "./ingredientRepository.ts";
-import type { Database, RepositoryService } from "./repository.ts";
+import type { RepositoryMethod } from "./repository.ts";
 import type { Tag } from "./tagRepository.ts";
 import type { Content } from "./temp.ts";
+import type { Owner } from "./types.ts";
 import type { User } from "./userRepository.ts";
 
 type NumberValue = { representation: "number"; value: string };
@@ -124,10 +125,7 @@ type BaseResponse = {
     name: Recipe["name"];
     cookTime: Recipe["cookTime"];
     prepTime: Recipe["prepTime"];
-    owner: {
-        userId: User["userId"];
-        firstName: User["firstName"];
-    };
+    owner: Owner;
     rating: {
         average: RecipeRating["rating"] | undefined;
         personal: RecipeRating["rating"] | undefined;
@@ -261,20 +259,15 @@ type SaveRatingResponse = {
     }>;
 };
 
-export interface RecipeRepository<TDatabase extends Database = Database> {
-    readAll: RepositoryService<TDatabase, ReadAllRequest, ReadAllResponse>;
-    verifyPermissions: RepositoryService<
-        TDatabase,
+export interface RecipeRepository {
+    readAll: RepositoryMethod<ReadAllRequest, ReadAllResponse>;
+    verifyPermissions: RepositoryMethod<
         VerifyPermissionsRequest,
         VerifyPermissionsResponse
     >;
-    read: RepositoryService<TDatabase, ReadRequest, ReadResponse>;
-    create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;
-    update: RepositoryService<TDatabase, UpdateRequest, UpdateResponse>;
-    delete: RepositoryService<TDatabase, DeleteRequest, DeleteResponse>;
-    saveRating: RepositoryService<
-        TDatabase,
-        SaveRatingRequest,
-        SaveRatingResponse
-    >;
+    read: RepositoryMethod<ReadRequest, ReadResponse>;
+    create: RepositoryMethod<CreateRequest, CreateResponse>;
+    update: RepositoryMethod<UpdateRequest, UpdateResponse>;
+    delete: RepositoryMethod<DeleteRequest, DeleteResponse>;
+    saveRating: RepositoryMethod<SaveRatingRequest, SaveRatingResponse>;
 }

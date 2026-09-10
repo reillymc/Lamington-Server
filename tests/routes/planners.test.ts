@@ -1,13 +1,7 @@
-import { after, afterEach, beforeEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe } from "node:test";
 import { expect } from "expect";
-import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
-import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
-import { KnexCookListRepository } from "../../src/repositories/knex/knexCooklistRepository.ts";
-import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRepository.ts";
-import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import {
     CreateUsers,
@@ -17,7 +11,13 @@ import {
     randomYear,
 } from "../helpers/index.ts";
 import { randomCourse } from "../helpers/meal.ts";
-import { createTestApp, db } from "../helpers/setup.ts";
+import {
+    beginTestTransaction,
+    createTestApp,
+    rollbackTestTransaction,
+    TestContext,
+    withCxIt,
+} from "../helpers/setup.ts";
 
 const randomMeal = () =>
     ({
@@ -33,32 +33,41 @@ const randomColor = (): components["schemas"]["PlannerColor"] =>
         Math.floor(Math.random() * 5)
     ]!;
 
-let database: KnexDatabase;
-let app: Express;
+let {
+    app,
+    attachmentRepository,
+    cooklistRepository,
+    plannerRepository,
+    recipeRepository,
+    userRepository,
+} = TestContext;
 
 beforeEach(async () => {
-    database = await db.transaction();
-    app = createTestApp({ database });
+    await beginTestTransaction();
+    ({
+        app,
+        attachmentRepository,
+        cooklistRepository,
+        plannerRepository,
+        recipeRepository,
+        userRepository,
+    } = createTestApp({}));
 });
 
 afterEach(async () => {
-    await database.rollback();
-});
-
-after(async () => {
-    await db.destroy();
+    await rollbackTestTransaction();
 });
 
 describe("Get user planners", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get("/v1/planners");
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return all planners created by the user", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return all planners created by the user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
-        const { planners } = await KnexPlannerRepository.create(database, {
+        const { planners } = await plannerRepository.create({
             userId: user.userId,
             planners: [
                 { name: uuid(), description: uuid() },
@@ -80,11 +89,11 @@ describe("Get user planners", () => {
         expect(ids).toContain(planners[2]!.plannerId);
     });
 
-    it("should return planners a user is a member of", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [otherUser] = await CreateUsers(database);
+    withCxIt("should return planners a user is a member of", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [otherUser] = await CreateUsers(userRepository);
 
-        const { planners } = await KnexPlannerRepository.create(database, {
+        const { planners } = await plannerRepository.create({
             userId: otherUser!.userId,
             planners: [
                 { name: uuid(), description: uuid() },
@@ -95,7 +104,7 @@ describe("Get user planners", () => {
 
         const [adminPlanner, memberPlanner, pendingPlanner] = planners;
 
-        await KnexPlannerRepository.saveMembers(database, [
+        await plannerRepository.saveMembers([
             {
                 plannerId: adminPlanner!.plannerId,
                 members: [{ userId: user.userId, status: "A" }],
@@ -121,54 +130,61 @@ describe("Get user planners", () => {
         expect(ids).toContain(pendingPlanner!.plannerId);
     });
 
-    it("should not return planners where the user is blacklisted", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [otherUser] = await CreateUsers(database);
+    withCxIt(
+        "should not return planners where the user is blacklisted",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [otherUser] = await CreateUsers(userRepository);
 
-        const { planners } = await KnexPlannerRepository.create(database, {
-            userId: otherUser!.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
+            const { planners } = await plannerRepository.create({
+                userId: otherUser!.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
 
-        const [blockedPlanner] = planners;
+            const [blockedPlanner] = planners;
 
-        await KnexPlannerRepository.saveMembers(database, [
-            {
-                plannerId: blockedPlanner!.plannerId,
-                members: [{ userId: user.userId, status: "B" }],
-            },
-        ]);
+            await plannerRepository.saveMembers([
+                {
+                    plannerId: blockedPlanner!.plannerId,
+                    members: [{ userId: user.userId, status: "B" }],
+                },
+            ]);
 
-        const res = await request(app).get("/v1/planners").set(token);
-        expect(res.statusCode).toEqual(200);
+            const res = await request(app).get("/v1/planners").set(token);
+            expect(res.statusCode).toEqual(200);
 
-        const body = res.body as components["schemas"]["Planner"][];
-        const ids = body.map((p) => p.plannerId);
+            const body = res.body as components["schemas"]["Planner"][];
+            const ids = body.map((p) => p.plannerId);
 
-        expect(ids).not.toContain(blockedPlanner!.plannerId);
-    });
+            expect(ids).not.toContain(blockedPlanner!.plannerId);
+        },
+    );
 
-    it("should not return planners belonging to other users", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [otherUser] = await CreateUsers(database);
+    withCxIt(
+        "should not return planners belonging to other users",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
+            const [otherUser] = await CreateUsers(userRepository);
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: otherUser!.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: otherUser!.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
 
-        const res = await request(app).get("/v1/planners").set(token);
-        expect(res.statusCode).toEqual(200);
+            const res = await request(app).get("/v1/planners").set(token);
+            expect(res.statusCode).toEqual(200);
 
-        const body = res.body as components["schemas"]["Planner"][];
-        const found = body.find((p) => p.plannerId === planner!.plannerId);
-        expect(found).toBeUndefined();
-    });
+            const body = res.body as components["schemas"]["Planner"][];
+            const found = body.find((p) => p.plannerId === planner!.plannerId);
+            expect(found).toBeUndefined();
+        },
+    );
 
-    it("should return correct planner details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return correct planner details", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const plannerData: components["schemas"]["PlannerCreate"] = {
             name: uuid(),
@@ -178,7 +194,7 @@ describe("Get user planners", () => {
 
         const {
             planners: [createdPlanner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [plannerData],
         });
@@ -203,46 +219,49 @@ describe("Get user planners", () => {
 });
 
 describe("Get a planner", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get(`/v1/planners/${uuid()}`);
 
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent planner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent planner", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app).get(`/v1/planners/${uuid()}`).set(token);
 
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not return a planner the user doesn't have access to", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
+    withCxIt(
+        "should not return a planner the user doesn't have access to",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: plannerOwner!.userId,
+                planners: [
+                    { name: uuid(), description: uuid(), color: randomColor() },
+                ],
+            });
+
+            const res = await request(app)
+                .get(`/v1/planners/${planner!.plannerId}`)
+                .set(token);
+
+            expect(res.statusCode).toEqual(404);
+        },
+    );
+
+    withCxIt("should return correct planner details", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: plannerOwner!.userId,
-            planners: [
-                { name: uuid(), description: uuid(), color: randomColor() },
-            ],
-        });
-
-        const res = await request(app)
-            .get(`/v1/planners/${planner!.plannerId}`)
-            .set(token);
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should return correct planner details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [
                 { name: uuid(), description: uuid(), color: randomColor() },
@@ -266,74 +285,82 @@ describe("Get a planner", () => {
         expect(data?.status).toEqual("O");
     });
 
-    it("should return the planner for allowed member statuses (A, M)", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
+    withCxIt(
+        "should return the planner for allowed member statuses (A, M)",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M"] as const;
+            const statuses = ["A", "M"] as const;
 
-        for (const status of statuses) {
-            const {
-                planners: [planner],
-            } = await KnexPlannerRepository.create(database, {
-                userId: plannerOwner!.userId,
-                planners: [{ name: uuid(), description: uuid() }],
-            });
+            for (const status of statuses) {
+                const {
+                    planners: [planner],
+                } = await plannerRepository.create({
+                    userId: plannerOwner!.userId,
+                    planners: [{ name: uuid(), description: uuid() }],
+                });
 
-            await KnexPlannerRepository.saveMembers(database, {
-                plannerId: planner!.plannerId,
-                members: [{ userId: user.userId, status }],
-            });
+                await plannerRepository.saveMembers({
+                    plannerId: planner!.plannerId,
+                    members: [{ userId: user.userId, status }],
+                });
 
-            const res = await request(app)
-                .get(`/v1/planners/${planner!.plannerId}`)
-                .set(token);
+                const res = await request(app)
+                    .get(`/v1/planners/${planner!.plannerId}`)
+                    .set(token);
 
-            expect(res.statusCode).toEqual(200);
+                expect(res.statusCode).toEqual(200);
 
-            const data = res.body as components["schemas"]["Planner"];
-            expect(data?.plannerId).toEqual(planner!.plannerId);
-            expect(data?.status).toEqual(status);
-        }
-    });
+                const data = res.body as components["schemas"]["Planner"];
+                expect(data?.plannerId).toEqual(planner!.plannerId);
+                expect(data?.status).toEqual(status);
+            }
+        },
+    );
 
-    it("should return 404 for disallowed member statuses (P, B)", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 for disallowed member statuses (P, B)",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
 
-        const statuses = ["P", "B"] as const;
+            const statuses = ["P", "B"] as const;
 
-        for (const status of statuses) {
-            const {
-                planners: [planner],
-            } = await KnexPlannerRepository.create(database, {
-                userId: plannerOwner!.userId,
-                planners: [{ name: uuid(), description: uuid() }],
-            });
+            for (const status of statuses) {
+                const {
+                    planners: [planner],
+                } = await plannerRepository.create({
+                    userId: plannerOwner!.userId,
+                    planners: [{ name: uuid(), description: uuid() }],
+                });
 
-            await KnexPlannerRepository.saveMembers(database, {
-                plannerId: planner!.plannerId,
-                members: [{ userId: user.userId, status }],
-            });
+                await plannerRepository.saveMembers({
+                    plannerId: planner!.plannerId,
+                    members: [{ userId: user.userId, status }],
+                });
 
-            const res = await request(app)
-                .get(`/v1/planners/${planner!.plannerId}`)
-                .set(token);
+                const res = await request(app)
+                    .get(`/v1/planners/${planner!.plannerId}`)
+                    .set(token);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Delete a planner", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).delete(`/v1/planners/${uuid()}`);
 
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent planner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent planner", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .delete(`/v1/planners/${uuid()}`)
@@ -343,60 +370,67 @@ describe("Delete a planner", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not allow deletion if the user is not the planner owner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
+    withCxIt(
+        "should not allow deletion if the user is not the planner owner",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: plannerOwner!.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+
+            const res = await request(app)
+                .delete(`/v1/planners/${planner!.plannerId}`)
+                .set(token)
+                .send();
+
+            expect(res.statusCode).toEqual(404);
+        },
+    );
+
+    withCxIt(
+        "should not allow deletion if the user is a planner member but not the owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: plannerOwner!.userId,
+                planners: [
+                    {
+                        name: uuid(),
+                        description: uuid(),
+                    },
+                ],
+            });
+
+            await plannerRepository.saveMembers({
+                plannerId: planner!.plannerId,
+                members: [{ userId: user!.userId, status: "A" }],
+            });
+
+            const res = await request(app)
+                .delete(`/v1/planners/${planner!.plannerId}`)
+                .set(token)
+                .send();
+
+            expect(res.statusCode).toEqual(404);
+        },
+    );
+
+    withCxIt("should successfully delete the planner", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: plannerOwner!.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const res = await request(app)
-            .delete(`/v1/planners/${planner!.plannerId}`)
-            .set(token)
-            .send();
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should not allow deletion if the user is a planner member but not the owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: plannerOwner!.userId,
-            planners: [
-                {
-                    name: uuid(),
-                    description: uuid(),
-                },
-            ],
-        });
-
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: user!.userId, status: "A" }],
-        });
-
-        const res = await request(app)
-            .delete(`/v1/planners/${planner!.plannerId}`)
-            .set(token)
-            .send();
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should successfully delete the planner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user!.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
@@ -408,7 +442,7 @@ describe("Delete a planner", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const { planners } = await KnexPlannerRepository.read(database, {
+        const { planners } = await plannerRepository.read({
             planners: [planner!],
             userId: user.userId,
         });
@@ -418,26 +452,26 @@ describe("Delete a planner", () => {
 });
 
 describe("Get planner meals", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get(
             `/v1/planners/${uuid()}/meals/${randomYear()}/${randomMonth()}`,
         );
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return the list of meals", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return the list of meals", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
 
         const {
             meals: [meal],
-        } = await KnexPlannerRepository.createMeals(database, {
+        } = await plannerRepository.createMeals({
             userId: user.userId,
             plannerId: planner!.plannerId,
             meals: [
@@ -478,154 +512,17 @@ describe("Get planner meals", () => {
         expect(plannerMeal.recipeId).toEqual(undefined);
     });
 
-    it("should return 404 if the user does not have permissions for the planner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 if the user does not have permissions for the planner",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: plannerOwner!.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const res = await request(app)
-            .get(
-                `/v1/planners/${planner!.plannerId}/meals/${randomYear()}/${randomMonth()}`,
-            )
-            .set(token);
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should only return meals within the requested year and month", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const targetYear = 2023;
-        const targetMonth = 5;
-
-        const {
-            meals: [targetMeal, wrongMonthMeal, wrongYearMeal],
-        } = await KnexPlannerRepository.createMeals(database, {
-            userId: user.userId,
-            plannerId: planner!.plannerId,
-            meals: [
-                {
-                    course: randomCourse(),
-                    description: "Target Meal",
-                    dayOfMonth: 1,
-                    month: targetMonth,
-                    year: targetYear,
-                },
-                {
-                    course: "lunch",
-                    description: "Wrong Month",
-                    dayOfMonth: 1,
-                    month: targetMonth + 1,
-                    year: targetYear,
-                },
-                {
-                    course: "breakfast",
-                    description: "Wrong Year",
-                    dayOfMonth: 1,
-                    month: targetMonth,
-                    year: targetYear + 1,
-                },
-            ],
-        });
-
-        const res = await request(app)
-            .get(
-                `/v1/planners/${planner!.plannerId}/meals/${targetYear}/${targetMonth}`,
-            )
-            .set(token);
-
-        expect(res.statusCode).toEqual(200);
-
-        const plannerMealData =
-            res.body as components["schemas"]["PlannerMeal"][];
-
-        expect(plannerMealData).toHaveLength(1);
-        expect(plannerMealData[0]!.mealId).toEqual(targetMeal!.mealId);
-        expect(
-            plannerMealData.find((m) => m.mealId === wrongMonthMeal!.mealId),
-        ).toBeUndefined();
-        expect(
-            plannerMealData.find((m) => m.mealId === wrongYearMeal!.mealId),
-        ).toBeUndefined();
-    });
-
-    it("should return planner meals for allowed member statuses (A, M)", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
-
-        const statuses = ["A", "M"] as const;
-
-        for (const status of statuses) {
             const {
                 planners: [planner],
-            } = await KnexPlannerRepository.create(database, {
+            } = await plannerRepository.create({
                 userId: plannerOwner!.userId,
                 planners: [{ name: uuid(), description: uuid() }],
-            });
-
-            await KnexPlannerRepository.saveMembers(database, {
-                plannerId: planner!.plannerId,
-                members: [{ userId: user.userId, status }],
-            });
-
-            const {
-                meals: [meal],
-            } = await KnexPlannerRepository.createMeals(database, {
-                userId: plannerOwner!.userId,
-                plannerId: planner!.plannerId,
-                meals: [
-                    {
-                        course: randomCourse(),
-                        description: uuid(),
-                        dayOfMonth: randomDay(),
-                        month: randomMonth(),
-                        year: randomYear(),
-                    },
-                ],
-            });
-
-            const res = await request(app)
-                .get(
-                    `/v1/planners/${planner!.plannerId}/meals/${meal!.year}/${meal!.month}`,
-                )
-                .set(token);
-
-            expect(res.statusCode).toEqual(200);
-            expect(res.body).toHaveLength(1);
-            expect(res.body[0].mealId).toEqual(meal!.mealId);
-        }
-    });
-
-    it("should return 404 for planner meals if the user is blacklisted or pending", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
-
-        const statuses = ["B", "P"] as const;
-
-        for (const status of statuses) {
-            const {
-                planners: [planner],
-            } = await KnexPlannerRepository.create(database, {
-                userId: plannerOwner!.userId,
-                planners: [{ name: uuid(), description: uuid() }],
-            });
-
-            await KnexPlannerRepository.saveMembers(database, {
-                plannerId: planner!.plannerId,
-                members: [{ userId: user.userId, status }],
             });
 
             const res = await request(app)
@@ -635,15 +532,169 @@ describe("Get planner meals", () => {
                 .set(token);
 
             expect(res.statusCode).toEqual(404);
-        }
-    });
+        },
+    );
 
-    it("should not return cooklist meals", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt(
+        "should only return meals within the requested year and month",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+
+            const targetYear = 2023;
+            const targetMonth = 5;
+
+            const {
+                meals: [targetMeal, wrongMonthMeal, wrongYearMeal],
+            } = await plannerRepository.createMeals({
+                userId: user.userId,
+                plannerId: planner!.plannerId,
+                meals: [
+                    {
+                        course: randomCourse(),
+                        description: "Target Meal",
+                        dayOfMonth: 1,
+                        month: targetMonth,
+                        year: targetYear,
+                    },
+                    {
+                        course: "lunch",
+                        description: "Wrong Month",
+                        dayOfMonth: 1,
+                        month: targetMonth + 1,
+                        year: targetYear,
+                    },
+                    {
+                        course: "breakfast",
+                        description: "Wrong Year",
+                        dayOfMonth: 1,
+                        month: targetMonth,
+                        year: targetYear + 1,
+                    },
+                ],
+            });
+
+            const res = await request(app)
+                .get(
+                    `/v1/planners/${planner!.plannerId}/meals/${targetYear}/${targetMonth}`,
+                )
+                .set(token);
+
+            expect(res.statusCode).toEqual(200);
+
+            const plannerMealData =
+                res.body as components["schemas"]["PlannerMeal"][];
+
+            expect(plannerMealData).toHaveLength(1);
+            expect(plannerMealData[0]!.mealId).toEqual(targetMeal!.mealId);
+            expect(
+                plannerMealData.find(
+                    (m) => m.mealId === wrongMonthMeal!.mealId,
+                ),
+            ).toBeUndefined();
+            expect(
+                plannerMealData.find((m) => m.mealId === wrongYearMeal!.mealId),
+            ).toBeUndefined();
+        },
+    );
+
+    withCxIt(
+        "should return planner meals for allowed member statuses (A, M)",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
+
+            const statuses = ["A", "M"] as const;
+
+            for (const status of statuses) {
+                const {
+                    planners: [planner],
+                } = await plannerRepository.create({
+                    userId: plannerOwner!.userId,
+                    planners: [{ name: uuid(), description: uuid() }],
+                });
+
+                await plannerRepository.saveMembers({
+                    plannerId: planner!.plannerId,
+                    members: [{ userId: user.userId, status }],
+                });
+
+                const {
+                    meals: [meal],
+                } = await plannerRepository.createMeals({
+                    userId: plannerOwner!.userId,
+                    plannerId: planner!.plannerId,
+                    meals: [
+                        {
+                            course: randomCourse(),
+                            description: uuid(),
+                            dayOfMonth: randomDay(),
+                            month: randomMonth(),
+                            year: randomYear(),
+                        },
+                    ],
+                });
+
+                const res = await request(app)
+                    .get(
+                        `/v1/planners/${planner!.plannerId}/meals/${meal!.year}/${meal!.month}`,
+                    )
+                    .set(token);
+
+                expect(res.statusCode).toEqual(200);
+                expect(res.body).toHaveLength(1);
+                expect(res.body[0].mealId).toEqual(meal!.mealId);
+            }
+        },
+    );
+
+    withCxIt(
+        "should return 404 for planner meals if the user is blacklisted or pending",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
+
+            const statuses = ["B", "P"] as const;
+
+            for (const status of statuses) {
+                const {
+                    planners: [planner],
+                } = await plannerRepository.create({
+                    userId: plannerOwner!.userId,
+                    planners: [{ name: uuid(), description: uuid() }],
+                });
+
+                await plannerRepository.saveMembers({
+                    plannerId: planner!.plannerId,
+                    members: [{ userId: user.userId, status }],
+                });
+
+                const res = await request(app)
+                    .get(
+                        `/v1/planners/${planner!.plannerId}/meals/${randomYear()}/${randomMonth()}`,
+                    )
+                    .set(token);
+
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
+
+    withCxIt("should not return cooklist meals", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
@@ -651,14 +702,14 @@ describe("Get planner meals", () => {
         const year = randomYear();
         const month = randomMonth();
 
-        await KnexCookListRepository.createMeals(database, {
+        await cooklistRepository.createMeals({
             userId: user.userId,
             meals: [
                 { description: uuid(), course: randomCourse(), sequence: 1 },
             ],
         });
 
-        await KnexPlannerRepository.createMeals(database, {
+        await plannerRepository.createMeals({
             userId: user.userId,
             plannerId: planner!.plannerId,
             meals: [
@@ -682,14 +733,14 @@ describe("Get planner meals", () => {
 });
 
 describe("Create a planner", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post("/v1/planners");
 
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should successfully create a new planner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should successfully create a new planner", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const planner = {
             name: uuid(),
@@ -704,10 +755,8 @@ describe("Create a planner", () => {
 
         expect(res.statusCode).toEqual(201);
 
-        const { planners: savedPlanners } = await KnexPlannerRepository.readAll(
-            database,
-            user,
-        );
+        const { planners: savedPlanners } =
+            await plannerRepository.readAll(user);
 
         expect(savedPlanners.length).toEqual(1);
 
@@ -719,37 +768,49 @@ describe("Create a planner", () => {
         expect(savedPlanner?.owner.userId).toEqual(user.userId);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
 
-        const res = await request(app).post("/v1/planners").set(token).send({
-            name: uuid(),
-            description: uuid(),
-            color: randomColor(),
-            extra: "invalid",
-        });
-        expect(res.statusCode).toEqual(400);
-    });
+            const res = await request(app)
+                .post("/v1/planners")
+                .set(token)
+                .send({
+                    name: uuid(),
+                    description: uuid(),
+                    color: randomColor(),
+                    extra: "invalid",
+                });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app).post("/v1/planners").set(token).send({
-            name: 12345,
-            description: uuid(),
-            color: randomColor(),
-        });
-        expect(res.statusCode).toEqual(400);
-    });
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
+            const res = await request(app)
+                .post("/v1/planners")
+                .set(token)
+                .send({
+                    name: 12345,
+                    description: uuid(),
+                    color: randomColor(),
+                });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 });
 
 describe("Update a planner", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).patch(`/v1/planners/${uuid()}`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent planner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent planner", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
         const res = await request(app)
             .patch(`/v1/planners/${uuid()}`)
             .set(token)
@@ -757,113 +818,131 @@ describe("Update a planner", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not allow update if the user is not the planner owner (A, M, P, B)", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
+    withCxIt(
+        "should not allow update if the user is not the planner owner (A, M, P, B)",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "P", "B"] as const;
+            const statuses = ["A", "M", "P", "B"] as const;
 
-        for (const status of statuses) {
+            for (const status of statuses) {
+                const {
+                    planners: [planner],
+                } = await plannerRepository.create({
+                    userId: owner!.userId,
+                    planners: [{ name: uuid(), description: uuid() }],
+                });
+
+                await plannerRepository.saveMembers({
+                    plannerId: planner!.plannerId,
+                    members: [{ userId: user.userId, status }],
+                });
+
+                const res = await request(app)
+                    .patch(`/v1/planners/${planner!.plannerId}`)
+                    .set(token)
+                    .send({ name: uuid() });
+
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
+
+    withCxIt(
+        "should save updated planner details when the user is the planner owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
             const {
                 planners: [planner],
-            } = await KnexPlannerRepository.create(database, {
-                userId: owner!.userId,
-                planners: [{ name: uuid(), description: uuid() }],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [
+                    { name: uuid(), description: uuid(), color: randomColor() },
+                ],
             });
 
-            await KnexPlannerRepository.saveMembers(database, {
-                plannerId: planner!.plannerId,
-                members: [{ userId: user.userId, status }],
+            const updatedPlanner = {
+                name: uuid(),
+                description: uuid(),
+                color: randomColor(),
+            } satisfies components["schemas"]["PlannerUpdate"];
+
+            const res = await request(app)
+                .patch(`/v1/planners/${planner!.plannerId}`)
+                .set(token)
+                .send(updatedPlanner);
+
+            expect(res.statusCode).toEqual(200);
+
+            const {
+                planners: [savedPlanner],
+            } = await plannerRepository.read({
+                planners: [planner!],
+                userId: user.userId,
+            });
+
+            expect(savedPlanner?.name).toEqual(updatedPlanner.name);
+            expect(savedPlanner?.color).toEqual(updatedPlanner.color);
+            expect(savedPlanner?.description).toEqual(
+                updatedPlanner.description,
+            );
+            expect(savedPlanner?.plannerId).toEqual(planner!.plannerId);
+            expect(savedPlanner?.owner.userId).toEqual(user.userId);
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
             });
 
             const res = await request(app)
                 .patch(`/v1/planners/${planner!.plannerId}`)
                 .set(token)
-                .send({ name: uuid() });
+                .send({ extra: "invalid" });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
 
-    it("should save updated planner details when the user is the planner owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [
-                { name: uuid(), description: uuid(), color: randomColor() },
-            ],
-        });
+            const res = await request(app)
+                .patch(`/v1/planners/${planner!.plannerId}`)
+                .set(token)
+                .send({ name: 12345 });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 
-        const updatedPlanner = {
-            name: uuid(),
-            description: uuid(),
-            color: randomColor(),
-        } satisfies components["schemas"]["PlannerUpdate"];
-
-        const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}`)
-            .set(token)
-            .send(updatedPlanner);
-
-        expect(res.statusCode).toEqual(200);
-
-        const {
-            planners: [savedPlanner],
-        } = await KnexPlannerRepository.read(database, {
-            planners: [planner!],
-            userId: user.userId,
-        });
-
-        expect(savedPlanner?.name).toEqual(updatedPlanner.name);
-        expect(savedPlanner?.color).toEqual(updatedPlanner.color);
-        expect(savedPlanner?.description).toEqual(updatedPlanner.description);
-        expect(savedPlanner?.plannerId).toEqual(planner!.plannerId);
-        expect(savedPlanner?.owner.userId).toEqual(user.userId);
-    });
-
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should fail if a required field is set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}`)
-            .set(token)
-            .send({ extra: "invalid" });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}`)
-            .set(token)
-            .send({ name: 12345 });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
@@ -877,13 +956,13 @@ describe("Update a planner", () => {
 });
 
 describe("Add a meal to a planner", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).post(`/v1/planners/${uuid()}/meals`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent planner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent planner", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .post(`/v1/planners/${uuid()}/meals`)
@@ -899,87 +978,90 @@ describe("Add a meal to a planner", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should create a planner meal and return the correct details", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt(
+        "should create a planner meal and return the correct details",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
 
-        const {
-            attachments: [attachment],
-        } = await KnexAttachmentRepository.create(database, {
-            userId: user.userId,
-            attachments: [{ uri: uuid() }],
-        });
+            const {
+                attachments: [attachment],
+            } = await attachmentRepository.create({
+                userId: user.userId,
+                attachments: [{ uri: uuid() }],
+            });
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
 
-        const mealData = {
-            dayOfMonth: randomDay(),
-            month: randomMonth(),
-            course: randomCourse(),
-            year: randomYear(),
-            description: uuid(),
-            heroImage: attachment!.attachmentId,
-        } satisfies components["schemas"]["PlannerMealCreate"];
+            const mealData = {
+                dayOfMonth: randomDay(),
+                month: randomMonth(),
+                course: randomCourse(),
+                year: randomYear(),
+                description: uuid(),
+                heroImage: attachment!.attachmentId,
+            } satisfies components["schemas"]["PlannerMealCreate"];
 
-        const res = await request(app)
-            .post(`/v1/planners/${planner!.plannerId}/meals`)
-            .set(token)
-            .send(mealData);
+            const res = await request(app)
+                .post(`/v1/planners/${planner!.plannerId}/meals`)
+                .set(token)
+                .send(mealData);
 
-        expect(res.statusCode).toEqual(201);
-        const [returnedMeal] =
-            res.body as components["schemas"]["PlannerMeal"][];
+            expect(res.statusCode).toEqual(201);
+            const [returnedMeal] =
+                res.body as components["schemas"]["PlannerMeal"][];
 
-        expect(returnedMeal!.plannerId).toEqual(planner!.plannerId);
-        expect(returnedMeal!.dayOfMonth).toEqual(mealData.dayOfMonth);
-        expect(returnedMeal!.month).toEqual(mealData.month);
-        expect(returnedMeal!.year).toEqual(mealData.year);
-        expect(returnedMeal!.course).toEqual(mealData.course);
-        expect(returnedMeal!.description).toEqual(mealData.description);
-        expect(returnedMeal!.owner.userId).toEqual(user.userId);
-        expect(returnedMeal!.heroImage!.attachmentId).toEqual(
-            mealData.heroImage,
-        );
-        expect(returnedMeal!.heroImage!.uri).toEqual(attachment!.uri);
+            expect(returnedMeal!.plannerId).toEqual(planner!.plannerId);
+            expect(returnedMeal!.dayOfMonth).toEqual(mealData.dayOfMonth);
+            expect(returnedMeal!.month).toEqual(mealData.month);
+            expect(returnedMeal!.year).toEqual(mealData.year);
+            expect(returnedMeal!.course).toEqual(mealData.course);
+            expect(returnedMeal!.description).toEqual(mealData.description);
+            expect(returnedMeal!.owner.userId).toEqual(user.userId);
+            expect(returnedMeal!.heroImage!.attachmentId).toEqual(
+                mealData.heroImage,
+            );
+            expect(returnedMeal!.heroImage!.uri).toEqual(attachment!.uri);
 
-        const { meals: savedMeals } = await KnexPlannerRepository.readAllMeals(
-            database,
-            {
+            const { meals: savedMeals } = await plannerRepository.readAllMeals({
                 userId: user.userId,
                 filter: { plannerId: planner!.plannerId },
-            },
-        );
+            });
 
-        expect(savedMeals).toHaveLength(1);
-        const [savedMeal] = savedMeals;
+            expect(savedMeals).toHaveLength(1);
+            const [savedMeal] = savedMeals;
 
-        expect(savedMeal!.mealId).toEqual(returnedMeal!.mealId);
-        expect(savedMeal!.description).toEqual(mealData.description);
-        expect(savedMeal!.dayOfMonth).toEqual(mealData.dayOfMonth);
-        expect(savedMeal!.month).toEqual(mealData.month);
-        expect(savedMeal!.year).toEqual(mealData.year);
-        expect(savedMeal!.course).toEqual(mealData.course);
-        expect(savedMeal!.heroImage!.attachmentId).toEqual(mealData.heroImage);
-        expect(savedMeal!.heroImage!.uri).toEqual(attachment!.uri);
-    });
+            expect(savedMeal!.mealId).toEqual(returnedMeal!.mealId);
+            expect(savedMeal!.description).toEqual(mealData.description);
+            expect(savedMeal!.dayOfMonth).toEqual(mealData.dayOfMonth);
+            expect(savedMeal!.month).toEqual(mealData.month);
+            expect(savedMeal!.year).toEqual(mealData.year);
+            expect(savedMeal!.course).toEqual(mealData.course);
+            expect(savedMeal!.heroImage!.attachmentId).toEqual(
+                mealData.heroImage,
+            );
+            expect(savedMeal!.heroImage!.uri).toEqual(attachment!.uri);
+        },
+    );
 
-    it("should create a planner meal with a recipe", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should create a planner meal with a recipe", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user.userId,
             recipes: [{ name: uuid() }],
         });
@@ -1004,116 +1086,127 @@ describe("Add a meal to a planner", () => {
         expect(returnedMeal!.recipeId).toEqual(recipe!.recipeId);
     });
 
-    it("should not allow adding a meal if the user is not the planner owner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
+    withCxIt(
+        "should not allow adding a meal if the user is not the planner owner",
+        async () => {
+            const [token] = await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: plannerOwner!.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const res = await request(app)
-            .post(`/v1/planners/${planner!.plannerId}/meals`)
-            .set(token)
-            .send({
-                dayOfMonth: randomDay(),
-                month: randomMonth(),
-                course: randomCourse(),
-                year: randomYear(),
-                description: uuid(),
-            } satisfies components["schemas"]["PlannerMealCreate"]);
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should not allow adding a meal if the user is a planner member without edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: plannerOwner!.userId,
-            planners: [
-                {
-                    name: uuid(),
-                    description: uuid(),
-                },
-            ],
-        });
-
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: user!.userId, status: "M" }],
-        });
-
-        const res = await request(app)
-            .post(`/v1/planners/${planner!.plannerId}/meals`)
-            .set(token)
-            .send({
-                dayOfMonth: randomDay(),
-                month: randomMonth(),
-                course: randomCourse(),
-                year: randomYear(),
-                description: uuid(),
-            } satisfies components["schemas"]["PlannerMealCreate"]);
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should allow adding a meal if the user is a planner member with edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: plannerOwner!.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const meal = {
-            dayOfMonth: randomDay(),
-            month: randomMonth(),
-            course: randomCourse(),
-            year: randomYear(),
-            description: uuid(),
-        } satisfies components["schemas"]["PlannerMealCreate"];
-
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: user!.userId, status: "A" }],
-        });
-
-        const res = await request(app)
-            .post(`/v1/planners/${planner!.plannerId}/meals`)
-            .set(token)
-            .send(meal);
-
-        expect(res.statusCode).toEqual(201);
-
-        const { meals: plannerMeals } =
-            await KnexPlannerRepository.readAllMeals(database, {
-                userId: user.userId,
-                filter: { plannerId: planner!.plannerId },
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: plannerOwner!.userId,
+                planners: [{ name: uuid(), description: uuid() }],
             });
 
-        expect(plannerMeals.length).toEqual(1);
+            const res = await request(app)
+                .post(`/v1/planners/${planner!.plannerId}/meals`)
+                .set(token)
+                .send({
+                    dayOfMonth: randomDay(),
+                    month: randomMonth(),
+                    course: randomCourse(),
+                    year: randomYear(),
+                    description: uuid(),
+                } satisfies components["schemas"]["PlannerMealCreate"]);
 
-        const [plannerMeal] = plannerMeals;
+            expect(res.statusCode).toEqual(404);
+        },
+    );
 
-        expect(plannerMeal?.plannerId).toEqual(planner!.plannerId);
-        expect(plannerMeal?.description).toEqual(meal.description);
-    });
+    withCxIt(
+        "should not allow adding a meal if the user is a planner member without edit permission",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
 
-    it("should create multiple planner meals", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: plannerOwner!.userId,
+                planners: [
+                    {
+                        name: uuid(),
+                        description: uuid(),
+                    },
+                ],
+            });
+
+            await plannerRepository.saveMembers({
+                plannerId: planner!.plannerId,
+                members: [{ userId: user!.userId, status: "M" }],
+            });
+
+            const res = await request(app)
+                .post(`/v1/planners/${planner!.plannerId}/meals`)
+                .set(token)
+                .send({
+                    dayOfMonth: randomDay(),
+                    month: randomMonth(),
+                    course: randomCourse(),
+                    year: randomYear(),
+                    description: uuid(),
+                } satisfies components["schemas"]["PlannerMealCreate"]);
+
+            expect(res.statusCode).toEqual(404);
+        },
+    );
+
+    withCxIt(
+        "should allow adding a meal if the user is a planner member with edit permission",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: plannerOwner!.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+
+            const meal = {
+                dayOfMonth: randomDay(),
+                month: randomMonth(),
+                course: randomCourse(),
+                year: randomYear(),
+                description: uuid(),
+            } satisfies components["schemas"]["PlannerMealCreate"];
+
+            await plannerRepository.saveMembers({
+                plannerId: planner!.plannerId,
+                members: [{ userId: user!.userId, status: "A" }],
+            });
+
+            const res = await request(app)
+                .post(`/v1/planners/${planner!.plannerId}/meals`)
+                .set(token)
+                .send(meal);
+
+            expect(res.statusCode).toEqual(201);
+
+            const { meals: plannerMeals } =
+                await plannerRepository.readAllMeals({
+                    userId: user.userId,
+                    filter: { plannerId: planner!.plannerId },
+                });
+
+            expect(plannerMeals.length).toEqual(1);
+
+            const [plannerMeal] = plannerMeals;
+
+            expect(plannerMeal?.plannerId).toEqual(planner!.plannerId);
+            expect(plannerMeal?.description).toEqual(meal.description);
+        },
+    );
+
+    withCxIt("should create multiple planner meals", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
@@ -1131,241 +1224,274 @@ describe("Add a meal to a planner", () => {
         expect(returnedMeals).toHaveLength(2);
     });
 
-    it("should return 400 if the request body is an empty array", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const res = await request(app)
-            .post(`/v1/planners/${planner!.plannerId}/meals`)
-            .set(token)
-            .send([]);
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const res = await request(app)
-            .post(`/v1/planners/${planner!.plannerId}/meals`)
-            .set(token)
-            .send({
-                dayOfMonth: randomDay(),
-                month: randomMonth(),
-                course: randomCourse(),
-                year: randomYear(),
-                description: uuid(),
-                extra: "invalid",
+    withCxIt(
+        "should return 400 if the request body is an empty array",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
             });
-        expect(res.statusCode).toEqual(400);
-    });
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
+            const res = await request(app)
+                .post(`/v1/planners/${planner!.plannerId}/meals`)
+                .set(token)
+                .send([]);
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 
-        const res = await request(app)
-            .post(`/v1/planners/${planner!.plannerId}/meals`)
-            .set(token)
-            .send({
-                dayOfMonth: 80,
-                month: 13,
-                course: "unknown",
-                year: 3000,
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
             });
-        expect(res.statusCode).toEqual(400);
-    });
+
+            const res = await request(app)
+                .post(`/v1/planners/${planner!.plannerId}/meals`)
+                .set(token)
+                .send({
+                    dayOfMonth: randomDay(),
+                    month: randomMonth(),
+                    course: randomCourse(),
+                    year: randomYear(),
+                    description: uuid(),
+                    extra: "invalid",
+                });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+
+            const res = await request(app)
+                .post(`/v1/planners/${planner!.plannerId}/meals`)
+                .set(token)
+                .send({
+                    dayOfMonth: 80,
+                    month: 13,
+                    course: "unknown",
+                    year: 3000,
+                });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 });
 
 describe("Update a meal in a planner", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).patch(
             `/v1/planners/${uuid()}/meals/${uuid()}`,
         );
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should allow editing a meal if the user is the planner owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt(
+        "should allow editing a meal if the user is the planner owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const {
-            meals: [meal],
-        } = await KnexPlannerRepository.createMeals(database, {
-            userId: user.userId,
-            plannerId: planner!.plannerId,
-            meals: [
-                {
-                    dayOfMonth: randomDay(),
-                    month: randomMonth(),
-                    course: randomCourse(),
-                    year: randomYear(),
-                },
-            ],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
-            .set(token)
-            .send({
-                description: "Updated Description",
-            } satisfies components["schemas"]["PlannerMealUpdate"]);
-
-        expect(res.statusCode).toEqual(200);
-
-        const { meals: plannerMeals } =
-            await KnexPlannerRepository.readAllMeals(database, {
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
                 userId: user.userId,
-                filter: { plannerId: planner!.plannerId },
+                planners: [{ name: uuid(), description: uuid() }],
             });
 
-        expect(plannerMeals.length).toEqual(1);
+            const {
+                meals: [meal],
+            } = await plannerRepository.createMeals({
+                userId: user.userId,
+                plannerId: planner!.plannerId,
+                meals: [
+                    {
+                        dayOfMonth: randomDay(),
+                        month: randomMonth(),
+                        course: randomCourse(),
+                        year: randomYear(),
+                    },
+                ],
+            });
 
-        const [plannerMeal] = plannerMeals;
+            const res = await request(app)
+                .patch(
+                    `/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`,
+                )
+                .set(token)
+                .send({
+                    description: "Updated Description",
+                } satisfies components["schemas"]["PlannerMealUpdate"]);
 
-        expect(plannerMeal?.description).toEqual("Updated Description");
-    });
+            expect(res.statusCode).toEqual(200);
 
-    it("should not allow editing a meal if the user is a planner member without edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
+            const { meals: plannerMeals } =
+                await plannerRepository.readAllMeals({
+                    userId: user.userId,
+                    filter: { plannerId: planner!.plannerId },
+                });
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: plannerOwner!.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
+            expect(plannerMeals.length).toEqual(1);
 
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: user.userId, status: "M" }],
-        });
+            const [plannerMeal] = plannerMeals;
 
-        const {
-            meals: [meal],
-        } = await KnexPlannerRepository.createMeals(database, {
-            userId: plannerOwner!.userId,
-            plannerId: planner!.plannerId,
-            meals: [
-                {
-                    dayOfMonth: randomDay(),
-                    month: randomMonth(),
-                    course: randomCourse(),
-                    year: randomYear(),
-                    description: uuid(),
-                },
-            ],
-        });
+            expect(plannerMeal?.description).toEqual("Updated Description");
+        },
+    );
 
-        const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
-            .set(token)
-            .send({
-                description: "Updated Description",
-            } satisfies components["schemas"]["PlannerMealUpdate"]);
+    withCxIt(
+        "should not allow editing a meal if the user is a planner member without edit permission",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
 
-        expect(res.statusCode).toEqual(404);
-    });
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: plannerOwner!.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
 
-    it("should allow editing a meal if the user is a planner member with edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
+            await plannerRepository.saveMembers({
+                plannerId: planner!.plannerId,
+                members: [{ userId: user.userId, status: "M" }],
+            });
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: plannerOwner!.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
+            const {
+                meals: [meal],
+            } = await plannerRepository.createMeals({
+                userId: plannerOwner!.userId,
+                plannerId: planner!.plannerId,
+                meals: [
+                    {
+                        dayOfMonth: randomDay(),
+                        month: randomMonth(),
+                        course: randomCourse(),
+                        year: randomYear(),
+                        description: uuid(),
+                    },
+                ],
+            });
 
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: user.userId, status: "A" }],
-        });
+            const res = await request(app)
+                .patch(
+                    `/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`,
+                )
+                .set(token)
+                .send({
+                    description: "Updated Description",
+                } satisfies components["schemas"]["PlannerMealUpdate"]);
 
-        const {
-            meals: [meal],
-        } = await KnexPlannerRepository.createMeals(database, {
-            userId: plannerOwner!.userId,
-            plannerId: planner!.plannerId,
-            meals: [
-                {
-                    dayOfMonth: randomDay(),
-                    month: randomMonth(),
-                    course: randomCourse(),
-                    year: randomYear(),
-                    description: uuid(),
-                },
-            ],
-        });
+            expect(res.statusCode).toEqual(404);
+        },
+    );
 
-        const updateData = { description: uuid() };
+    withCxIt(
+        "should allow editing a meal if the user is a planner member with edit permission",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
 
-        const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
-            .set(token)
-            .send(
-                updateData satisfies components["schemas"]["PlannerMealUpdate"],
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: plannerOwner!.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+
+            await plannerRepository.saveMembers({
+                plannerId: planner!.plannerId,
+                members: [{ userId: user.userId, status: "A" }],
+            });
+
+            const {
+                meals: [meal],
+            } = await plannerRepository.createMeals({
+                userId: plannerOwner!.userId,
+                plannerId: planner!.plannerId,
+                meals: [
+                    {
+                        dayOfMonth: randomDay(),
+                        month: randomMonth(),
+                        course: randomCourse(),
+                        year: randomYear(),
+                        description: uuid(),
+                    },
+                ],
+            });
+
+            const updateData = { description: uuid() };
+
+            const res = await request(app)
+                .patch(
+                    `/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`,
+                )
+                .set(token)
+                .send(
+                    updateData satisfies components["schemas"]["PlannerMealUpdate"],
+                );
+
+            expect(res.statusCode).toEqual(200);
+
+            const returnedMeal =
+                res.body as components["schemas"]["PlannerMeal"];
+            expect(returnedMeal.description).toEqual(updateData.description);
+            expect(returnedMeal.mealId).toEqual(meal!.mealId);
+
+            const { meals: plannerMeals } =
+                await plannerRepository.readAllMeals({
+                    userId: user.userId,
+                    filter: { plannerId: planner!.plannerId },
+                });
+
+            expect(plannerMeals.length).toEqual(1);
+            expect(plannerMeals[0]!.description).toEqual(
+                updateData.description,
             );
+        },
+    );
 
-        expect(res.statusCode).toEqual(200);
-
-        const returnedMeal = res.body as components["schemas"]["PlannerMeal"];
-        expect(returnedMeal.description).toEqual(updateData.description);
-        expect(returnedMeal.mealId).toEqual(meal!.mealId);
-
-        const { meals: plannerMeals } =
-            await KnexPlannerRepository.readAllMeals(database, {
-                userId: user.userId,
-                filter: { plannerId: planner!.plannerId },
-            });
-
-        expect(plannerMeals.length).toEqual(1);
-        expect(plannerMeals[0]!.description).toEqual(updateData.description);
-    });
-
-    it("should update all mutable fields correctly", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should update all mutable fields correctly", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             attachments: [originalAttachment, updatedAttachment],
-        } = await KnexAttachmentRepository.create(database, {
+        } = await attachmentRepository.create({
             userId: user.userId,
             attachments: [{ uri: uuid() }, { uri: uuid() }],
         });
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
 
         const {
             meals: [meal],
-        } = await KnexPlannerRepository.createMeals(database, {
+        } = await plannerRepository.createMeals({
             userId: user.userId,
             plannerId: planner!.plannerId,
             meals: [
@@ -1409,11 +1535,10 @@ describe("Update a meal in a planner", () => {
         );
         expect(returnedMeal.heroImage!.uri).toEqual(updatedAttachment!.uri);
 
-        const { meals: plannerMeals } =
-            await KnexPlannerRepository.readAllMeals(database, {
-                userId: user.userId,
-                filter: { plannerId: planner!.plannerId },
-            });
+        const { meals: plannerMeals } = await plannerRepository.readAllMeals({
+            userId: user.userId,
+            filter: { plannerId: planner!.plannerId },
+        });
 
         expect(plannerMeals.length).toEqual(1);
         const [savedMeal] = plannerMeals;
@@ -1430,33 +1555,33 @@ describe("Update a meal in a planner", () => {
         expect(savedMeal!.heroImage!.uri).toEqual(updatedAttachment!.uri);
     });
 
-    it("should clear optional fields when set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should clear optional fields when set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             attachments: [attachment],
-        } = await KnexAttachmentRepository.create(database, {
+        } = await attachmentRepository.create({
             userId: user.userId,
             attachments: [{ uri: uuid() }],
         });
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
 
         const {
             recipes: [recipe],
-        } = await KnexRecipeRepository.create(database, {
+        } = await recipeRepository.create({
             userId: user.userId,
             recipes: [{ name: uuid() }],
         });
 
         const {
             meals: [meal],
-        } = await KnexPlannerRepository.createMeals(database, {
+        } = await plannerRepository.createMeals({
             userId: user.userId,
             plannerId: planner!.plannerId,
             meals: [
@@ -1491,112 +1616,132 @@ describe("Update a meal in a planner", () => {
         expect(returnedMeal.heroImage).toBeUndefined();
     });
 
-    it("should fail to update a cooklist meal via planner endpoint", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt(
+        "should fail to update a cooklist meal via planner endpoint",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+
+            const {
+                meals: [cookListMeal],
+            } = await cooklistRepository.createMeals({
+                userId: user.userId,
+                meals: [
+                    {
+                        description: uuid(),
+                        course: randomCourse(),
+                        sequence: 1,
+                    },
+                ],
+            });
+
+            const res = await request(app)
+                .patch(
+                    `/v1/planners/${planner!.plannerId}/meals/${cookListMeal!.mealId}`,
+                )
+                .set(token)
+                .send({ description: "Updated" });
+
+            expect(res.statusCode).toEqual(404);
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+
+            const {
+                meals: [meal],
+            } = await plannerRepository.createMeals({
+                userId: user.userId,
+                plannerId: planner!.plannerId,
+                meals: [
+                    {
+                        dayOfMonth: randomDay(),
+                        month: randomMonth(),
+                        course: randomCourse(),
+                        year: randomYear(),
+                    },
+                ],
+            });
+
+            const res = await request(app)
+                .patch(
+                    `/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`,
+                )
+                .set(token)
+                .send({ plannerId: uuid() });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+
+            const {
+                meals: [meal],
+            } = await plannerRepository.createMeals({
+                userId: user.userId,
+                plannerId: planner!.plannerId,
+                meals: [
+                    {
+                        dayOfMonth: randomDay(),
+                        month: randomMonth(),
+                        course: randomCourse(),
+                        year: randomYear(),
+                    },
+                ],
+            });
+
+            const res = await request(app)
+                .patch(
+                    `/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`,
+                )
+                .set(token)
+                .send({ dayOfMonth: 80 });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt("should fail if a required field is set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const {
-            meals: [cookListMeal],
-        } = await KnexCookListRepository.createMeals(database, {
-            userId: user.userId,
-            meals: [
-                { description: uuid(), course: randomCourse(), sequence: 1 },
-            ],
-        });
-
-        const res = await request(app)
-            .patch(
-                `/v1/planners/${planner!.plannerId}/meals/${cookListMeal!.mealId}`,
-            )
-            .set(token)
-            .send({ description: "Updated" });
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
 
         const {
             meals: [meal],
-        } = await KnexPlannerRepository.createMeals(database, {
-            userId: user.userId,
-            plannerId: planner!.plannerId,
-            meals: [
-                {
-                    dayOfMonth: randomDay(),
-                    month: randomMonth(),
-                    course: randomCourse(),
-                    year: randomYear(),
-                },
-            ],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
-            .set(token)
-            .send({ plannerId: uuid() });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const {
-            meals: [meal],
-        } = await KnexPlannerRepository.createMeals(database, {
-            userId: user.userId,
-            plannerId: planner!.plannerId,
-            meals: [
-                {
-                    dayOfMonth: randomDay(),
-                    month: randomMonth(),
-                    course: randomCourse(),
-                    year: randomYear(),
-                },
-            ],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
-            .set(token)
-            .send({ dayOfMonth: 80 });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const {
-            meals: [meal],
-        } = await KnexPlannerRepository.createMeals(database, {
+        } = await plannerRepository.createMeals({
             userId: user.userId,
             plannerId: planner!.plannerId,
             meals: [
@@ -1618,7 +1763,7 @@ describe("Update a meal in a planner", () => {
 });
 
 describe("Remove a meal from a planner", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).delete(
             `/v1/planners/${uuid()}/meals/${uuid()}`,
         );
@@ -1626,8 +1771,8 @@ describe("Remove a meal from a planner", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return 404 for non-existent planner", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 for non-existent planner", async () => {
+        const [token] = await PrepareAuthenticatedUser(userRepository);
 
         const res = await request(app)
             .delete(`/v1/planners/${uuid()}/meals/${uuid()}`)
@@ -1637,20 +1782,20 @@ describe("Remove a meal from a planner", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should fail if the user is not the planner owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
+    withCxIt("should fail if the user is not the planner owner", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [plannerOwner] = await CreateUsers(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: plannerOwner!.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
 
         const {
             meals: [plannerMeal],
-        } = await KnexPlannerRepository.createMeals(database, {
+        } = await plannerRepository.createMeals({
             userId: user!.userId,
             plannerId: planner!.plannerId,
             meals: [
@@ -1673,192 +1818,212 @@ describe("Remove a meal from a planner", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should not allow item deletion if the user is a planner member without edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
+    withCxIt(
+        "should not allow item deletion if the user is a planner member without edit permission",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: plannerOwner!.userId,
-            planners: [
-                {
-                    name: uuid(),
-                    description: uuid(),
-                },
-            ],
-        });
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: plannerOwner!.userId,
+                planners: [
+                    {
+                        name: uuid(),
+                        description: uuid(),
+                    },
+                ],
+            });
 
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: user!.userId, status: "M" }],
-        });
+            await plannerRepository.saveMembers({
+                plannerId: planner!.plannerId,
+                members: [{ userId: user!.userId, status: "M" }],
+            });
 
-        const {
-            meals: [plannerMeal],
-        } = await KnexPlannerRepository.createMeals(database, {
-            userId: user!.userId,
-            plannerId: planner!.plannerId,
-            meals: [
-                {
-                    dayOfMonth: randomDay(),
-                    month: randomMonth(),
-                    course: randomCourse(),
-                    year: randomYear(),
-                },
-            ],
-        });
-
-        const res = await request(app)
-            .delete(
-                `/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`,
-            )
-            .set(token)
-            .send();
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should allow item deletion if the user is a planner member with edit permission", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: plannerOwner!.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: user!.userId, status: "A" }],
-        });
-
-        const {
-            meals: [plannerMeal],
-        } = await KnexPlannerRepository.createMeals(database, {
-            userId: user!.userId,
-            plannerId: planner!.plannerId,
-            meals: [
-                {
-                    dayOfMonth: randomDay(),
-                    month: randomMonth(),
-                    course: randomCourse(),
-                    year: randomYear(),
-                },
-            ],
-        });
-
-        const res = await request(app)
-            .delete(
-                `/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`,
-            )
-            .set(token)
-            .send();
-
-        expect(res.statusCode).toEqual(204);
-
-        const { meals: plannerMeals } =
-            await KnexPlannerRepository.readAllMeals(database, {
+            const {
+                meals: [plannerMeal],
+            } = await plannerRepository.createMeals({
                 userId: user!.userId,
-                filter: { plannerId: planner!.plannerId },
+                plannerId: planner!.plannerId,
+                meals: [
+                    {
+                        dayOfMonth: randomDay(),
+                        month: randomMonth(),
+                        course: randomCourse(),
+                        year: randomYear(),
+                    },
+                ],
             });
 
-        expect(plannerMeals.length).toEqual(0);
-    });
+            const res = await request(app)
+                .delete(
+                    `/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`,
+                )
+                .set(token)
+                .send();
 
-    it("should allow deletion if the user is the planner owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+            expect(res.statusCode).toEqual(404);
+        },
+    );
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
+    withCxIt(
+        "should allow item deletion if the user is a planner member with edit permission",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
 
-        const {
-            meals: [plannerMeal],
-        } = await KnexPlannerRepository.createMeals(database, {
-            userId: user!.userId,
-            plannerId: planner!.plannerId,
-            meals: [
-                {
-                    dayOfMonth: randomDay(),
-                    month: randomMonth(),
-                    course: randomCourse(),
-                    year: randomYear(),
-                },
-            ],
-        });
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: plannerOwner!.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
 
-        const res = await request(app)
-            .delete(
-                `/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`,
-            )
-            .set(token)
-            .send();
+            await plannerRepository.saveMembers({
+                plannerId: planner!.plannerId,
+                members: [{ userId: user!.userId, status: "A" }],
+            });
 
-        expect(res.statusCode).toEqual(204);
+            const {
+                meals: [plannerMeal],
+            } = await plannerRepository.createMeals({
+                userId: user!.userId,
+                plannerId: planner!.plannerId,
+                meals: [
+                    {
+                        dayOfMonth: randomDay(),
+                        month: randomMonth(),
+                        course: randomCourse(),
+                        year: randomYear(),
+                    },
+                ],
+            });
 
-        const { meals: plannerMeals } =
-            await KnexPlannerRepository.readAllMeals(database, {
+            const res = await request(app)
+                .delete(
+                    `/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`,
+                )
+                .set(token)
+                .send();
+
+            expect(res.statusCode).toEqual(204);
+
+            const { meals: plannerMeals } =
+                await plannerRepository.readAllMeals({
+                    userId: user!.userId,
+                    filter: { plannerId: planner!.plannerId },
+                });
+
+            expect(plannerMeals.length).toEqual(0);
+        },
+    );
+
+    withCxIt(
+        "should allow deletion if the user is the planner owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
                 userId: user.userId,
-                filter: { plannerId: planner!.plannerId },
+                planners: [{ name: uuid(), description: uuid() }],
             });
 
-        expect(plannerMeals.length).toEqual(0);
-    });
+            const {
+                meals: [plannerMeal],
+            } = await plannerRepository.createMeals({
+                userId: user!.userId,
+                plannerId: planner!.plannerId,
+                meals: [
+                    {
+                        dayOfMonth: randomDay(),
+                        month: randomMonth(),
+                        course: randomCourse(),
+                        year: randomYear(),
+                    },
+                ],
+            });
 
-    it("should fail to delete a cooklist meal via planner endpoint", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+            const res = await request(app)
+                .delete(
+                    `/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`,
+                )
+                .set(token)
+                .send();
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
+            expect(res.statusCode).toEqual(204);
 
-        const {
-            meals: [cookListMeal],
-        } = await KnexCookListRepository.createMeals(database, {
-            userId: user.userId,
-            meals: [
-                { description: uuid(), course: randomCourse(), sequence: 1 },
-            ],
-        });
+            const { meals: plannerMeals } =
+                await plannerRepository.readAllMeals({
+                    userId: user.userId,
+                    filter: { plannerId: planner!.plannerId },
+                });
 
-        const res = await request(app)
-            .delete(
-                `/v1/planners/${planner!.plannerId}/meals/${cookListMeal!.mealId}`,
-            )
-            .set(token)
-            .send();
+            expect(plannerMeals.length).toEqual(0);
+        },
+    );
 
-        expect(res.statusCode).toEqual(404);
-    });
+    withCxIt(
+        "should fail to delete a cooklist meal via planner endpoint",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+
+            const {
+                meals: [cookListMeal],
+            } = await cooklistRepository.createMeals({
+                userId: user.userId,
+                meals: [
+                    {
+                        description: uuid(),
+                        course: randomCourse(),
+                        sequence: 1,
+                    },
+                ],
+            });
+
+            const res = await request(app)
+                .delete(
+                    `/v1/planners/${planner!.plannerId}/meals/${cookListMeal!.mealId}`,
+                )
+                .set(token)
+                .send();
+
+            expect(res.statusCode).toEqual(404);
+        },
+    );
 });
 
 describe("Get planner members", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app).get(`/v1/planners/${uuid()}/members`);
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should return the list of members", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
+    withCxIt("should return the list of members", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [member] = await CreateUsers(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        await KnexPlannerRepository.saveMembers(database, {
+        await plannerRepository.saveMembers({
             plannerId: planner!.plannerId,
             members: [{ userId: member!.userId, status: "M" }],
         });
@@ -1871,49 +2036,53 @@ describe("Get planner members", () => {
         expect(res.body[0].userId).toEqual(member!.userId);
     });
 
-    it("should return 404 for the member list if the user is not the owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 for the member list if the user is not the owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
 
-        const statuses = ["M", "P", "A", "B"] as const;
+            const statuses = ["M", "P", "A", "B"] as const;
 
-        for (const status of statuses) {
-            const {
-                planners: [planner],
-            } = await KnexPlannerRepository.create(database, {
-                userId: plannerOwner!.userId,
-                planners: [{ name: uuid(), description: uuid() }],
-            });
+            for (const status of statuses) {
+                const {
+                    planners: [planner],
+                } = await plannerRepository.create({
+                    userId: plannerOwner!.userId,
+                    planners: [{ name: uuid(), description: uuid() }],
+                });
 
-            await KnexPlannerRepository.saveMembers(database, {
-                plannerId: planner!.plannerId,
-                members: [{ userId: user.userId, status }],
-            });
+                await plannerRepository.saveMembers({
+                    plannerId: planner!.plannerId,
+                    members: [{ userId: user.userId, status }],
+                });
 
-            const res = await request(app)
-                .get(`/v1/planners/${planner!.plannerId}/members`)
-                .set(token);
+                const res = await request(app)
+                    .get(`/v1/planners/${planner!.plannerId}/members`)
+                    .set(token);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Invite a member to a planner", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app)
             .post(`/v1/planners/${uuid()}/members`)
             .send();
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should successfully invite a member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [invitee] = await CreateUsers(database);
+    withCxIt("should successfully invite a member", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [invitee] = await CreateUsers(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
@@ -1925,7 +2094,7 @@ describe("Invite a member to a planner", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexPlannerRepository.readMembers(database, [
+        const [members] = await plannerRepository.readMembers([
             { plannerId: planner!.plannerId },
         ]);
         expect(members!.members).toHaveLength(1);
@@ -1933,47 +2102,51 @@ describe("Invite a member to a planner", () => {
         expect(members!.members[0]!.status).toEqual("P");
     });
 
-    it("should return 404 for an invite if the user is not the owner", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [plannerOwner] = await CreateUsers(database);
-        const [invitee] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 for an invite if the user is not the owner",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [plannerOwner] = await CreateUsers(userRepository);
+            const [invitee] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "P", "B"] as const;
+            const statuses = ["A", "M", "P", "B"] as const;
 
-        for (const status of statuses) {
-            const {
-                planners: [planner],
-            } = await KnexPlannerRepository.create(database, {
-                userId: plannerOwner!.userId,
-                planners: [{ name: uuid(), description: uuid() }],
-            });
+            for (const status of statuses) {
+                const {
+                    planners: [planner],
+                } = await plannerRepository.create({
+                    userId: plannerOwner!.userId,
+                    planners: [{ name: uuid(), description: uuid() }],
+                });
 
-            await KnexPlannerRepository.saveMembers(database, {
-                plannerId: planner!.plannerId,
-                members: [{ userId: user.userId, status }],
-            });
+                await plannerRepository.saveMembers({
+                    plannerId: planner!.plannerId,
+                    members: [{ userId: user.userId, status }],
+                });
 
-            const res = await request(app)
-                .post(`/v1/planners/${planner!.plannerId}/members`)
-                .set(token)
-                .send({ userId: invitee!.userId });
+                const res = await request(app)
+                    .post(`/v1/planners/${planner!.plannerId}/members`)
+                    .set(token)
+                    .send({ userId: invitee!.userId });
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 
-    it("should return 400 if the user is already a member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
+    withCxIt("should return 400 if the user is already a member", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [member] = await CreateUsers(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        await KnexPlannerRepository.saveMembers(database, {
+        await plannerRepository.saveMembers({
             plannerId: planner!.plannerId,
             members: [{ userId: member!.userId, status: "M" }],
         });
@@ -1986,11 +2159,11 @@ describe("Invite a member to a planner", () => {
         expect(res.statusCode).toEqual(400);
     });
 
-    it("should return 404 if the user does not exist", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    withCxIt("should return 404 if the user does not exist", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
@@ -2002,60 +2175,69 @@ describe("Invite a member to a planner", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
 
-        const res = await request(app)
-            .post(`/v1/planners/${planner!.plannerId}/members`)
-            .set(token)
-            .send({ userId: uuid(), extra: "invalid" });
-        expect(res.statusCode).toEqual(400);
-    });
+            const res = await request(app)
+                .post(`/v1/planners/${planner!.plannerId}/members`)
+                .set(token)
+                .send({ userId: uuid(), extra: "invalid" });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
 
-        const res = await request(app)
-            .post(`/v1/planners/${planner!.plannerId}/members`)
-            .set(token)
-            .send({ userId: 12345 });
-        expect(res.statusCode).toEqual(400);
-    });
+            const res = await request(app)
+                .post(`/v1/planners/${planner!.plannerId}/members`)
+                .set(token)
+                .send({ userId: 12345 });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
 });
 
 describe("Accept planner invitation", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app)
             .post(`/v1/planners/${uuid()}/invite/accept`)
             .send();
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should successfully accept an invite", async () => {
-        const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
+    withCxIt("should successfully accept an invite", async () => {
+        const [_ownerToken, owner] =
+            await PrepareAuthenticatedUser(userRepository);
         const [inviteeToken, invitee] =
-            await PrepareAuthenticatedUser(database);
+            await PrepareAuthenticatedUser(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: owner.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        await KnexPlannerRepository.saveMembers(database, {
+        await plannerRepository.saveMembers({
             plannerId: planner!.plannerId,
             members: [{ userId: invitee.userId, status: "P" }],
         });
@@ -2066,62 +2248,66 @@ describe("Accept planner invitation", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexPlannerRepository.readMembers(database, [
+        const [members] = await plannerRepository.readMembers([
             { plannerId: planner!.plannerId },
         ]);
         expect(members!.members[0]!.status).toEqual("M");
     });
 
-    it("should return 404 when accepting an invite if the user is already a member (A, M) or blacklisted (B)", async () => {
-        const [inviteeToken, invitee] =
-            await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 when accepting an invite if the user is already a member (A, M) or blacklisted (B)",
+        async () => {
+            const [inviteeToken, invitee] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "B"] as const;
+            const statuses = ["A", "M", "B"] as const;
 
-        for (const status of statuses) {
-            const {
-                planners: [planner],
-            } = await KnexPlannerRepository.create(database, {
-                userId: owner!.userId,
-                planners: [{ name: uuid(), description: uuid() }],
-            });
+            for (const status of statuses) {
+                const {
+                    planners: [planner],
+                } = await plannerRepository.create({
+                    userId: owner!.userId,
+                    planners: [{ name: uuid(), description: uuid() }],
+                });
 
-            await KnexPlannerRepository.saveMembers(database, {
-                plannerId: planner!.plannerId,
-                members: [{ userId: invitee.userId, status }],
-            });
+                await plannerRepository.saveMembers({
+                    plannerId: planner!.plannerId,
+                    members: [{ userId: invitee.userId, status }],
+                });
 
-            const res = await request(app)
-                .post(`/v1/planners/${planner!.plannerId}/invite/accept`)
-                .set(inviteeToken);
+                const res = await request(app)
+                    .post(`/v1/planners/${planner!.plannerId}/invite/accept`)
+                    .set(inviteeToken);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Decline planner invitation", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app)
             .post(`/v1/planners/${uuid()}/invite/decline`)
             .send();
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should successfully decline an invite", async () => {
-        const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
+    withCxIt("should successfully decline an invite", async () => {
+        const [_ownerToken, owner] =
+            await PrepareAuthenticatedUser(userRepository);
         const [inviteeToken, invitee] =
-            await PrepareAuthenticatedUser(database);
+            await PrepareAuthenticatedUser(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: owner.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        await KnexPlannerRepository.saveMembers(database, {
+        await plannerRepository.saveMembers({
             plannerId: planner!.plannerId,
             members: [{ userId: invitee.userId, status: "P" }],
         });
@@ -2132,147 +2318,163 @@ describe("Decline planner invitation", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexPlannerRepository.readMembers(database, [
+        const [members] = await plannerRepository.readMembers([
             { plannerId: planner!.plannerId },
         ]);
         expect(members!.members).toHaveLength(0);
     });
 
-    it("should return 404 when declining an invite if the user is already a member (A, M) or blacklisted (B)", async () => {
-        const [inviteeToken, invitee] =
-            await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
+    withCxIt(
+        "should return 404 when declining an invite if the user is already a member (A, M) or blacklisted (B)",
+        async () => {
+            const [inviteeToken, invitee] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "B"] as const;
+            const statuses = ["A", "M", "B"] as const;
 
-        for (const status of statuses) {
-            const {
-                planners: [planner],
-            } = await KnexPlannerRepository.create(database, {
-                userId: owner!.userId,
-                planners: [{ name: uuid(), description: uuid() }],
-            });
+            for (const status of statuses) {
+                const {
+                    planners: [planner],
+                } = await plannerRepository.create({
+                    userId: owner!.userId,
+                    planners: [{ name: uuid(), description: uuid() }],
+                });
 
-            await KnexPlannerRepository.saveMembers(database, {
-                plannerId: planner!.plannerId,
-                members: [{ userId: invitee.userId, status }],
-            });
+                await plannerRepository.saveMembers({
+                    plannerId: planner!.plannerId,
+                    members: [{ userId: invitee.userId, status }],
+                });
 
-            const res = await request(app)
-                .post(`/v1/planners/${planner!.plannerId}/invite/decline`)
-                .set(inviteeToken);
+                const res = await request(app)
+                    .post(`/v1/planners/${planner!.plannerId}/invite/decline`)
+                    .set(inviteeToken);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Leave a planner", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app)
             .post(`/v1/planners/${uuid()}/leave`)
             .send();
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should allow an Administrator and Member to leave the planner", async () => {
-        const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
-        const [userToken, user] = await PrepareAuthenticatedUser(database);
+    withCxIt(
+        "should allow an Administrator and Member to leave the planner",
+        async () => {
+            const [_ownerToken, owner] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [userToken, user] =
+                await PrepareAuthenticatedUser(userRepository);
 
-        const statuses = ["A", "M"] as const;
+            const statuses = ["A", "M"] as const;
 
-        for (const status of statuses) {
+            for (const status of statuses) {
+                const {
+                    planners: [planner],
+                } = await plannerRepository.create({
+                    userId: owner.userId,
+                    planners: [{ name: uuid(), description: uuid() }],
+                });
+
+                await plannerRepository.saveMembers({
+                    plannerId: planner!.plannerId,
+                    members: [{ userId: user.userId, status }],
+                });
+
+                const res = await request(app)
+                    .post(`/v1/planners/${planner!.plannerId}/leave`)
+                    .set(userToken);
+
+                expect(res.statusCode).toEqual(204);
+
+                const [members] = await plannerRepository.readMembers([
+                    { plannerId: planner!.plannerId },
+                ]);
+                expect(members!.members).toHaveLength(0);
+            }
+        },
+    );
+
+    withCxIt(
+        "should return 404 if the owner tries to leave the planner",
+        async () => {
+            const [ownerToken, owner] =
+                await PrepareAuthenticatedUser(userRepository);
+
             const {
                 planners: [planner],
-            } = await KnexPlannerRepository.create(database, {
+            } = await plannerRepository.create({
                 userId: owner.userId,
                 planners: [{ name: uuid(), description: uuid() }],
             });
 
-            await KnexPlannerRepository.saveMembers(database, {
-                plannerId: planner!.plannerId,
-                members: [{ userId: user.userId, status }],
-            });
-
             const res = await request(app)
                 .post(`/v1/planners/${planner!.plannerId}/leave`)
-                .set(userToken);
-
-            expect(res.statusCode).toEqual(204);
-
-            const [members] = await KnexPlannerRepository.readMembers(
-                database,
-                [{ plannerId: planner!.plannerId }],
-            );
-            expect(members!.members).toHaveLength(0);
-        }
-    });
-
-    it("should return 404 if the owner tries to leave the planner", async () => {
-        const [ownerToken, owner] = await PrepareAuthenticatedUser(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: owner.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        const res = await request(app)
-            .post(`/v1/planners/${planner!.plannerId}/leave`)
-            .set(ownerToken);
-
-        expect(res.statusCode).toEqual(404);
-    });
-
-    it("should return 404 if a pending or blacklisted user tries to leave the planner", async () => {
-        const [_ownerToken, owner] = await PrepareAuthenticatedUser(database);
-        const [userToken, user] = await PrepareAuthenticatedUser(database);
-
-        const statuses = ["P", "B"] as const;
-
-        for (const status of statuses) {
-            const {
-                planners: [planner],
-            } = await KnexPlannerRepository.create(database, {
-                userId: owner.userId,
-                planners: [{ name: uuid(), description: uuid() }],
-            });
-
-            await KnexPlannerRepository.saveMembers(database, {
-                plannerId: planner!.plannerId,
-                members: [{ userId: user.userId, status }],
-            });
-
-            const res = await request(app)
-                .post(`/v1/planners/${planner!.plannerId}/leave`)
-                .set(userToken);
+                .set(ownerToken);
 
             expect(res.statusCode).toEqual(404);
-        }
-    });
+        },
+    );
+
+    withCxIt(
+        "should return 404 if a pending or blacklisted user tries to leave the planner",
+        async () => {
+            const [_ownerToken, owner] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [userToken, user] =
+                await PrepareAuthenticatedUser(userRepository);
+
+            const statuses = ["P", "B"] as const;
+
+            for (const status of statuses) {
+                const {
+                    planners: [planner],
+                } = await plannerRepository.create({
+                    userId: owner.userId,
+                    planners: [{ name: uuid(), description: uuid() }],
+                });
+
+                await plannerRepository.saveMembers({
+                    plannerId: planner!.plannerId,
+                    members: [{ userId: user.userId, status }],
+                });
+
+                const res = await request(app)
+                    .post(`/v1/planners/${planner!.plannerId}/leave`)
+                    .set(userToken);
+
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Remove a member from a planner", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app)
             .delete(`/v1/planners/${uuid()}/members/${uuid()}`)
             .send();
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should successfully remove a member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
+    withCxIt("should successfully remove a member", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [member] = await CreateUsers(userRepository);
 
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
 
-        await KnexPlannerRepository.saveMembers(database, {
+        await plannerRepository.saveMembers({
             plannerId: planner!.plannerId,
             members: [{ userId: member!.userId, status: "M" }],
         });
@@ -2285,254 +2487,282 @@ describe("Remove a member from a planner", () => {
 
         expect(res.statusCode).toEqual(204);
 
-        const [members] = await KnexPlannerRepository.readMembers(database, [
+        const [members] = await plannerRepository.readMembers([
             { plannerId: planner!.plannerId },
         ]);
         expect(members!.members).toHaveLength(0);
     });
 
-    it("should not allow non-owners (A, M, P, B) to remove a member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
-        const [member] = await CreateUsers(database);
+    withCxIt(
+        "should not allow non-owners (A, M, P, B) to remove a member",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
+            const [member] = await CreateUsers(userRepository);
 
-        const statuses = ["A", "M", "P", "B"] as const;
+            const statuses = ["A", "M", "P", "B"] as const;
 
-        for (const status of statuses) {
-            const {
-                planners: [planner],
-            } = await KnexPlannerRepository.create(database, {
-                userId: owner!.userId,
-                planners: [{ name: uuid(), description: uuid() }],
-            });
+            for (const status of statuses) {
+                const {
+                    planners: [planner],
+                } = await plannerRepository.create({
+                    userId: owner!.userId,
+                    planners: [{ name: uuid(), description: uuid() }],
+                });
 
-            await KnexPlannerRepository.saveMembers(database, [
-                {
-                    plannerId: planner!.plannerId,
-                    members: [
-                        { userId: user.userId, status },
-                        { userId: member!.userId, status: "M" },
-                    ],
-                },
-            ]);
+                await plannerRepository.saveMembers([
+                    {
+                        plannerId: planner!.plannerId,
+                        members: [
+                            { userId: user.userId, status },
+                            { userId: member!.userId, status: "M" },
+                        ],
+                    },
+                ]);
 
-            const res = await request(app)
-                .delete(
-                    `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
-                )
-                .set(token);
+                const res = await request(app)
+                    .delete(
+                        `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+                    )
+                    .set(token);
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
 });
 
 describe("Update a planner member", () => {
-    it("should require authentication", async () => {
+    withCxIt("should require authentication", async () => {
         const res = await request(app)
             .patch(`/v1/planners/${uuid()}/members/${uuid()}`)
             .send();
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should successfully update a member status between Administrator and Member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
+    withCxIt(
+        "should successfully update a member status between Administrator and Member",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [member] = await CreateUsers(userRepository);
 
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        // Start as Member
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        // Update M -> A
-        let res = await request(app)
-            .patch(
-                `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
-            )
-            .set(token)
-            .send({ status: "A" });
-
-        expect(res.statusCode).toEqual(200);
-        expect(res.body.status).toEqual("A");
-
-        let [members] = await KnexPlannerRepository.readMembers(database, [
-            { plannerId: planner!.plannerId },
-        ]);
-        expect(members!.members[0]!.status).toEqual("A");
-
-        // Update A -> M
-        res = await request(app)
-            .patch(
-                `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
-            )
-            .set(token)
-            .send({ status: "M" });
-
-        expect(res.statusCode).toEqual(200);
-        expect(res.body.status).toEqual("M");
-
-        [members] = await KnexPlannerRepository.readMembers(database, [
-            { plannerId: planner!.plannerId },
-        ]);
-        expect(members!.members[0]!.status).toEqual("M");
-    });
-
-    it("should fail when trying to update a member to restricted statuses (O, P)", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const restrictedStatuses = ["O", "P"];
-
-        for (const status of restrictedStatuses) {
-            const res = await request(app)
-                .patch(
-                    `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
-                )
-                .set(token)
-                .send({ status });
-
-            expect(res.statusCode).toEqual(400);
-        }
-    });
-
-    it("should not allow non-owners (A, M, P, B) to update a member status", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [owner] = await CreateUsers(database);
-        const [member] = await CreateUsers(database);
-
-        const statuses = ["A", "M", "P", "B"] as const;
-
-        for (const status of statuses) {
             const {
                 planners: [planner],
-            } = await KnexPlannerRepository.create(database, {
-                userId: owner!.userId,
+            } = await plannerRepository.create({
+                userId: user.userId,
                 planners: [{ name: uuid(), description: uuid() }],
             });
 
-            await KnexPlannerRepository.saveMembers(database, [
-                {
-                    plannerId: planner!.plannerId,
-                    members: [
-                        { userId: user.userId, status },
-                        { userId: member!.userId, status: "M" },
-                    ],
-                },
-            ]);
+            // Start as Member
+            await plannerRepository.saveMembers({
+                plannerId: planner!.plannerId,
+                members: [{ userId: member!.userId, status: "M" }],
+            });
 
-            const res = await request(app)
+            // Update M -> A
+            let res = await request(app)
                 .patch(
                     `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
                 )
                 .set(token)
                 .send({ status: "A" });
 
-            expect(res.statusCode).toEqual(404);
-        }
-    });
+            expect(res.statusCode).toEqual(200);
+            expect(res.body.status).toEqual("A");
 
-    it("should return 400 when trying to update a pending member", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
+            let [members] = await plannerRepository.readMembers([
+                { plannerId: planner!.plannerId },
+            ]);
+            expect(members!.members[0]!.status).toEqual("A");
 
+            // Update A -> M
+            res = await request(app)
+                .patch(
+                    `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+                )
+                .set(token)
+                .send({ status: "M" });
+
+            expect(res.statusCode).toEqual(200);
+            expect(res.body.status).toEqual("M");
+
+            [members] = await plannerRepository.readMembers([
+                { plannerId: planner!.plannerId },
+            ]);
+            expect(members!.members[0]!.status).toEqual("M");
+        },
+    );
+
+    withCxIt(
+        "should fail when trying to update a member to restricted statuses (O, P)",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [member] = await CreateUsers(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+
+            await plannerRepository.saveMembers({
+                plannerId: planner!.plannerId,
+                members: [{ userId: member!.userId, status: "M" }],
+            });
+
+            const restrictedStatuses = ["O", "P"];
+
+            for (const status of restrictedStatuses) {
+                const res = await request(app)
+                    .patch(
+                        `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+                    )
+                    .set(token)
+                    .send({ status });
+
+                expect(res.statusCode).toEqual(400);
+            }
+        },
+    );
+
+    withCxIt(
+        "should not allow non-owners (A, M, P, B) to update a member status",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [owner] = await CreateUsers(userRepository);
+            const [member] = await CreateUsers(userRepository);
+
+            const statuses = ["A", "M", "P", "B"] as const;
+
+            for (const status of statuses) {
+                const {
+                    planners: [planner],
+                } = await plannerRepository.create({
+                    userId: owner!.userId,
+                    planners: [{ name: uuid(), description: uuid() }],
+                });
+
+                await plannerRepository.saveMembers([
+                    {
+                        plannerId: planner!.plannerId,
+                        members: [
+                            { userId: user.userId, status },
+                            { userId: member!.userId, status: "M" },
+                        ],
+                    },
+                ]);
+
+                const res = await request(app)
+                    .patch(
+                        `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+                    )
+                    .set(token)
+                    .send({ status: "A" });
+
+                expect(res.statusCode).toEqual(404);
+            }
+        },
+    );
+
+    withCxIt(
+        "should return 400 when trying to update a pending member",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [member] = await CreateUsers(userRepository);
+
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+
+            await plannerRepository.saveMembers({
+                plannerId: planner!.plannerId,
+                members: [{ userId: member!.userId, status: "P" }],
+            });
+
+            const res = await request(app)
+                .patch(
+                    `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+                )
+                .set(token)
+                .send({ status: "M" });
+
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains extraneous properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [member] = await CreateUsers(userRepository);
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+            await plannerRepository.saveMembers({
+                plannerId: planner!.plannerId,
+                members: [{ userId: member!.userId, status: "M" }],
+            });
+
+            const res = await request(app)
+                .patch(
+                    `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+                )
+                .set(token)
+                .send({ status: "A", extra: "invalid" });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt(
+        "should fail if the request contains invalid properties",
+        async () => {
+            const [token, user] =
+                await PrepareAuthenticatedUser(userRepository);
+            const [member] = await CreateUsers(userRepository);
+            const {
+                planners: [planner],
+            } = await plannerRepository.create({
+                userId: user.userId,
+                planners: [{ name: uuid(), description: uuid() }],
+            });
+            await plannerRepository.saveMembers({
+                plannerId: planner!.plannerId,
+                members: [{ userId: member!.userId, status: "M" }],
+            });
+
+            const res = await request(app)
+                .patch(
+                    `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
+                )
+                .set(token)
+                .send({ status: "INVALID" });
+            expect(res.statusCode).toEqual(400);
+        },
+    );
+
+    withCxIt("should fail if a required field is set to null", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(userRepository);
+        const [member] = await CreateUsers(userRepository);
         const {
             planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
+        } = await plannerRepository.create({
             userId: user.userId,
             planners: [{ name: uuid(), description: uuid() }],
         });
-
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: "P" }],
-        });
-
-        const res = await request(app)
-            .patch(
-                `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
-            )
-            .set(token)
-            .send({ status: "M" });
-
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const res = await request(app)
-            .patch(
-                `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
-            )
-            .set(token)
-            .send({ status: "A", extra: "invalid" });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-        await KnexPlannerRepository.saveMembers(database, {
-            plannerId: planner!.plannerId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const res = await request(app)
-            .patch(
-                `/v1/planners/${planner!.plannerId}/members/${member!.userId}`,
-            )
-            .set(token)
-            .send({ status: "INVALID" });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const {
-            planners: [planner],
-        } = await KnexPlannerRepository.create(database, {
-            userId: user.userId,
-            planners: [{ name: uuid(), description: uuid() }],
-        });
-        await KnexPlannerRepository.saveMembers(database, {
+        await plannerRepository.saveMembers({
             plannerId: planner!.plannerId,
             members: [{ userId: member!.userId, status: "M" }],
         });
