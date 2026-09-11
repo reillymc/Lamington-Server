@@ -4,6 +4,7 @@ import type { User } from "./userRepository.ts";
 export interface Attachment {
     attachmentId: string;
     uri: string;
+    preview: string | null;
     createdBy: string;
     createdAt: string;
     updatedAt: string;
@@ -26,6 +27,7 @@ type UpdateRequest = {
     attachments: ReadonlyArray<{
         attachmentId: Attachment["attachmentId"];
         uri: Attachment["uri"];
+        preview?: Attachment["preview"];
     }>;
 };
 

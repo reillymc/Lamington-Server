@@ -28,6 +28,7 @@ type CookListMealResponse = {
     heroImage: {
         attachmentId: string;
         uri: string;
+        preview?: string;
     } | null;
 };
 

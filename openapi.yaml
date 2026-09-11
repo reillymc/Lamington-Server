@@ -3151,6 +3151,8 @@ components:
           $ref: "#/components/schemas/Uuid"
         uri:
           type: string
+        preview:
+          type: string
       required:
         - attachmentId
         - uri

@@ -2,6 +2,7 @@ import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
+import { thumbHashToRGBA } from "thumbhash";
 import type { AttachmentRepository } from "../../src/repositories/attachmentRepository.ts";
 import type { FileRepository } from "../../src/repositories/fileRepository.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
@@ -111,12 +112,34 @@ describe("Upload an image", () => {
 
         expect(data.attachmentId).toBeTruthy();
         expect(data.uri).toBeTruthy();
+        expect(data.preview).toBeTruthy();
 
         const attachmentReadResponse = await readAllAttachments(database);
         expect(attachmentReadResponse).toHaveLength(1);
         expect(data.attachmentId).toEqual(
             attachmentReadResponse[0]!.attachmentId,
         );
+    });
+
+    it("should store a decodable thumb hash preview", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/attachments/image")
+            .set(token)
+            .attach("image", "tests/resources/testAttachment.jpg");
+
+        expect(res.statusCode).toEqual(200);
+
+        const data = res.body as components["schemas"]["ImageAttachment"];
+
+        const { w, h, rgba } = thumbHashToRGBA(
+            Buffer.from(data.preview!, "base64"),
+        );
+
+        expect(w).toBeGreaterThan(0);
+        expect(h).toBeGreaterThan(0);
+        expect(rgba).toHaveLength(w * h * 4);
     });
 
     it("should not save to db when upload fails", async () => {

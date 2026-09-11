@@ -25,8 +25,6 @@ import type {
 } from "./common/rowTypes.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
-    AttachmentTable,
-    ContentAttachmentTable,
     ContentMemberTable,
     ContentTable,
     lamington,
@@ -72,6 +70,7 @@ const formatPlannerMeal = (
             ? {
                   attachmentId: meal.heroAttachmentId,
                   uri: meal.heroAttachmentUri,
+                  preview: toUndefined(meal.heroAttachmentPreview),
               }
             : undefined,
 });
@@ -93,8 +92,6 @@ const readByIds = async (
             PlannerMealTable.source,
             PlannerMealTable.recipeId,
             PlannerMealTable.notes,
-            db.ref(ContentAttachmentTable.attachmentId).as("heroAttachmentId"),
-            db.ref(AttachmentTable.uri).as("heroAttachmentUri"),
         )
         .leftJoin(
             lamington.content,

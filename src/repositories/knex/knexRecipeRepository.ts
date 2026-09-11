@@ -494,6 +494,7 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
                     photo: formatHeroAttachment(
                         recipe.heroAttachmentId,
                         recipe.heroAttachmentUri,
+                        recipe.heroAttachmentPreview,
                     ),
                 },
             ];
@@ -782,6 +783,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                     [ratingPersonalName]: ratingPersonal,
                     heroAttachmentId,
                     heroAttachmentUri,
+                    heroAttachmentPreview,
                     ...recipe
                 }) => ({
                     recipeId: recipe.recipeId,
@@ -796,6 +798,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                     photo: formatHeroAttachment(
                         heroAttachmentId,
                         heroAttachmentUri,
+                        heroAttachmentPreview,
                     ),
                 }),
             ),
