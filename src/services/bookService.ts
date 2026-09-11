@@ -105,8 +105,8 @@ export const createBookService: CreateService<
                     {
                         name: request.name,
                         description: request.description,
-                        color: request.color ?? "variant1",
-                        icon: request.icon ?? "variant1",
+                        color: request.color,
+                        icon: request.icon,
                     },
                 ],
             });

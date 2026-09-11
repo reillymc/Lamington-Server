@@ -824,6 +824,73 @@ describe("Update a planner", () => {
         expect(savedPlanner?.owner.userId).toEqual(user.userId);
     });
 
+    it("should only update the color when partially patching, preserving other fields", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [
+                { name: uuid(), description: uuid(), color: randomColor() },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}`)
+            .set(token)
+            .send({
+                color: "variant5",
+            } satisfies components["schemas"]["PlannerUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            planners: [savedPlanner],
+        } = await KnexPlannerRepository.read(database, {
+            planners: [planner!],
+            userId: user.userId,
+        });
+
+        expect(savedPlanner?.color).toEqual("variant5");
+        expect(savedPlanner?.name).toEqual(planner!.name);
+        expect(savedPlanner?.description).toEqual(planner!.description);
+    });
+
+    it("should preserve the color when partially patching the name", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [
+                { name: uuid(), description: uuid(), color: randomColor() },
+            ],
+        });
+
+        const updatedName = uuid();
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}`)
+            .set(token)
+            .send({
+                name: updatedName,
+            } satisfies components["schemas"]["PlannerUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            planners: [savedPlanner],
+        } = await KnexPlannerRepository.read(database, {
+            planners: [planner!],
+            userId: user.userId,
+        });
+
+        expect(savedPlanner?.name).toEqual(updatedName);
+        expect(savedPlanner?.color).toEqual(planner!.color);
+        expect(savedPlanner?.description).toEqual(planner!.description);
+    });
+
     it("should fail if the request contains extraneous properties", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 

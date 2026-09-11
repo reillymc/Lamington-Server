@@ -1,3 +1,4 @@
+import type { Icon } from "./common/icon.ts";
 import type {
     Database,
     RepositoryBulkService,
@@ -7,8 +8,6 @@ import type { Content, ContentMember } from "./temp.ts";
 import type { User } from "./userRepository.ts";
 
 export type ListUserStatus = "O" | "A" | "M" | "P" | "B";
-export type ListIcon =
-    `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17}`;
 
 type NumberValue = { representation: "number"; value: string };
 type RangeValue = { representation: "range"; value: [string, string] };
@@ -21,19 +20,14 @@ type ListItemIngredientAmountV1 = RangeValue | NumberValue | FractionValue;
 
 type ListItemIngredientAmount = ListItemIngredientAmountV1;
 
-type ListCustomisationsV1 = {
-    icon: string;
-};
-
-type ListCustomisations = ListCustomisationsV1;
-
 /**
  * List
  */
 export type List = {
     listId: string;
     name: string;
-    customisations: ListCustomisations | null;
+    color: string | null;
+    icon: Icon | null;
     description: string | null;
 };
 
@@ -83,7 +77,7 @@ type BaseListResponse = {
     listId: List["listId"];
     name: List["name"];
     description: List["description"];
-    icon: ListIcon | null;
+    icon: List["icon"];
     owner: {
         userId: User["userId"];
         firstName: User["firstName"];
@@ -121,7 +115,7 @@ type CreateListsRequest = {
         name: List["name"];
         description?: List["description"];
         color?: string;
-        icon?: ListIcon;
+        icon?: Icon;
     }>;
 };
 
@@ -134,7 +128,7 @@ type UpdateListsRequest = {
         name?: List["name"];
         description?: List["description"] | null;
         color?: string;
-        icon?: ListIcon;
+        icon?: Icon;
     }>;
 };
 
