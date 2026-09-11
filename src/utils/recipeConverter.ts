@@ -71,6 +71,8 @@ const parseDuration = (duration?: unknown): number | undefined => {
     return minutes > 0 ? minutes : undefined;
 };
 
+const maxServingsUnitLength = 255;
+
 const parseYield = (
     recipeYield?: RecipeSchema["recipeYield"],
 ): components["schemas"]["ExtractedRecipe"]["servings"] | undefined => {
@@ -106,7 +108,9 @@ const parseYield = (
         try {
             const lower = getCapture(rangeMatch, 1);
             const upper = getCapture(rangeMatch, 2);
-            const unit = getCapture(rangeMatch, 3).trim();
+            const unit = getCapture(rangeMatch, 3)
+                .trim()
+                .slice(0, maxServingsUnitLength);
 
             return {
                 count: {
@@ -124,7 +128,9 @@ const parseYield = (
     if (singleMatch) {
         try {
             const value = getCapture(singleMatch, 1);
-            const unit = getCapture(singleMatch, 2).trim();
+            const unit = getCapture(singleMatch, 2)
+                .trim()
+                .slice(0, maxServingsUnitLength);
 
             return {
                 count: {

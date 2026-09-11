@@ -2876,6 +2876,10 @@ components:
       type: string
       maxLength: 100
 
+    RecipeServingsUnit:
+      type: string
+      maxLength: 255
+
     RecipeNutrition:
       type: object
       properties:
@@ -3337,8 +3341,7 @@ components:
       type: object
       properties:
         unit:
-          type: string
-          maxLength: 255
+          $ref: "#/components/schemas/RecipeServingsUnit"
         count:
           oneOf:
             - $ref: "#/components/schemas/AmountRange"
