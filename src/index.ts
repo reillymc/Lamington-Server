@@ -36,6 +36,7 @@ import { KnexTagRepository } from "./repositories/knex/knexTagRepository.ts";
 import { KnexUserRepository } from "./repositories/knex/knexUserRepository.ts";
 import { createS3FileRepository } from "./repositories/s3/s3FileRepository.ts";
 import { createAttachmentService } from "./services/attachmentService.ts";
+import { createAuthenticationService } from "./services/authenticationService.ts";
 import { createBookService } from "./services/bookService.ts";
 import { createContentExtractionService } from "./services/contentExtractionService.ts";
 import { createCooklistService } from "./services/cooklistService.ts";
@@ -198,6 +199,12 @@ const jobs: AppJobs = {
 
 const services: AppServices = {
     attachmentService: createAttachmentService(db, repositories),
+    authenticationService: createAuthenticationService(db, repositories, {
+        accessExpiration,
+        accessSecret,
+        refreshExpiration,
+        refreshSecret,
+    }),
     bookService: createBookService(db, repositories),
     contentExtractionService: createContentExtractionService(),
     cooklistService: createCooklistService(db, repositories),
@@ -207,12 +214,7 @@ const services: AppServices = {
     plannerService: createPlannerService(db, repositories),
     recipeService: createRecipeService(db, repositories),
     tagService: createTagService(db, repositories),
-    userService: createUserService(db, repositories, jobs, {
-        accessExpiration,
-        accessSecret,
-        refreshExpiration,
-        refreshSecret,
-    }),
+    userService: createUserService(db, repositories, jobs),
 };
 
 const middleware: AppMiddleware = {

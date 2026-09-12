@@ -6,7 +6,7 @@ import request from "supertest";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
-import { comparePassword } from "../../src/services/userService.ts";
+import { comparePassword } from "../../src/utils/password.ts";
 import { CreateUsers } from "../helpers/index.ts";
 import { createTestApp, db, refreshSecret } from "../helpers/setup.ts";
 
