@@ -39,7 +39,7 @@ describe("Login a user", () => {
 
         // Exceed rate limit
         const responses = await Promise.all(
-            Array.from({ length: 5 }).map(() =>
+            Array.from({ length: 10 }).map(() =>
                 request(app).post("/v1/auth/login").send(requestBody),
             ),
         );
@@ -158,7 +158,7 @@ describe("Register a new user", () => {
 
         // Exceed rate limit
         const responses = await Promise.all(
-            Array.from({ length: 5 }).map(() =>
+            Array.from({ length: 10 }).map(() =>
                 request(app).post("/v1/auth/register").send(requestBody),
             ),
         );
@@ -329,14 +329,14 @@ describe("Refresh authentication token", () => {
         });
     };
 
-    it("should respect general rate limit", async () => {
+    it("should respect restrictive rate limit", async () => {
         app = createTestApp({ database });
 
         const requestBody = { refreshToken: "some-token" };
 
         // Exceed rate limit
         const responses = await Promise.all(
-            Array.from({ length: 150 }).map(() =>
+            Array.from({ length: 10 }).map(() =>
                 request(app).post("/v1/auth/refresh").send(requestBody),
             ),
         );
