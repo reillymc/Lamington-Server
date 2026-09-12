@@ -149,6 +149,7 @@ export const createTestApp = ({
             externalHost: "https://test.host",
             uploadDirectory: "uploads",
             assetDirectory: "tests/resources/testAssets",
+            trustProxyHops: 0,
         },
     });
 };
