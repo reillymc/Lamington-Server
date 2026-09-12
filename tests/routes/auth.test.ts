@@ -96,6 +96,36 @@ describe("Login a user", () => {
         expect(data.authorization?.refresh).toBeTruthy();
     });
 
+    it("should not include sensitive fields in issued tokens", async () => {
+        const [user] = await CreateUsers(database);
+
+        const requestBody: components["schemas"]["AuthLogin"] = {
+            email: user!.email,
+            password: user!.password,
+        };
+
+        const res = await request(app).post("/v1/auth/login").send(requestBody);
+
+        expect(res.statusCode).toEqual(200);
+
+        const data = res.body as components["schemas"]["AuthResponse"];
+
+        for (const token of [
+            data.authorization!.access,
+            data.authorization!.refresh,
+        ]) {
+            const payload = jwt.decode(token) as Record<string, unknown>;
+
+            expect(payload.userId).toEqual(user!.userId);
+            expect(payload.email).toEqual(user!.email);
+            expect(payload.status).toEqual(user!.status);
+            expect(payload).not.toHaveProperty("password");
+            expect(payload).not.toHaveProperty("createdAt");
+            expect(payload).not.toHaveProperty("firstName");
+            expect(payload).not.toHaveProperty("lastName");
+        }
+    });
+
     it("should return pending error message when logging in with pending account", async () => {
         const [user] = await CreateUsers(database, {
             status: "P",

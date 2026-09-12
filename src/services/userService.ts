@@ -32,18 +32,30 @@ const verifyRefreshToken = (jwtRefreshSecret: string, token: string) => {
     throw new UnauthorizedError("Invalid Token Structure");
 };
 
+const toTokenPayload = (
+    user: components["schemas"]["AuthResponse"]["user"],
+) => ({
+    userId: user.userId,
+    email: user.email,
+    status: user.status,
+});
+
 export const createAccessToken = (
     jwtAccessSecret: string,
     expiresIn: number,
     user: components["schemas"]["AuthResponse"]["user"],
-) => jwt.sign(user, jwtAccessSecret, { noTimestamp: true, expiresIn });
+) =>
+    jwt.sign(toTokenPayload(user), jwtAccessSecret, {
+        noTimestamp: true,
+        expiresIn,
+    });
 
 const createRefreshToken = (
     jwtRefreshSecret: string,
     expiresIn: number,
     user: components["schemas"]["AuthResponse"]["user"],
 ) =>
-    jwt.sign(user, jwtRefreshSecret, {
+    jwt.sign(toTokenPayload(user), jwtRefreshSecret, {
         noTimestamp: true,
         expiresIn,
     });
