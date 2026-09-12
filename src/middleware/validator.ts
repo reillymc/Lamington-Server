@@ -1,9 +1,10 @@
 import path from "node:path";
 import type { Request } from "express";
 import * as OpenApiValidator from "express-openapi-validator";
-import jwt, { type JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import multer, { type FileFilterCallback } from "multer";
 import { openApiSpec } from "../openApiSpec.ts";
+import { verifyAccessToken } from "../utils/token.ts";
 import {
     type CreateMiddleware,
     type Middleware,
@@ -28,17 +29,6 @@ const fileFilter = (
     callback(null, validFile);
 };
 
-const isAccessToken = (
-    decoded: string | undefined | JwtPayload,
-): decoded is Request["session"] => {
-    if (decoded === undefined || typeof decoded === "string") return false;
-
-    if ("userId" in decoded) return true;
-    if ("status" in decoded) return true;
-
-    return false;
-};
-
 type ValidatorMiddlewareConfig = {
     accessSecret: string;
 };
@@ -46,26 +36,12 @@ type ValidatorMiddlewareConfig = {
 export const createValidatorMiddleware: CreateMiddleware<
     ValidatorMiddlewareConfig
 > = ({ accessSecret }) => {
-    const verifyAccessToken = (token: string | undefined) => {
-        if (!token) {
-            throw new UnauthorizedError("No Token Provided");
-        }
-
-        const decoded = jwt.verify(token, accessSecret);
-
-        if (!isAccessToken(decoded)) {
-            throw new UnauthorizedError("Invalid Token Structure");
-        }
-
-        return decoded;
-    };
-
     const bearerAuthValidator = (request: Request): boolean => {
         const authHeader = request.headers.authorization;
 
         try {
             const token = authHeader?.substring(7, authHeader.length);
-            const decoded = verifyAccessToken(token);
+            const decoded = verifyAccessToken(accessSecret, token);
 
             if (
                 decoded.status === "P" ||

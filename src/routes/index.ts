@@ -26,6 +26,7 @@ type AppRouterConfig = AttachmentsRouterConfig &
 
 export const createAppRouter: CreateRouter<
     | "attachmentService"
+    | "authenticationService"
     | "bookService"
     | "contentExtractionService"
     | "cooklistService"
