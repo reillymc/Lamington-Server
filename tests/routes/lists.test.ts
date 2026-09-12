@@ -4,15 +4,19 @@ import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
+import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
 import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
+import { SYSTEM_USER_ID } from "../../src/utils/systemUser.ts";
 import { CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
 import { createTestApp, db } from "../helpers/setup.ts";
 
-const randomIcon = () =>
-    (["variant1", "variant2", "variant3"] as const)[
+const randomIcon = (): components["schemas"]["Icon"] => ({
+    type: "icon",
+    value: (["variant1", "variant2", "variant3"] as const)[
         Math.floor(Math.random() * 3)
-    ];
+    ]!,
+});
 
 let database: KnexDatabase;
 let app: Express;
@@ -342,6 +346,30 @@ describe("Update a list", () => {
         }
     });
 
+    it("should reject a content id that is not a list", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: user.userId,
+            ingredients: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/lists/${ingredient!.ingredientId}`)
+            .set(token)
+            .send({ name: uuid() });
+
+        expect(res.statusCode).toEqual(404);
+
+        const { ingredients: savedIngredients } =
+            await KnexIngredientRepository.readAll(database, {
+                userId: user.userId,
+            });
+        expect(savedIngredients).toHaveLength(1);
+    });
+
     it("should save updated list details when the user is the list owner", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -374,6 +402,75 @@ describe("Update a list", () => {
         expect(savedList?.name).toEqual(updatedList.name);
         expect(savedList?.description).toEqual(updatedList.description);
         expect(savedList?.icon).toEqual(updatedList.icon);
+    });
+
+    it("should only update the icon when partially patching, preserving other fields", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [
+                {
+                    name: uuid(),
+                    description: uuid(),
+                    color: "variant5",
+                    icon: { type: "icon", value: "variant2" },
+                },
+            ],
+        });
+        const list = lists[0]!;
+
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send({
+                icon: { type: "custom", value: "😀" },
+            } satisfies components["schemas"]["ListUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            lists: [savedList],
+        } = await KnexListRepository.read(database, {
+            lists: [list],
+            userId: user.userId,
+        });
+
+        expect(savedList?.icon).toEqual({ type: "custom", value: "😀" });
+        expect(savedList?.name).toEqual(list.name);
+        expect(savedList?.description).toEqual(list.description);
+    });
+
+    it("should preserve the icon when partially patching the name", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [
+                { name: uuid(), icon: { type: "icon", value: "variant2" } },
+            ],
+        });
+        const list = lists[0]!;
+
+        const updatedName = uuid();
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send({
+                name: updatedName,
+            } satisfies components["schemas"]["ListUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            lists: [savedList],
+        } = await KnexListRepository.read(database, {
+            lists: [list],
+            userId: user.userId,
+        });
+
+        expect(savedList?.name).toEqual(updatedName);
+        expect(savedList?.icon).toEqual({ type: "icon", value: "variant2" });
     });
 
     it("should fail if the request contains extraneous properties", async () => {
@@ -478,6 +575,29 @@ describe("Delete a list", () => {
             .set(token)
             .send();
         expect(res.statusCode).toEqual(404);
+    });
+
+    it("should not delete another entity when given a non-list content id", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: user.userId,
+            ingredients: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/lists/${ingredient!.ingredientId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { ingredients: savedIngredients } =
+            await KnexIngredientRepository.readAll(database, {
+                userId: user.userId,
+            });
+        expect(savedIngredients).toHaveLength(1);
     });
 
     it("should successfully delete the list", async () => {
@@ -635,30 +755,189 @@ describe("Add item to list", () => {
         expect(returnedItem!.notes).toEqual(itemData.notes);
     });
 
-    // it("should create a list item with ingredient", async () => {
-    //     const [token, user] = await PrepareAuthenticatedUser(database);
+    it("should reject an ingredient owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
 
-    //     const { lists } = await KnexListRepository.create(database, {
-    //         userId: user.userId,
-    //         lists: [{ name: uuid(), description: uuid() }],
-    //     });
-    //     const list = lists[0]!;
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const [list] = lists;
 
-    //     const [ingredients] = await CreateIngredients(database, { createdBy: user.userId, count: 1 });
-    //     const ingredient = ingredients[0]!;
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: otherUser!.userId,
+            ingredients: [{ name: "Private", namePlural: "Privates" }],
+        });
 
-    //     const itemData = {
-    //         name: uuid(),
-    //         ingredientId: ingredient.ingredientId,
-    //     } satisfies components["schemas"]["ListItemCreate"];
+        const res = await request(app)
+            .post(`/v1/lists/${list!.listId}/items`)
+            .set(token)
+            .send({
+                name: uuid(),
+                ingredientId: ingredient!.ingredientId,
+            } satisfies components["schemas"]["ListItemCreate"]);
 
-    //     const res = await request(app).post(`/v1/lists/${list.listId}/items`).set(token).send(itemData);
+        expect(res.statusCode).toEqual(404);
+    });
 
-    //     expect(res.statusCode).toEqual(201);
-    //     const [returnedItem] = res.body as components["schemas"]["ListItem"][];
+    it("should accept a system-owned ingredient", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
-    //     expect(returnedItem!.ingredientId).toEqual(ingredient.ingredientId);
-    // });
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const [list] = lists;
+
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: SYSTEM_USER_ID,
+            ingredients: [{ name: "Global", namePlural: "Globals" }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/lists/${list!.listId}/items`)
+            .set(token)
+            .send({
+                name: uuid(),
+                ingredientId: ingredient!.ingredientId,
+            } satisfies components["schemas"]["ListItemCreate"]);
+
+        expect(res.statusCode).toEqual(201);
+    });
+
+    it("should reject a content id that is not an ingredient", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const [list] = lists;
+
+        const {
+            lists: [subList],
+        } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/lists/${list!.listId}/items`)
+            .set(token)
+            .send({
+                name: uuid(),
+                ingredientId: subList!.listId,
+            } satisfies components["schemas"]["ListItemCreate"]);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { items } = await KnexListRepository.readAllItems(database, {
+            userId: user.userId,
+            filter: { listId: list!.listId },
+        });
+        expect(items).toHaveLength(0);
+    });
+
+    it("should create a list item with ingredient", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid(), description: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const { ingredients } = await KnexIngredientRepository.create(
+            database,
+            { ...user, ingredients: [{ name: uuid() }] },
+        );
+        const ingredient = ingredients[0]!;
+
+        const itemData = {
+            name: uuid(),
+            ingredientId: ingredient.ingredientId,
+        } satisfies components["schemas"]["ListItemCreate"];
+
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/items`)
+            .set(token)
+            .send(itemData);
+
+        expect(res.statusCode).toEqual(201);
+        const [returnedItem] = res.body as components["schemas"]["ListItem"][];
+
+        expect(returnedItem!.ingredientId).toEqual(ingredient.ingredientId);
+    });
+
+    it("should create a batch of items without ingredients", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/items`)
+            .set(token)
+            .send([
+                { name: uuid() },
+                { name: uuid() },
+            ] satisfies components["schemas"]["ListItemCreate"][]);
+
+        expect(res.statusCode).toEqual(201);
+        const returnedItems = res.body as components["schemas"]["ListItem"][];
+
+        expect(returnedItems.length).toEqual(2);
+    });
+
+    it("should reject a batch containing an ingredient owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const {
+            ingredients: [ownIngredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: user.userId,
+            ingredients: [{ name: "Own", namePlural: "Owns" }],
+        });
+
+        const {
+            ingredients: [otherIngredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: otherUser!.userId,
+            ingredients: [{ name: "Private", namePlural: "Privates" }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/items`)
+            .set(token)
+            .send([
+                { name: uuid(), ingredientId: ownIngredient!.ingredientId },
+                { name: uuid(), ingredientId: otherIngredient!.ingredientId },
+            ] satisfies components["schemas"]["ListItemCreate"][]);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { items } = await KnexListRepository.readAllItems(database, {
+            userId: user.userId,
+            filter: { listId: list.listId },
+        });
+
+        expect(items.length).toEqual(0);
+    });
 
     it("should allow adding an item if the user is a list administrator", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
@@ -688,6 +967,30 @@ describe("Add item to list", () => {
         const [returnedItem] = res.body as components["schemas"]["ListItem"][];
 
         expect(returnedItem!.name).toEqual(itemData.name);
+    });
+
+    it("should reject batches of more than 50 items", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid(), description: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const items = Array.from({ length: 51 }).map(
+            () =>
+                ({
+                    name: uuid(),
+                }) satisfies components["schemas"]["ListItemCreate"],
+        );
+
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/items`)
+            .set(token)
+            .send(items);
+
+        expect(res.statusCode).toEqual(400);
     });
 
     it("should not allow adding an item if the user is a list member, pending, or blacklisted", async () => {
@@ -796,6 +1099,146 @@ describe("Update list item", () => {
 
         expect(returnedItem.name).toEqual(updateData.name);
         expect(returnedItem.completed).toEqual(true);
+    });
+
+    it("should update a list item with an ingredient", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const { items } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: list.listId,
+            items: [{ name: uuid() }],
+        });
+        const item = items[0]!;
+
+        const { ingredients } = await KnexIngredientRepository.create(
+            database,
+            { ...user, ingredients: [{ name: uuid() }] },
+        );
+        const ingredient = ingredients[0]!;
+
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send({
+                ingredientId: ingredient.ingredientId,
+            } satisfies components["schemas"]["ListItemUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+        const returnedItem = res.body as components["schemas"]["ListItem"];
+
+        expect(returnedItem.ingredientId).toEqual(ingredient.ingredientId);
+    });
+
+    it("should reject an ingredient owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const { items } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: list.listId,
+            items: [{ name: uuid() }],
+        });
+        const item = items[0]!;
+
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: otherUser!.userId,
+            ingredients: [{ name: "Private", namePlural: "Privates" }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send({
+                ingredientId: ingredient!.ingredientId,
+            } satisfies components["schemas"]["ListItemUpdate"]);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
+    it("should accept a system-owned ingredient", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const { items } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: list.listId,
+            items: [{ name: uuid() }],
+        });
+        const item = items[0]!;
+
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: SYSTEM_USER_ID,
+            ingredients: [{ name: "Global", namePlural: "Globals" }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send({
+                ingredientId: ingredient!.ingredientId,
+            } satisfies components["schemas"]["ListItemUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+        const returnedItem = res.body as components["schemas"]["ListItem"];
+
+        expect(returnedItem.ingredientId).toEqual(ingredient!.ingredientId);
+    });
+
+    it("should clear an ingredient", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const { ingredients } = await KnexIngredientRepository.create(
+            database,
+            { ...user, ingredients: [{ name: uuid() }] },
+        );
+        const ingredient = ingredients[0]!;
+
+        const { items } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: list.listId,
+            items: [{ name: uuid(), ingredientId: ingredient.ingredientId }],
+        });
+        const item = items[0]!;
+
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send({
+                ingredientId: null,
+            } satisfies components["schemas"]["ListItemUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+        const returnedItem = res.body as components["schemas"]["ListItem"];
+
+        expect(returnedItem.ingredientId).toBeUndefined();
     });
 
     it("should allow updating an item if the user is a list administrator", async () => {

@@ -77,10 +77,10 @@ export interface ListService {
     declineInvite: (userId: string, listId: string) => Promise<void>;
 }
 
-export const createListService: CreateService<ListService, "listRepository"> = (
-    database,
-    { listRepository },
-) => ({
+export const createListService: CreateService<
+    ListService,
+    "listRepository" | "ingredientRepository"
+> = (database, { listRepository, ingredientRepository }) => ({
     getAll: async (userId) => {
         const { lists } = await listRepository.readAll(database, { userId });
         if (lists.length === 0) {
@@ -212,6 +212,24 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 throw new NotFoundError("list", listId);
             }
 
+            const { ingredients } =
+                await ingredientRepository.verifyPermissions(trx, {
+                    userId,
+                    ingredients: items.flatMap(({ ingredientId }) =>
+                        ingredientId !== undefined && ingredientId !== null
+                            ? [{ ingredientId }]
+                            : [],
+                    ),
+                });
+
+            const disallowedIngredientIds = ingredients
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ ingredientId }) => ingredientId);
+
+            if (disallowedIngredientIds.length > 0) {
+                throw new NotFoundError("ingredient", disallowedIngredientIds);
+            }
+
             const { items: createdItems } = await listRepository.createItems(
                 trx,
                 { listId, userId, items },
@@ -231,6 +249,22 @@ export const createListService: CreateService<ListService, "listRepository"> = (
                 permissions.lists.some(({ hasPermissions }) => !hasPermissions)
             ) {
                 throw new NotFoundError("list", listId);
+            }
+
+            const { ingredients } =
+                await ingredientRepository.verifyPermissions(trx, {
+                    userId,
+                    ingredients: request.ingredientId
+                        ? [{ ingredientId: request.ingredientId }]
+                        : [],
+                });
+
+            const disallowedIngredientIds = ingredients
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ ingredientId }) => ingredientId);
+
+            if (disallowedIngredientIds.length > 0) {
+                throw new NotFoundError("ingredient", disallowedIngredientIds);
             }
 
             const { items } = await listRepository.updateItems(trx, {

@@ -43,4 +43,26 @@ export const KnexAttachmentRepository: AttachmentRepository<KnexDatabase> = {
 
         return { userId, attachments: results };
     },
+    verifyPermissions: async (db, { userId, attachments }) => {
+        const requestedIds = attachments.map(
+            ({ attachmentId }) => attachmentId,
+        );
+
+        const rows = await db(lamington.attachment)
+            .select(AttachmentTable.attachmentId)
+            .whereIn(AttachmentTable.attachmentId, requestedIds)
+            .where(AttachmentTable.createdBy, userId);
+
+        const allowedSet = new Set(
+            rows.map(({ attachmentId }) => attachmentId),
+        );
+
+        return {
+            userId,
+            attachments: attachments.map(({ attachmentId }) => ({
+                attachmentId,
+                hasPermissions: allowedSet.has(attachmentId),
+            })),
+        };
+    },
 };

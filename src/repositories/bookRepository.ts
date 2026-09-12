@@ -1,3 +1,4 @@
+import type { Icon } from "./common/icon.ts";
 import type { Recipe } from "./recipeRepository.ts";
 import type {
     Database,
@@ -8,16 +9,8 @@ import type { ContentMember } from "./temp.ts";
 import type { User } from "./userRepository.ts";
 
 export type BookUserStatus = "O" | "A" | "M" | "P" | "B";
-export type BookIcon = `variant${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10}`;
 
 export type BookColor = `variant${1 | 2 | 3 | 4 | 5}`;
-
-// type BookCustomisationsV1 = {
-//     color: string;
-//     icon: BookUserStatus;
-// };
-
-// type BookCustomisations = BookCustomisationsV1;
 
 /**
  * Book
@@ -47,7 +40,7 @@ type BaseResponse = {
     name: Book["name"];
     description: Book["description"] | undefined;
     color: BookColor;
-    icon: BookIcon;
+    icon: Icon;
     owner: {
         userId: User["userId"];
         firstName: User["firstName"];
@@ -86,7 +79,7 @@ type CreateRequest = {
         name: Book["name"];
         description?: Book["description"];
         color?: BookColor;
-        icon?: BookIcon;
+        icon?: Icon;
     }>;
 };
 
@@ -99,7 +92,7 @@ type UpdateRequest = {
         name?: Book["name"];
         description?: Book["description"];
         color?: BookColor;
-        icon?: BookIcon;
+        icon?: Icon;
     }>;
 };
 

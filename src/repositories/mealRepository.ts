@@ -43,6 +43,7 @@ type ReadResponse = {
         heroImage?: {
             attachmentId: string;
             uri: string;
+            preview?: string;
         };
     }>;
 };

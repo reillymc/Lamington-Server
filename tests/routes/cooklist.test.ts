@@ -125,6 +125,31 @@ describe("Add meal to cook list", () => {
         expect(mealsRead[0]!.recipeId).toEqual(recipe!.recipeId);
     });
 
+    it("should not create a meal with a hero image owned by another user", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{ uri: uuid() }],
+        });
+
+        const res = await request(app)
+            .post("/v1/cooklist/meals")
+            .set(token)
+            .send([
+                {
+                    description: uuid(),
+                    course: randomCourse(),
+                    heroImage: attachment!.attachmentId,
+                },
+            ] satisfies components["schemas"]["CookListMealCreate"][]);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
     it("should create multiple cooklist meals", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
@@ -267,6 +292,34 @@ describe("Update meal in cook list", () => {
             mealUpdate.heroImage,
         );
         expect(updatedMeal!.heroImage!.uri).toEqual(updatedAttachment!.uri);
+    });
+
+    it("should not update a meal with a hero image owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{ uri: uuid() }],
+        });
+
+        const {
+            meals: [createdMeal],
+        } = await KnexCookListRepository.createMeals(database, {
+            userId: user.userId,
+            meals: [{ description: uuid(), course: randomCourse() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send({
+                heroImage: attachment!.attachmentId,
+            } satisfies components["schemas"]["CookListMealUpdate"]);
+
+        expect(res.statusCode).toEqual(404);
     });
 
     it("should clear optional fields when set to null", async () => {

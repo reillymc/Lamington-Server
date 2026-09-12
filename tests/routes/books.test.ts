@@ -34,7 +34,7 @@ after(async () => {
 const randomVariant = () =>
     (["variant1", "variant2", "variant3"] as const)[
         Math.floor(Math.random() * 3)
-    ];
+    ]!;
 
 describe("Get user books", () => {
     it("route should require authentication", async () => {
@@ -183,6 +183,29 @@ describe("Delete a book", () => {
             .set(token);
 
         expect(res.statusCode).toEqual(404);
+    });
+
+    it("should not delete another entity when given a non-book content id", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/books/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { recipes: savedRecipes } = await KnexRecipeRepository.read(
+            database,
+            { userId: user.userId, recipes: [recipe!] },
+        );
+        expect(savedRecipes).toHaveLength(1);
     });
 
     it("should delete book", async () => {
@@ -569,7 +592,7 @@ describe("Get a book", () => {
                     name: uuid(),
                     description: uuid(),
                     color: randomVariant(),
-                    icon: randomVariant(),
+                    icon: { type: "icon", value: randomVariant() },
                 },
             ],
         });
@@ -637,7 +660,7 @@ describe("Create a book", () => {
             name: uuid(),
             description: uuid(),
             color: randomVariant(),
-            icon: randomVariant(),
+            icon: { type: "icon", value: randomVariant() },
         } satisfies components["schemas"]["BookCreate"];
 
         const res = await request(app)
@@ -743,6 +766,123 @@ describe("Update a book", () => {
         expect(savedBook!.description).toEqual(updatedBook.description);
         expect(savedBook!.bookId).toEqual(book!.bookId);
         expect(savedBook!.owner.userId).toEqual(book!.owner.userId);
+    });
+
+    it("should only update the icon when partially patching, preserving the color", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: user.userId,
+            books: [
+                {
+                    name: uuid(),
+                    description: uuid(),
+                    color: "variant3",
+                    icon: { type: "icon", value: "variant2" },
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/books/${book!.bookId}`)
+            .set(token)
+            .send({
+                icon: { type: "custom", value: "😀" },
+            } satisfies components["schemas"]["BookUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            books: [savedBook],
+        } = await KnexBookRepository.read(database, {
+            books: [book!],
+            userId: user.userId,
+        });
+
+        expect(savedBook?.icon).toEqual({ type: "custom", value: "😀" });
+        expect(savedBook?.color).toEqual("variant3");
+        expect(savedBook?.name).toEqual(book!.name);
+        expect(savedBook?.description).toEqual(book!.description);
+    });
+
+    it("should only update the color when partially patching, preserving the icon", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: user.userId,
+            books: [
+                {
+                    name: uuid(),
+                    description: uuid(),
+                    color: "variant3",
+                    icon: { type: "icon", value: "variant2" },
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/books/${book!.bookId}`)
+            .set(token)
+            .send({
+                color: "variant5",
+            } satisfies components["schemas"]["BookUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            books: [savedBook],
+        } = await KnexBookRepository.read(database, {
+            books: [book!],
+            userId: user.userId,
+        });
+
+        expect(savedBook?.color).toEqual("variant5");
+        expect(savedBook?.icon).toEqual({ type: "icon", value: "variant2" });
+        expect(savedBook?.name).toEqual(book!.name);
+        expect(savedBook?.description).toEqual(book!.description);
+    });
+
+    it("should preserve the color and icon when partially patching the name", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: user.userId,
+            books: [
+                {
+                    name: uuid(),
+                    description: uuid(),
+                    color: "variant3",
+                    icon: { type: "icon", value: "variant2" },
+                },
+            ],
+        });
+
+        const updatedName = uuid();
+        const res = await request(app)
+            .patch(`/v1/books/${book!.bookId}`)
+            .set(token)
+            .send({
+                name: updatedName,
+            } satisfies components["schemas"]["BookUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            books: [savedBook],
+        } = await KnexBookRepository.read(database, {
+            books: [book!],
+            userId: user.userId,
+        });
+
+        expect(savedBook?.name).toEqual(updatedName);
+        expect(savedBook?.color).toEqual("variant3");
+        expect(savedBook?.icon).toEqual({ type: "icon", value: "variant2" });
     });
 });
 

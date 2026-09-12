@@ -37,6 +37,7 @@ const table = <T extends ReadonlyArray<string>>(
 export const AttachmentTable = table(lamington.attachment, [
     "attachmentId",
     "uri",
+    "preview",
     "createdBy",
     "createdAt",
     "updatedAt",
@@ -45,7 +46,8 @@ export const AttachmentTable = table(lamington.attachment, [
 export const BookTable = table(lamington.book, [
     "bookId",
     "name",
-    "customisations",
+    "color",
+    "icon",
     "description",
 ] as const);
 
@@ -89,7 +91,8 @@ export const IngredientTable = table(lamington.ingredient, [
 export const ListTable = table(lamington.list, [
     "listId",
     "name",
-    "customisations",
+    "color",
+    "icon",
     "description",
 ] as const);
 
@@ -129,7 +132,7 @@ export const PlannerMealTable = table(lamington.plannerMeal, [
 export const PlannerTable = table(lamington.planner, [
     "plannerId",
     "name",
-    "customisations",
+    "color",
     "description",
 ] as const);
 

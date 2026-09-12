@@ -152,3 +152,30 @@ describe("Health Check", () => {
         expect(res.statusCode).toEqual(204);
     });
 });
+
+describe("Body Parser Limits", () => {
+    let database: KnexDatabase;
+    let app: Express;
+
+    beforeEach(async () => {
+        database = await db.transaction();
+        app = createTestApp({ database });
+    });
+
+    afterEach(async () => {
+        await database.rollback();
+    });
+
+    it("should return 413 for JSON bodies exceeding the size limit", async () => {
+        const largePayload = JSON.stringify({
+            name: "a".repeat(2 * 1024 * 1024),
+        });
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set("Content-Type", "application/json")
+            .send(largePayload);
+
+        expect(res.statusCode).toEqual(413);
+    });
+});

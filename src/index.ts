@@ -7,7 +7,12 @@ import { type AppConfig, setupApp } from "./app.ts";
 import development from "./database/knexfile.development.ts";
 import production from "./database/knexfile.production.ts";
 import { createUserStarterDataJob } from "./jobs/createUserStarterData.ts";
-import { type AppJobs, runStartupJobs } from "./jobs/index.ts";
+import {
+    type AppJobs,
+    runScheduledJobs,
+    runStartupJobs,
+} from "./jobs/index.ts";
+import { createPurgeDeletedUsersJob } from "./jobs/purgeDeletedUsers.ts";
 import { createRefreshIngredientsAssetJob } from "./jobs/refreshIngredientsAsset.ts";
 import { createErrorHandlerMiddleware } from "./middleware/errorHandler.ts";
 import { createLoggerMiddleware } from "./middleware/logger.ts";
@@ -31,6 +36,7 @@ import { KnexTagRepository } from "./repositories/knex/knexTagRepository.ts";
 import { KnexUserRepository } from "./repositories/knex/knexUserRepository.ts";
 import { createS3FileRepository } from "./repositories/s3/s3FileRepository.ts";
 import { createAttachmentService } from "./services/attachmentService.ts";
+import { createAuthenticationService } from "./services/authenticationService.ts";
 import { createBookService } from "./services/bookService.ts";
 import { createContentExtractionService } from "./services/contentExtractionService.ts";
 import { createCooklistService } from "./services/cooklistService.ts";
@@ -184,10 +190,21 @@ const jobs: AppJobs = {
         repositories,
         logger,
     }),
+    purgeDeletedUsers: createPurgeDeletedUsersJob({
+        database: db,
+        repositories,
+        logger,
+    }),
 };
 
 const services: AppServices = {
     attachmentService: createAttachmentService(db, repositories),
+    authenticationService: createAuthenticationService(db, repositories, {
+        accessExpiration,
+        accessSecret,
+        refreshExpiration,
+        refreshSecret,
+    }),
     bookService: createBookService(db, repositories),
     contentExtractionService: createContentExtractionService(),
     cooklistService: createCooklistService(db, repositories),
@@ -197,12 +214,7 @@ const services: AppServices = {
     plannerService: createPlannerService(db, repositories),
     recipeService: createRecipeService(db, repositories),
     tagService: createTagService(db, repositories),
-    userService: createUserService(db, repositories, jobs, {
-        accessExpiration,
-        accessSecret,
-        refreshExpiration,
-        refreshSecret,
-    }),
+    userService: createUserService(db, repositories, jobs),
 };
 
 const middleware: AppMiddleware = {
@@ -221,7 +233,8 @@ const config: AppConfig = {
     assetDirectory,
 };
 
-runStartupJobs(jobs);
+runStartupJobs(jobs, logger);
+runScheduledJobs(jobs, logger);
 
 const app = setupApp({ services, middleware, config });
 

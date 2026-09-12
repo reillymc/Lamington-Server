@@ -7,6 +7,7 @@ import { v4 } from "uuid";
 import { createRefreshIngredientsAssetJob } from "../../src/jobs/refreshIngredientsAsset.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
+import { SYSTEM_USER_ID } from "../../src/utils/systemUser.ts";
 import { db, silentLogger } from "../helpers/setup.ts";
 
 let database: KnexDatabase;
@@ -42,7 +43,10 @@ const createJob = (database: KnexDatabase) =>
 
 it("should write all global ingredients to the asset file", async () => {
     const ingredientId = v4();
-    await database("content").insert({ contentId: ingredientId });
+    await database("content").insert({
+        contentId: ingredientId,
+        createdBy: SYSTEM_USER_ID,
+    });
     await database("ingredient").insert({
         ingredientId,
         name: "Apple",

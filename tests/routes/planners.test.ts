@@ -391,6 +391,29 @@ describe("Delete a planner", () => {
         expect(res.statusCode).toEqual(404);
     });
 
+    it("should not delete another entity when given a non-planner content id", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/planners/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { recipes: savedRecipes } = await KnexRecipeRepository.read(
+            database,
+            { userId: user.userId, recipes: [recipe!] },
+        );
+        expect(savedRecipes).toHaveLength(1);
+    });
+
     it("should successfully delete the planner", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -824,6 +847,73 @@ describe("Update a planner", () => {
         expect(savedPlanner?.owner.userId).toEqual(user.userId);
     });
 
+    it("should only update the color when partially patching, preserving other fields", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [
+                { name: uuid(), description: uuid(), color: randomColor() },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}`)
+            .set(token)
+            .send({
+                color: "variant5",
+            } satisfies components["schemas"]["PlannerUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            planners: [savedPlanner],
+        } = await KnexPlannerRepository.read(database, {
+            planners: [planner!],
+            userId: user.userId,
+        });
+
+        expect(savedPlanner?.color).toEqual("variant5");
+        expect(savedPlanner?.name).toEqual(planner!.name);
+        expect(savedPlanner?.description).toEqual(planner!.description);
+    });
+
+    it("should preserve the color when partially patching the name", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [
+                { name: uuid(), description: uuid(), color: randomColor() },
+            ],
+        });
+
+        const updatedName = uuid();
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}`)
+            .set(token)
+            .send({
+                name: updatedName,
+            } satisfies components["schemas"]["PlannerUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            planners: [savedPlanner],
+        } = await KnexPlannerRepository.read(database, {
+            planners: [planner!],
+            userId: user.userId,
+        });
+
+        expect(savedPlanner?.name).toEqual(updatedName);
+        expect(savedPlanner?.color).toEqual(planner!.color);
+        expect(savedPlanner?.description).toEqual(planner!.description);
+    });
+
     it("should fail if the request contains extraneous properties", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -894,6 +984,39 @@ describe("Add a meal to a planner", () => {
                 course: randomCourse(),
                 year: randomYear(),
                 description: uuid(),
+            } satisfies components["schemas"]["PlannerMealCreate"]);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
+    it("should reject a hero image owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{ uri: uuid() }],
+        });
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/meals`)
+            .set(token)
+            .send({
+                dayOfMonth: randomDay(),
+                month: randomMonth(),
+                course: randomCourse(),
+                year: randomYear(),
+                description: uuid(),
+                heroImage: attachment!.attachmentId,
             } satisfies components["schemas"]["PlannerMealCreate"]);
 
         expect(res.statusCode).toEqual(404);
@@ -1198,6 +1321,49 @@ describe("Update a meal in a planner", () => {
             `/v1/planners/${uuid()}/meals/${uuid()}`,
         );
         expect(res.statusCode).toEqual(401);
+    });
+
+    it("should reject a hero image owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{ uri: uuid() }],
+        });
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const {
+            meals: [meal],
+        } = await KnexPlannerRepository.createMeals(database, {
+            userId: user.userId,
+            plannerId: planner!.plannerId,
+            meals: [
+                {
+                    dayOfMonth: randomDay(),
+                    month: randomMonth(),
+                    course: randomCourse(),
+                    year: randomYear(),
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
+            .set(token)
+            .send({
+                heroImage: attachment!.attachmentId,
+            } satisfies components["schemas"]["PlannerMealUpdate"]);
+
+        expect(res.statusCode).toEqual(404);
     });
 
     it("should allow editing a meal if the user is the planner owner", async () => {

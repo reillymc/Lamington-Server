@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { rgbaToThumbHash } from "thumbhash";
 import type { components } from "../routes/spec/schema.js";
 import {
     CreatedDataFetchError,
@@ -8,11 +9,36 @@ import {
 
 const compressImage = (file: Buffer) =>
     sharp(file)
-        .toFormat("jpeg", { mozjpeg: true, quality: 60 })
-        .resize({ width: 2048, height: 2048, fit: "inside" })
         .rotate()
-        .withMetadata()
+        .resize({
+            width: 1600,
+            height: 1600,
+            fit: "inside",
+            withoutEnlargement: true,
+        })
+        .flatten({ background: "#ffffff" })
+        .toFormat("jpeg", { mozjpeg: true, quality: 75 })
+        .keepIccProfile()
         .toBuffer();
+
+const computePreviewHash = async (file: Buffer) => {
+    const { data, info } = await sharp(file)
+        .rotate()
+        .resize({
+            width: 100,
+            height: 100,
+            fit: "inside",
+            withoutEnlargement: true,
+        })
+        .flatten({ background: "#ffffff" })
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+    return Buffer.from(rgbaToThumbHash(info.width, info.height, data)).toString(
+        "base64",
+    );
+};
 
 export interface AttachmentService {
     create: (
@@ -42,7 +68,10 @@ export const createAttachmentService: CreateService<
                 throw new CreatedDataFetchError("attachment");
             }
 
-            const compressedImage = await compressImage(file.buffer);
+            const [compressedImage, previewHash] = await Promise.all([
+                compressImage(file.buffer),
+                computePreviewHash(file.buffer).catch(() => undefined),
+            ]);
 
             const result = await fileRepository.create(undefined, {
                 file: compressedImage,
@@ -59,7 +88,11 @@ export const createAttachmentService: CreateService<
             } = await attachmentRepository.update(trx, {
                 userId,
                 attachments: [
-                    { attachmentId: attachmentEntry.attachmentId, uri: result },
+                    {
+                        attachmentId: attachmentEntry.attachmentId,
+                        uri: result,
+                        preview: previewHash,
+                    },
                 ],
             });
 
@@ -70,6 +103,7 @@ export const createAttachmentService: CreateService<
             return {
                 attachmentId: finalAttachmentEntry.attachmentId,
                 uri: finalAttachmentEntry.uri,
+                preview: finalAttachmentEntry.preview ?? undefined,
             };
         });
     },

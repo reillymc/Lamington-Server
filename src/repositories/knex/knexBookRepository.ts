@@ -2,10 +2,10 @@ import { EnsureArray } from "@reillymc/es-utils";
 import type {
     Book,
     BookColor,
-    BookIcon,
     BookRepository,
     BookUserStatus,
 } from "../bookRepository.ts";
+import type { Icon } from "../common/icon.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
@@ -27,7 +27,8 @@ import {
 } from "./spec/index.ts";
 
 type BookRow = Pick<Book, "bookId" | "name" | "description"> & {
-    customisations: { color: BookColor; icon: BookIcon } | null;
+    color: string | null;
+    icon: Icon | null;
     status: BookUserStatus | null;
 } & ContentAuthorColumns;
 
@@ -37,8 +38,8 @@ const formatBook = (
     bookId: book.bookId,
     name: book.name,
     description: toUndefined(book.description),
-    icon: book.customisations?.icon ?? "variant1",
-    color: book.customisations?.color ?? "variant1",
+    icon: book.icon ?? { type: "icon", value: "variant1" },
+    color: (book.color ?? "variant1") as BookColor,
     owner: {
         userId: book.createdBy,
         firstName: book.firstName,
@@ -55,7 +56,8 @@ const read: BookRepository<KnexDatabase>["read"] = async (
             BookTable.bookId,
             BookTable.name,
             BookTable.description,
-            BookTable.customisations,
+            BookTable.color,
+            BookTable.icon,
             ContentMemberTable.status,
         )
         .whereIn(
@@ -88,36 +90,20 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         }));
 
         await db(lamington.book).insert(
-            booksToCreate.map(
-                ({
-                    name,
-                    bookId,
-                    color = "variant1",
-                    icon = "variant1",
-                    description,
-                }) => ({
-                    name,
-                    bookId,
-                    customisations: { color, icon },
-                    description,
-                }),
-            ),
+            booksToCreate.map(({ name, bookId, color, icon, description }) => ({
+                name,
+                bookId,
+                color,
+                icon,
+                description,
+            })),
         );
 
         return read(db, { userId, books: booksToCreate });
     },
     update: async (db, { userId, books }) => {
         for (const b of books) {
-            const updateData = buildUpdateRecord(b, BookTable, {
-                customisations: ({ color, icon }) => {
-                    if (color === undefined && icon === undefined)
-                        return undefined;
-                    return {
-                        ...(color !== undefined ? { color } : {}),
-                        ...(icon !== undefined ? { icon } : {}),
-                    };
-                },
-            });
+            const updateData = buildUpdateRecord(b, BookTable);
 
             if (updateData) {
                 await db(lamington.book)
@@ -134,7 +120,8 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
                 BookTable.bookId,
                 BookTable.name,
                 BookTable.description,
-                BookTable.customisations,
+                BookTable.color,
+                BookTable.icon,
                 ContentMemberTable.status,
             )
             .leftJoin(
@@ -157,7 +144,10 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         };
     },
     read,
-    delete: createDeleteContent("books", "bookId"),
+    delete: createDeleteContent("books", "bookId", {
+        table: lamington.book,
+        idColumn: BookTable.bookId,
+    }),
     saveRecipes: async (db, request) => {
         const allBookRecipes = EnsureArray(request).flatMap(
             ({ bookId, recipes }) =>
@@ -260,12 +250,13 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
             })),
         ),
     verifyPermissions: async (db, { userId, books, status }) => {
-        const bookIds = EnsureArray(books).map((b) => b.bookId);
+        const bookIds = books.map((b) => b.bookId);
         const permissions = await verifyContentPermissions(
             db,
             userId,
             bookIds,
             status,
+            { table: lamington.book, idColumn: BookTable.bookId },
         );
         return {
             userId,
