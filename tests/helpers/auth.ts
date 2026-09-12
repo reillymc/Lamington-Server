@@ -1,6 +1,6 @@
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { components } from "../../src/routes/spec/index.ts";
-import { createAccessToken } from "../../src/services/userService.ts";
+import { createAccessToken } from "../../src/utils/token.ts";
 import { CreateUsers } from "./database.ts";
 import { accessSecret } from "./setup.ts";
 

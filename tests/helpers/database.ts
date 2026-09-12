@@ -3,7 +3,7 @@ import { v4 as uuid } from "uuid";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
-import { hashPassword } from "../../src/services/userService.ts";
+import { hashPassword } from "../../src/utils/password.ts";
 
 const randomEmail = () => `${uuid()}@${uuid()}.${uuid()}`;
 

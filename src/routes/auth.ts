@@ -3,9 +3,9 @@ import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
 export const createAuthRouter: CreateRouter<
-    "userService",
+    "authenticationService",
     "rateLimiterRestrictive"
-> = ({ userService }, { rateLimiterRestrictive }) =>
+> = ({ authenticationService }, { rateLimiterRestrictive }) =>
     express
         .Router()
         .post<
@@ -18,7 +18,7 @@ export const createAuthRouter: CreateRouter<
             "/auth/register",
             ...rateLimiterRestrictive,
             async ({ body }, res) => {
-                const response = await userService.register(body);
+                const response = await authenticationService.register(body);
                 return res.status(200).json(response);
             },
         )
@@ -29,10 +29,12 @@ export const createAuthRouter: CreateRouter<
             paths["/auth/login"]["post"]["requestBody"]["content"]["application/json"],
             paths["/auth/login"]["post"]["parameters"]["query"]
         >("/auth/login", ...rateLimiterRestrictive, async ({ body }, res) => {
-            const response = await userService.login(body);
+            const response = await authenticationService.login(body);
             return res.status(200).json(response);
         })
         .post("/auth/refresh", async ({ body }, res) => {
-            const response = await userService.refresh(body.refreshToken);
+            const response = await authenticationService.refresh(
+                body.refreshToken,
+            );
             return res.status(200).json(response);
         });

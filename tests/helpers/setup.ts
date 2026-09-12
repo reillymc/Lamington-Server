@@ -27,6 +27,7 @@ import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepo
 import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import { createAttachmentService } from "../../src/services/attachmentService.ts";
+import { createAuthenticationService } from "../../src/services/authenticationService.ts";
 import { createBookService } from "../../src/services/bookService.ts";
 import { createContentExtractionService } from "../../src/services/contentExtractionService.ts";
 import { createCooklistService } from "../../src/services/cooklistService.ts";
@@ -116,6 +117,16 @@ export const createTestApp = ({
                 database,
                 appRepositories,
             ),
+            authenticationService: createAuthenticationService(
+                database,
+                appRepositories,
+                {
+                    accessExpiration: 1000,
+                    accessSecret,
+                    refreshExpiration: 1000,
+                    refreshSecret,
+                },
+            ),
             bookService: createBookService(database, appRepositories),
             contentExtractionService: createContentExtractionService(),
             cooklistService: createCooklistService(database, appRepositories),
@@ -129,12 +140,7 @@ export const createTestApp = ({
             plannerService: createPlannerService(database, appRepositories),
             recipeService: createRecipeService(database, appRepositories),
             tagService: createTagService(database, appRepositories),
-            userService: createUserService(database, appRepositories, appJobs, {
-                accessExpiration: 1000,
-                accessSecret,
-                refreshExpiration: 1000,
-                refreshSecret,
-            }),
+            userService: createUserService(database, appRepositories, appJobs),
             ...services,
         },
         middleware: {
