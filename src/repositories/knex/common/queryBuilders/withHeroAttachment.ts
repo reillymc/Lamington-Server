@@ -14,6 +14,7 @@ export const withHeroAttachment =
             .select({
                 heroAttachmentId: ContentAttachmentTable.attachmentId,
                 heroAttachmentUri: AttachmentTable.uri,
+                heroAttachmentPreview: AttachmentTable.preview,
             })
             .leftJoin(lamington.contentAttachment, (join) => {
                 join.on(

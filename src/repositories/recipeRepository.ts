@@ -148,7 +148,11 @@ type BaseResponse = {
         personal: RecipeRating["rating"] | undefined;
     };
     photo:
-        | { attachmentId: Attachment["attachmentId"]; uri: Attachment["uri"] }
+        | {
+              attachmentId: Attachment["attachmentId"];
+              uri: Attachment["uri"];
+              preview?: string;
+          }
         | undefined;
 };
 

@@ -54,6 +54,7 @@ const formatCookListMeal = (
             ? {
                   attachmentId: meal.heroAttachmentId,
                   uri: meal.heroAttachmentUri,
+                  preview: toUndefined(meal.heroAttachmentPreview),
               }
             : undefined,
 });

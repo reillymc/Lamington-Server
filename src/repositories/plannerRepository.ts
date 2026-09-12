@@ -66,6 +66,7 @@ type PlannerMealResponse = {
     heroImage: {
         attachmentId: string;
         uri: string;
+        preview?: string;
     } | null;
 };
 

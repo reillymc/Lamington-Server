@@ -9,4 +9,5 @@ export type ContentAuthorColumns = {
 export type HeroAttachmentColumns = {
     heroAttachmentId: string | null;
     heroAttachmentUri: string | null;
+    heroAttachmentPreview: string | null;
 };

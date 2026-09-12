@@ -85,6 +85,7 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
                 heroImage: formatHeroAttachment(
                     meal.heroAttachmentId,
                     meal.heroAttachmentUri,
+                    meal.heroAttachmentPreview,
                 ),
             })),
         };
