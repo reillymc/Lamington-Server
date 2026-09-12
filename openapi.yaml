@@ -226,6 +226,8 @@ paths:
                 $ref: "#/components/schemas/Recipe"
         400:
           $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
         429:
@@ -899,6 +901,8 @@ paths:
                   $ref: "#/components/schemas/CookListMeal"
         400:
           $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
         429:

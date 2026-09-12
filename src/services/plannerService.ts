@@ -75,8 +75,8 @@ export interface PlannerService {
 
 export const createPlannerService: CreateService<
     PlannerService,
-    "plannerRepository"
-> = (database, { plannerRepository }) => ({
+    "plannerRepository" | "attachmentRepository"
+> = (database, { plannerRepository, attachmentRepository }) => ({
     getAll: async (userId) => {
         const { planners } = await plannerRepository.readAll(database, {
             userId,
@@ -173,6 +173,22 @@ export const createPlannerService: CreateService<
                 throw new NotFoundError("planner", plannerId);
             }
 
+            const { attachments } =
+                await attachmentRepository.verifyPermissions(trx, {
+                    userId,
+                    attachments: meals.flatMap(({ heroImage }) =>
+                        heroImage ? [{ attachmentId: heroImage }] : [],
+                    ),
+                });
+
+            const disallowedAttachmentIds = attachments
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ attachmentId }) => attachmentId);
+
+            if (disallowedAttachmentIds.length > 0) {
+                throw new NotFoundError("attachment", disallowedAttachmentIds);
+            }
+
             const { meals: createdMeals } = await plannerRepository.createMeals(
                 trx,
                 { plannerId, userId, meals },
@@ -224,6 +240,22 @@ export const createPlannerService: CreateService<
                 )
             ) {
                 throw new NotFoundError("planner", plannerId);
+            }
+
+            const { attachments } =
+                await attachmentRepository.verifyPermissions(trx, {
+                    userId,
+                    attachments: request.heroImage
+                        ? [{ attachmentId: request.heroImage }]
+                        : [],
+                });
+
+            const disallowedAttachmentIds = attachments
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ attachmentId }) => attachmentId);
+
+            if (disallowedAttachmentIds.length > 0) {
+                throw new NotFoundError("attachment", disallowedAttachmentIds);
             }
 
             const { meals } = await plannerRepository.updateMeals(trx, {

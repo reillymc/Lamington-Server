@@ -10,6 +10,7 @@ import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngred
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import type { components, paths } from "../../src/routes/spec/index.ts";
+import { SYSTEM_USER_ID } from "../../src/utils/systemUser.ts";
 import {
     CreateUsers,
     createRandomRecipeTags,
@@ -831,6 +832,30 @@ describe("Create a recipe", () => {
         expect(response!.owner.firstName).toBe(user.firstName);
     });
 
+    it("should reject an attachment owned by another user", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{ uri: uuid() }],
+        });
+
+        const recipe: components["schemas"]["RecipeCreate"] = {
+            name: uuid(),
+            photo: { attachmentId: attachment!.attachmentId },
+        };
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send(recipe);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
     describe("method", () => {
         const AnonymousSectionWithItem = {
             items: [{ content: "Item Description" }],
@@ -1067,6 +1092,106 @@ describe("Create a recipe", () => {
                 expect(ingredientResponse.namePlural).toStrictEqual(
                     "ingredientsA",
                 );
+            });
+
+            it("should accept system-owned ingredients", async () => {
+                const [token] = await PrepareAuthenticatedUser(database);
+
+                const {
+                    ingredients: [ingredient],
+                } = await KnexIngredientRepository.create(database, {
+                    userId: SYSTEM_USER_ID,
+                    ingredients: [{ name: "Global", namePlural: "Globals" }],
+                });
+
+                const recipe: components["schemas"]["RecipeCreate"] = {
+                    name: uuid(),
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                };
+
+                const res = await request(app)
+                    .post("/v1/recipes")
+                    .set(token)
+                    .send(recipe);
+
+                expect(res.statusCode).toEqual(201);
+            });
+
+            it("should reject ingredients owned by another user", async () => {
+                const [token] = await PrepareAuthenticatedUser(database);
+                const [otherUser] = await CreateUsers(database);
+
+                const {
+                    ingredients: [ingredient],
+                } = await KnexIngredientRepository.create(database, {
+                    userId: otherUser!.userId,
+                    ingredients: [{ name: "Private", namePlural: "Privates" }],
+                });
+
+                const recipe: components["schemas"]["RecipeCreate"] = {
+                    name: uuid(),
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                };
+
+                const res = await request(app)
+                    .post("/v1/recipes")
+                    .set(token)
+                    .send(recipe);
+
+                expect(res.statusCode).toEqual(404);
+            });
+
+            it("should reject a content id that is not an ingredient", async () => {
+                const [token, user] = await PrepareAuthenticatedUser(database);
+
+                const {
+                    recipes: [otherRecipe],
+                } = await KnexRecipeRepository.create(database, {
+                    userId: user.userId,
+                    recipes: [{ name: uuid() }],
+                });
+
+                const recipe: components["schemas"]["RecipeCreate"] = {
+                    name: uuid(),
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: otherRecipe!.recipeId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                };
+
+                const res = await request(app)
+                    .post("/v1/recipes")
+                    .set(token)
+                    .send(recipe);
+
+                expect(res.statusCode).toEqual(404);
             });
 
             it("should save sub-recipe details", async () => {
@@ -1402,6 +1527,98 @@ describe("Update a recipe", () => {
     });
 
     describe("ingredient ingredient reference", () => {
+        it("should accept system-owned ingredients", async () => {
+            const [token, { userId }] =
+                await PrepareAuthenticatedUser(database);
+
+            const {
+                ingredients: [ingredient],
+            } = await KnexIngredientRepository.create(database, {
+                userId: SYSTEM_USER_ID,
+                ingredients: [{ name: "Global", namePlural: "Globals" }],
+            });
+
+            const {
+                recipes: [baseRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                .set(token)
+                .send({
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                });
+
+            expect(res.statusCode).toEqual(200);
+
+            const response = res.body as components["schemas"]["Recipe"];
+
+            expect(
+                response.ingredients![0]!.items![0]!.ingredient!.ingredientId,
+            ).toStrictEqual(ingredient!.ingredientId);
+        });
+
+        it("should reject ingredients owned by another user", async () => {
+            const [token, { userId }] =
+                await PrepareAuthenticatedUser(database);
+            const [otherUser] = await CreateUsers(database);
+
+            const {
+                ingredients: [ingredient],
+            } = await KnexIngredientRepository.create(database, {
+                userId: otherUser!.userId,
+                ingredients: [{ name: "Private", namePlural: "Privates" }],
+            });
+
+            const {
+                recipes: [baseRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                .set(token)
+                .send({
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                });
+
+            expect(res.statusCode).toEqual(404);
+
+            const {
+                recipes: [unchangedRecipe],
+            } = await KnexRecipeRepository.read(database, {
+                userId,
+                recipes: [{ recipeId: baseRecipe!.recipeId }],
+            });
+
+            expect(unchangedRecipe!.ingredients).toBeUndefined();
+        });
+
         it("should add reference", async () => {
             const [token, { userId }] =
                 await PrepareAuthenticatedUser(database);
@@ -1932,6 +2149,41 @@ describe("Update a recipe", () => {
         );
     });
 
+    it("should reject an attachment owned by another user", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{ uri: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ photo: { attachmentId: attachment!.attachmentId } });
+
+        expect(res.statusCode).toEqual(404);
+
+        const {
+            recipes: [unchangedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId,
+            recipes: [recipe!],
+        });
+
+        expect(unchangedRecipe!.photo).toBeUndefined();
+    });
+
     it("should not affect other recipe photo", async () => {
         const [token, { userId }] = await PrepareAuthenticatedUser(database);
 
@@ -2099,6 +2351,31 @@ describe("Delete a recipe", () => {
             .set(token);
 
         expect(res.statusCode).toEqual(404);
+    });
+
+    it("should not delete another entity when given a non-recipe content id", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { ingredients } = await KnexIngredientRepository.create(
+            database,
+            {
+                userId: user.userId,
+                ingredients: [{ name: uuid() }],
+            },
+        );
+        const ingredient = ingredients[0]!;
+
+        const res = await request(app)
+            .delete(`/v1/recipes/${ingredient.ingredientId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { ingredients: savedIngredients } =
+            await KnexIngredientRepository.readAll(database, {
+                userId: user.userId,
+            });
+        expect(savedIngredients).toHaveLength(1);
     });
 
     it("should delete a recipe", async () => {

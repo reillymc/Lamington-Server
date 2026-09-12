@@ -173,7 +173,10 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
             meals.map((m) => m.mealId),
         );
     },
-    deleteMeals: createDeleteContent("meals", "mealId"),
+    deleteMeals: createDeleteContent("meals", "mealId", {
+        table: lamington.plannerMeal,
+        idColumn: PlannerMealTable.mealId,
+    }),
     verifyMealPermissions: async (db, { userId, meals }) => {
         const mealOwners = await db(lamington.plannerMeal)
             .select(PlannerMealTable.mealId, ContentTable.createdBy)

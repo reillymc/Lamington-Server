@@ -157,7 +157,10 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         };
     },
     read,
-    delete: createDeleteContent("books", "bookId"),
+    delete: createDeleteContent("books", "bookId", {
+        table: lamington.book,
+        idColumn: BookTable.bookId,
+    }),
     saveRecipes: async (db, request) => {
         const allBookRecipes = EnsureArray(request).flatMap(
             ({ bookId, recipes }) =>
@@ -260,12 +263,13 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
             })),
         ),
     verifyPermissions: async (db, { userId, books, status }) => {
-        const bookIds = EnsureArray(books).map((b) => b.bookId);
+        const bookIds = books.map((b) => b.bookId);
         const permissions = await verifyContentPermissions(
             db,
             userId,
             bookIds,
             status,
+            { table: lamington.book, idColumn: BookTable.bookId },
         );
         return {
             userId,

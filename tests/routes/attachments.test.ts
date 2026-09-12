@@ -27,6 +27,9 @@ const MockFailingAttachmentRepository: AttachmentRepository = {
     update: async () => {
         throw "Mock Error";
     },
+    verifyPermissions: async () => {
+        throw "Mock Error";
+    },
 };
 
 let database: KnexDatabase;

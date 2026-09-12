@@ -357,7 +357,10 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
 
         return read(db, { userId, planners });
     },
-    delete: createDeleteContent("planners", "plannerId"),
+    delete: createDeleteContent("planners", "plannerId", {
+        table: lamington.planner,
+        idColumn: PlannerTable.plannerId,
+    }),
     readMembers: async (db, request) =>
         ContentMemberActions.readByContentId(
             db,
@@ -404,12 +407,13 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
             })),
         ),
     verifyPermissions: async (db, { userId, planners, status }) => {
-        const plannerIds = EnsureArray(planners).map((p) => p.plannerId);
+        const plannerIds = planners.map((p) => p.plannerId);
         const permissions = await verifyContentPermissions(
             db,
             userId,
             plannerIds,
             status,
+            { table: lamington.planner, idColumn: PlannerTable.plannerId },
         );
         return {
             userId,
