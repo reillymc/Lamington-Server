@@ -2050,6 +2050,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         403:
           $ref: "#/components/responses/Forbidden"
+        404:
+          $ref: "#/components/responses/NotFound"
         429:
           $ref: "#/components/responses/TooManyRequests"
         500:
@@ -2240,12 +2242,14 @@ components:
         * `M` - Member
         * `P` - Pending
         * `B` - Blocked
+        * `D` - Deleted
       enum:
         - O
         - A
         - M
         - P
         - B
+        - D
     Course:
       type: string
       enum:

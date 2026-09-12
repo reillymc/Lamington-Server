@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { SYSTEM_USER_ID } from "../../../utils/systemUser.ts";
 
 interface Ingredient {
     ingredientId: string;
@@ -1484,6 +1485,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         .insert(
             SYSTEM_INGREDIENTS.map(({ ingredientId }) => ({
                 contentId: ingredientId,
+                createdBy: SYSTEM_USER_ID,
             })),
         )
         .onConflict("contentId")

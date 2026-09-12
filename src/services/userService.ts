@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import { UniqueViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
+import { SYSTEM_USER_ID } from "../utils/systemUser.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
@@ -128,6 +129,11 @@ export const createUserService: CreateService<
         if (!hasPermissions) {
             throw new PermissionError("user");
         }
+
+        if (userToApproveId === SYSTEM_USER_ID) {
+            throw new NotFoundError("user", userToApproveId);
+        }
+
         const {
             users: [user],
         } = await userRepository.read(database, {
@@ -135,7 +141,7 @@ export const createUserService: CreateService<
         });
 
         if (!user) {
-            throw new NotFoundError("user", userId);
+            throw new NotFoundError("user", userToApproveId);
         }
 
         const {
@@ -159,6 +165,11 @@ export const createUserService: CreateService<
         if (!hasPermissions) {
             throw new PermissionError("user");
         }
+
+        if (userToBlacklistId === SYSTEM_USER_ID) {
+            throw new NotFoundError("user", userToBlacklistId);
+        }
+
         const {
             users: [user],
         } = await userRepository.read(database, {
@@ -166,7 +177,7 @@ export const createUserService: CreateService<
         });
 
         if (!user) {
-            throw new NotFoundError("user", userId);
+            throw new NotFoundError("user", userToBlacklistId);
         }
 
         await userRepository.update(database, {
@@ -181,11 +192,17 @@ export const createUserService: CreateService<
                 status: ["A", "O"],
             },
         );
+
         if (!hasPermissions) {
             throw new PermissionError("user");
         }
-        await userRepository.delete(database, {
-            users: [{ userId: userToDeleteId }],
+
+        if (userToDeleteId === SYSTEM_USER_ID) {
+            throw new NotFoundError("user", userToDeleteId);
+        }
+
+        await userRepository.update(database, {
+            users: [{ userId: userToDeleteId, status: "D" }],
         });
     },
     getProfile: async (userId) => {
@@ -198,7 +215,9 @@ export const createUserService: CreateService<
         return user;
     },
     deleteProfile: async (userId) => {
-        await userRepository.delete(database, { users: [{ userId }] });
+        await userRepository.update(database, {
+            users: [{ userId, status: "D" }],
+        });
     },
     register: async (user) => {
         const password = await hashPassword(user.password);
@@ -241,7 +260,7 @@ export const createUserService: CreateService<
             users: [{ email }],
         });
 
-        if (!user) {
+        if (!user || user.status === "D" || user.status === "B") {
             throw new UnauthorizedError();
         }
 
@@ -251,23 +270,20 @@ export const createUserService: CreateService<
         }
 
         const userPending = user.status === "P";
-        const userBlacklisted = user.status === "B";
 
         return {
-            authorization: !userBlacklisted
-                ? {
-                      access: createAccessToken(
-                          config.accessSecret,
-                          config.accessExpiration,
-                          user,
-                      ),
-                      refresh: createRefreshToken(
-                          config.refreshSecret,
-                          config.refreshExpiration,
-                          user,
-                      ),
-                  }
-                : undefined,
+            authorization: {
+                access: createAccessToken(
+                    config.accessSecret,
+                    config.accessExpiration,
+                    user,
+                ),
+                refresh: createRefreshToken(
+                    config.refreshSecret,
+                    config.refreshExpiration,
+                    user,
+                ),
+            },
             user: {
                 userId: user.userId,
                 email: user.email,
@@ -298,12 +314,12 @@ export const createUserService: CreateService<
             users: [user],
         } = await userRepository.read(database, { users: [{ userId }] });
 
-        if (!user) {
+        if (!user || user.status === "B" || user.status === "D") {
             throw new UnauthorizedError("User not found");
         }
 
-        if (user.status === "B" || user.status === "P") {
-            throw new UnauthorizedError("User account access denied");
+        if (user.status === "P") {
+            throw new UnauthorizedError("User account access pending");
         }
 
         return {

@@ -53,11 +53,9 @@ describe("Login a user", () => {
     it("should fail login with invalid email", async () => {
         const [user] = await CreateUsers(database);
 
-        if (!user) throw new Error("User not created");
-
         const requestBody: components["schemas"]["AuthLogin"] = {
             email: "email@test.email",
-            password: user.password,
+            password: user!.password,
         };
 
         const res = await request(app).post("/v1/auth/login").send(requestBody);
@@ -68,10 +66,8 @@ describe("Login a user", () => {
     it("should fail login with invalid password", async () => {
         const [user] = await CreateUsers(database);
 
-        if (!user) throw new Error("User not created");
-
         const requestBody: components["schemas"]["AuthLogin"] = {
-            email: user.email,
+            email: user!.email,
             password: "invalid_password",
         };
 
@@ -83,11 +79,9 @@ describe("Login a user", () => {
     it("should login with valid credentials", async () => {
         const [user] = await CreateUsers(database);
 
-        if (!user) throw new Error("User not created");
-
         const requestBody: components["schemas"]["AuthLogin"] = {
-            email: user.email,
-            password: user.password,
+            email: user!.email,
+            password: user!.password,
         };
 
         const res = await request(app).post("/v1/auth/login").send(requestBody);
@@ -96,9 +90,7 @@ describe("Login a user", () => {
 
         const data = res.body as components["schemas"]["AuthResponse"];
 
-        if (!data) throw new Error("No data returned");
-
-        expect(data.user.email).toEqual(user.email);
+        expect(data.user.email).toEqual(user!.email);
 
         expect(data.authorization?.access).toBeTruthy();
         expect(data.authorization?.refresh).toBeTruthy();
@@ -109,11 +101,9 @@ describe("Login a user", () => {
             status: "P",
         });
 
-        if (!user) throw new Error("User not created");
-
         const requestBody: components["schemas"]["AuthLogin"] = {
-            email: user.email,
-            password: user.password,
+            email: user!.email,
+            password: user!.password,
         };
 
         const res = await request(app).post("/v1/auth/login").send(requestBody);
@@ -125,23 +115,34 @@ describe("Login a user", () => {
         expect(message).toEqual("Account is pending approval");
     });
 
-    it("should login successfully but return Blacklisted status for blacklisted user", async () => {
+    it("should reject login for a blacklisted user", async () => {
         const [user] = await CreateUsers(database, {
             status: "B",
         });
-        if (!user) throw new Error("User not created");
 
         const requestBody: components["schemas"]["AuthLogin"] = {
-            email: user.email,
-            password: user.password,
+            email: user!.email,
+            password: user!.password,
         };
 
         const res = await request(app).post("/v1/auth/login").send(requestBody);
 
-        expect(res.statusCode).toEqual(200);
-        const data = res.body as components["schemas"]["AuthResponse"];
-        expect(data.user.status).toEqual("B");
-        expect(data.authorization).toBeUndefined();
+        expect(res.statusCode).toEqual(401);
+    });
+
+    it("should reject login for a deleted user", async () => {
+        const [user] = await CreateUsers(database, {
+            status: "D",
+        });
+
+        const requestBody: components["schemas"]["AuthLogin"] = {
+            email: user!.email,
+            password: user!.password,
+        };
+
+        const res = await request(app).post("/v1/auth/login").send(requestBody);
+
+        expect(res.statusCode).toEqual(401);
     });
 });
 
@@ -293,13 +294,11 @@ describe("Register a new user", () => {
             users: [{ email: requestBody.email }],
         });
 
-        if (!user) throw new Error("User not created");
-
-        expect(user.password).not.toEqual("password");
+        expect(user!.password).not.toEqual("password");
 
         const passwordCorrect = await comparePassword(
             requestBody.password,
-            user.password,
+            user!.password,
         );
 
         expect(passwordCorrect).toBeTruthy();
@@ -351,9 +350,8 @@ describe("Refresh authentication token", () => {
 
     it("should refresh tokens with a valid refresh token", async () => {
         const [user] = await CreateUsers(database);
-        if (!user) throw new Error("User not created");
 
-        const refreshToken = createValidRefreshToken(user.userId);
+        const refreshToken = createValidRefreshToken(user!.userId);
 
         const res = await request(app)
             .post("/v1/auth/refresh")
@@ -365,7 +363,7 @@ describe("Refresh authentication token", () => {
         expect(data.authorization).toBeDefined();
         expect(data.authorization.access).toBeDefined();
         expect(data.authorization.refresh).toBeDefined();
-        expect(data.user.userId).toEqual(user.userId);
+        expect(data.user.userId).toEqual(user!.userId);
     });
 
     it("should fail with invalid refresh token", async () => {
@@ -417,6 +415,20 @@ describe("Refresh authentication token", () => {
     it("should fail if user is Pending", async () => {
         const [user] = await CreateUsers(database, {
             status: "P",
+        });
+
+        const refreshToken = createValidRefreshToken(user!.userId);
+
+        const res = await request(app)
+            .post("/v1/auth/refresh")
+            .send({ refreshToken });
+
+        expect(res.statusCode).toEqual(401);
+    });
+
+    it("should fail if user is Deleted", async () => {
+        const [user] = await CreateUsers(database, {
+            status: "D",
         });
 
         const refreshToken = createValidRefreshToken(user!.userId);
