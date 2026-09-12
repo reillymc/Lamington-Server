@@ -185,6 +185,29 @@ describe("Delete a book", () => {
         expect(res.statusCode).toEqual(404);
     });
 
+    it("should not delete another entity when given a non-book content id", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/books/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { recipes: savedRecipes } = await KnexRecipeRepository.read(
+            database,
+            { userId: user.userId, recipes: [recipe!] },
+        );
+        expect(savedRecipes).toHaveLength(1);
+    });
+
     it("should delete book", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 

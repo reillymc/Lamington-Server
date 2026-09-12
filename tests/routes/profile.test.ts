@@ -53,7 +53,7 @@ describe("Delete current user profile", () => {
         expect(res.statusCode).toEqual(401);
     });
 
-    it("should delete current user profile", async () => {
+    it("should mark current user profile as deleted", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app).delete("/v1/profile").set(token);
@@ -63,6 +63,7 @@ describe("Delete current user profile", () => {
         const { users } = await KnexUserRepository.read(database, {
             users: [{ userId: user.userId }],
         });
-        expect(users.length).toEqual(0);
+        expect(users.length).toEqual(1);
+        expect(users[0]!.status).toEqual("D");
     });
 });

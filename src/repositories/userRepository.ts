@@ -1,6 +1,6 @@
 import type { Database, RepositoryService } from "./repository.ts";
 
-type UserStatus = "O" | "A" | "M" | "P" | "B";
+type UserStatus = "O" | "A" | "M" | "P" | "B" | "D";
 
 export type User = {
     userId: string;
@@ -47,6 +47,16 @@ type ReadAllUsersRequest = {
 
 type ReadAllUsersResponse = {
     users: ReadonlyArray<UserProfile>;
+};
+
+type ReadPurgeableUsersRequest = {
+    updatedBefore: Date;
+};
+
+type ReadPurgeableUsersResponse = {
+    users: ReadonlyArray<{
+        userId: User["userId"];
+    }>;
 };
 
 type ReadCredentialsRequest = {
@@ -138,6 +148,11 @@ export interface UserRepository<TDatabase extends Database = Database> {
         TDatabase,
         ReadCredentialsRequest,
         ReadCredentialsResponse
+    >;
+    readPurgeableUsers: RepositoryService<
+        TDatabase,
+        ReadPurgeableUsersRequest,
+        ReadPurgeableUsersResponse
     >;
     update: RepositoryService<
         TDatabase,

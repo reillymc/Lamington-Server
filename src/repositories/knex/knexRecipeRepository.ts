@@ -665,12 +665,13 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
         return read(db, { userId, recipes });
     },
     verifyPermissions: async (db, { userId, recipes, status }) => {
-        const recipeIds = EnsureArray(recipes).map((r) => r.recipeId);
+        const recipeIds = recipes.map((r) => r.recipeId);
         const permissions = await verifyContentPermissions(
             db,
             userId,
             recipeIds,
             status,
+            { table: lamington.recipe, idColumn: RecipeTable.recipeId },
         );
         return {
             userId,
@@ -802,7 +803,10 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
         };
     },
     read,
-    delete: createDeleteContent("recipes", "recipeId"),
+    delete: createDeleteContent("recipes", "recipeId", {
+        table: lamington.recipe,
+        idColumn: RecipeTable.recipeId,
+    }),
     saveRating: async (db, { userId, ratings }) => {
         const savedRatings = await db<RecipeRating>(lamington.recipeRating)
             .insert(

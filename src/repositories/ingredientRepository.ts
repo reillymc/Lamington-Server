@@ -35,7 +35,27 @@ type CreateResponse = {
     ingredients: ReadonlyArray<Ingredient>;
 };
 
+type VerifyPermissionsRequest = {
+    userId: User["userId"];
+    ingredients: ReadonlyArray<{
+        ingredientId: Ingredient["ingredientId"];
+    }>;
+};
+
+type VerifyPermissionsResponse = {
+    userId: User["userId"];
+    ingredients: ReadonlyArray<{
+        ingredientId: Ingredient["ingredientId"];
+        hasPermissions: boolean;
+    }>;
+};
+
 export interface IngredientRepository<TDatabase extends Database = Database> {
     readAll: RepositoryService<TDatabase, ReadRequest, ReadResponse>;
     create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;
+    verifyPermissions: RepositoryService<
+        TDatabase,
+        VerifyPermissionsRequest,
+        VerifyPermissionsResponse
+    >;
 }

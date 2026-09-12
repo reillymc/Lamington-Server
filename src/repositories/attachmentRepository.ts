@@ -34,7 +34,27 @@ type UpdateResponse = {
     attachments: ReadonlyArray<Attachment>;
 };
 
+type VerifyPermissionsRequest = {
+    userId: User["userId"];
+    attachments: ReadonlyArray<{
+        attachmentId: Attachment["attachmentId"];
+    }>;
+};
+
+type VerifyPermissionsResponse = {
+    userId: User["userId"];
+    attachments: ReadonlyArray<{
+        attachmentId: Attachment["attachmentId"];
+        hasPermissions: boolean;
+    }>;
+};
+
 export interface AttachmentRepository<TDatabase extends Database = Database> {
     create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;
     update: RepositoryService<TDatabase, UpdateRequest, UpdateResponse>;
+    verifyPermissions: RepositoryService<
+        TDatabase,
+        VerifyPermissionsRequest,
+        VerifyPermissionsResponse
+    >;
 }

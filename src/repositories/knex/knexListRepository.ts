@@ -223,7 +223,10 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
 
         return read(db, { userId, lists });
     },
-    delete: createDeleteContent("lists", "listId"),
+    delete: createDeleteContent("lists", "listId", {
+        table: lamington.list,
+        idColumn: ListTable.listId,
+    }),
     readAllItems: async (db, { userId, filter }) => {
         const result: ListItemRow[] = await db(lamington.listItem)
             .select(
@@ -427,12 +430,13 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
             })),
         ),
     verifyPermissions: async (db, { userId, lists, status }) => {
-        const listIds = EnsureArray(lists).map((l) => l.listId);
+        const listIds = lists.map((l) => l.listId);
         const permissions = await verifyContentPermissions(
             db,
             userId,
             listIds,
             status,
+            { table: lamington.list, idColumn: ListTable.listId },
         );
         return {
             userId,

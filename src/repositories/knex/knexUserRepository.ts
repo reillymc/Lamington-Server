@@ -1,4 +1,5 @@
 import { EnsureArray, Undefined } from "@reillymc/es-utils";
+import { SYSTEM_USER_ID } from "../../utils/systemUser.ts";
 import { UniqueViolationError } from "../common/errors.ts";
 import type { UserRepository } from "../userRepository.ts";
 import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
@@ -30,18 +31,20 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
         };
     },
     readAll: async (db, { filter }) => {
-        const query = db(lamington.user).select(
-            UserTable.userId,
-            UserTable.firstName,
-            UserTable.lastName,
-            UserTable.email,
-            UserTable.status,
-        );
+        const query = db(lamington.user)
+            .select(
+                UserTable.userId,
+                UserTable.firstName,
+                UserTable.lastName,
+                UserTable.email,
+                UserTable.status,
+            )
+            .whereNot(UserTable.userId, SYSTEM_USER_ID);
 
         if (filter?.status) {
             query.whereIn(UserTable.status, EnsureArray(filter.status));
         } else {
-            query.whereNotIn(UserTable.status, ["P", "B"]);
+            query.whereNotIn(UserTable.status, ["P", "B", "D"]);
         }
 
         const result = await query;
@@ -95,6 +98,17 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
                 createdAt: u.createdAt,
                 password: u.password,
             })),
+        };
+    },
+    readPurgeableUsers: async (db, { updatedBefore }) => {
+        const result = await db(lamington.user)
+            .select(UserTable.userId)
+            .where(UserTable.status, "D")
+            .where(UserTable.updatedAt, "<", updatedBefore)
+            .whereNot(UserTable.userId, SYSTEM_USER_ID);
+
+        return {
+            users: result.map(({ userId }) => ({ userId })),
         };
     },
     create: async (db, { users }) => {

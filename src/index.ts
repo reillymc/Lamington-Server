@@ -7,7 +7,12 @@ import { type AppConfig, setupApp } from "./app.ts";
 import development from "./database/knexfile.development.ts";
 import production from "./database/knexfile.production.ts";
 import { createUserStarterDataJob } from "./jobs/createUserStarterData.ts";
-import { type AppJobs, runStartupJobs } from "./jobs/index.ts";
+import {
+    type AppJobs,
+    runScheduledJobs,
+    runStartupJobs,
+} from "./jobs/index.ts";
+import { createPurgeDeletedUsersJob } from "./jobs/purgeDeletedUsers.ts";
 import { createRefreshIngredientsAssetJob } from "./jobs/refreshIngredientsAsset.ts";
 import { createErrorHandlerMiddleware } from "./middleware/errorHandler.ts";
 import { createLoggerMiddleware } from "./middleware/logger.ts";
@@ -184,6 +189,11 @@ const jobs: AppJobs = {
         repositories,
         logger,
     }),
+    purgeDeletedUsers: createPurgeDeletedUsersJob({
+        database: db,
+        repositories,
+        logger,
+    }),
 };
 
 const services: AppServices = {
@@ -221,7 +231,8 @@ const config: AppConfig = {
     assetDirectory,
 };
 
-runStartupJobs(jobs);
+runStartupJobs(jobs, logger);
+runScheduledJobs(jobs, logger);
 
 const app = setupApp({ services, middleware, config });
 

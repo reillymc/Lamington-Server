@@ -67,7 +67,11 @@ export const createValidatorMiddleware: CreateMiddleware<
             const token = authHeader?.substring(7, authHeader.length);
             const decoded = verifyAccessToken(token);
 
-            if (decoded.status === "P" || decoded.status === "B") {
+            if (
+                decoded.status === "P" ||
+                decoded.status === "B" ||
+                decoded.status === "D"
+            ) {
                 throw new UnauthorizedError("Access Denied");
             }
 

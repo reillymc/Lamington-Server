@@ -24,8 +24,8 @@ export interface CooklistService {
 
 export const createCooklistService: CreateService<
     CooklistService,
-    "cooklistRepository"
-> = (database, { cooklistRepository }) => ({
+    "cooklistRepository" | "attachmentRepository"
+> = (database, { cooklistRepository, attachmentRepository }) => ({
     getMeals: async (userId) => {
         const { meals } = await cooklistRepository.readAllMeals(database, {
             userId,
@@ -34,6 +34,22 @@ export const createCooklistService: CreateService<
     },
     createMeals: async (userId, meals) =>
         database.transaction(async (trx) => {
+            const { attachments } =
+                await attachmentRepository.verifyPermissions(trx, {
+                    userId,
+                    attachments: meals.flatMap(({ heroImage }) =>
+                        heroImage ? [{ attachmentId: heroImage }] : [],
+                    ),
+                });
+
+            const disallowedAttachmentIds = attachments
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ attachmentId }) => attachmentId);
+
+            if (disallowedAttachmentIds.length > 0) {
+                throw new NotFoundError("attachment", disallowedAttachmentIds);
+            }
+
             const { meals: createdMeals } =
                 await cooklistRepository.createMeals(trx, { userId, meals });
 
@@ -55,6 +71,22 @@ export const createCooklistService: CreateService<
 
             if (missingPermissions) {
                 throw new NotFoundError("cooklist meal", mealId);
+            }
+
+            const { attachments } =
+                await attachmentRepository.verifyPermissions(trx, {
+                    userId,
+                    attachments: request.heroImage
+                        ? [{ attachmentId: request.heroImage }]
+                        : [],
+                });
+
+            const disallowedAttachmentIds = attachments
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ attachmentId }) => attachmentId);
+
+            if (disallowedAttachmentIds.length > 0) {
+                throw new NotFoundError("attachment", disallowedAttachmentIds);
             }
 
             const { meals } = await cooklistRepository.updateMeals(trx, {

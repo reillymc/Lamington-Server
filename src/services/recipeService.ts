@@ -1,3 +1,4 @@
+import { Undefined } from "@reillymc/es-utils";
 import type { components } from "../routes/spec/index.ts";
 import {
     CreatedDataFetchError,
@@ -41,10 +42,26 @@ export interface RecipeService {
     delete: (userId: string, recipeId: string) => Promise<void>;
 }
 
+const extractIngredientIds = (
+    sections:
+        | components["schemas"]["RecipeCreate"]["ingredients"]
+        | components["schemas"]["RecipeUpdate"]["ingredients"],
+): Array<{ ingredientId: components["schemas"]["Uuid"] }> =>
+    (sections ?? []).flatMap(({ items }) =>
+        items
+            .map(({ ingredient }) =>
+                ingredient?.ingredientId ? ingredient : undefined,
+            )
+            .filter(Undefined),
+    );
+
 export const createRecipeService: CreateService<
     RecipeService,
-    "recipeRepository"
-> = (database, { recipeRepository }) => ({
+    "recipeRepository" | "ingredientRepository" | "attachmentRepository"
+> = (
+    database,
+    { recipeRepository, ingredientRepository, attachmentRepository },
+) => ({
     getAll: async (
         userId,
         page,
@@ -86,6 +103,36 @@ export const createRecipeService: CreateService<
     },
     create: (userId, request) =>
         database.transaction(async (trx) => {
+            const { ingredients } =
+                await ingredientRepository.verifyPermissions(trx, {
+                    userId,
+                    ingredients: extractIngredientIds(request.ingredients),
+                });
+
+            const disallowedIngredientIds = ingredients
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ ingredientId }) => ingredientId);
+
+            if (disallowedIngredientIds.length > 0) {
+                throw new NotFoundError("ingredient", disallowedIngredientIds);
+            }
+
+            const { attachments } =
+                await attachmentRepository.verifyPermissions(trx, {
+                    userId,
+                    attachments: request.photo?.attachmentId
+                        ? [{ attachmentId: request.photo.attachmentId }]
+                        : [],
+                });
+
+            const disallowedAttachmentIds = attachments
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ attachmentId }) => attachmentId);
+
+            if (disallowedAttachmentIds.length > 0) {
+                throw new NotFoundError("attachment", disallowedAttachmentIds);
+            }
+
             const { recipes } = await recipeRepository.create(trx, {
                 userId,
                 recipes: [request],
@@ -109,6 +156,36 @@ export const createRecipeService: CreateService<
 
             if (missingPermissions) {
                 throw new NotFoundError("recipe", recipeId);
+            }
+
+            const { ingredients } =
+                await ingredientRepository.verifyPermissions(trx, {
+                    userId,
+                    ingredients: extractIngredientIds(request.ingredients),
+                });
+
+            const disallowedIngredientIds = ingredients
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ ingredientId }) => ingredientId);
+
+            if (disallowedIngredientIds.length > 0) {
+                throw new NotFoundError("ingredient", disallowedIngredientIds);
+            }
+
+            const { attachments } =
+                await attachmentRepository.verifyPermissions(trx, {
+                    userId,
+                    attachments: request.photo?.attachmentId
+                        ? [{ attachmentId: request.photo.attachmentId }]
+                        : [],
+                });
+
+            const disallowedAttachmentIds = attachments
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ attachmentId }) => attachmentId);
+
+            if (disallowedAttachmentIds.length > 0) {
+                throw new NotFoundError("attachment", disallowedAttachmentIds);
             }
 
             const { recipes } = await recipeRepository.update(trx, {

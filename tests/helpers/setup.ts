@@ -80,6 +80,9 @@ const defaultAppJobs: AppJobs = {
     createUserStarterData: {
         run: async () => true,
     },
+    purgeDeletedUsers: {
+        run: async () => true,
+    },
 };
 
 export const db = knex(testConfig);

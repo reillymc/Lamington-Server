@@ -391,6 +391,29 @@ describe("Delete a planner", () => {
         expect(res.statusCode).toEqual(404);
     });
 
+    it("should not delete another entity when given a non-planner content id", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/planners/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { recipes: savedRecipes } = await KnexRecipeRepository.read(
+            database,
+            { userId: user.userId, recipes: [recipe!] },
+        );
+        expect(savedRecipes).toHaveLength(1);
+    });
+
     it("should successfully delete the planner", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -966,6 +989,39 @@ describe("Add a meal to a planner", () => {
         expect(res.statusCode).toEqual(404);
     });
 
+    it("should reject a hero image owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{ uri: uuid() }],
+        });
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/meals`)
+            .set(token)
+            .send({
+                dayOfMonth: randomDay(),
+                month: randomMonth(),
+                course: randomCourse(),
+                year: randomYear(),
+                description: uuid(),
+                heroImage: attachment!.attachmentId,
+            } satisfies components["schemas"]["PlannerMealCreate"]);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
     it("should create a planner meal and return the correct details", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -1265,6 +1321,49 @@ describe("Update a meal in a planner", () => {
             `/v1/planners/${uuid()}/meals/${uuid()}`,
         );
         expect(res.statusCode).toEqual(401);
+    });
+
+    it("should reject a hero image owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{ uri: uuid() }],
+        });
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const {
+            meals: [meal],
+        } = await KnexPlannerRepository.createMeals(database, {
+            userId: user.userId,
+            plannerId: planner!.plannerId,
+            meals: [
+                {
+                    dayOfMonth: randomDay(),
+                    month: randomMonth(),
+                    course: randomCourse(),
+                    year: randomYear(),
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
+            .set(token)
+            .send({
+                heroImage: attachment!.attachmentId,
+            } satisfies components["schemas"]["PlannerMealUpdate"]);
+
+        expect(res.statusCode).toEqual(404);
     });
 
     it("should allow editing a meal if the user is the planner owner", async () => {
