@@ -32,9 +32,13 @@ export const createAuthRouter: CreateRouter<
             const response = await authenticationService.login(body);
             return res.status(200).json(response);
         })
-        .post("/auth/refresh", async ({ body }, res) => {
-            const response = await authenticationService.refresh(
-                body.refreshToken,
-            );
-            return res.status(200).json(response);
-        });
+        .post(
+            "/auth/refresh",
+            ...rateLimiterRestrictive,
+            async ({ body }, res) => {
+                const response = await authenticationService.refresh(
+                    body.refreshToken,
+                );
+                return res.status(200).json(response);
+            },
+        );
