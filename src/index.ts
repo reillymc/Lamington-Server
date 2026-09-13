@@ -53,6 +53,7 @@ import { createUserService } from "./services/userService.ts";
 import "winston-daily-rotate-file";
 
 const port = parseInt(process.env.PORT ?? "3000", 10);
+const trustProxyHops = parseInt(process.env.TRUST_PROXY_HOPS ?? "0", 10);
 
 const uploadDirectory = process.env.UPLOAD_DIRECTORY ?? "uploads";
 const assetDirectory = process.env.ASSET_DIRECTORY ?? "assets";
@@ -233,6 +234,7 @@ const config: AppConfig = {
     allowedOrigin: process.env.CORS_ALLOWED_ORIGIN,
     uploadDirectory,
     assetDirectory,
+    trustProxyHops,
 };
 
 runStartupJobs(jobs);
