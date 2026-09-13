@@ -1,12 +1,14 @@
 import { after, afterEach, beforeEach, it } from "node:test";
 import { expect } from "expect";
-import { v4 } from "uuid";
+import { v4 as uuid } from "uuid";
 import { createPurgeDeletedUsersJob } from "../../src/jobs/purgeDeletedUsers.ts";
+import type { FileRepository } from "../../src/repositories/fileRepository.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
+import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import type { UserRepository } from "../../src/repositories/userRepository.ts";
 import { SYSTEM_USER_ID } from "../../src/utils/systemUser.ts";
-import { CreateUsers } from "../helpers/index.ts";
+import { createSpyingFileRepository } from "../helpers/fileRepository.ts";
 import { db, silentLogger } from "../helpers/setup.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -30,9 +32,9 @@ const staleDate = () => new Date(Date.now() - 31 * DAY_MS);
 const createUser = async (
     database: KnexDatabase,
     status: string,
-    updatedAt: Date,
+    deletedAt: Date | null,
 ) => {
-    const userId = v4();
+    const userId = uuid();
     await database("user").insert({
         userId,
         email: `${userId}@test.com`,
@@ -40,39 +42,45 @@ const createUser = async (
         lastName: "User",
         password: "password",
         status,
-        updatedAt,
+        deletedAt,
     });
     return userId;
 };
 
-const createJob = (database: KnexDatabase) =>
+const createJob = (
+    database: KnexDatabase,
+    fileRepository: FileRepository = createSpyingFileRepository()
+        .fileRepository,
+) =>
     createPurgeDeletedUsersJob({
         database,
-        repositories: { userRepository: KnexUserRepository },
+        repositories: {
+            userRepository: KnexUserRepository,
+            attachmentRepository: KnexAttachmentRepository,
+            fileRepository,
+        },
         logger: silentLogger,
     });
 
 const readIds = async (table: string, idColumn: string) =>
     (await database(table).select(idColumn)).map((row) => row[idColumn]);
 
-it("deletes a deleted user past the retention window and cascades their content and attachments", async () => {
+it("deletes a deleted user past the retention window, cascading rows and queuing their files", async () => {
     const userId = await createUser(database, "D", staleDate());
 
-    const contentId = v4();
+    const contentId = uuid();
     await database("content").insert({ contentId, createdBy: userId });
     await database("ingredient").insert({
         ingredientId: contentId,
         name: "Stale",
     });
 
-    const attachmentId = v4();
-    await database("attachment").insert({
-        attachmentId,
-        uri: "local:test",
-        createdBy: userId,
-    });
+    const attachmentId = uuid();
+    await database("attachment").insert({ attachmentId, createdBy: userId });
 
-    const result = await createJob(database).run();
+    const { fileRepository, deleteFile } = createSpyingFileRepository();
+
+    const result = await createJob(database, fileRepository).run();
 
     expect(result).toBe(true);
 
@@ -84,27 +92,50 @@ it("deletes a deleted user past the retention window and cascades their content 
     expect(await readIds("attachment", "attachmentId")).not.toContain(
         attachmentId,
     );
+
+    expect(
+        deleteFile.mock.calls.map(
+            ({ arguments: [, { attachmentId }] }) => attachmentId,
+        ),
+    ).toEqual([attachmentId]);
 });
 
-it("keeps deleted users within the retention window and non-deleted users past it", async () => {
-    const [recentDeleted] = await CreateUsers(database, { status: "D" });
-    const staleActiveId = await createUser(database, "M", staleDate());
+it("keeps recently deleted users and active users past the retention window", async () => {
+    const recentDeletedId = await createUser(database, "D", new Date());
+    const staleActiveId = await createUser(database, "M", null);
 
     const result = await createJob(database).run();
 
     expect(result).toBe(true);
 
     const userIds = await readIds("user", "userId");
-    expect(userIds).toContain(recentDeleted!.userId);
+    expect(userIds).toContain(recentDeletedId);
     expect(userIds).toContain(staleActiveId);
 });
 
+it("clears deletedAt when a deleted user is restored", async () => {
+    const userId = await createUser(database, "D", staleDate());
+
+    await KnexUserRepository.updateStatus(database, {
+        users: [{ userId, status: "M" }],
+    });
+
+    const row = await database("user")
+        .select("status", "deletedAt")
+        .where({ userId })
+        .first();
+    expect(row!.status).toEqual("M");
+    expect(row!.deletedAt).toEqual(null);
+
+    const result = await createJob(database).run();
+    expect(result).toBe(true);
+    expect(await readIds("user", "userId")).toContain(userId);
+});
+
 it("skips the system user even when marked deleted and stale", async () => {
-    await database.raw('ALTER TABLE "user" DISABLE TRIGGER "user_updatedAt";');
     await database("user")
         .where({ userId: SYSTEM_USER_ID })
-        .update({ status: "D", updatedAt: staleDate() });
-    await database.raw('ALTER TABLE "user" ENABLE TRIGGER "user_updatedAt";');
+        .update({ status: "D", deletedAt: staleDate() });
 
     const result = await createJob(database).run();
 
@@ -127,7 +158,11 @@ it("deletes all purgeable users in a single bulk delete", async () => {
 
     const result = await createPurgeDeletedUsersJob({
         database,
-        repositories: { userRepository },
+        repositories: {
+            userRepository,
+            attachmentRepository: KnexAttachmentRepository,
+            fileRepository: createSpyingFileRepository().fileRepository,
+        },
         logger: silentLogger,
     }).run();
 
@@ -144,6 +179,21 @@ it("deletes all purgeable users in a single bulk delete", async () => {
     expect(userIds).not.toContain(secondUserId);
 });
 
+it("hard-deletes a purgeable user even when their files cannot be deleted", async () => {
+    const userId = await createUser(database, "D", staleDate());
+    await database("attachment").insert({
+        createdBy: userId,
+    });
+
+    const { fileRepository, deleteFile } = createSpyingFileRepository(false);
+
+    const result = await createJob(database, fileRepository).run();
+
+    expect(result).toBe(false);
+    expect(await readIds("user", "userId")).not.toContain(userId);
+    expect(deleteFile.mock.calls).toHaveLength(1);
+});
+
 it("returns false when the purge delete fails", async () => {
     await createUser(database, "D", staleDate());
 
@@ -156,7 +206,11 @@ it("returns false when the purge delete fails", async () => {
 
     const result = await createPurgeDeletedUsersJob({
         database,
-        repositories: { userRepository },
+        repositories: {
+            userRepository,
+            attachmentRepository: KnexAttachmentRepository,
+            fileRepository: createSpyingFileRepository().fileRepository,
+        },
         logger: silentLogger,
     }).run();
 

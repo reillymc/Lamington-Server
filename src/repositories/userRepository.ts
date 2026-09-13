@@ -10,6 +10,7 @@ export type User = {
     password: string;
     createdAt: string;
     updatedAt: string;
+    deletedAt: string | null;
     status: string;
     preferences: string | null;
 };
@@ -50,7 +51,7 @@ type ReadAllUsersResponse = {
 };
 
 type ReadPurgeableUsersRequest = {
-    updatedBefore: Date;
+    deletedBefore: Date;
 };
 
 type ReadPurgeableUsersResponse = {
@@ -90,21 +91,30 @@ type CreateUsersResponse = {
     }>;
 };
 
-type UpdateUserPayload = {
+type UpdateStatusPayload = {
     userId: User["userId"];
-    email?: User["email"];
-    firstName?: User["firstName"];
-    lastName?: User["lastName"];
-    password?: User["password"];
-    status?: UserStatus;
+    status: Exclude<UserStatus, "D">;
 };
 
-type UpdateUsersRequest = {
-    users: ReadonlyArray<UpdateUserPayload>;
+type UpdateUserStatusRequest = {
+    users: ReadonlyArray<UpdateStatusPayload>;
 };
 
-type UpdateUsersResponse = {
-    users: ReadonlyArray<UserCredentials>;
+type UpdateUserStatusResponse = {
+    users: ReadonlyArray<{
+        userId: User["userId"];
+        status: UserStatus;
+    }>;
+};
+
+type SoftDeleteUserRequest = {
+    users: ReadonlyArray<{
+        userId: User["userId"];
+    }>;
+};
+
+type SoftDeleteUserResponse = {
+    count: number;
 };
 
 type DeleteUsersRequest = {
@@ -154,10 +164,15 @@ export interface UserRepository<TDatabase extends Database = Database> {
         ReadPurgeableUsersRequest,
         ReadPurgeableUsersResponse
     >;
-    update: RepositoryService<
+    updateStatus: RepositoryService<
         TDatabase,
-        UpdateUsersRequest,
-        UpdateUsersResponse
+        UpdateUserStatusRequest,
+        UpdateUserStatusResponse
+    >;
+    softDelete: RepositoryService<
+        TDatabase,
+        SoftDeleteUserRequest,
+        SoftDeleteUserResponse
     >;
     verifyPermissions: RepositoryService<
         TDatabase,

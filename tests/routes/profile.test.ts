@@ -65,5 +65,10 @@ describe("Delete current user profile", () => {
         });
         expect(users.length).toEqual(1);
         expect(users[0]!.status).toEqual("D");
+
+        const [deletedUser] = await database("user")
+            .select("deletedAt")
+            .where("userId", user.userId);
+        expect(deletedUser!.deletedAt).not.toEqual(null);
     });
 });

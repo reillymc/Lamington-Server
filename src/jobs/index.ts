@@ -1,10 +1,10 @@
-import type { Logger } from "../utils/logger.ts";
 import type { Job } from "./job.ts";
 
 export type AppJobs = {
     refreshIngredientsAsset: Job;
     createUserStarterData: Job<[userId: string]>;
     purgeDeletedUsers: Job;
+    purgeDeletedAttachments: Job;
 };
 
 const isStartupJob = (job: AppJobs[keyof AppJobs]): job is Job =>
@@ -16,18 +16,12 @@ const isScheduledJob = (job: AppJobs[keyof AppJobs]): job is Job =>
     typeof job.interval === "number";
 
 /**
- * Fire all startup-triggered jobs without blocking. Each job is expected to
- * handle its own errors; any error that still escapes is logged rather than
- * crashing or delaying server start.
+ * Fire all startup-triggered jobs without blocking.
  */
-export const runStartupJobs = (jobs: AppJobs, logger: Logger) => {
+export const runStartupJobs = (jobs: AppJobs) => {
     for (const job of Object.values(jobs)) {
         if (isStartupJob(job)) {
-            void job
-                .run()
-                .catch((error) =>
-                    logger.error("Unhandled startup job error", error),
-                );
+            void job.run();
         }
     }
 };
@@ -36,21 +30,10 @@ export const runStartupJobs = (jobs: AppJobs, logger: Logger) => {
  * Schedule all interval-triggered jobs. Each job runs on a repeating timer
  * which is unref'd so it never keeps the process alive or blocks shutdown.
  */
-export const runScheduledJobs = (jobs: AppJobs, logger: Logger) => {
+export const runScheduledJobs = (jobs: AppJobs) => {
     for (const job of Object.values(jobs)) {
         if (isScheduledJob(job)) {
-            setInterval(
-                () =>
-                    void job
-                        .run()
-                        .catch((error) =>
-                            logger.error(
-                                "Unhandled scheduled job error",
-                                error,
-                            ),
-                        ),
-                job.interval,
-            ).unref();
+            setInterval(() => void job.run(), job.interval).unref();
         }
     }
 };

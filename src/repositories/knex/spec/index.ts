@@ -36,11 +36,11 @@ const table = <T extends ReadonlyArray<string>>(
 
 export const AttachmentTable = table(lamington.attachment, [
     "attachmentId",
-    "uri",
     "preview",
     "createdBy",
     "createdAt",
     "updatedAt",
+    "deletedAt",
 ] as const);
 
 export const BookTable = table(lamington.book, [
@@ -183,6 +183,7 @@ export const UserTable = table(lamington.user, [
     "password",
     "createdAt",
     "updatedAt",
+    "deletedAt",
     "status",
     "preferences",
 ] as const);

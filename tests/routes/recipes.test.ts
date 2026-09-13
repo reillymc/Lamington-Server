@@ -12,6 +12,10 @@ import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository
 import type { components, paths } from "../../src/routes/spec/index.ts";
 import { SYSTEM_USER_ID } from "../../src/utils/systemUser.ts";
 import {
+    createSpyingFileRepository,
+    purgeDeletedAttachments,
+} from "../helpers/fileRepository.ts";
+import {
     CreateUsers,
     createRandomRecipeTags,
     generateRandomRecipeIngredientSections,
@@ -57,7 +61,7 @@ describe("Get recipes", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const {
@@ -97,7 +101,6 @@ describe("Get recipes", () => {
         expect(recipeResponse!.photo?.attachmentId).toEqual(
             attachment!.attachmentId,
         );
-        expect(recipeResponse!.photo?.uri).toEqual(attachment!.uri);
     });
 
     it("should return all public recipes from other users", async () => {
@@ -765,7 +768,7 @@ describe("Create a recipe", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const [parentTag, soloTag] = await KnexTagRepository.create(database, [
@@ -816,7 +819,6 @@ describe("Create a recipe", () => {
         expect(response!.rating!.personal).toBe(recipe.rating);
         expect(response!.rating!.average).toEqual(recipe.rating);
         expect(response!.photo!.attachmentId).toBe(attachment!.attachmentId);
-        expect(response!.photo!.uri).toBe(attachment!.uri);
         expect(response!.tags).toStrictEqual({
             [parentTag!.tagId]: {
                 tagId: parentTag!.tagId,
@@ -840,7 +842,7 @@ describe("Create a recipe", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: otherUser!.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const recipe: components["schemas"]["RecipeCreate"] = {
@@ -854,6 +856,58 @@ describe("Create a recipe", () => {
             .send(recipe);
 
         expect(res.statusCode).toEqual(404);
+    });
+
+    it("should collapse duplicate tags in a single request", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const [tag] = await KnexTagRepository.create(database, [
+            { name: uuid() },
+        ]);
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({
+                name: uuid(),
+                tags: [{ tagId: tag!.tagId }, { tagId: tag!.tagId }],
+            } satisfies components["schemas"]["RecipeCreate"]);
+
+        expect(res.statusCode).toEqual(201);
+
+        const rows = await database("content_tag").select("tagId");
+        expect(rows).toEqual([{ tagId: tag!.tagId }]);
+    });
+
+    it("should reject attachments that are deleted or do not exist", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}],
+        });
+
+        await database("attachment")
+            .where("attachmentId", attachment!.attachmentId)
+            .update({ deletedAt: new Date() });
+
+        for (const attachmentId of [attachment!.attachmentId, uuid()]) {
+            const res = await request(app)
+                .post("/v1/recipes")
+                .set(token)
+                .send({
+                    name: uuid(),
+                    photo: { attachmentId },
+                } satisfies components["schemas"]["RecipeCreate"]);
+
+            expect(res.statusCode).toEqual(404);
+        }
+
+        expect(
+            await database("content_attachment").select("attachmentId"),
+        ).toEqual([]);
     });
 
     describe("method", () => {
@@ -1236,6 +1290,34 @@ describe("Create a recipe", () => {
             });
         });
     });
+
+    it("should not allow attaching another user's attachment", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [foreignAttachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{}],
+        });
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({
+                name: uuid(),
+                photo: { attachmentId: foreignAttachment!.attachmentId },
+            } satisfies components["schemas"]["RecipeCreate"]);
+
+        expect(res.statusCode).toEqual(404);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows.map(({ attachmentId }) => attachmentId)).toEqual([
+            foreignAttachment!.attachmentId,
+        ]);
+    });
 });
 
 describe("Update a recipe", () => {
@@ -1271,7 +1353,7 @@ describe("Update a recipe", () => {
             attachments: [attachment1, attachment2],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }, { uri: uuid() }],
+            attachments: [{}, {}],
         });
 
         const {
@@ -1352,7 +1434,6 @@ describe("Update a recipe", () => {
         expect(recipeResponse!.photo!.attachmentId).toEqual(
             attachment2!.attachmentId,
         );
-        expect(recipeResponse!.photo!.uri).toEqual(attachment2!.uri);
         expect(Object.keys(recipeResponse!.tags ?? {}).sort()).toStrictEqual(
             updatedTags.map(({ tagId }) => tagId).sort(),
         );
@@ -1365,7 +1446,7 @@ describe("Update a recipe", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const {
@@ -1839,6 +1920,55 @@ describe("Update a recipe", () => {
 
             expect(otherRecipe).toStrictEqual(otherRecipePostRequest);
         });
+
+        it("should dedupe duplicate ingredient references in a single update", async () => {
+            const [token, { userId }] =
+                await PrepareAuthenticatedUser(database);
+
+            const {
+                ingredients: [ingredient],
+            } = await KnexIngredientRepository.create(database, {
+                userId,
+                ingredients: [{ name: uuid(), namePlural: uuid() }],
+            });
+
+            const {
+                recipes: [baseRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                .set(token)
+                .send({
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                });
+
+            expect(res.statusCode).toEqual(200);
+
+            const rows = await database("recipe_ingredient")
+                .select("ingredientId")
+                .where("recipeId", baseRecipe!.recipeId);
+
+            expect(rows).toEqual([{ ingredientId: ingredient!.ingredientId }]);
+        });
     });
 
     describe("ingredient recipe reference", () => {
@@ -2043,6 +2173,47 @@ describe("Update a recipe", () => {
 
             expect(otherRecipe).toStrictEqual(otherRecipePostRequest);
         });
+
+        it("should dedupe duplicate sub recipe references in a single update", async () => {
+            const [token, { userId }] =
+                await PrepareAuthenticatedUser(database);
+
+            const {
+                recipes: [subRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const {
+                recipes: [baseRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                .set(token)
+                .send({
+                    ingredients: [
+                        {
+                            items: [
+                                { recipe: { recipeId: subRecipe!.recipeId } },
+                                { recipe: { recipeId: subRecipe!.recipeId } },
+                            ],
+                        },
+                    ],
+                });
+
+            expect(res.statusCode).toEqual(200);
+
+            const rows = await database("recipe_recipe")
+                .select("subRecipeId")
+                .where("recipeId", baseRecipe!.recipeId);
+
+            expect(rows).toEqual([{ subRecipeId: subRecipe!.recipeId }]);
+        });
     });
 
     it("should not affect other recipe ratings", async () => {
@@ -2157,7 +2328,7 @@ describe("Update a recipe", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: otherUser!.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const {
@@ -2191,7 +2362,7 @@ describe("Update a recipe", () => {
             attachments: [attachmentA, attachmentB],
         } = await KnexAttachmentRepository.create(database, {
             userId,
-            attachments: [{ uri: uuid() }, { uri: uuid() }],
+            attachments: [{}, {}],
         });
 
         const {
@@ -2221,7 +2392,7 @@ describe("Update a recipe", () => {
 
         // Photo on recipe was updated
         expect(response.photo!.attachmentId).toEqual(attachmentB!.attachmentId);
-        expect(response.photo!.uri).toEqual(attachmentB!.uri);
+        expect(response.photo!.attachmentId).toEqual(attachmentB!.attachmentId);
 
         const {
             recipes: [otherRecipeRes],
@@ -2234,7 +2405,265 @@ describe("Update a recipe", () => {
         expect(otherRecipeRes!.photo!.attachmentId).toEqual(
             attachmentA!.attachmentId,
         );
-        expect(otherRecipeRes!.photo!.uri).toEqual(attachmentA!.uri);
+    });
+
+    it("should delete the replaced attachment row and file when a recipe photo is replaced", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachmentA, attachmentB],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}, {}],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    photo: { attachmentId: attachmentA!.attachmentId },
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ photo: { attachmentId: attachmentB!.attachmentId } });
+
+        expect(res.statusCode).toEqual(200);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows.map(({ attachmentId }) => attachmentId)).toEqual([
+            attachmentB!.attachmentId,
+        ]);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachmentA!.attachmentId]);
+    });
+
+    it("should keep the photo when the same attachment is set again", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    photo: { attachmentId: attachment!.attachmentId },
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ photo: { attachmentId: attachment!.attachmentId } });
+
+        expect(res.statusCode).toEqual(200);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows = await database("attachment").select(
+            "attachmentId",
+            "deletedAt",
+        );
+        expect(attachmentRows).toEqual([
+            { attachmentId: attachment!.attachmentId, deletedAt: null },
+        ]);
+        expect(deleteFile.mock.calls).toHaveLength(0);
+    });
+
+    it("should delete the attachment row and file when a recipe photo is cleared", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachmentA],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    photo: { attachmentId: attachmentA!.attachmentId },
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ photo: null });
+
+        expect(res.statusCode).toEqual(200);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows).toHaveLength(0);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachmentA!.attachmentId]);
+    });
+
+    it("should not delete a photo attachment still referenced by another recipe", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachmentA, attachmentB],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}, {}],
+        });
+
+        const {
+            recipes: [recipe, otherRecipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    photo: { attachmentId: attachmentA!.attachmentId },
+                },
+                {
+                    name: uuid(),
+                    photo: { attachmentId: attachmentA!.attachmentId },
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ photo: { attachmentId: attachmentB!.attachmentId } });
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            recipes: [otherRecipeRes],
+        } = await KnexRecipeRepository.read(database, {
+            userId,
+            recipes: [otherRecipe!],
+        });
+
+        // Other recipe still references the attachment
+        expect(otherRecipeRes!.photo!.attachmentId).toEqual(
+            attachmentA!.attachmentId,
+        );
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(
+            attachmentRows.map(({ attachmentId }) => attachmentId).sort(),
+        ).toEqual(
+            [attachmentA!.attachmentId, attachmentB!.attachmentId].sort(),
+        );
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([]);
+    });
+
+    it("should not allow replacing a photo with another user's attachment", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [ownedAttachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}],
+        });
+        const {
+            attachments: [foreignAttachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{}],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    photo: { attachmentId: ownedAttachment!.attachmentId },
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ photo: { attachmentId: foreignAttachment!.attachmentId } });
+
+        expect(res.statusCode).toEqual(404);
+
+        // The foreign attachment row and file are untouched
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(
+            attachmentRows.map(({ attachmentId }) => attachmentId).sort(),
+        ).toEqual(
+            [
+                ownedAttachment!.attachmentId,
+                foreignAttachment!.attachmentId,
+            ].sort(),
+        );
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([]);
     });
 });
 
@@ -2263,7 +2692,7 @@ describe("Get a recipe", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const [tag] = await KnexTagRepository.create(database, [
@@ -2328,7 +2757,6 @@ describe("Get a recipe", () => {
             (recipe!.rating.personal! + otherRating!.rating!) / 2,
         );
         expect(response!.photo!.attachmentId).toBe(attachment!.attachmentId);
-        expect(response!.photo!.uri).toBe(attachment!.uri);
         expect(response!.tags).toStrictEqual({
             [tag!.tagId]: { tagId: tag!.tagId, name: tag!.name },
         });
@@ -2496,6 +2924,110 @@ describe("Delete a recipe", () => {
         );
         expect(parentRecipes).toHaveLength(1);
     });
+
+    it("should delete the photo attachment row and file when a recipe is deleted", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    photo: { attachmentId: attachment!.attachmentId },
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(204);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows).toHaveLength(0);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachment!.attachmentId]);
+    });
+
+    it("should not delete a photo attachment still referenced by another recipe when a recipe is deleted", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}],
+        });
+
+        const {
+            recipes: [recipe, otherRecipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    photo: { attachmentId: attachment!.attachmentId },
+                },
+                {
+                    name: uuid(),
+                    photo: { attachmentId: attachment!.attachmentId },
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(204);
+
+        const { recipes } = await KnexRecipeRepository.read(database, {
+            userId,
+            recipes: [otherRecipe!],
+        });
+
+        // Other recipe still references the attachment
+        expect(recipes[0]!.photo!.attachmentId).toEqual(
+            attachment!.attachmentId,
+        );
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows.map(({ attachmentId }) => attachmentId)).toEqual([
+            attachment!.attachmentId,
+        ]);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([]);
+    });
 });
 
 describe("Rate a recipe", () => {
@@ -2530,6 +3062,38 @@ describe("Rate a recipe", () => {
             recipes: [{ recipeId: recipe!.recipeId }],
         });
         expect(updatedRecipe!.rating!.personal).toEqual(rating);
+    });
+
+    it("should keep the latest rating when rating again", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        await request(app)
+            .post(`/v1/recipes/${recipe!.recipeId}/rating`)
+            .set(token)
+            .send({ rating: 3 });
+
+        const res = await request(app)
+            .post(`/v1/recipes/${recipe!.recipeId}/rating`)
+            .set(token)
+            .send({ rating: 5 });
+
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.rating).toEqual(5);
+
+        const {
+            recipes: [updatedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+        expect(updatedRecipe!.rating!.personal).toEqual(5);
     });
 });
 

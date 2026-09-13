@@ -1,4 +1,5 @@
 import { EnsureArray } from "@reillymc/es-utils";
+import { dedupeLast } from "../../utils/dedupeLast.ts";
 import type {
     Book,
     BookColor,
@@ -149,9 +150,12 @@ export const KnexBookRepository: BookRepository<KnexDatabase> = {
         idColumn: BookTable.bookId,
     }),
     saveRecipes: async (db, request) => {
-        const allBookRecipes = EnsureArray(request).flatMap(
-            ({ bookId, recipes }) =>
+        const allBookRecipes = dedupeLast(
+            EnsureArray(request).flatMap(({ bookId, recipes }) =>
                 recipes.map(({ recipeId }) => ({ bookId, recipeId })),
+            ),
+            "bookId",
+            "recipeId",
         );
 
         const saved = await db(lamington.bookRecipe)

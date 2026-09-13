@@ -1,44 +1,10 @@
-import sharp from "sharp";
-import { rgbaToThumbHash } from "thumbhash";
 import type { components } from "../routes/spec/schema.js";
+import { compressImage, computePreviewHash } from "../utils/image.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
     InsufficientDataError,
 } from "./service.ts";
-
-const compressImage = (file: Buffer) =>
-    sharp(file)
-        .rotate()
-        .resize({
-            width: 1600,
-            height: 1600,
-            fit: "inside",
-            withoutEnlargement: true,
-        })
-        .flatten({ background: "#ffffff" })
-        .toFormat("jpeg", { mozjpeg: true, quality: 75 })
-        .keepIccProfile()
-        .toBuffer();
-
-const computePreviewHash = async (file: Buffer) => {
-    const { data, info } = await sharp(file)
-        .rotate()
-        .resize({
-            width: 100,
-            height: 100,
-            fit: "inside",
-            withoutEnlargement: true,
-        })
-        .flatten({ background: "#ffffff" })
-        .ensureAlpha()
-        .raw()
-        .toBuffer({ resolveWithObject: true });
-
-    return Buffer.from(rgbaToThumbHash(info.width, info.height, data)).toString(
-        "base64",
-    );
-};
 
 export interface AttachmentService {
     create: (
@@ -56,55 +22,60 @@ export const createAttachmentService: CreateService<
             throw new InsufficientDataError("attachment");
         }
 
-        return database.transaction(async (trx) => {
-            const {
-                attachments: [attachmentEntry],
-            } = await attachmentRepository.create(trx, {
-                userId,
-                attachments: [{ uri: "" }],
-            });
+        let attachmentId: string | undefined;
 
-            if (!attachmentEntry) {
-                throw new CreatedDataFetchError("attachment");
-            }
-
+        try {
             const [compressedImage, previewHash] = await Promise.all([
                 compressImage(file.buffer),
                 computePreviewHash(file.buffer).catch(() => undefined),
             ]);
 
-            const result = await fileRepository.create(undefined, {
-                file: compressedImage,
-                userId,
-                attachmentId: attachmentEntry.attachmentId,
+            return await database.transaction(async (trx) => {
+                const {
+                    attachments: [attachmentEntry],
+                } = await attachmentRepository.create(trx, {
+                    userId,
+                    attachments: [{ preview: previewHash }],
+                });
+
+                if (!attachmentEntry) {
+                    throw new CreatedDataFetchError("attachment");
+                }
+
+                attachmentId = attachmentEntry.attachmentId;
+
+                const [createdFile] = await fileRepository.create(undefined, {
+                    attachmentId,
+                    file: compressedImage,
+                });
+
+                if (!createdFile?.succeeded) {
+                    throw new CreatedDataFetchError("attachment");
+                }
+
+                return { attachmentId, preview: attachmentEntry.preview };
             });
+        } catch (error) {
+            // If attachment row rolled back with the transaction, delete file
+            if (attachmentId) {
+                const attachmentExists = await attachmentRepository
+                    .verifyPermissions(database, {
+                        userId,
+                        attachments: [{ attachmentId }],
+                    })
+                    .then(
+                        ({ attachments: [permission] }) =>
+                            permission?.hasPermissions === true,
+                    )
+                    .catch(() => false);
 
-            if (!result) {
-                throw new CreatedDataFetchError("attachment");
+                if (!attachmentExists) {
+                    await fileRepository
+                        .delete(undefined, { attachmentId })
+                        .catch(() => undefined);
+                }
             }
-
-            const {
-                attachments: [finalAttachmentEntry],
-            } = await attachmentRepository.update(trx, {
-                userId,
-                attachments: [
-                    {
-                        attachmentId: attachmentEntry.attachmentId,
-                        uri: result,
-                        preview: previewHash,
-                    },
-                ],
-            });
-
-            if (!finalAttachmentEntry) {
-                throw new CreatedDataFetchError("attachment");
-            }
-
-            return {
-                attachmentId: finalAttachmentEntry.attachmentId,
-                uri: finalAttachmentEntry.uri,
-                preview: finalAttachmentEntry.preview ?? undefined,
-            };
-        });
+            throw error;
+        }
     },
 });
