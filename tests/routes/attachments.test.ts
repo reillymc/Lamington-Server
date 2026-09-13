@@ -1,24 +1,57 @@
 import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
+import { EnsureArray } from "@reillymc/es-utils";
 import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { thumbHashToRGBA } from "thumbhash";
+import { v4 as uuid } from "uuid";
 import type { AttachmentRepository } from "../../src/repositories/attachmentRepository.ts";
 import type { FileRepository } from "../../src/repositories/fileRepository.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { readAllAttachments } from "../helpers/attachment.ts";
+import { createImage } from "../helpers/image.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
 import { createTestApp, db } from "../helpers/setup.ts";
 
+const mockCreateFile = mock.fn<FileRepository["create"]>(async (_, request) =>
+    EnsureArray(request).map(({ attachmentId }) => ({
+        attachmentId,
+        succeeded: true,
+    })),
+);
+
+const mockDeleteFile = mock.fn<FileRepository["delete"]>(async (_, request) =>
+    EnsureArray(request).map(({ attachmentId }) => ({
+        attachmentId,
+        succeeded: true,
+    })),
+);
+
 const MockSuccessfulFileRepository: FileRepository = {
-    create: mock.fn(async () => "uri://"),
-    delete: mock.fn(async () => true),
+    create: mockCreateFile,
+    delete: mockDeleteFile,
 };
 
+const mockCreateFailingFile = mock.fn<FileRepository["create"]>(
+    async (_, request) =>
+        EnsureArray(request).map(({ attachmentId }) => ({
+            attachmentId,
+            succeeded: false,
+        })),
+);
+
+const mockDeleteFailingFile = mock.fn<FileRepository["delete"]>(
+    async (_, request) =>
+        EnsureArray(request).map(({ attachmentId }) => ({
+            attachmentId,
+            succeeded: false,
+        })),
+);
+
 const MockFailingFileRepository: FileRepository = {
-    create: mock.fn(async () => false),
-    delete: mock.fn(async () => false),
+    create: mockCreateFailingFile,
+    delete: mockDeleteFailingFile,
 };
 
 const MockFailingAttachmentRepository: AttachmentRepository = {
@@ -29,6 +62,15 @@ const MockFailingAttachmentRepository: AttachmentRepository = {
         throw "Mock Error";
     },
     verifyPermissions: async () => {
+        throw "Mock Error";
+    },
+    readPurgeable: async () => {
+        throw "Mock Error";
+    },
+    deletePurgeable: async () => {
+        throw "Mock Error";
+    },
+    readAllForUsers: async () => {
         throw "Mock Error";
     },
 };
@@ -55,6 +97,10 @@ after(async () => {
 describe("Upload an image", () => {
     afterEach(async () => {
         mock.reset();
+        mockCreateFile.mock.resetCalls();
+        mockDeleteFile.mock.resetCalls();
+        mockCreateFailingFile.mock.resetCalls();
+        mockDeleteFailingFile.mock.resetCalls();
     });
 
     it("should require authentication", async () => {
@@ -114,18 +160,18 @@ describe("Upload an image", () => {
 
     it("should upload valid image", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
+        const image = await createImage();
 
         const res = await request(app)
             .post("/v1/attachments/image")
             .set(token)
-            .attach("image", "tests/resources/testAttachment.jpg");
+            .attach("image", image, "test.jpg");
 
         expect(res.statusCode).toEqual(200);
 
         const data = res.body as components["schemas"]["ImageAttachment"];
 
         expect(data.attachmentId).toBeTruthy();
-        expect(data.uri).toBeTruthy();
         expect(data.preview).toBeTruthy();
 
         const attachmentReadResponse = await readAllAttachments(database);
@@ -137,11 +183,12 @@ describe("Upload an image", () => {
 
     it("should store a decodable thumb hash preview", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
+        const image = await createImage();
 
         const res = await request(app)
             .post("/v1/attachments/image")
             .set(token)
-            .attach("image", "tests/resources/testAttachment.jpg");
+            .attach("image", image, "test.jpg");
 
         expect(res.statusCode).toEqual(200);
 
@@ -177,7 +224,7 @@ describe("Upload an image", () => {
     });
 
     it("should not upload when save to db fails", async () => {
-        const mockCreate = mock.fn(async () => "uri://");
+        const mockCreate = mock.fn(async () => []);
 
         app = createTestApp({
             database,
@@ -205,9 +252,7 @@ describe("Upload an image", () => {
 
 describe("Get an image", () => {
     it("should require authentication", async () => {
-        const res = await request(app).get(
-            "/v1/attachments/image/test/test/test",
-        );
+        const res = await request(app).get(`/v1/attachments/image/${uuid()}`);
         expect(res.statusCode).toEqual(401);
     });
 });

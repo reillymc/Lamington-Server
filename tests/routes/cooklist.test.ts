@@ -10,6 +10,10 @@ import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRe
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import {
+    createSpyingFileRepository,
+    purgeDeletedAttachments,
+} from "../helpers/fileRepository.ts";
+import {
     CreateUsers,
     PrepareAuthenticatedUser,
     randomDay,
@@ -50,7 +54,7 @@ describe("Add meal to cook list", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const meals = Array.from({ length: randomNumber(5, 1) }).map(
@@ -89,7 +93,9 @@ describe("Add meal to cook list", () => {
             expect(meal.heroImage!.attachmentId).toEqual(
                 expectedMeal!.heroImage,
             );
-            expect(meal.heroImage!.uri).toEqual(attachment!.uri);
+            expect(meal.heroImage!.attachmentId).toEqual(
+                attachment!.attachmentId,
+            );
         });
     });
 
@@ -133,7 +139,7 @@ describe("Add meal to cook list", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: otherUser!.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const res = await request(app)
@@ -232,7 +238,7 @@ describe("Update meal in cook list", () => {
             attachments: [originalAttachment, updatedAttachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }, { uri: uuid() }],
+            attachments: [{}, {}],
         });
 
         const {
@@ -291,7 +297,9 @@ describe("Update meal in cook list", () => {
         expect(updatedMeal!.heroImage!.attachmentId).toEqual(
             mealUpdate.heroImage,
         );
-        expect(updatedMeal!.heroImage!.uri).toEqual(updatedAttachment!.uri);
+        expect(updatedMeal!.heroImage!.attachmentId).toEqual(
+            updatedAttachment!.attachmentId,
+        );
     });
 
     it("should not update a meal with a hero image owned by another user", async () => {
@@ -302,7 +310,7 @@ describe("Update meal in cook list", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: otherUser!.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const {
@@ -322,6 +330,104 @@ describe("Update meal in cook list", () => {
         expect(res.statusCode).toEqual(404);
     });
 
+    it("should delete the replaced attachment row and file when a meal hero image is replaced", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [originalAttachment, updatedAttachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}, {}],
+        });
+
+        const {
+            meals: [createdMeal],
+        } = await KnexCookListRepository.createMeals(database, {
+            userId: user.userId,
+            meals: [
+                {
+                    description: uuid(),
+                    course: randomCourse(),
+                    sequence: randomNumber(),
+                    source: uuid(),
+                    heroImage: originalAttachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send({ heroImage: updatedAttachment!.attachmentId });
+
+        expect(res.statusCode).toEqual(200);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows.map(({ attachmentId }) => attachmentId)).toEqual([
+            updatedAttachment!.attachmentId,
+        ]);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([originalAttachment!.attachmentId]);
+    });
+
+    it("should delete the attachment row and file when a meal hero image is cleared", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}],
+        });
+
+        const {
+            meals: [createdMeal],
+        } = await KnexCookListRepository.createMeals(database, {
+            userId: user.userId,
+            meals: [
+                {
+                    description: uuid(),
+                    course: randomCourse(),
+                    sequence: randomNumber(),
+                    source: uuid(),
+                    heroImage: attachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send({ heroImage: null });
+
+        expect(res.statusCode).toEqual(200);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows).toHaveLength(0);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachment!.attachmentId]);
+    });
+
     it("should clear optional fields when set to null", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -329,7 +435,7 @@ describe("Update meal in cook list", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const {
@@ -547,6 +653,54 @@ describe("Remove meal from cook list", () => {
             });
 
         expect(mealsAfterDeletion.length).toEqual(0);
+    });
+
+    it("should delete the hero image attachment row and file when a meal is removed", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}],
+        });
+
+        const {
+            meals: [createdMeal],
+        } = await KnexCookListRepository.createMeals(database, {
+            userId: user.userId,
+            meals: [
+                {
+                    description: uuid(),
+                    course: randomCourse(),
+                    sequence: 0,
+                    source: uuid(),
+                    heroImage: attachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send();
+
+        expect(res.statusCode).toEqual(204);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows).toHaveLength(0);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachment!.attachmentId]);
     });
 
     it("should not delete a meal belonging to another user", async () => {

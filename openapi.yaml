@@ -69,23 +69,13 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
-  /attachments/image/{attachmentPath}/{userId}/{attachmentId}:
+  /attachments/image/{attachmentId}:
     parameters:
-      - name: attachmentPath
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: userId
-        in: path
-        required: true
-        schema:
-          type: string
       - name: attachmentId
         in: path
         required: true
         schema:
-          type: string
+          $ref: "#/components/schemas/Uuid"
     get:
       tags:
         - Attachments
@@ -3184,13 +3174,10 @@ components:
       properties:
         attachmentId:
           $ref: "#/components/schemas/Uuid"
-        uri:
-          type: string
         preview:
           type: string
       required:
         - attachmentId
-        - uri
       unevaluatedProperties: false
     Password:
       type: string

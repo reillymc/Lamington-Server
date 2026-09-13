@@ -49,14 +49,12 @@ const formatCookListMeal = (
     source: toUndefined(meal.source),
     recipeId: toUndefined(meal.recipeId),
     notes: toUndefined(meal.notes),
-    heroImage:
-        meal.heroAttachmentId && meal.heroAttachmentUri
-            ? {
-                  attachmentId: meal.heroAttachmentId,
-                  uri: meal.heroAttachmentUri,
-                  preview: toUndefined(meal.heroAttachmentPreview),
-              }
-            : undefined,
+    heroImage: meal.heroAttachmentId
+        ? {
+              attachmentId: meal.heroAttachmentId,
+              preview: toUndefined(meal.heroAttachmentPreview),
+          }
+        : undefined,
 });
 
 const readByIds = async (db: KnexDatabase, mealIds: string[]) => {

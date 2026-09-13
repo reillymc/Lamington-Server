@@ -1,4 +1,4 @@
-export { Logger } from "winston";
+export type { Logger } from "winston";
 
 interface AppErrorConstructor {
     status?: number;

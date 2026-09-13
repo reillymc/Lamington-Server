@@ -84,7 +84,6 @@ export const KnexMealRepository: MealRepository<KnexDatabase> = {
                 notes: toUndefined(meal.notes),
                 heroImage: formatHeroAttachment(
                     meal.heroAttachmentId,
-                    meal.heroAttachmentUri,
                     meal.heroAttachmentPreview,
                 ),
             })),

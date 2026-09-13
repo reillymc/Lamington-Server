@@ -42,7 +42,6 @@ type ReadResponse = {
         notes: Meal["notes"];
         heroImage?: {
             attachmentId: string;
-            uri: string;
             preview?: string;
         };
     }>;

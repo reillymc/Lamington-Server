@@ -150,7 +150,6 @@ type BaseResponse = {
     photo:
         | {
               attachmentId: Attachment["attachmentId"];
-              uri: Attachment["uri"];
               preview?: string;
           }
         | undefined;

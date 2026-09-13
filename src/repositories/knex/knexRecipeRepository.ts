@@ -493,7 +493,6 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
                     tags: tags.get(recipeId),
                     photo: formatHeroAttachment(
                         recipe.heroAttachmentId,
-                        recipe.heroAttachmentUri,
                         recipe.heroAttachmentPreview,
                     ),
                 },
@@ -783,7 +782,6 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                     [ratingAverageName]: ratingAverage,
                     [ratingPersonalName]: ratingPersonal,
                     heroAttachmentId,
-                    heroAttachmentUri,
                     heroAttachmentPreview,
                     ...recipe
                 }) => ({
@@ -798,7 +796,6 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                     rating: formatRating(ratingAverage, ratingPersonal),
                     photo: formatHeroAttachment(
                         heroAttachmentId,
-                        heroAttachmentUri,
                         heroAttachmentPreview,
                     ),
                 }),

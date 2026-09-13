@@ -10,6 +10,10 @@ import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRe
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import {
+    createSpyingFileRepository,
+    purgeDeletedAttachments,
+} from "../helpers/fileRepository.ts";
+import {
     CreateUsers,
     PrepareAuthenticatedUser,
     randomDay,
@@ -437,6 +441,124 @@ describe("Delete a planner", () => {
         });
 
         expect(planners.length).toEqual(0);
+    });
+
+    it("should delete the meal hero image attachment rows and files when a planner is deleted", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}],
+        });
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        await KnexPlannerRepository.createMeals(database, {
+            userId: user.userId,
+            plannerId: planner!.plannerId,
+            meals: [
+                {
+                    dayOfMonth: 1,
+                    month: 1,
+                    course: "breakfast",
+                    year: 2023,
+                    heroImage: attachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/planners/${planner!.plannerId}`)
+            .set(token)
+            .send();
+
+        expect(res.statusCode).toEqual(204);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows).toHaveLength(0);
+
+        const contentRows = await database("content").select("contentId");
+        expect(contentRows).toHaveLength(0);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachment!.attachmentId]);
+    });
+
+    it("should keep a meal hero image that is still referenced by other content", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}],
+        });
+
+        await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    photo: { attachmentId: attachment!.attachmentId },
+                },
+            ],
+        });
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        await KnexPlannerRepository.createMeals(database, {
+            userId: user.userId,
+            plannerId: planner!.plannerId,
+            meals: [
+                {
+                    dayOfMonth: 1,
+                    month: 1,
+                    course: "breakfast",
+                    year: 2023,
+                    heroImage: attachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/planners/${planner!.plannerId}`)
+            .set(token)
+            .send();
+
+        expect(res.statusCode).toEqual(204);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows.map(({ attachmentId }) => attachmentId)).toEqual([
+            attachment!.attachmentId,
+        ]);
+        expect(deleteFile.mock.calls).toHaveLength(0);
     });
 });
 
@@ -997,7 +1119,7 @@ describe("Add a meal to a planner", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: otherUser!.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const {
@@ -1029,7 +1151,7 @@ describe("Add a meal to a planner", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const {
@@ -1067,7 +1189,9 @@ describe("Add a meal to a planner", () => {
         expect(returnedMeal!.heroImage!.attachmentId).toEqual(
             mealData.heroImage,
         );
-        expect(returnedMeal!.heroImage!.uri).toEqual(attachment!.uri);
+        expect(returnedMeal!.heroImage!.attachmentId).toEqual(
+            attachment!.attachmentId,
+        );
 
         const { meals: savedMeals } = await KnexPlannerRepository.readAllMeals(
             database,
@@ -1087,7 +1211,9 @@ describe("Add a meal to a planner", () => {
         expect(savedMeal!.year).toEqual(mealData.year);
         expect(savedMeal!.course).toEqual(mealData.course);
         expect(savedMeal!.heroImage!.attachmentId).toEqual(mealData.heroImage);
-        expect(savedMeal!.heroImage!.uri).toEqual(attachment!.uri);
+        expect(savedMeal!.heroImage!.attachmentId).toEqual(
+            attachment!.attachmentId,
+        );
     });
 
     it("should create a planner meal with a recipe", async () => {
@@ -1331,7 +1457,7 @@ describe("Update a meal in a planner", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: otherUser!.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const {
@@ -1519,7 +1645,7 @@ describe("Update a meal in a planner", () => {
             attachments: [originalAttachment, updatedAttachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }, { uri: uuid() }],
+            attachments: [{}, {}],
         });
 
         const {
@@ -1573,7 +1699,9 @@ describe("Update a meal in a planner", () => {
         expect(returnedMeal.heroImage!.attachmentId).toEqual(
             updateData.heroImage,
         );
-        expect(returnedMeal.heroImage!.uri).toEqual(updatedAttachment!.uri);
+        expect(returnedMeal.heroImage!.attachmentId).toEqual(
+            updatedAttachment!.attachmentId,
+        );
 
         const { meals: plannerMeals } =
             await KnexPlannerRepository.readAllMeals(database, {
@@ -1593,7 +1721,123 @@ describe("Update a meal in a planner", () => {
         expect(savedMeal!.heroImage!.attachmentId).toEqual(
             updateData.heroImage,
         );
-        expect(savedMeal!.heroImage!.uri).toEqual(updatedAttachment!.uri);
+        expect(savedMeal!.heroImage!.attachmentId).toEqual(
+            updatedAttachment!.attachmentId,
+        );
+    });
+
+    it("should delete the replaced attachment row and file when a meal hero image is replaced", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [originalAttachment, updatedAttachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}, {}],
+        });
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const {
+            meals: [meal],
+        } = await KnexPlannerRepository.createMeals(database, {
+            userId: user.userId,
+            plannerId: planner!.plannerId,
+            meals: [
+                {
+                    dayOfMonth: 1,
+                    month: 1,
+                    course: "breakfast",
+                    year: 2023,
+                    heroImage: originalAttachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
+            .set(token)
+            .send({ heroImage: updatedAttachment!.attachmentId });
+
+        expect(res.statusCode).toEqual(200);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows.map(({ attachmentId }) => attachmentId)).toEqual([
+            updatedAttachment!.attachmentId,
+        ]);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([originalAttachment!.attachmentId]);
+    });
+
+    it("should delete the attachment row and file when a meal hero image is cleared", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}],
+        });
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const {
+            meals: [meal],
+        } = await KnexPlannerRepository.createMeals(database, {
+            userId: user.userId,
+            plannerId: planner!.plannerId,
+            meals: [
+                {
+                    dayOfMonth: 1,
+                    month: 1,
+                    course: "breakfast",
+                    year: 2023,
+                    heroImage: attachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
+            .set(token)
+            .send({ heroImage: null });
+
+        expect(res.statusCode).toEqual(200);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows).toHaveLength(0);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachment!.attachmentId]);
     });
 
     it("should clear optional fields when set to null", async () => {
@@ -1603,7 +1847,7 @@ describe("Update a meal in a planner", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const {
@@ -1975,6 +2219,64 @@ describe("Remove a meal from a planner", () => {
             });
 
         expect(plannerMeals.length).toEqual(0);
+    });
+
+    it("should delete the hero image attachment row and file when a meal is removed", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}],
+        });
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const {
+            meals: [plannerMeal],
+        } = await KnexPlannerRepository.createMeals(database, {
+            userId: user.userId,
+            plannerId: planner!.plannerId,
+            meals: [
+                {
+                    dayOfMonth: randomDay(),
+                    month: randomMonth(),
+                    course: randomCourse(),
+                    year: randomYear(),
+                    heroImage: attachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .delete(
+                `/v1/planners/${planner!.plannerId}/meals/${plannerMeal!.mealId}`,
+            )
+            .set(token)
+            .send();
+
+        expect(res.statusCode).toEqual(204);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows).toHaveLength(0);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachment!.attachmentId]);
     });
 
     it("should fail to delete a cooklist meal via planner endpoint", async () => {

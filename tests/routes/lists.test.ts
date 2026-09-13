@@ -4,10 +4,15 @@ import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
+import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
 import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
 import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import { SYSTEM_USER_ID } from "../../src/utils/systemUser.ts";
+import {
+    createSpyingFileRepository,
+    purgeDeletedAttachments,
+} from "../helpers/fileRepository.ts";
 import { CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
 import { createTestApp, db } from "../helpers/setup.ts";
 
@@ -609,6 +614,14 @@ describe("Delete a list", () => {
         });
         const list = lists[0]!;
 
+        const {
+            items: [item],
+        } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: list.listId,
+            items: [{ name: uuid() }],
+        });
+
         const res = await request(app)
             .delete(`/v1/lists/${list.listId}`)
             .set(token)
@@ -620,6 +633,60 @@ describe("Delete a list", () => {
             userId: user.userId,
         });
         expect(savedLists.length).toEqual(0);
+
+        const listItems = await database("list_item")
+            .select("itemId")
+            .where("itemId", item!.itemId);
+        expect(listItems).toHaveLength(0);
+
+        const content = await database("content")
+            .select("contentId")
+            .where("contentId", item!.itemId);
+        expect(content).toHaveLength(0);
+    });
+
+    it("should delete the attachment row and file when a list is deleted", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}],
+        });
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid(), description: uuid() }],
+        });
+        const list = lists[0]!;
+
+        await database("content_attachment").insert({
+            contentId: list.listId,
+            attachmentId: attachment!.attachmentId,
+            displayType: "hero",
+        });
+
+        const res = await request(app)
+            .delete(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send();
+        expect(res.statusCode).toEqual(204);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows).toHaveLength(0);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachment!.attachmentId]);
     });
 });
 
