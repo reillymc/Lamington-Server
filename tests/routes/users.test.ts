@@ -184,6 +184,36 @@ describe("Delete user", () => {
         });
         expect(users.length).toEqual(1);
         expect(users[0]!.status).toEqual("D");
+
+        const deletedUser = await database("user")
+            .select("deletedAt")
+            .where({ userId: userToDelete!.userId })
+            .first();
+        expect(deletedUser!.deletedAt).not.toEqual(null);
+    });
+
+    it("should preserve original deletion timestamp when the user is deleted again", async () => {
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
+        const [userToDelete] = await CreateUsers(database);
+
+        await request(app)
+            .delete(`/v1/users/${userToDelete!.userId}`)
+            .set(adminToken);
+
+        const [firstDeletion] = await database("user")
+            .select("deletedAt")
+            .where({ userId: userToDelete!.userId });
+
+        const response = await request(app)
+            .delete(`/v1/users/${userToDelete!.userId}`)
+            .set(adminToken);
+        expect(response.statusCode).toEqual(204);
+
+        const [secondDeletion] = await database("user")
+            .select("deletedAt")
+            .where({ userId: userToDelete!.userId });
+
+        expect(secondDeletion!.deletedAt).toEqual(firstDeletion!.deletedAt);
     });
 
     it("should reject deleting the system user", async () => {
@@ -297,6 +327,29 @@ describe("Approve user", () => {
         } = await KnexUserRepository.read(database, { users: [user!] });
 
         expect(updatedUser?.status).toEqual("M");
+    });
+
+    it("should clear the deletion timestamp when approving a deleted user", async () => {
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
+        const [user] = await CreateUsers(database);
+
+        await request(app).delete(`/v1/users/${user!.userId}`).set(adminToken);
+
+        const response = await request(app)
+            .post(`/v1/users/${user!.userId}/approve`)
+            .set(adminToken);
+
+        expect(response.statusCode).toEqual(204);
+
+        const {
+            users: [updatedUser],
+        } = await KnexUserRepository.read(database, { users: [user!] });
+        expect(updatedUser?.status).toEqual("M");
+
+        const [restoredUser] = await database("user")
+            .select("deletedAt")
+            .where({ userId: user!.userId });
+        expect(restoredUser!.deletedAt).toEqual(null);
     });
 
     it("should trigger the starter data job when approving a pending user", async () => {

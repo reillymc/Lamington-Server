@@ -2,7 +2,6 @@ import { EnsureArray, Undefined } from "@reillymc/es-utils";
 import { SYSTEM_USER_ID } from "../../utils/systemUser.ts";
 import { UniqueViolationError } from "../common/errors.ts";
 import type { UserRepository } from "../userRepository.ts";
-import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { isUniqueViolation } from "./common/postgresErrors.ts";
 import type { KnexDatabase } from "./knex.ts";
 import { lamington, UserTable } from "./spec/index.ts";
@@ -100,11 +99,11 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
             })),
         };
     },
-    readPurgeableUsers: async (db, { updatedBefore }) => {
+    readPurgeableUsers: async (db, { deletedBefore }) => {
         const result = await db(lamington.user)
             .select(UserTable.userId)
-            .where(UserTable.status, "D")
-            .where(UserTable.updatedAt, "<", updatedBefore)
+            .whereNotNull(UserTable.deletedAt)
+            .where(UserTable.deletedAt, "<", deletedBefore)
             .whereNot(UserTable.userId, SYSTEM_USER_ID);
 
         return {
@@ -137,28 +136,45 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
             throw error;
         }
     },
-    update: async (db, { users }) => {
-        for (const u of users) {
-            const updateData = buildUpdateRecord(u, UserTable);
+    updateStatus: async (db, { users }) => {
+        if (!users.length) return { users: [] };
 
-            if (updateData) {
-                await db(lamington.user)
-                    .where(UserTable.userId, u.userId)
-                    .update(updateData);
-            }
+        for (const { userId, status } of users) {
+            await db(lamington.user)
+                .where(UserTable.userId, userId)
+                .update({ status, deletedAt: null });
         }
 
-        const userIds = users.map((u) => u.userId);
         const updatedUsers = await db(lamington.user)
-            .select([UserTable.userId, UserTable.status])
-            .whereIn(UserTable.userId, userIds);
+            .select(UserTable.userId, UserTable.status)
+            .whereIn(
+                UserTable.userId,
+                users.map(({ userId }) => userId),
+            );
 
         return {
             users: updatedUsers,
         };
     },
+    softDelete: async (db, { users }) => {
+        const userIds = users.map(({ userId }) => userId);
+
+        if (!userIds.length) return { count: 0 };
+
+        const count = await db(lamington.user)
+            .whereIn(UserTable.userId, userIds)
+            .update({
+                status: "D",
+                deletedAt: db.raw('COALESCE("deletedAt", now())'),
+            });
+
+        return { count };
+    },
     delete: async (db, { users }) => {
         const userIds = users.map((u) => u.userId);
+
+        if (!userIds.length) return { count: 0 };
+
         const count = await db(lamington.user)
             .whereIn(UserTable.userId, userIds)
             .delete();

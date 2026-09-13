@@ -7,27 +7,50 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 interface CreatePurgeDeletedUsersJobParams {
     database: Database;
-    repositories: Pick<AppRepositories, "userRepository">;
+    repositories: Pick<
+        AppRepositories,
+        "userRepository" | "attachmentRepository" | "fileRepository"
+    >;
     logger: Logger;
 }
 
 export const createPurgeDeletedUsersJob: CreateJob<
     CreatePurgeDeletedUsersJobParams
-> = ({ database, repositories: { userRepository }, logger }) => ({
+> = ({
+    database,
+    repositories: { userRepository, attachmentRepository, fileRepository },
+    logger,
+}) => ({
     run: async () => {
         const cutOff = new Date(Date.now() - RETENTION_DAYS * ONE_DAY_MS);
 
         try {
             const { users } = await userRepository.readPurgeableUsers(
                 database,
-                { updatedBefore: cutOff },
+                { deletedBefore: cutOff },
             );
 
-            // TODO: delete stored attachment files (attachment.uri) via
-            // fileRepository once orphaned-attachment cleanup lands.
-            // Likely needs userId, otherwise the two userRepository
-            // calls can be collapsed into one.
+            // Attachment rows cascade away with the user, so their URIs must
+            // be collected first in order to delete the stored files.
+            const { attachments } = await attachmentRepository.readAllForUsers(
+                database,
+                { users },
+            );
+
             await userRepository.delete(database, { users });
+
+            if (!attachments.length) return true;
+
+            const results = await fileRepository.delete(undefined, attachments);
+
+            const failed = results.filter(({ succeeded }) => !succeeded);
+
+            if (failed.length) {
+                logger.error("Failed to delete attachment files", {
+                    attachments: failed,
+                });
+                return false;
+            }
 
             return true;
         } catch (error) {
@@ -35,6 +58,6 @@ export const createPurgeDeletedUsersJob: CreateJob<
             return false;
         }
     },
-    trigger: ["startup", "interval"],
+    trigger: ["interval"],
     interval: ONE_DAY_MS,
 });

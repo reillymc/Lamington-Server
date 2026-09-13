@@ -158,7 +158,7 @@ export const createUserService: CreateService<
 
         const {
             users: [updatedUser],
-        } = await userRepository.update(database, {
+        } = await userRepository.updateStatus(database, {
             users: [{ userId: userToApproveId, status: "M" }],
         });
 
@@ -192,7 +192,7 @@ export const createUserService: CreateService<
             throw new NotFoundError("user", userToBlacklistId);
         }
 
-        await userRepository.update(database, {
+        await userRepository.updateStatus(database, {
             users: [{ userId: userToBlacklistId, status: "B" }],
         });
     },
@@ -213,8 +213,8 @@ export const createUserService: CreateService<
             throw new NotFoundError("user", userToDeleteId);
         }
 
-        await userRepository.update(database, {
-            users: [{ userId: userToDeleteId, status: "D" }],
+        await userRepository.softDelete(database, {
+            users: [{ userId: userToDeleteId }],
         });
     },
     getProfile: async (userId) => {
@@ -227,8 +227,8 @@ export const createUserService: CreateService<
         return user;
     },
     deleteProfile: async (userId) => {
-        await userRepository.update(database, {
-            users: [{ userId, status: "D" }],
+        await userRepository.softDelete(database, {
+            users: [{ userId }],
         });
     },
     register: async (user) => {
