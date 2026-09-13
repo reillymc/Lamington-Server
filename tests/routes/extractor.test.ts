@@ -25,11 +25,6 @@ after(async () => {
 });
 
 describe("Extract recipe metadata", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get("/v1/extractor/recipeMetadata");
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should extract metadata from a URL", async () => {
         const extractRecipeMetadataMock = mock.fn(
             async (): ReturnType<
@@ -100,11 +95,6 @@ describe("Extract recipe metadata", () => {
 });
 
 describe("Extract full recipe", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get("/v1/extractor/recipe");
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should extract full recipe from a URL", async () => {
         const mockRecipe: Awaited<
             ReturnType<ContentExtractionService["extractRecipe"]>

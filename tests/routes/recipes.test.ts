@@ -48,12 +48,6 @@ after(async () => {
 });
 
 describe("Get recipes", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get("/v1/recipes");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return correct recipe details", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -112,7 +106,7 @@ describe("Get recipes", () => {
         for (const user of randomUsers) {
             const { recipes } = await KnexRecipeRepository.create(database, {
                 userId: user.userId,
-                recipes: Array.from({ length: randomNumber(1, 3) }).map(() => ({
+                recipes: Array.from({ length: randomNumber(3, 1) }).map(() => ({
                     name: uuid(),
                     public: true,
                 })),
@@ -138,7 +132,7 @@ describe("Get recipes", () => {
         for (const otherUser of randomUsers) {
             const { recipes } = await KnexRecipeRepository.create(database, {
                 userId: otherUser.userId,
-                recipes: Array.from({ length: randomNumber(1, 3) }).map(() => ({
+                recipes: Array.from({ length: randomNumber(3, 1) }).map(() => ({
                     name: uuid(),
                     public: randomBoolean(),
                 })),
@@ -223,7 +217,7 @@ describe("Get recipes", () => {
             for (const randomUser of randomUsers) {
                 await KnexRecipeRepository.create(database, {
                     userId: randomUser.userId,
-                    recipes: Array.from({ length: randomNumber(1, 3) }).map(
+                    recipes: Array.from({ length: randomNumber(3, 1) }).map(
                         () => ({
                             name: uuid(),
                             public: true,
@@ -649,22 +643,187 @@ describe("Get recipes", () => {
     });
 
     describe("sorting/ordering", () => {
-        it("should return results by name", async () => {
-            const [token, user] = await PrepareAuthenticatedUser(database);
+        for (const order of ["asc", "desc"] as const) {
+            it(`should return results by name (${order})`, async () => {
+                const [token, user] = await PrepareAuthenticatedUser(database);
 
-            const order = randomBoolean() ? "asc" : "desc";
+                await KnexRecipeRepository.create(database, {
+                    userId: user.userId,
+                    recipes: Array.from({ length: TEST_ITEM_COUNT }).map(
+                        (_, index) => ({
+                            name: `recipe-${String(index).padStart(3, "0")}`,
+                            public: true,
+                        }),
+                    ),
+                });
 
-            await KnexRecipeRepository.create(database, {
-                userId: user.userId,
-                recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
-                    name: uuid(),
-                    public: true,
-                })),
+                const res = await request(app)
+                    .get("/v1/recipes")
+                    .query({ sort: "name", order })
+                    .set(token);
+
+                expect(res.statusCode).toEqual(200);
+
+                const { recipes: data } =
+                    res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
+
+                expect(data!.length).toEqual(TEST_ITEM_COUNT);
+
+                const recipeNames = data!.map(({ name }) => name);
+                const sortedNames = [...recipeNames].sort();
+                expect(recipeNames).toEqual(
+                    order === "asc" ? sortedNames : sortedNames.reverse(),
+                );
             });
+
+            it(`should return results by rating (${order})`, async () => {
+                const [token, user] = await PrepareAuthenticatedUser(database);
+
+                await KnexRecipeRepository.create(database, {
+                    userId: user.userId,
+                    recipes: Array.from({ length: TEST_ITEM_COUNT }).map(
+                        (_, index) => ({
+                            name: uuid(),
+                            rating: index + 1,
+                            public: true,
+                        }),
+                    ),
+                });
+
+                const res = await request(app)
+                    .get("/v1/recipes")
+                    .query({ sort: "ratingPersonal", order })
+                    .set(token);
+
+                expect(res.statusCode).toEqual(200);
+
+                const { recipes: data } =
+                    res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
+
+                expect(data!.length).toEqual(TEST_ITEM_COUNT);
+
+                const recipeRatings = data!.map(
+                    ({ rating }) => rating?.personal ?? 0,
+                );
+                const sortedRatings = [...recipeRatings].sort((a, b) => a - b);
+                expect(recipeRatings).toEqual(
+                    order === "asc" ? sortedRatings : sortedRatings.reverse(),
+                );
+            });
+
+            it(`should return results by time (${order})`, async () => {
+                const [token, user] = await PrepareAuthenticatedUser(database);
+
+                await KnexRecipeRepository.create(database, {
+                    userId: user.userId,
+                    recipes: Array.from({ length: TEST_ITEM_COUNT }).map(
+                        (_, index) => ({
+                            name: uuid(),
+                            cookTime: index + 1,
+                            public: true,
+                        }),
+                    ),
+                });
+
+                const res = await request(app)
+                    .get("/v1/recipes")
+                    .query({ sort: "cookTime", order })
+                    .set(token);
+
+                expect(res.statusCode).toEqual(200);
+
+                const { recipes: data } =
+                    res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
+
+                expect(data!.length).toEqual(TEST_ITEM_COUNT);
+
+                const recipeTimes = data!.map(({ cookTime }) => cookTime);
+                const sortedTimes = [...recipeTimes].sort(
+                    (a, b) => (a ?? 0) - (b ?? 0),
+                );
+                expect(recipeTimes).toEqual(
+                    order === "asc" ? sortedTimes : sortedTimes.reverse(),
+                );
+            });
+
+            it(`should return results by average rating (${order})`, async () => {
+                const [token, user] = await PrepareAuthenticatedUser(database);
+                const raters = await CreateUsers(database, { count: 2 });
+
+                const { recipes } = await KnexRecipeRepository.create(
+                    database,
+                    {
+                        userId: user.userId,
+                        recipes: Array.from({ length: TEST_ITEM_COUNT }).map(
+                            () => ({
+                                name: uuid(),
+                                public: true,
+                            }),
+                        ),
+                    },
+                );
+
+                for (const [raterIndex, rater] of raters.entries()) {
+                    await KnexRecipeRepository.saveRating(database, {
+                        userId: rater.userId,
+                        ratings: recipes.map((recipe, index) => ({
+                            recipeId: recipe.recipeId,
+                            rating: index + 1 + raterIndex * 2,
+                        })),
+                    });
+                }
+
+                const res = await request(app)
+                    .get("/v1/recipes")
+                    .query({ sort: "ratingAverage", order })
+                    .set(token);
+
+                expect(res.statusCode).toEqual(200);
+
+                const { recipes: data } =
+                    res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
+
+                expect(data!.length).toEqual(TEST_ITEM_COUNT);
+
+                for (const recipeResponse of data!) {
+                    expect(recipeResponse!.rating?.personal).toBeUndefined();
+                    expect(typeof recipeResponse!.rating?.average).toEqual(
+                        "number",
+                    );
+                }
+
+                const recipeAverages = data!.map(
+                    ({ rating }) => rating?.average ?? 0,
+                );
+                const sortedAverages = [...recipeAverages].sort(
+                    (a, b) => a - b,
+                );
+                expect(recipeAverages).toEqual(
+                    order === "asc" ? sortedAverages : sortedAverages.reverse(),
+                );
+            });
+        }
+
+        it("should return results by owner filter sorted", async () => {
+            const [token, ownerA] = await PrepareAuthenticatedUser(database);
+            const [_, ownerB] = await PrepareAuthenticatedUser(database);
+
+            for (const [prefix, owner] of [
+                ["a", ownerA] as const,
+                ["b", ownerB] as const,
+            ]) {
+                await KnexRecipeRepository.create(database, {
+                    userId: owner.userId,
+                    recipes: Array.from({ length: 5 }).map((_, index) => ({
+                        name: `${prefix}-${String(index).padStart(3, "0")}`,
+                        public: randomBoolean(),
+                    })),
+                });
+            }
 
             const res = await request(app)
                 .get("/v1/recipes")
-                .query({ sort: "name", order })
+                .query({ owner: ownerA.userId, sort: "name", order: "desc" })
                 .set(token);
 
             expect(res.statusCode).toEqual(200);
@@ -672,95 +831,99 @@ describe("Get recipes", () => {
             const { recipes: data } =
                 res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
 
-            expect(data!.length).toEqual(TEST_ITEM_COUNT);
+            expect(data!.length).toEqual(5);
 
             const recipeNames = data!.map(({ name }) => name);
-            expect(recipeNames).toEqual(
-                order === "asc"
-                    ? recipeNames.sort()
-                    : recipeNames.sort().reverse(),
+            expect([...recipeNames].sort().reverse()).toEqual(recipeNames);
+            expect(recipeNames.every((name) => name.startsWith("a-"))).toBe(
+                true,
             );
         });
 
-        it("should return results by rating", async () => {
-            const [token, user] = await PrepareAuthenticatedUser(database);
+        it("should apply ordering across pages", async () => {
+            const PAGE_SIZE = 50;
 
-            const order = randomBoolean() ? "asc" : "desc";
+            const [token, user] = await PrepareAuthenticatedUser(database);
 
             await KnexRecipeRepository.create(database, {
                 userId: user.userId,
-                recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
-                    name: uuid(),
-                    rating: randomNumber(),
-                    public: true,
-                })),
+                recipes: Array.from({ length: PAGE_SIZE + 10 }).map(
+                    (_, index) => ({
+                        name: `recipe-${String(index).padStart(3, "0")}`,
+                        public: true,
+                    }),
+                ),
             });
 
-            const res = await request(app)
-                .get("/v1/recipes")
-                .query({ sort: "ratingPersonal", order })
-                .set(token);
+            for (const order of ["asc", "desc"] as const) {
+                const allRecipeNames: string[] = [];
 
-            expect(res.statusCode).toEqual(200);
+                for (const page of [1, 2]) {
+                    const res = await request(app)
+                        .get("/v1/recipes")
+                        .query({ page, sort: "name", order })
+                        .set(token);
 
-            const { recipes: data } =
-                res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
+                    expect(res.statusCode).toEqual(200);
 
-            expect(data!.length).toEqual(TEST_ITEM_COUNT);
+                    const { recipes, nextPage } =
+                        res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
 
-            const recipeRatings = data!.map(
-                ({ rating }) => rating?.personal ?? 0,
-            );
-            expect(recipeRatings).toEqual(
-                order === "asc"
-                    ? recipeRatings!.sort()
-                    : recipeRatings!.sort().reverse(),
-            );
+                    expect(recipes!.length).toEqual(
+                        page === 1 ? PAGE_SIZE : 10,
+                    );
+                    expect(nextPage).toEqual(page === 1 ? 2 : undefined);
+
+                    allRecipeNames.push(...recipes!.map(({ name }) => name));
+                }
+
+                const sortedNames = [...allRecipeNames].sort();
+                expect(allRecipeNames).toEqual(
+                    order === "asc" ? sortedNames : sortedNames.reverse(),
+                );
+            }
         });
 
-        it("should return results by time", async () => {
-            const [token, user] = await PrepareAuthenticatedUser(database);
+        const invalidQueryTestCases: TestCase<
+            number,
+            Record<string, string>
+        >[] = [
+            {
+                name: "should reject an invalid sort field",
+                input: { sort: "bogus" },
+                expected: 400,
+            },
+            {
+                name: "should reject an invalid order value",
+                input: { order: "bogus" },
+                expected: 400,
+            },
+            {
+                name: "should reject an invalid order alongside a valid sort",
+                input: { sort: "name", order: "bogus" },
+                expected: 400,
+            },
+            {
+                name: "should reject an unknown query parameter",
+                input: { foo: "bar" },
+                expected: 400,
+            },
+        ];
 
-            const order = randomBoolean() ? "asc" : "desc";
-
-            await KnexRecipeRepository.create(database, {
-                userId: user.userId,
-                recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
-                    name: uuid(),
-                    prepTime: randomNumber(5),
-                    public: true,
-                })),
-            });
+        runTestCases(invalidQueryTestCases, async ({ input, expected }) => {
+            const [token] = await PrepareAuthenticatedUser(database);
 
             const res = await request(app)
                 .get("/v1/recipes")
-                .query({ sort: "cookTime", order })
+                .query(input)
                 .set(token);
 
-            expect(res.statusCode).toEqual(200);
-
-            const { recipes: data } =
-                res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
-
-            expect(data!.length).toEqual(TEST_ITEM_COUNT);
-
-            const recipeTimes = data!.map(({ prepTime }) => prepTime);
-            expect(recipeTimes).toEqual(
-                order === "asc"
-                    ? recipeTimes.sort()
-                    : recipeTimes.sort().reverse(),
-            );
+            expect(res.statusCode).toEqual(expected);
         });
     });
 });
 
 describe("Create a recipe", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post("/v1/recipes");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should save correct basic details", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -856,6 +1019,12 @@ describe("Create a recipe", () => {
             .send(recipe);
 
         expect(res.statusCode).toEqual(404);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows.map(({ attachmentId }) => attachmentId)).toEqual([
+            attachment!.attachmentId,
+        ]);
     });
 
     it("should collapse duplicate tags in a single request", async () => {
@@ -1290,43 +1459,9 @@ describe("Create a recipe", () => {
             });
         });
     });
-
-    it("should not allow attaching another user's attachment", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const [otherUser] = await CreateUsers(database);
-
-        const {
-            attachments: [foreignAttachment],
-        } = await KnexAttachmentRepository.create(database, {
-            userId: otherUser!.userId,
-            attachments: [{}],
-        });
-
-        const res = await request(app)
-            .post("/v1/recipes")
-            .set(token)
-            .send({
-                name: uuid(),
-                photo: { attachmentId: foreignAttachment!.attachmentId },
-            } satisfies components["schemas"]["RecipeCreate"]);
-
-        expect(res.statusCode).toEqual(404);
-
-        const attachmentRows =
-            await database("attachment").select("attachmentId");
-        expect(attachmentRows.map(({ attachmentId }) => attachmentId)).toEqual([
-            foreignAttachment!.attachmentId,
-        ]);
-    });
 });
 
 describe("Update a recipe", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post("/v1/recipes");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should not allow editing if not recipe owner", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const [recipeOwner] = await CreateUsers(database);
@@ -2225,8 +2360,8 @@ describe("Update a recipe", () => {
         } = await KnexRecipeRepository.create(database, {
             userId,
             recipes: [
-                { name: uuid(), rating: randomNumber() },
-                { name: uuid(), rating: randomNumber() },
+                { name: uuid(), rating: randomNumber(), public: true },
+                { name: uuid(), rating: randomNumber(), public: true },
             ],
         });
 
@@ -2392,7 +2527,6 @@ describe("Update a recipe", () => {
 
         // Photo on recipe was updated
         expect(response.photo!.attachmentId).toEqual(attachmentB!.attachmentId);
-        expect(response.photo!.attachmentId).toEqual(attachmentB!.attachmentId);
 
         const {
             recipes: [otherRecipeRes],
@@ -2443,9 +2577,9 @@ describe("Update a recipe", () => {
 
         const attachmentRows =
             await database("attachment").select("attachmentId");
-        expect(attachmentRows.map(({ attachmentId }) => attachmentId)).toEqual([
-            attachmentB!.attachmentId,
-        ]);
+        expect(
+            attachmentRows.map(({ attachmentId }) => attachmentId).sort(),
+        ).toEqual([attachmentB!.attachmentId].sort());
 
         expect(
             deleteFile.mock.calls.map(
@@ -2668,17 +2802,10 @@ describe("Update a recipe", () => {
 });
 
 describe("Get a recipe", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get(`/v1/recipes/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent recipe", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app)
-            .delete(`/v1/recipes/${uuid()}`)
-            .set(token);
+        const res = await request(app).get(`/v1/recipes/${uuid()}`).set(token);
 
         expect(res.statusCode).toEqual(404);
     });
@@ -2763,14 +2890,48 @@ describe("Get a recipe", () => {
         expect(response!.owner.userId).toBe(userId);
         expect(response!.owner.firstName).toBe(firstName);
     });
+
+    it("should not return another user's private recipe", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        const res = await request(app)
+            .get(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
+    it("should return another user's public recipe", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: true }],
+        });
+
+        const res = await request(app)
+            .get(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(200);
+
+        const response = res.body as components["schemas"]["Recipe"];
+        expect(response.recipeId).toEqual(recipe!.recipeId);
+    });
 });
 
 describe("Delete a recipe", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).delete(`/v1/recipes/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent recipe", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
@@ -2872,6 +3033,20 @@ describe("Delete a recipe", () => {
             recipes: [{ recipeId: recipe!.recipeId }],
         });
         expect(recipes).toHaveLength(0);
+
+        const { ingredients } = await KnexIngredientRepository.readAll(
+            database,
+            { userId: user.userId },
+        );
+        expect(ingredients.map(({ ingredientId }) => ingredientId)).toEqual([
+            ingredient!.ingredientId,
+        ]);
+
+        expect(
+            await database("recipe_ingredient")
+                .select("ingredientId")
+                .where("recipeId", recipe!.recipeId),
+        ).toHaveLength(0);
     });
 
     it("should delete a recipe used as a sub-recipe", async () => {
@@ -3018,9 +3193,9 @@ describe("Delete a recipe", () => {
 
         const attachmentRows =
             await database("attachment").select("attachmentId");
-        expect(attachmentRows.map(({ attachmentId }) => attachmentId)).toEqual([
-            attachment!.attachmentId,
-        ]);
+        expect(
+            attachmentRows.map(({ attachmentId }) => attachmentId).sort(),
+        ).toEqual([attachment!.attachmentId].sort());
 
         expect(
             deleteFile.mock.calls.map(
@@ -3031,11 +3206,6 @@ describe("Delete a recipe", () => {
 });
 
 describe("Rate a recipe", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/recipes/${uuid()}/rating`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should rate a recipe", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 

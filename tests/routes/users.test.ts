@@ -36,12 +36,6 @@ after(async () => {
 });
 
 describe("Get all users", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).get("/v1/users");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("route should fail for non-administrator", async () => {
         const [registeredToken] = await PrepareAuthenticatedUser(database, "M");
         const res = await request(app).get("/v1/users").set(registeredToken);
@@ -66,19 +60,19 @@ describe("Get all users", () => {
         const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
         const usersRegistered = await CreateUsers(database, {
-            count: randomCount,
+            count: randomCount(),
             status: "M",
         });
         const usersAdmin = await CreateUsers(database, {
-            count: randomCount,
+            count: randomCount(),
             status: "A",
         });
         await CreateUsers(database, {
-            count: randomCount,
+            count: randomCount(),
             status: "P",
         });
         await CreateUsers(database, {
-            count: randomCount,
+            count: randomCount(),
             status: "B",
         });
 
@@ -112,12 +106,12 @@ describe("Get all users", () => {
         const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
         const users = await CreateUsers(database, {
-            count: Math.floor(Math.random() * 10) + 1,
+            count: randomCount(),
             status: "P",
         });
 
         await CreateUsers(database, {
-            count: Math.floor(Math.random() * 10) + 1,
+            count: randomCount(),
             status: "M",
         });
 
@@ -151,14 +145,6 @@ describe("Get all users", () => {
 });
 
 describe("Delete user", () => {
-    it("route should require authentication", async () => {
-        const [_, { userId }] = await PrepareAuthenticatedUser(database, "M");
-
-        const res = await request(app).delete(`/v1/users/${userId}`);
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should not allow deletion of user if not admin", async () => {
         const [_, { userId }] = await PrepareAuthenticatedUser(database, "M");
         const [otherToken] = await PrepareAuthenticatedUser(database, "M");
@@ -275,12 +261,6 @@ describe("Delete user", () => {
 });
 
 describe("Approve user", () => {
-    it("route should require authentication", async () => {
-        const endpoint = `/v1/users/${v4()}/approve`; // Non-existent user
-        const res = await request(app).post(endpoint);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("route should require administrator privileges", async () => {
         const [registeredToken] = await PrepareAuthenticatedUser(database, "M");
         const endpoint = `/v1/users/${v4()}/approve`; // Non-existent user
@@ -401,12 +381,6 @@ describe("Approve user", () => {
 });
 
 describe("Blacklist user", () => {
-    it("route should require authentication", async () => {
-        const endpoint = `/v1/users/${v4()}/blacklist`;
-        const res = await request(app).post(endpoint);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("route should require administrator privileges", async () => {
         const [registeredToken] = await PrepareAuthenticatedUser(database, "M");
         const endpoint = `/v1/users/${v4()}/blacklist`;

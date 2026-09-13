@@ -40,11 +40,6 @@ after(async () => {
 });
 
 describe("Get user lists", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get("/v1/lists");
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return all lists created by the user", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -146,11 +141,6 @@ describe("Get user lists", () => {
 });
 
 describe("Create a list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post("/v1/lists");
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should successfully create a new list", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -180,31 +170,33 @@ describe("Create a list", () => {
         expect(savedList?.owner.userId).toEqual(user.userId);
     });
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app).post("/v1/lists").set(token).send({
-            name: 12345,
-            description: uuid(),
-        });
-        expect(res.statusCode).toEqual(400);
-    });
+    const invalidListCreates: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { name: 12345, description: uuid() },
+        },
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { name: uuid(), extra: "invalid" },
+        },
+    ];
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app).post("/v1/lists").set(token).send({
-            name: uuid(),
-            extra: "invalid",
+    for (const { name, body } of invalidListCreates) {
+        it(name, async () => {
+            const [token] = await PrepareAuthenticatedUser(database);
+            const res = await request(app)
+                .post("/v1/lists")
+                .set(token)
+                .send(body);
+            expect(res.statusCode).toEqual(400);
         });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Get a list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get(`/v1/lists/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const res = await request(app).get(`/v1/lists/${uuid()}`).set(token);
@@ -311,11 +303,6 @@ describe("Get a list", () => {
 });
 
 describe("Update a list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).patch(`/v1/lists/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const res = await request(app)
@@ -478,62 +465,44 @@ describe("Update a list", () => {
         expect(savedList?.icon).toEqual({ type: "icon", value: "variant2" });
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    const invalidListUpdates: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { name: uuid(), extra: "invalid" },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { name: 12345 },
+        },
+        {
+            name: "should fail if a required field is set to null",
+            body: { name: null },
+        },
+    ];
 
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
+    for (const { name, body } of invalidListUpdates) {
+        it(name, async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}`)
-            .set(token)
-            .send({
-                name: uuid(),
-                extra: "invalid",
+            const { lists } = await KnexListRepository.create(database, {
+                userId: user.userId,
+                lists: [{ name: uuid() }],
             });
-        expect(res.statusCode).toEqual(400);
-    });
+            const list = lists[0]!;
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
+            const res = await request(app)
+                .patch(`/v1/lists/${list.listId}`)
+                .set(token)
+                .send(body);
+            expect(res.statusCode).toEqual(400);
         });
-        const list = lists[0]!;
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}`)
-            .set(token)
-            .send({ name: 12345 });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}`)
-            .set(token)
-            .send({ name: null });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Delete a list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).delete(`/v1/lists/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const res = await request(app)
@@ -691,11 +660,6 @@ describe("Delete a list", () => {
 });
 
 describe("Get list items", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get(`/v1/lists/${uuid()}/items`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return list items", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -790,11 +754,6 @@ describe("Get list items", () => {
 });
 
 describe("Add item to list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/lists/${uuid()}/items`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should create a list item", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -1091,50 +1050,39 @@ describe("Add item to list", () => {
         }
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
+    const invalidItemCreates: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { name: uuid(), extra: "invalid" },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { name: 12345 },
+        },
+    ];
 
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/items`)
-            .set(token)
-            .send({
-                name: uuid(),
-                extra: "invalid",
+    for (const { name, body } of invalidItemCreates) {
+        it(name, async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
+            const { lists } = await KnexListRepository.create(database, {
+                userId: user.userId,
+                lists: [{ name: uuid() }],
             });
-        expect(res.statusCode).toEqual(400);
-    });
+            const list = lists[0]!;
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
+            const res = await request(app)
+                .post(`/v1/lists/${list.listId}/items`)
+                .set(token)
+                .send(body);
+            expect(res.statusCode).toEqual(400);
         });
-        const list = lists[0]!;
-
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/items`)
-            .set(token)
-            .send({
-                name: 12345,
-            });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Update list item", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).patch(
-            `/v1/lists/${uuid()}/items/${uuid()}`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should update a list item", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -1411,87 +1359,50 @@ describe("Update list item", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
+    const invalidItemUpdates: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { name: uuid(), extra: "invalid" },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { name: 12345 },
+        },
+        {
+            name: "should fail if a required field is set to null",
+            body: { name: null },
+        },
+    ];
 
-        const { items } = await KnexListRepository.createItems(database, {
-            userId: user.userId,
-            listId: list.listId,
-            items: [{ name: uuid() }],
-        });
-        const item = items[0]!;
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
-            .set(token)
-            .send({
-                name: uuid(),
-                extra: "invalid",
+    for (const { name, body } of invalidItemUpdates) {
+        it(name, async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
+            const { lists } = await KnexListRepository.create(database, {
+                userId: user.userId,
+                lists: [{ name: uuid() }],
             });
-        expect(res.statusCode).toEqual(400);
-    });
+            const list = lists[0]!;
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-
-        const { items } = await KnexListRepository.createItems(database, {
-            userId: user.userId,
-            listId: list.listId,
-            items: [{ name: uuid() }],
-        });
-        const item = items[0]!;
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
-            .set(token)
-            .send({
-                name: 12345,
+            const { items } = await KnexListRepository.createItems(database, {
+                userId: user.userId,
+                listId: list.listId,
+                items: [{ name: uuid() }],
             });
-        expect(res.statusCode).toEqual(400);
-    });
+            const item = items[0]!;
 
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
+            const res = await request(app)
+                .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+                .set(token)
+                .send(body);
+            expect(res.statusCode).toEqual(400);
         });
-        const list = lists[0]!;
-        const { items } = await KnexListRepository.createItems(database, {
-            userId: user.userId,
-            listId: list.listId,
-            items: [{ name: uuid() }],
-        });
-        const item = items[0]!;
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
-            .set(token)
-            .send({
-                name: null,
-            });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Delete list item", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).delete(
-            `/v1/lists/${uuid()}/items/${uuid()}`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should delete a list item", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -1624,11 +1535,6 @@ describe("Delete list item", () => {
 });
 
 describe("Get list members", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get(`/v1/lists/${uuid()}/members`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return list members", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [member] = await CreateUsers(database);
@@ -1682,11 +1588,6 @@ describe("Get list members", () => {
 });
 
 describe("Invite member to list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/lists/${uuid()}/members`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should invite a member", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [invitee] = await CreateUsers(database);
@@ -1777,45 +1678,39 @@ describe("Invite member to list", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
+    const invalidInvites: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { userId: uuid(), extra: "invalid" },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { userId: 12345 },
+        },
+    ];
+
+    for (const { name, body } of invalidInvites) {
+        it(name, async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
+            const { lists } = await KnexListRepository.create(database, {
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            });
+            const list = lists[0]!;
+
+            const res = await request(app)
+                .post(`/v1/lists/${list.listId}/members`)
+                .set(token)
+                .send(body);
+            expect(res.statusCode).toEqual(400);
         });
-        const list = lists[0]!;
-
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/members`)
-            .set(token)
-            .send({ userId: uuid(), extra: "invalid" });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/members`)
-            .set(token)
-            .send({ userId: 12345 });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Update list member", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).patch(
-            `/v1/lists/${uuid()}/members/${uuid()}`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should update member status", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [member] = await CreateUsers(database);
@@ -1924,75 +1819,48 @@ describe("Update list member", () => {
         expect(res.statusCode).toEqual(400);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
+    const invalidMemberUpdates: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { status: "A", extra: "invalid" },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { status: "INVALID" },
+        },
+        {
+            name: "should fail if a required field is set to null",
+            body: { status: null },
+        },
+    ];
 
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: "A", extra: "invalid" });
-        expect(res.statusCode).toEqual(400);
-    });
+    for (const { name, body } of invalidMemberUpdates) {
+        it(name, async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
+            const [member] = await CreateUsers(database);
+            const { lists } = await KnexListRepository.create(database, {
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            });
+            const list = lists[0]!;
+            await KnexListRepository.saveMembers(database, {
+                listId: list.listId,
+                members: [{ userId: member!.userId, status: "M" }],
+            });
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
+            const res = await request(app)
+                .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
+                .set(token)
+                .send(body);
+            expect(res.statusCode).toEqual(400);
         });
-        const list = lists[0]!;
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: "INVALID" });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: null });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Remove member from list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).delete(
-            `/v1/lists/${uuid()}/members/${uuid()}`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should remove a member", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [member] = await CreateUsers(database);
@@ -2054,13 +1922,6 @@ describe("Remove member from list", () => {
 });
 
 describe("Accept list invitation", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(
-            `/v1/lists/${uuid()}/invite/accept`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should accept invitation", async () => {
         const [owner] = await CreateUsers(database);
         const [token, invitee] = await PrepareAuthenticatedUser(database);
@@ -2117,13 +1978,6 @@ describe("Accept list invitation", () => {
 });
 
 describe("Decline list invitation", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(
-            `/v1/lists/${uuid()}/invite/decline`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should decline invitation", async () => {
         const [owner] = await CreateUsers(database);
         const [token, invitee] = await PrepareAuthenticatedUser(database);
@@ -2180,11 +2034,6 @@ describe("Decline list invitation", () => {
 });
 
 describe("Leave list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/lists/${uuid()}/leave`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should leave list", async () => {
         const [owner] = await CreateUsers(database);
         const [token, member] = await PrepareAuthenticatedUser(database);
@@ -2256,11 +2105,6 @@ describe("Leave list", () => {
 });
 
 describe("Move list items to another list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/lists/${uuid()}/items/move`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should move items to another list", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 

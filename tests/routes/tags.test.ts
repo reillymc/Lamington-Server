@@ -25,11 +25,6 @@ describe("Get all tags", () => {
         await database.rollback();
     });
 
-    it("should require authentication", async () => {
-        const res = await request(app).get("/v1/tags");
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return tags", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 

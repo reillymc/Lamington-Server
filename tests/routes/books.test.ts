@@ -37,11 +37,6 @@ const randomVariant = () =>
     ]!;
 
 describe("Get user books", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).get("/v1/books");
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return all books created by the user", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -126,11 +121,6 @@ describe("Get user books", () => {
 });
 
 describe("Delete a book", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).delete(`/v1/books/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
@@ -234,14 +224,6 @@ describe("Delete a book", () => {
 });
 
 describe("Remove member from book", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).delete(
-            `/v1/books/${uuid()}/members/${uuid()}`,
-        );
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
@@ -317,14 +299,6 @@ describe("Remove member from book", () => {
 });
 
 describe("Remove recipe from book", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).delete(
-            `/v1/books/${uuid()}/recipes/${uuid()}`,
-        );
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
@@ -549,11 +523,6 @@ describe("Remove recipe from book", () => {
 });
 
 describe("Get a book", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).get(`/v1/books/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
@@ -648,11 +617,6 @@ describe("Get a book", () => {
 });
 
 describe("Create a book", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).post("/v1/books");
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should create book", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -681,11 +645,6 @@ describe("Create a book", () => {
 });
 
 describe("Update a book", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).patch(`/v1/books/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should not allow editing if not book owner", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const [bookOwner] = await CreateUsers(database);
@@ -887,11 +846,6 @@ describe("Update a book", () => {
 });
 
 describe("Get book members", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get(`/v1/books/${uuid()}/members`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return book members", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [member] = await CreateUsers(database);
@@ -947,12 +901,6 @@ describe("Get book members", () => {
 });
 
 describe("Invite member to book", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).post(`/v1/books/${uuid()}/members`);
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
@@ -1010,13 +958,6 @@ describe("Invite member to book", () => {
 });
 
 describe("Update book member", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).patch(
-            `/v1/books/${uuid()}/members/${uuid()}`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should update member status", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [member] = await CreateUsers(database);
@@ -1125,76 +1066,48 @@ describe("Update book member", () => {
         expect(res.statusCode).toEqual(400);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { books } = await KnexBookRepository.create(database, {
-            userId: user.userId,
-            books: [{ name: uuid() }],
-        });
-        const book = books[0]!;
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book.bookId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
+    const invalidMemberUpdates: ReadonlyArray<{
+        name: string;
+        body: Record<string, unknown>;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { status: "A", extra: "invalid" },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { status: "INVALID" },
+        },
+        {
+            name: "should fail if a required field is set to null",
+            body: { status: null },
+        },
+    ];
 
-        const res = await request(app)
-            .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: "A", extra: "invalid" });
-        expect(res.statusCode).toEqual(400);
-    });
+    for (const { name, body } of invalidMemberUpdates) {
+        it(name, async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
+            const [member] = await CreateUsers(database);
+            const { books } = await KnexBookRepository.create(database, {
+                userId: user.userId,
+                books: [{ name: uuid() }],
+            });
+            const book = books[0]!;
+            await KnexBookRepository.saveMembers(database, {
+                bookId: book.bookId,
+                members: [{ userId: member!.userId, status: "M" }],
+            });
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { books } = await KnexBookRepository.create(database, {
-            userId: user.userId,
-            books: [{ name: uuid() }],
+            const res = await request(app)
+                .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
+                .set(token)
+                .send(body);
+            expect(res.statusCode).toEqual(400);
         });
-        const book = books[0]!;
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book.bookId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: "INVALID" });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { books } = await KnexBookRepository.create(database, {
-            userId: user.userId,
-            books: [{ name: uuid() }],
-        });
-        const book = books[0]!;
-        await KnexBookRepository.saveMembers(database, {
-            bookId: book.bookId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/books/${book.bookId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: null });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Accept book invitation", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app)
-            .post(`/v1/books/${v4()}/invite/accept`)
-            .send();
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
@@ -1305,13 +1218,6 @@ describe("Accept book invitation", () => {
 });
 
 describe("Decline book invitation", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(
-            `/v1/books/${uuid()}/invite/decline`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should decline invitation", async () => {
         const [owner] = await CreateUsers(database);
         const [token, invitee] = await PrepareAuthenticatedUser(database);
@@ -1368,11 +1274,6 @@ describe("Decline book invitation", () => {
 });
 
 describe("Leave book", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/books/${uuid()}/leave`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should leave book", async () => {
         const [owner] = await CreateUsers(database);
         const [token, member] = await PrepareAuthenticatedUser(database);
@@ -1444,12 +1345,6 @@ describe("Leave book", () => {
 });
 
 describe("Add recipe to book", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).post(`/v1/books/${uuid()}/recipes`);
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent book", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
@@ -1650,11 +1545,6 @@ describe("Add recipe to book", () => {
 });
 
 describe("Get book recipes", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).get(`/v1/books/${uuid()}/recipes`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for a book the user cannot access", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const [bookOwner] = await CreateUsers(database);

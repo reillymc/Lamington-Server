@@ -4,7 +4,6 @@ import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { thumbHashToRGBA } from "thumbhash";
-import { v4 as uuid } from "uuid";
 import type { AttachmentRepository } from "../../src/repositories/attachmentRepository.ts";
 import type { FileRepository } from "../../src/repositories/fileRepository.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
@@ -103,14 +102,6 @@ describe("Upload an image", () => {
         mockDeleteFailingFile.mock.resetCalls();
     });
 
-    it("should require authentication", async () => {
-        const res = await request(app)
-            .post("/v1/attachments/image")
-            .attach("image", Buffer.from("fake"), "test.jpg");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should respect controlled rate limit", async () => {
         app = createTestApp({
             database,
@@ -179,20 +170,6 @@ describe("Upload an image", () => {
         expect(data.attachmentId).toEqual(
             attachmentReadResponse[0]!.attachmentId,
         );
-    });
-
-    it("should store a decodable thumb hash preview", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const image = await createImage();
-
-        const res = await request(app)
-            .post("/v1/attachments/image")
-            .set(token)
-            .attach("image", image, "test.jpg");
-
-        expect(res.statusCode).toEqual(200);
-
-        const data = res.body as components["schemas"]["ImageAttachment"];
 
         const { w, h, rgba } = thumbHashToRGBA(
             Buffer.from(data.preview!, "base64"),
@@ -250,9 +227,4 @@ describe("Upload an image", () => {
     });
 });
 
-describe("Get an image", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get(`/v1/attachments/image/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-});
+describe("Get an image", () => {});

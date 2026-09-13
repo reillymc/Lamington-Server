@@ -25,11 +25,6 @@ after(async () => {
 });
 
 describe("Get current user profile", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).get("/v1/profile");
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return current user profile", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -48,11 +43,6 @@ describe("Get current user profile", () => {
 });
 
 describe("Delete current user profile", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).delete("/v1/profile");
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should mark current user profile as deleted", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 

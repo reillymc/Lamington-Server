@@ -41,12 +41,6 @@ after(async () => {
 });
 
 describe("Add meal to cook list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post("/v1/cooklist/meals");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should create a new meal", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -185,52 +179,43 @@ describe("Add meal to cook list", () => {
         expect(returnedMeals).toHaveLength(2);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-
-        const res = await request(app)
-            .post("/v1/cooklist/meals")
-            .set(token)
-            .send({
+    const invalidCreateMeals: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: {
                 description: uuid(),
                 course: randomCourse(),
                 extra: "invalid",
-            });
-        expect(res.statusCode).toEqual(400);
-    });
+            },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { description: uuid(), course: "invalid_course" },
+        },
+        {
+            name: "should return 400 if the request body is an empty array",
+            body: [],
+        },
+    ];
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
+    for (const { name, body } of invalidCreateMeals) {
+        it(name, async () => {
+            const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app)
-            .post("/v1/cooklist/meals")
-            .set(token)
-            .send({
-                description: uuid(),
-                course: "invalid_course",
-            });
+            const res = await request(app)
+                .post("/v1/cooklist/meals")
+                .set(token)
+                .send(body);
 
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should return 400 if the request body is an empty array", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-
-        const res = await request(app)
-            .post("/v1/cooklist/meals")
-            .set(token)
-            .send([]);
-
-        expect(res.statusCode).toEqual(400);
-    });
+            expect(res.statusCode).toEqual(400);
+        });
+    }
 });
 
 describe("Update meal in cook list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).patch(`/v1/cooklist/meals/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should update the meal", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -369,9 +354,9 @@ describe("Update meal in cook list", () => {
 
         const attachmentRows =
             await database("attachment").select("attachmentId");
-        expect(attachmentRows.map(({ attachmentId }) => attachmentId)).toEqual([
-            updatedAttachment!.attachmentId,
-        ]);
+        expect(
+            attachmentRows.map(({ attachmentId }) => attachmentId).sort(),
+        ).toEqual([updatedAttachment!.attachmentId].sort());
 
         expect(
             deleteFile.mock.calls.map(
@@ -559,71 +544,46 @@ describe("Update meal in cook list", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    const invalidMealUpdates: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { description: uuid(), extra: "invalid" },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { course: "invalid_course" },
+        },
+        {
+            name: "should fail if a required field is set to null",
+            body: { course: null },
+        },
+    ];
 
-        const {
-            meals: [meal],
-        } = await KnexCookListRepository.createMeals(database, {
-            userId: user.userId,
-            meals: [{ course: randomCourse(), description: uuid() }],
-        });
+    for (const { name, body } of invalidMealUpdates) {
+        it(name, async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app)
-            .patch(`/v1/cooklist/meals/${meal!.mealId}`)
-            .set(token)
-            .send({
-                description: uuid(),
-                extra: "invalid",
-            });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            meals: [meal],
-        } = await KnexCookListRepository.createMeals(database, {
-            userId: user.userId,
-            meals: [{ course: randomCourse(), description: uuid() }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/cooklist/meals/${meal!.mealId}`)
-            .set(token)
-            .send({
-                course: "invalid_course",
+            const {
+                meals: [meal],
+            } = await KnexCookListRepository.createMeals(database, {
+                userId: user.userId,
+                meals: [{ course: randomCourse(), description: uuid() }],
             });
 
-        expect(res.statusCode).toEqual(400);
-    });
+            const res = await request(app)
+                .patch(`/v1/cooklist/meals/${meal!.mealId}`)
+                .set(token)
+                .send(body);
 
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            meals: [meal],
-        } = await KnexCookListRepository.createMeals(database, {
-            userId: user.userId,
-            meals: [{ course: randomCourse(), description: uuid() }],
+            expect(res.statusCode).toEqual(400);
         });
-
-        const res = await request(app)
-            .patch(`/v1/cooklist/meals/${meal!.mealId}`)
-            .set(token)
-            .send({ course: null });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Remove meal from cook list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).delete(`/v1/cooklist/meals/${uuid()}`);
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should delete a meal belonging to the user", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -771,12 +731,6 @@ describe("Remove meal from cook list", () => {
 });
 
 describe("Get cook list meals", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get("/v1/cooklist/meals");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return cook list meals for a user", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 

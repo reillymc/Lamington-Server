@@ -314,7 +314,12 @@ const queryFullRecipes = (
             db.ref(`avg_ratings.${ratingAverageName}`),
             withPersonalRating(db, userId),
         )
-        .whereIn(RecipeTable.recipeId, recipeIds);
+        .whereIn(RecipeTable.recipeId, recipeIds)
+        .where((builder) =>
+            builder
+                .where({ [ContentTable.createdBy]: userId })
+                .orWhere({ [RecipeTable.public]: true }),
+        );
 
 const formatRecipe = (recipe: FullRecipeRow) => ({
     recipeId: recipe.recipeId,

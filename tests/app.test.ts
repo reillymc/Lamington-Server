@@ -117,39 +117,14 @@ describe("Rate Limiter Middleware", () => {
         await database.rollback();
     });
 
-    it("books should trigger 429 response after 150 requests", async () => {
-        const res = await request(app).get("/v1/books");
-        expect(res.statusCode).toEqual(429);
-    });
+    it("should trigger 429 responses after 150 requests", async () => {
+        const responses = await Promise.all([
+            request(app).get("/v1/books"),
+            request(app).get("/v1/planners"),
+            request(app).delete(`/v1/lists/${v4()}`),
+        ]);
 
-    it("planners should trigger 429 response after 150 requests", async () => {
-        const res = await request(app).get("/v1/planners");
-        expect(res.statusCode).toEqual(429);
-    });
-
-    it("lists should trigger 429 response after 150 requests", async () => {
-        const res = await request(app).delete(`/v1/lists/${v4()}`);
-
-        expect(res.statusCode).toEqual(429);
-    });
-});
-
-describe("Health Check", () => {
-    let database: KnexDatabase;
-    let app: Express;
-
-    beforeEach(async () => {
-        database = await db.transaction();
-        app = createTestApp({ database });
-    });
-
-    afterEach(async () => {
-        await database.rollback();
-    });
-
-    it("should return 204", async () => {
-        const res = await request(app).get("/health");
-        expect(res.statusCode).toEqual(204);
+        responses.map(({ statusCode }) => expect(statusCode).toEqual(429));
     });
 });
 

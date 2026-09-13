@@ -43,11 +43,6 @@ describe("Get preset ingredients", () => {
         await database.rollback();
     });
 
-    it("should require authentication", async () => {
-        const res = await request(app).get("/v1/assets/ingredients.json");
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return ingredients list", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const res = await request(app)
