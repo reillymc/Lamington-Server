@@ -25,18 +25,20 @@ export const createDeleteContent =
     async (
         db: KnexDatabase,
         request: Record<CollectionKey, ReadonlyArray<Record<IdKey, string>>>,
-    ) => {
+    ): Promise<{ count: number }> => {
         const items = request[collectionKey];
+        const contentIds = items.map((item) => item[idKey]);
+
+        if (!contentIds.length) return { count: 0 };
+
         const count = await db(lamington.content)
             .whereIn(ContentTable.contentId, (builder) =>
                 builder
                     .select(entity.idColumn)
                     .from(entity.table)
-                    .whereIn(
-                        entity.idColumn,
-                        items.map((item) => item[idKey]),
-                    ),
+                    .whereIn(entity.idColumn, contentIds),
             )
             .delete();
+
         return { count };
     };

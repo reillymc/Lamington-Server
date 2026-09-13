@@ -858,6 +858,27 @@ describe("Create a recipe", () => {
         expect(res.statusCode).toEqual(404);
     });
 
+    it("should collapse duplicate tags in a single request", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const [tag] = await KnexTagRepository.create(database, [
+            { name: uuid() },
+        ]);
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({
+                name: uuid(),
+                tags: [{ tagId: tag!.tagId }, { tagId: tag!.tagId }],
+            } satisfies components["schemas"]["RecipeCreate"]);
+
+        expect(res.statusCode).toEqual(201);
+
+        const rows = await database("content_tag").select("tagId");
+        expect(rows).toEqual([{ tagId: tag!.tagId }]);
+    });
+
     it("should reject attachments that are deleted or do not exist", async () => {
         const [token, { userId }] = await PrepareAuthenticatedUser(database);
 
@@ -1899,6 +1920,55 @@ describe("Update a recipe", () => {
 
             expect(otherRecipe).toStrictEqual(otherRecipePostRequest);
         });
+
+        it("should dedupe duplicate ingredient references in a single update", async () => {
+            const [token, { userId }] =
+                await PrepareAuthenticatedUser(database);
+
+            const {
+                ingredients: [ingredient],
+            } = await KnexIngredientRepository.create(database, {
+                userId,
+                ingredients: [{ name: uuid(), namePlural: uuid() }],
+            });
+
+            const {
+                recipes: [baseRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                .set(token)
+                .send({
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                });
+
+            expect(res.statusCode).toEqual(200);
+
+            const rows = await database("recipe_ingredient")
+                .select("ingredientId")
+                .where("recipeId", baseRecipe!.recipeId);
+
+            expect(rows).toEqual([{ ingredientId: ingredient!.ingredientId }]);
+        });
     });
 
     describe("ingredient recipe reference", () => {
@@ -2102,6 +2172,47 @@ describe("Update a recipe", () => {
             });
 
             expect(otherRecipe).toStrictEqual(otherRecipePostRequest);
+        });
+
+        it("should dedupe duplicate sub recipe references in a single update", async () => {
+            const [token, { userId }] =
+                await PrepareAuthenticatedUser(database);
+
+            const {
+                recipes: [subRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const {
+                recipes: [baseRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                .set(token)
+                .send({
+                    ingredients: [
+                        {
+                            items: [
+                                { recipe: { recipeId: subRecipe!.recipeId } },
+                                { recipe: { recipeId: subRecipe!.recipeId } },
+                            ],
+                        },
+                    ],
+                });
+
+            expect(res.statusCode).toEqual(200);
+
+            const rows = await database("recipe_recipe")
+                .select("subRecipeId")
+                .where("recipeId", baseRecipe!.recipeId);
+
+            expect(rows).toEqual([{ subRecipeId: subRecipe!.recipeId }]);
         });
     });
 
@@ -2951,6 +3062,38 @@ describe("Rate a recipe", () => {
             recipes: [{ recipeId: recipe!.recipeId }],
         });
         expect(updatedRecipe!.rating!.personal).toEqual(rating);
+    });
+
+    it("should keep the latest rating when rating again", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        await request(app)
+            .post(`/v1/recipes/${recipe!.recipeId}/rating`)
+            .set(token)
+            .send({ rating: 3 });
+
+        const res = await request(app)
+            .post(`/v1/recipes/${recipe!.recipeId}/rating`)
+            .set(token)
+            .send({ rating: 5 });
+
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.rating).toEqual(5);
+
+        const {
+            recipes: [updatedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+        expect(updatedRecipe!.rating!.personal).toEqual(5);
     });
 });
 

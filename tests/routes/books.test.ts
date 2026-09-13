@@ -1612,6 +1612,41 @@ describe("Add recipe to book", () => {
 
         expect(bookRecipe!.recipeId).toEqual(recipe!.recipeId);
     });
+
+    it("should not duplicate a recipe that is already in the book", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: user.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        await request(app)
+            .post(`/v1/books/${book!.bookId}/recipes`)
+            .set(token)
+            .send({ recipeId: recipe!.recipeId });
+
+        const res = await request(app)
+            .post(`/v1/books/${book!.bookId}/recipes`)
+            .set(token)
+            .send({ recipeId: recipe!.recipeId });
+
+        expect(res.statusCode).toEqual(201);
+
+        const rows = await database("book_recipe")
+            .select("recipeId")
+            .where("bookId", book!.bookId);
+        expect(rows).toEqual([{ recipeId: recipe!.recipeId }]);
+    });
 });
 
 describe("Get book recipes", () => {
