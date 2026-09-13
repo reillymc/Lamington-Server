@@ -1,18 +1,22 @@
-import type { RepositoryService } from "./repository.ts";
+import type { RepositoryBulkService } from "./repository.ts";
 
-type DeleteRequest = {
-    path: string;
-};
-type DeleteResponse = boolean;
-
-type CreateRequest = {
+export type CreateRequest = {
+    attachmentId: string;
     file: Buffer;
-    userId: string;
+};
+export type CreateResponse = {
+    attachmentId: string;
+} & ({ succeeded: true } | { succeeded: false });
+
+export type DeleteRequest = {
     attachmentId: string;
 };
-type CreateResponse = false | string;
+export type DeleteResponse = {
+    attachmentId: string;
+    succeeded: boolean;
+};
 
 export interface FileRepository {
-    create: RepositoryService<undefined, CreateRequest, CreateResponse>;
-    delete: RepositoryService<undefined, DeleteRequest, DeleteResponse>;
+    create: RepositoryBulkService<undefined, CreateRequest, CreateResponse>;
+    delete: RepositoryBulkService<undefined, DeleteRequest, DeleteResponse>;
 }

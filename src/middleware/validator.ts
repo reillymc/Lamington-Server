@@ -67,7 +67,11 @@ export const createValidatorMiddleware: CreateMiddleware<
             const token = authHeader?.substring(7, authHeader.length);
             const decoded = verifyAccessToken(token);
 
-            if (decoded.status === "P" || decoded.status === "B") {
+            if (
+                decoded.status === "P" ||
+                decoded.status === "B" ||
+                decoded.status === "D"
+            ) {
                 throw new UnauthorizedError("Access Denied");
             }
 
@@ -114,7 +118,13 @@ export const createValidatorMiddleware: CreateMiddleware<
         fileUploader: {
             storage: multer.memoryStorage(),
             fileFilter,
-            limits: {},
+            limits: {
+                fileSize: 5 * 1024 * 1024,
+                files: 1,
+                fields: 10,
+                fieldSize: 1024 * 1024,
+                fieldNameSize: 100,
+            },
         },
     });
 

@@ -1,3 +1,4 @@
+import { SYSTEM_USER_ID } from "../../utils/systemUser.ts";
 import type {
     Ingredient,
     IngredientRepository,
@@ -5,6 +6,7 @@ import type {
 import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
 import { createContentRows } from "./common/repositoryMethods/content.ts";
+import { verifyContentPermissions } from "./common/repositoryMethods/contentPermissions.ts";
 import type { ContentAuthorColumns } from "./common/rowTypes.ts";
 import type { KnexDatabase } from "./knex.ts";
 import { ContentTable, IngredientTable, lamington } from "./spec/index.ts";
@@ -24,12 +26,13 @@ const formatIngredient = (
     name: ingredient.name,
     namePlural: toUndefined(ingredient.namePlural),
     description: toUndefined(ingredient.description),
-    owner: ingredient.createdBy
-        ? {
-              userId: ingredient.createdBy,
-              firstName: ingredient.firstName,
-          }
-        : undefined,
+    owner:
+        ingredient.createdBy !== SYSTEM_USER_ID
+            ? {
+                  userId: ingredient.createdBy,
+                  firstName: ingredient.firstName,
+              }
+            : undefined,
 });
 
 export const KnexIngredientRepository: IngredientRepository<KnexDatabase> = {
@@ -49,7 +52,9 @@ export const KnexIngredientRepository: IngredientRepository<KnexDatabase> = {
             .where((builder) =>
                 userId !== undefined
                     ? builder.where({ [ContentTable.createdBy]: userId })
-                    : builder.whereNull(ContentTable.createdBy),
+                    : builder.where({
+                          [ContentTable.createdBy]: SYSTEM_USER_ID,
+                      }),
             )
             .modify(withContentAuthor);
 
@@ -91,6 +96,31 @@ export const KnexIngredientRepository: IngredientRepository<KnexDatabase> = {
         return {
             userId,
             ingredients: result.map(formatIngredient),
+        };
+    },
+    verifyPermissions: async (db, { userId, ingredients }) => {
+        const requestedIds = ingredients.map(
+            ({ ingredientId }) => ingredientId,
+        );
+
+        const permissions = await verifyContentPermissions(
+            db,
+            userId,
+            requestedIds,
+            "O",
+            {
+                table: lamington.ingredient,
+                idColumn: IngredientTable.ingredientId,
+            },
+            { includeSystem: true },
+        );
+
+        return {
+            userId,
+            ingredients: requestedIds.map((ingredientId) => ({
+                ingredientId,
+                hasPermissions: permissions[ingredientId] ?? false,
+            })),
         };
     },
 };

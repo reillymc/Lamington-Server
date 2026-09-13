@@ -25,8 +25,6 @@ import type {
 } from "./common/rowTypes.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
-    AttachmentTable,
-    ContentAttachmentTable,
     ContentMemberTable,
     ContentTable,
     lamington,
@@ -35,7 +33,7 @@ import {
 } from "./spec/index.ts";
 
 type PlannerRow = Pick<Planner, "plannerId" | "name" | "description"> & {
-    customisations: { color: PlannerColor } | null;
+    color: string | null;
     status: PlannerUserStatus | null;
 } & ContentAuthorColumns;
 
@@ -67,13 +65,12 @@ const formatPlannerMeal = (
     source: toUndefined(meal.source),
     recipeId: toUndefined(meal.recipeId),
     notes: toUndefined(meal.notes),
-    heroImage:
-        meal.heroAttachmentId && meal.heroAttachmentUri
-            ? {
-                  attachmentId: meal.heroAttachmentId,
-                  uri: meal.heroAttachmentUri,
-              }
-            : undefined,
+    heroImage: meal.heroAttachmentId
+        ? {
+              attachmentId: meal.heroAttachmentId,
+              preview: toUndefined(meal.heroAttachmentPreview),
+          }
+        : undefined,
 });
 
 const readByIds = async (
@@ -93,8 +90,6 @@ const readByIds = async (
             PlannerMealTable.source,
             PlannerMealTable.recipeId,
             PlannerMealTable.notes,
-            db.ref(ContentAttachmentTable.attachmentId).as("heroAttachmentId"),
-            db.ref(AttachmentTable.uri).as("heroAttachmentUri"),
         )
         .leftJoin(
             lamington.content,
@@ -120,7 +115,7 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (
             PlannerTable.plannerId,
             PlannerTable.name,
             PlannerTable.description,
-            PlannerTable.customisations,
+            PlannerTable.color,
             ContentMemberTable.status,
         )
         .whereIn(
@@ -147,7 +142,7 @@ const read: PlannerRepository<KnexDatabase>["read"] = async (
             plannerId: p.plannerId,
             name: p.name,
             description: toUndefined(p.description),
-            color: p.customisations?.color ?? "variant1",
+            color: (p.color ?? "variant1") as PlannerColor,
             owner: { userId: p.createdBy, firstName: p.firstName },
             status: p.status ?? "O",
         })),
@@ -285,7 +280,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
                 PlannerTable.plannerId,
                 PlannerTable.name,
                 PlannerTable.description,
-                PlannerTable.customisations,
+                PlannerTable.color,
                 ContentMemberTable.status,
             )
             .leftJoin(
@@ -313,7 +308,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
                 plannerId: p.plannerId,
                 name: p.name,
                 description: toUndefined(p.description),
-                color: p.customisations?.color ?? "variant1",
+                color: (p.color ?? "variant1") as PlannerColor,
                 owner: { userId: p.createdBy, firstName: p.firstName },
                 status: p.status ?? "O",
             })),
@@ -328,25 +323,19 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
         }));
 
         await db(lamington.planner).insert(
-            plannersToCreate.map(
-                ({ name, plannerId, color = "variant1", description }) => ({
-                    name,
-                    plannerId,
-                    customisations: { color },
-                    description,
-                }),
-            ),
+            plannersToCreate.map(({ name, plannerId, color, description }) => ({
+                name,
+                plannerId,
+                color,
+                description,
+            })),
         );
 
         return read(db, { userId, planners: plannersToCreate });
     },
     update: async (db, { userId, planners }) => {
         for (const p of planners) {
-            const updateData = buildUpdateRecord(p, PlannerTable, {
-                customisations: ({ color }) => {
-                    return color !== undefined ? { color } : undefined;
-                },
-            });
+            const updateData = buildUpdateRecord(p, PlannerTable);
 
             if (updateData) {
                 await db(lamington.planner)
@@ -357,7 +346,10 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
 
         return read(db, { userId, planners });
     },
-    delete: createDeleteContent("planners", "plannerId"),
+    delete: createDeleteContent("planners", "plannerId", {
+        table: lamington.planner,
+        idColumn: PlannerTable.plannerId,
+    }),
     readMembers: async (db, request) =>
         ContentMemberActions.readByContentId(
             db,
@@ -404,12 +396,13 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
             })),
         ),
     verifyPermissions: async (db, { userId, planners, status }) => {
-        const plannerIds = EnsureArray(planners).map((p) => p.plannerId);
+        const plannerIds = planners.map((p) => p.plannerId);
         const permissions = await verifyContentPermissions(
             db,
             userId,
             plannerIds,
             status,
+            { table: lamington.planner, idColumn: PlannerTable.plannerId },
         );
         return {
             userId,

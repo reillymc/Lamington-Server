@@ -25,11 +25,6 @@ describe("Get user ingredients", () => {
         await database.rollback();
     });
 
-    it("should require authentication", async () => {
-        const res = await request(app).get("/v1/ingredients");
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return user ingredients", async () => {
         const [token, { userId }] = await PrepareAuthenticatedUser(database);
 

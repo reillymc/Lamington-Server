@@ -1,6 +1,7 @@
 import knex from "knex";
 import { v4 } from "uuid";
 import { createLogger, transports } from "winston";
+import type { AppConfig } from "../../src/app.ts";
 import { setupApp } from "../../src/app.ts";
 import type { AppJobs } from "../../src/jobs/index.ts";
 import { createErrorHandlerMiddleware } from "../../src/middleware/errorHandler.ts";
@@ -48,8 +49,8 @@ const defaultAppRepositories: AppRepositories = {
     bookRepository: KnexBookRepository,
     cooklistRepository: KnexCookListRepository,
     fileRepository: {
-        create: async () => "uri://",
-        delete: async () => true,
+        create: async () => [{ attachmentId: v4(), succeeded: true }],
+        delete: async () => [{ attachmentId: v4(), succeeded: true }],
     },
     ingredientRepository: KnexIngredientRepository,
     listRepository: KnexListRepository,
@@ -80,6 +81,12 @@ const defaultAppJobs: AppJobs = {
     createUserStarterData: {
         run: async () => true,
     },
+    purgeDeletedUsers: {
+        run: async () => true,
+    },
+    purgeDeletedAttachments: {
+        run: async () => true,
+    },
 };
 
 export const db = knex(testConfig);
@@ -90,12 +97,14 @@ export const createTestApp = ({
     middleware,
     services,
     jobs,
+    config,
 }: {
     database: Database;
     repositories?: Partial<AppRepositories>;
     middleware?: Partial<AppMiddleware>;
     services?: Partial<AppServices>;
     jobs?: Partial<AppJobs>;
+    config?: Partial<AppConfig>;
 }) => {
     const appRepositories = {
         ...defaultAppRepositories,
@@ -145,7 +154,8 @@ export const createTestApp = ({
             allowedOrigin: "test.origin",
             externalHost: "https://test.host",
             uploadDirectory: "uploads",
-            assetDirectory: "tests/resources/testAssets",
+            assetDirectory: "assets",
+            ...config,
         },
     });
 };
