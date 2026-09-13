@@ -161,6 +161,7 @@ export const createTestApp = ({
             externalHost: "https://test.host",
             uploadDirectory: "uploads",
             assetDirectory: "assets",
+            trustProxyHops: 0,
             ...config,
         },
     });
