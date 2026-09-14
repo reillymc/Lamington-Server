@@ -23,8 +23,8 @@ export const createRateLimiterControlled: CreateMiddleware = () => [
 
 export const createRateLimiterRestrictive: CreateMiddleware = () => [
     rateLimit({
-        windowMs: 15 * 60 * 1000, // 15 minutes
-        limit: 5,
+        windowMs: 10 * 60 * 1000, // 10 minutes
+        limit: 10,
         standardHeaders: true,
         legacyHeaders: false,
         ipv6Subnet: 56,

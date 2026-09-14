@@ -7,9 +7,16 @@ import { type AppConfig, setupApp } from "./app.ts";
 import development from "./database/knexfile.development.ts";
 import production from "./database/knexfile.production.ts";
 import { createUserStarterDataJob } from "./jobs/createUserStarterData.ts";
-import { type AppJobs, runStartupJobs } from "./jobs/index.ts";
+import {
+    type AppJobs,
+    runScheduledJobs,
+    runStartupJobs,
+} from "./jobs/index.ts";
+import { createPurgeDeletedAttachmentsJob } from "./jobs/purgeDeletedAttachments.ts";
+import { createPurgeDeletedUsersJob } from "./jobs/purgeDeletedUsers.ts";
 import { createRefreshIngredientsAssetJob } from "./jobs/refreshIngredientsAsset.ts";
 import { createErrorHandlerMiddleware } from "./middleware/errorHandler.ts";
+import type { AppMiddleware } from "./middleware/index.ts";
 import { createLoggerMiddleware } from "./middleware/logger.ts";
 import {
     createRateLimiterControlled,
@@ -31,9 +38,11 @@ import { KnexTagRepository } from "./repositories/knex/knexTagRepository.ts";
 import { KnexUserRepository } from "./repositories/knex/knexUserRepository.ts";
 import { createS3FileRepository } from "./repositories/s3/s3FileRepository.ts";
 import { createAttachmentService } from "./services/attachmentService.ts";
+import { createAuthenticationService } from "./services/authenticationService.ts";
 import { createBookService } from "./services/bookService.ts";
 import { createContentExtractionService } from "./services/contentExtractionService.ts";
 import { createCooklistService } from "./services/cooklistService.ts";
+import type { AppServices } from "./services/index.ts";
 import { createIngredientService } from "./services/ingredientService.ts";
 import { createListService } from "./services/listService.ts";
 import { createMealService } from "./services/mealService.ts";
@@ -42,10 +51,9 @@ import { createRecipeService } from "./services/recipeService.ts";
 import { createTagService } from "./services/tagService.ts";
 import { createUserService } from "./services/userService.ts";
 import "winston-daily-rotate-file";
-import type { AppMiddleware } from "./middleware/index.ts";
-import type { AppServices } from "./services/index.ts";
 
 const port = parseInt(process.env.PORT ?? "3000", 10);
+const trustProxyHops = parseInt(process.env.TRUST_PROXY_HOPS ?? "0", 10);
 
 const uploadDirectory = process.env.UPLOAD_DIRECTORY ?? "uploads";
 const assetDirectory = process.env.ASSET_DIRECTORY ?? "assets";
@@ -112,10 +120,7 @@ const selectDatabaseConfig = () => {
 
 const db = knex(selectDatabaseConfig());
 
-let fileRepository = createDiskFileRepository(
-    uploadDirectory,
-    process.env.ATTACHMENT_PATH ?? "prod",
-);
+let fileRepository = createDiskFileRepository(uploadDirectory);
 
 if (process.env.ATTACHMENT_STORAGE_SERVICE === "s3") {
     const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
@@ -141,7 +146,6 @@ awsBucketName: ${awsBucketName ? "provided" : "missing"}`,
             useDualstackEndpoint: true,
         }),
         awsBucketName,
-        process.env.ATTACHMENT_PATH ?? "prod",
     );
 }
 
@@ -184,10 +188,26 @@ const jobs: AppJobs = {
         repositories,
         logger,
     }),
+    purgeDeletedUsers: createPurgeDeletedUsersJob({
+        database: db,
+        repositories,
+        logger,
+    }),
+    purgeDeletedAttachments: createPurgeDeletedAttachmentsJob({
+        database: db,
+        repositories,
+        logger,
+    }),
 };
 
 const services: AppServices = {
     attachmentService: createAttachmentService(db, repositories),
+    authenticationService: createAuthenticationService(db, repositories, {
+        accessExpiration,
+        accessSecret,
+        refreshExpiration,
+        refreshSecret,
+    }),
     bookService: createBookService(db, repositories),
     contentExtractionService: createContentExtractionService(),
     cooklistService: createCooklistService(db, repositories),
@@ -197,12 +217,7 @@ const services: AppServices = {
     plannerService: createPlannerService(db, repositories),
     recipeService: createRecipeService(db, repositories),
     tagService: createTagService(db, repositories),
-    userService: createUserService(db, repositories, jobs, {
-        accessExpiration,
-        accessSecret,
-        refreshExpiration,
-        refreshSecret,
-    }),
+    userService: createUserService(db, repositories, jobs),
 };
 
 const middleware: AppMiddleware = {
@@ -219,9 +234,11 @@ const config: AppConfig = {
     allowedOrigin: process.env.CORS_ALLOWED_ORIGIN,
     uploadDirectory,
     assetDirectory,
+    trustProxyHops,
 };
 
 runStartupJobs(jobs);
+runScheduledJobs(jobs);
 
 const app = setupApp({ services, middleware, config });
 

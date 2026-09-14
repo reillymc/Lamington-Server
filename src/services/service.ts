@@ -38,6 +38,7 @@ type KnownEntities =
     | "book member"
     | "book recipe"
     | "cooklist meal"
+    | "ingredient"
     | "list item"
     | "list member"
     | "list"
@@ -61,7 +62,7 @@ export class PermissionError extends AppError {
 }
 
 export class NotFoundError extends AppError {
-    constructor(entity: KnownEntities, entityIds?: string | string[]) {
+    constructor(entity: KnownEntities, entityIds?: string | readonly string[]) {
         super({
             status: 404,
             code: "NOT_FOUND",
@@ -75,7 +76,7 @@ export class NotFoundError extends AppError {
 }
 
 export class UpdatedDataFetchError extends AppError {
-    constructor(entity: KnownEntities, entityIds: string | string[]) {
+    constructor(entity: KnownEntities, entityIds: string | readonly string[]) {
         super({
             status: 500,
             code: "UPDATE_READ_FAILED",

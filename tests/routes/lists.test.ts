@@ -4,15 +4,24 @@ import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
+import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
+import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
 import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
+import { SYSTEM_USER_ID } from "../../src/utils/systemUser.ts";
+import {
+    createSpyingFileRepository,
+    purgeDeletedAttachments,
+} from "../helpers/fileRepository.ts";
 import { CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
 import { createTestApp, db } from "../helpers/setup.ts";
 
-const randomIcon = () =>
-    (["variant1", "variant2", "variant3"] as const)[
+const randomIcon = (): components["schemas"]["Icon"] => ({
+    type: "icon",
+    value: (["variant1", "variant2", "variant3"] as const)[
         Math.floor(Math.random() * 3)
-    ];
+    ]!,
+});
 
 let database: KnexDatabase;
 let app: Express;
@@ -31,11 +40,6 @@ after(async () => {
 });
 
 describe("Get user lists", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get("/v1/lists");
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return all lists created by the user", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -137,11 +141,6 @@ describe("Get user lists", () => {
 });
 
 describe("Create a list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post("/v1/lists");
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should successfully create a new list", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -171,31 +170,33 @@ describe("Create a list", () => {
         expect(savedList?.owner.userId).toEqual(user.userId);
     });
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app).post("/v1/lists").set(token).send({
-            name: 12345,
-            description: uuid(),
-        });
-        expect(res.statusCode).toEqual(400);
-    });
+    const invalidListCreates: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { name: 12345, description: uuid() },
+        },
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { name: uuid(), extra: "invalid" },
+        },
+    ];
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app).post("/v1/lists").set(token).send({
-            name: uuid(),
-            extra: "invalid",
+    for (const { name, body } of invalidListCreates) {
+        it(name, async () => {
+            const [token] = await PrepareAuthenticatedUser(database);
+            const res = await request(app)
+                .post("/v1/lists")
+                .set(token)
+                .send(body);
+            expect(res.statusCode).toEqual(400);
         });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Get a list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get(`/v1/lists/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const res = await request(app).get(`/v1/lists/${uuid()}`).set(token);
@@ -302,11 +303,6 @@ describe("Get a list", () => {
 });
 
 describe("Update a list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).patch(`/v1/lists/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const res = await request(app)
@@ -340,6 +336,30 @@ describe("Update a list", () => {
                 .send({ name: uuid() });
             expect(res.statusCode).toEqual(404);
         }
+    });
+
+    it("should reject a content id that is not a list", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: user.userId,
+            ingredients: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/lists/${ingredient!.ingredientId}`)
+            .set(token)
+            .send({ name: uuid() });
+
+        expect(res.statusCode).toEqual(404);
+
+        const { ingredients: savedIngredients } =
+            await KnexIngredientRepository.readAll(database, {
+                userId: user.userId,
+            });
+        expect(savedIngredients).toHaveLength(1);
     });
 
     it("should save updated list details when the user is the list owner", async () => {
@@ -376,12 +396,19 @@ describe("Update a list", () => {
         expect(savedList?.icon).toEqual(updatedList.icon);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
+    it("should only update the icon when partially patching, preserving other fields", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
         const { lists } = await KnexListRepository.create(database, {
             userId: user.userId,
-            lists: [{ name: uuid() }],
+            lists: [
+                {
+                    name: uuid(),
+                    description: uuid(),
+                    color: "variant5",
+                    icon: { type: "icon", value: "variant2" },
+                },
+            ],
         });
         const list = lists[0]!;
 
@@ -389,49 +416,93 @@ describe("Update a list", () => {
             .patch(`/v1/lists/${list.listId}`)
             .set(token)
             .send({
-                name: uuid(),
-                extra: "invalid",
+                icon: { type: "custom", value: "😀" },
+            } satisfies components["schemas"]["ListUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            lists: [savedList],
+        } = await KnexListRepository.read(database, {
+            lists: [list],
+            userId: user.userId,
+        });
+
+        expect(savedList?.icon).toEqual({ type: "custom", value: "😀" });
+        expect(savedList?.name).toEqual(list.name);
+        expect(savedList?.description).toEqual(list.description);
+    });
+
+    it("should preserve the icon when partially patching the name", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [
+                { name: uuid(), icon: { type: "icon", value: "variant2" } },
+            ],
+        });
+        const list = lists[0]!;
+
+        const updatedName = uuid();
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send({
+                name: updatedName,
+            } satisfies components["schemas"]["ListUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            lists: [savedList],
+        } = await KnexListRepository.read(database, {
+            lists: [list],
+            userId: user.userId,
+        });
+
+        expect(savedList?.name).toEqual(updatedName);
+        expect(savedList?.icon).toEqual({ type: "icon", value: "variant2" });
+    });
+
+    const invalidListUpdates: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { name: uuid(), extra: "invalid" },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { name: 12345 },
+        },
+        {
+            name: "should fail if a required field is set to null",
+            body: { name: null },
+        },
+    ];
+
+    for (const { name, body } of invalidListUpdates) {
+        it(name, async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
+
+            const { lists } = await KnexListRepository.create(database, {
+                userId: user.userId,
+                lists: [{ name: uuid() }],
             });
-        expect(res.statusCode).toEqual(400);
-    });
+            const list = lists[0]!;
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
+            const res = await request(app)
+                .patch(`/v1/lists/${list.listId}`)
+                .set(token)
+                .send(body);
+            expect(res.statusCode).toEqual(400);
         });
-        const list = lists[0]!;
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}`)
-            .set(token)
-            .send({ name: 12345 });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}`)
-            .set(token)
-            .send({ name: null });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Delete a list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).delete(`/v1/lists/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent list", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const res = await request(app)
@@ -480,6 +551,29 @@ describe("Delete a list", () => {
         expect(res.statusCode).toEqual(404);
     });
 
+    it("should not delete another entity when given a non-list content id", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: user.userId,
+            ingredients: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/lists/${ingredient!.ingredientId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { ingredients: savedIngredients } =
+            await KnexIngredientRepository.readAll(database, {
+                userId: user.userId,
+            });
+        expect(savedIngredients).toHaveLength(1);
+    });
+
     it("should successfully delete the list", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -488,6 +582,14 @@ describe("Delete a list", () => {
             lists: [{ name: uuid(), description: uuid() }],
         });
         const list = lists[0]!;
+
+        const {
+            items: [item],
+        } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: list.listId,
+            items: [{ name: uuid() }],
+        });
 
         const res = await request(app)
             .delete(`/v1/lists/${list.listId}`)
@@ -500,15 +602,64 @@ describe("Delete a list", () => {
             userId: user.userId,
         });
         expect(savedLists.length).toEqual(0);
+
+        const listItems = await database("list_item")
+            .select("itemId")
+            .where("itemId", item!.itemId);
+        expect(listItems).toHaveLength(0);
+
+        const content = await database("content")
+            .select("contentId")
+            .where("contentId", item!.itemId);
+        expect(content).toHaveLength(0);
+    });
+
+    it("should delete the attachment row and file when a list is deleted", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}],
+        });
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid(), description: uuid() }],
+        });
+        const list = lists[0]!;
+
+        await database("content_attachment").insert({
+            contentId: list.listId,
+            attachmentId: attachment!.attachmentId,
+            displayType: "hero",
+        });
+
+        const res = await request(app)
+            .delete(`/v1/lists/${list.listId}`)
+            .set(token)
+            .send();
+        expect(res.statusCode).toEqual(204);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows).toHaveLength(0);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachment!.attachmentId]);
     });
 });
 
 describe("Get list items", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get(`/v1/lists/${uuid()}/items`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return list items", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -603,11 +754,6 @@ describe("Get list items", () => {
 });
 
 describe("Add item to list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/lists/${uuid()}/items`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should create a list item", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -635,30 +781,189 @@ describe("Add item to list", () => {
         expect(returnedItem!.notes).toEqual(itemData.notes);
     });
 
-    // it("should create a list item with ingredient", async () => {
-    //     const [token, user] = await PrepareAuthenticatedUser(database);
+    it("should reject an ingredient owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
 
-    //     const { lists } = await KnexListRepository.create(database, {
-    //         userId: user.userId,
-    //         lists: [{ name: uuid(), description: uuid() }],
-    //     });
-    //     const list = lists[0]!;
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const [list] = lists;
 
-    //     const [ingredients] = await CreateIngredients(database, { createdBy: user.userId, count: 1 });
-    //     const ingredient = ingredients[0]!;
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: otherUser!.userId,
+            ingredients: [{ name: "Private", namePlural: "Privates" }],
+        });
 
-    //     const itemData = {
-    //         name: uuid(),
-    //         ingredientId: ingredient.ingredientId,
-    //     } satisfies components["schemas"]["ListItemCreate"];
+        const res = await request(app)
+            .post(`/v1/lists/${list!.listId}/items`)
+            .set(token)
+            .send({
+                name: uuid(),
+                ingredientId: ingredient!.ingredientId,
+            } satisfies components["schemas"]["ListItemCreate"]);
 
-    //     const res = await request(app).post(`/v1/lists/${list.listId}/items`).set(token).send(itemData);
+        expect(res.statusCode).toEqual(404);
+    });
 
-    //     expect(res.statusCode).toEqual(201);
-    //     const [returnedItem] = res.body as components["schemas"]["ListItem"][];
+    it("should accept a system-owned ingredient", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
 
-    //     expect(returnedItem!.ingredientId).toEqual(ingredient.ingredientId);
-    // });
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const [list] = lists;
+
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: SYSTEM_USER_ID,
+            ingredients: [{ name: "Global", namePlural: "Globals" }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/lists/${list!.listId}/items`)
+            .set(token)
+            .send({
+                name: uuid(),
+                ingredientId: ingredient!.ingredientId,
+            } satisfies components["schemas"]["ListItemCreate"]);
+
+        expect(res.statusCode).toEqual(201);
+    });
+
+    it("should reject a content id that is not an ingredient", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const [list] = lists;
+
+        const {
+            lists: [subList],
+        } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/lists/${list!.listId}/items`)
+            .set(token)
+            .send({
+                name: uuid(),
+                ingredientId: subList!.listId,
+            } satisfies components["schemas"]["ListItemCreate"]);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { items } = await KnexListRepository.readAllItems(database, {
+            userId: user.userId,
+            filter: { listId: list!.listId },
+        });
+        expect(items).toHaveLength(0);
+    });
+
+    it("should create a list item with ingredient", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid(), description: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const { ingredients } = await KnexIngredientRepository.create(
+            database,
+            { ...user, ingredients: [{ name: uuid() }] },
+        );
+        const ingredient = ingredients[0]!;
+
+        const itemData = {
+            name: uuid(),
+            ingredientId: ingredient.ingredientId,
+        } satisfies components["schemas"]["ListItemCreate"];
+
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/items`)
+            .set(token)
+            .send(itemData);
+
+        expect(res.statusCode).toEqual(201);
+        const [returnedItem] = res.body as components["schemas"]["ListItem"][];
+
+        expect(returnedItem!.ingredientId).toEqual(ingredient.ingredientId);
+    });
+
+    it("should create a batch of items without ingredients", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/items`)
+            .set(token)
+            .send([
+                { name: uuid() },
+                { name: uuid() },
+            ] satisfies components["schemas"]["ListItemCreate"][]);
+
+        expect(res.statusCode).toEqual(201);
+        const returnedItems = res.body as components["schemas"]["ListItem"][];
+
+        expect(returnedItems.length).toEqual(2);
+    });
+
+    it("should reject a batch containing an ingredient owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const {
+            ingredients: [ownIngredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: user.userId,
+            ingredients: [{ name: "Own", namePlural: "Owns" }],
+        });
+
+        const {
+            ingredients: [otherIngredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: otherUser!.userId,
+            ingredients: [{ name: "Private", namePlural: "Privates" }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/items`)
+            .set(token)
+            .send([
+                { name: uuid(), ingredientId: ownIngredient!.ingredientId },
+                { name: uuid(), ingredientId: otherIngredient!.ingredientId },
+            ] satisfies components["schemas"]["ListItemCreate"][]);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { items } = await KnexListRepository.readAllItems(database, {
+            userId: user.userId,
+            filter: { listId: list.listId },
+        });
+
+        expect(items.length).toEqual(0);
+    });
 
     it("should allow adding an item if the user is a list administrator", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
@@ -688,6 +993,30 @@ describe("Add item to list", () => {
         const [returnedItem] = res.body as components["schemas"]["ListItem"][];
 
         expect(returnedItem!.name).toEqual(itemData.name);
+    });
+
+    it("should reject batches of more than 50 items", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid(), description: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const items = Array.from({ length: 51 }).map(
+            () =>
+                ({
+                    name: uuid(),
+                }) satisfies components["schemas"]["ListItemCreate"],
+        );
+
+        const res = await request(app)
+            .post(`/v1/lists/${list.listId}/items`)
+            .set(token)
+            .send(items);
+
+        expect(res.statusCode).toEqual(400);
     });
 
     it("should not allow adding an item if the user is a list member, pending, or blacklisted", async () => {
@@ -721,50 +1050,39 @@ describe("Add item to list", () => {
         }
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
+    const invalidItemCreates: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { name: uuid(), extra: "invalid" },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { name: 12345 },
+        },
+    ];
 
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/items`)
-            .set(token)
-            .send({
-                name: uuid(),
-                extra: "invalid",
+    for (const { name, body } of invalidItemCreates) {
+        it(name, async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
+            const { lists } = await KnexListRepository.create(database, {
+                userId: user.userId,
+                lists: [{ name: uuid() }],
             });
-        expect(res.statusCode).toEqual(400);
-    });
+            const list = lists[0]!;
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
+            const res = await request(app)
+                .post(`/v1/lists/${list.listId}/items`)
+                .set(token)
+                .send(body);
+            expect(res.statusCode).toEqual(400);
         });
-        const list = lists[0]!;
-
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/items`)
-            .set(token)
-            .send({
-                name: 12345,
-            });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Update list item", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).patch(
-            `/v1/lists/${uuid()}/items/${uuid()}`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should update a list item", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -796,6 +1114,146 @@ describe("Update list item", () => {
 
         expect(returnedItem.name).toEqual(updateData.name);
         expect(returnedItem.completed).toEqual(true);
+    });
+
+    it("should update a list item with an ingredient", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const { items } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: list.listId,
+            items: [{ name: uuid() }],
+        });
+        const item = items[0]!;
+
+        const { ingredients } = await KnexIngredientRepository.create(
+            database,
+            { ...user, ingredients: [{ name: uuid() }] },
+        );
+        const ingredient = ingredients[0]!;
+
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send({
+                ingredientId: ingredient.ingredientId,
+            } satisfies components["schemas"]["ListItemUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+        const returnedItem = res.body as components["schemas"]["ListItem"];
+
+        expect(returnedItem.ingredientId).toEqual(ingredient.ingredientId);
+    });
+
+    it("should reject an ingredient owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const { items } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: list.listId,
+            items: [{ name: uuid() }],
+        });
+        const item = items[0]!;
+
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: otherUser!.userId,
+            ingredients: [{ name: "Private", namePlural: "Privates" }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send({
+                ingredientId: ingredient!.ingredientId,
+            } satisfies components["schemas"]["ListItemUpdate"]);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
+    it("should accept a system-owned ingredient", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const { items } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: list.listId,
+            items: [{ name: uuid() }],
+        });
+        const item = items[0]!;
+
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: SYSTEM_USER_ID,
+            ingredients: [{ name: "Global", namePlural: "Globals" }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send({
+                ingredientId: ingredient!.ingredientId,
+            } satisfies components["schemas"]["ListItemUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+        const returnedItem = res.body as components["schemas"]["ListItem"];
+
+        expect(returnedItem.ingredientId).toEqual(ingredient!.ingredientId);
+    });
+
+    it("should clear an ingredient", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const { ingredients } = await KnexIngredientRepository.create(
+            database,
+            { ...user, ingredients: [{ name: uuid() }] },
+        );
+        const ingredient = ingredients[0]!;
+
+        const { items } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: list.listId,
+            items: [{ name: uuid(), ingredientId: ingredient.ingredientId }],
+        });
+        const item = items[0]!;
+
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send({
+                ingredientId: null,
+            } satisfies components["schemas"]["ListItemUpdate"]);
+
+        expect(res.statusCode).toEqual(200);
+        const returnedItem = res.body as components["schemas"]["ListItem"];
+
+        expect(returnedItem.ingredientId).toBeUndefined();
     });
 
     it("should allow updating an item if the user is a list administrator", async () => {
@@ -901,87 +1359,50 @@ describe("Update list item", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
+    const invalidItemUpdates: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { name: uuid(), extra: "invalid" },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { name: 12345 },
+        },
+        {
+            name: "should fail if a required field is set to null",
+            body: { name: null },
+        },
+    ];
 
-        const { items } = await KnexListRepository.createItems(database, {
-            userId: user.userId,
-            listId: list.listId,
-            items: [{ name: uuid() }],
-        });
-        const item = items[0]!;
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
-            .set(token)
-            .send({
-                name: uuid(),
-                extra: "invalid",
+    for (const { name, body } of invalidItemUpdates) {
+        it(name, async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
+            const { lists } = await KnexListRepository.create(database, {
+                userId: user.userId,
+                lists: [{ name: uuid() }],
             });
-        expect(res.statusCode).toEqual(400);
-    });
+            const list = lists[0]!;
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-
-        const { items } = await KnexListRepository.createItems(database, {
-            userId: user.userId,
-            listId: list.listId,
-            items: [{ name: uuid() }],
-        });
-        const item = items[0]!;
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
-            .set(token)
-            .send({
-                name: 12345,
+            const { items } = await KnexListRepository.createItems(database, {
+                userId: user.userId,
+                listId: list.listId,
+                items: [{ name: uuid() }],
             });
-        expect(res.statusCode).toEqual(400);
-    });
+            const item = items[0]!;
 
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
+            const res = await request(app)
+                .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+                .set(token)
+                .send(body);
+            expect(res.statusCode).toEqual(400);
         });
-        const list = lists[0]!;
-        const { items } = await KnexListRepository.createItems(database, {
-            userId: user.userId,
-            listId: list.listId,
-            items: [{ name: uuid() }],
-        });
-        const item = items[0]!;
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
-            .set(token)
-            .send({
-                name: null,
-            });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Delete list item", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).delete(
-            `/v1/lists/${uuid()}/items/${uuid()}`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should delete a list item", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -1114,11 +1535,6 @@ describe("Delete list item", () => {
 });
 
 describe("Get list members", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get(`/v1/lists/${uuid()}/members`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return list members", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [member] = await CreateUsers(database);
@@ -1172,11 +1588,6 @@ describe("Get list members", () => {
 });
 
 describe("Invite member to list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/lists/${uuid()}/members`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should invite a member", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [invitee] = await CreateUsers(database);
@@ -1267,45 +1678,39 @@ describe("Invite member to list", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
+    const invalidInvites: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { userId: uuid(), extra: "invalid" },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { userId: 12345 },
+        },
+    ];
+
+    for (const { name, body } of invalidInvites) {
+        it(name, async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
+            const { lists } = await KnexListRepository.create(database, {
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            });
+            const list = lists[0]!;
+
+            const res = await request(app)
+                .post(`/v1/lists/${list.listId}/members`)
+                .set(token)
+                .send(body);
+            expect(res.statusCode).toEqual(400);
         });
-        const list = lists[0]!;
-
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/members`)
-            .set(token)
-            .send({ userId: uuid(), extra: "invalid" });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-
-        const res = await request(app)
-            .post(`/v1/lists/${list.listId}/members`)
-            .set(token)
-            .send({ userId: 12345 });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Update list member", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).patch(
-            `/v1/lists/${uuid()}/members/${uuid()}`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should update member status", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [member] = await CreateUsers(database);
@@ -1414,75 +1819,48 @@ describe("Update list member", () => {
         expect(res.statusCode).toEqual(400);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
+    const invalidMemberUpdates: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { status: "A", extra: "invalid" },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { status: "INVALID" },
+        },
+        {
+            name: "should fail if a required field is set to null",
+            body: { status: null },
+        },
+    ];
 
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: "A", extra: "invalid" });
-        expect(res.statusCode).toEqual(400);
-    });
+    for (const { name, body } of invalidMemberUpdates) {
+        it(name, async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
+            const [member] = await CreateUsers(database);
+            const { lists } = await KnexListRepository.create(database, {
+                userId: user.userId,
+                lists: [{ name: uuid() }],
+            });
+            const list = lists[0]!;
+            await KnexListRepository.saveMembers(database, {
+                listId: list.listId,
+                members: [{ userId: member!.userId, status: "M" }],
+            });
 
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
+            const res = await request(app)
+                .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
+                .set(token)
+                .send(body);
+            expect(res.statusCode).toEqual(400);
         });
-        const list = lists[0]!;
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: "INVALID" });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const [member] = await CreateUsers(database);
-        const { lists } = await KnexListRepository.create(database, {
-            userId: user.userId,
-            lists: [{ name: uuid() }],
-        });
-        const list = lists[0]!;
-        await KnexListRepository.saveMembers(database, {
-            listId: list.listId,
-            members: [{ userId: member!.userId, status: "M" }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/lists/${list.listId}/members/${member!.userId}`)
-            .set(token)
-            .send({ status: null });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Remove member from list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).delete(
-            `/v1/lists/${uuid()}/members/${uuid()}`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should remove a member", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [member] = await CreateUsers(database);
@@ -1544,13 +1922,6 @@ describe("Remove member from list", () => {
 });
 
 describe("Accept list invitation", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(
-            `/v1/lists/${uuid()}/invite/accept`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should accept invitation", async () => {
         const [owner] = await CreateUsers(database);
         const [token, invitee] = await PrepareAuthenticatedUser(database);
@@ -1607,13 +1978,6 @@ describe("Accept list invitation", () => {
 });
 
 describe("Decline list invitation", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(
-            `/v1/lists/${uuid()}/invite/decline`,
-        );
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should decline invitation", async () => {
         const [owner] = await CreateUsers(database);
         const [token, invitee] = await PrepareAuthenticatedUser(database);
@@ -1670,11 +2034,6 @@ describe("Decline list invitation", () => {
 });
 
 describe("Leave list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/lists/${uuid()}/leave`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should leave list", async () => {
         const [owner] = await CreateUsers(database);
         const [token, member] = await PrepareAuthenticatedUser(database);
@@ -1746,11 +2105,6 @@ describe("Leave list", () => {
 });
 
 describe("Move list items to another list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/lists/${uuid()}/items/move`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should move items to another list", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 

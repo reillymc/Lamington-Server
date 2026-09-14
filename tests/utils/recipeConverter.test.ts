@@ -310,6 +310,22 @@ describe("convertRecipe", () => {
                 },
             },
             {
+                name: "should truncate an excessively long single value unit",
+                input: { recipeYield: `4 ${"x".repeat(300)}` },
+                expected: {
+                    count: { representation: "number", value: "4" },
+                    unit: "x".repeat(255),
+                },
+            },
+            {
+                name: "should truncate an excessively long range unit",
+                input: { recipeYield: `8-10 ${"x".repeat(300)}` },
+                expected: {
+                    count: { representation: "range", value: ["8", "10"] },
+                    unit: "x".repeat(255),
+                },
+            },
+            {
                 name: "should handle parseYield with empty array",
                 input: { recipeYield: [] },
                 expected: undefined,

@@ -49,13 +49,12 @@ const formatCookListMeal = (
     source: toUndefined(meal.source),
     recipeId: toUndefined(meal.recipeId),
     notes: toUndefined(meal.notes),
-    heroImage:
-        meal.heroAttachmentId && meal.heroAttachmentUri
-            ? {
-                  attachmentId: meal.heroAttachmentId,
-                  uri: meal.heroAttachmentUri,
-              }
-            : undefined,
+    heroImage: meal.heroAttachmentId
+        ? {
+              attachmentId: meal.heroAttachmentId,
+              preview: toUndefined(meal.heroAttachmentPreview),
+          }
+        : undefined,
 });
 
 const readByIds = async (db: KnexDatabase, mealIds: string[]) => {
@@ -173,7 +172,10 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
             meals.map((m) => m.mealId),
         );
     },
-    deleteMeals: createDeleteContent("meals", "mealId"),
+    deleteMeals: createDeleteContent("meals", "mealId", {
+        table: lamington.plannerMeal,
+        idColumn: PlannerMealTable.mealId,
+    }),
     verifyMealPermissions: async (db, { userId, meals }) => {
         const mealOwners = await db(lamington.plannerMeal)
             .select(PlannerMealTable.mealId, ContentTable.createdBy)

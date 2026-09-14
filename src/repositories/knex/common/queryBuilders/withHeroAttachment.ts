@@ -12,8 +12,8 @@ export const withHeroAttachment =
     ) => {
         query
             .select({
-                heroAttachmentId: ContentAttachmentTable.attachmentId,
-                heroAttachmentUri: AttachmentTable.uri,
+                heroAttachmentId: AttachmentTable.attachmentId,
+                heroAttachmentPreview: AttachmentTable.preview,
             })
             .leftJoin(lamington.contentAttachment, (join) => {
                 join.on(
@@ -22,9 +22,10 @@ export const withHeroAttachment =
                     idColumn,
                 ).andOnVal(ContentAttachmentTable.displayType, "=", "hero");
             })
-            .leftJoin(
-                lamington.attachment,
-                ContentAttachmentTable.attachmentId,
-                AttachmentTable.attachmentId,
-            );
+            .leftJoin(lamington.attachment, (join) => {
+                join.on(
+                    ContentAttachmentTable.attachmentId,
+                    AttachmentTable.attachmentId,
+                ).andOnNull(AttachmentTable.deletedAt);
+            });
     };

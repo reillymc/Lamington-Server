@@ -1,7 +1,7 @@
 import { EnsureArray, Undefined } from "@reillymc/es-utils";
+import { SYSTEM_USER_ID } from "../../utils/systemUser.ts";
 import { UniqueViolationError } from "../common/errors.ts";
 import type { UserRepository } from "../userRepository.ts";
-import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
 import { isUniqueViolation } from "./common/postgresErrors.ts";
 import type { KnexDatabase } from "./knex.ts";
 import { lamington, UserTable } from "./spec/index.ts";
@@ -30,18 +30,20 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
         };
     },
     readAll: async (db, { filter }) => {
-        const query = db(lamington.user).select(
-            UserTable.userId,
-            UserTable.firstName,
-            UserTable.lastName,
-            UserTable.email,
-            UserTable.status,
-        );
+        const query = db(lamington.user)
+            .select(
+                UserTable.userId,
+                UserTable.firstName,
+                UserTable.lastName,
+                UserTable.email,
+                UserTable.status,
+            )
+            .whereNot(UserTable.userId, SYSTEM_USER_ID);
 
         if (filter?.status) {
             query.whereIn(UserTable.status, EnsureArray(filter.status));
         } else {
-            query.whereNotIn(UserTable.status, ["P", "B"]);
+            query.whereNotIn(UserTable.status, ["P", "B", "D"]);
         }
 
         const result = await query;
@@ -97,6 +99,17 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
             })),
         };
     },
+    readPurgeableUsers: async (db, { deletedBefore }) => {
+        const result = await db(lamington.user)
+            .select(UserTable.userId)
+            .whereNotNull(UserTable.deletedAt)
+            .where(UserTable.deletedAt, "<", deletedBefore)
+            .whereNot(UserTable.userId, SYSTEM_USER_ID);
+
+        return {
+            users: result.map(({ userId }) => ({ userId })),
+        };
+    },
     create: async (db, { users }) => {
         const usersToCreate = users.map((u) => ({
             email: u.email,
@@ -123,28 +136,45 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
             throw error;
         }
     },
-    update: async (db, { users }) => {
-        for (const u of users) {
-            const updateData = buildUpdateRecord(u, UserTable);
+    updateStatus: async (db, { users }) => {
+        if (!users.length) return { users: [] };
 
-            if (updateData) {
-                await db(lamington.user)
-                    .where(UserTable.userId, u.userId)
-                    .update(updateData);
-            }
+        for (const { userId, status } of users) {
+            await db(lamington.user)
+                .where(UserTable.userId, userId)
+                .update({ status, deletedAt: null });
         }
 
-        const userIds = users.map((u) => u.userId);
         const updatedUsers = await db(lamington.user)
-            .select([UserTable.userId, UserTable.status])
-            .whereIn(UserTable.userId, userIds);
+            .select(UserTable.userId, UserTable.status)
+            .whereIn(
+                UserTable.userId,
+                users.map(({ userId }) => userId),
+            );
 
         return {
             users: updatedUsers,
         };
     },
+    softDelete: async (db, { users }) => {
+        const userIds = users.map(({ userId }) => userId);
+
+        if (!userIds.length) return { count: 0 };
+
+        const count = await db(lamington.user)
+            .whereIn(UserTable.userId, userIds)
+            .update({
+                status: "D",
+                deletedAt: db.raw('COALESCE("deletedAt", now())'),
+            });
+
+        return { count };
+    },
     delete: async (db, { users }) => {
         const userIds = users.map((u) => u.userId);
+
+        if (!userIds.length) return { count: 0 };
+
         const count = await db(lamington.user)
             .whereIn(UserTable.userId, userIds)
             .delete();

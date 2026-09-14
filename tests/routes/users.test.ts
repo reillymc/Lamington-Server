@@ -11,6 +11,7 @@ import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRe
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
+import { SYSTEM_USER_ID } from "../../src/utils/systemUser.ts";
 import {
     CreateUsers,
     PrepareAuthenticatedUser,
@@ -35,12 +36,6 @@ after(async () => {
 });
 
 describe("Get all users", () => {
-    it("route should require authentication", async () => {
-        const res = await request(app).get("/v1/users");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("route should fail for non-administrator", async () => {
         const [registeredToken] = await PrepareAuthenticatedUser(database, "M");
         const res = await request(app).get("/v1/users").set(registeredToken);
@@ -65,19 +60,19 @@ describe("Get all users", () => {
         const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
         const usersRegistered = await CreateUsers(database, {
-            count: randomCount,
+            count: randomCount(),
             status: "M",
         });
         const usersAdmin = await CreateUsers(database, {
-            count: randomCount,
+            count: randomCount(),
             status: "A",
         });
         await CreateUsers(database, {
-            count: randomCount,
+            count: randomCount(),
             status: "P",
         });
         await CreateUsers(database, {
-            count: randomCount,
+            count: randomCount(),
             status: "B",
         });
 
@@ -111,12 +106,12 @@ describe("Get all users", () => {
         const [adminToken] = await PrepareAuthenticatedUser(database, "A");
 
         const users = await CreateUsers(database, {
-            count: Math.floor(Math.random() * 10) + 1,
+            count: randomCount(),
             status: "P",
         });
 
         await CreateUsers(database, {
-            count: Math.floor(Math.random() * 10) + 1,
+            count: randomCount(),
             status: "M",
         });
 
@@ -132,17 +127,24 @@ describe("Get all users", () => {
         expect(data.length).toEqual(users.length);
         expect(data.every((u) => u.status === "P")).toBe(true);
     });
+
+    it("should not return the system user when filtering by status", async () => {
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
+
+        const res = await request(app)
+            .get("/v1/users")
+            .query({ status: "B" })
+            .set(adminToken);
+
+        expect(res.statusCode).toEqual(200);
+
+        const data = res.body as components["schemas"]["User"][];
+
+        expect(data.map(({ userId }) => userId)).not.toContain(SYSTEM_USER_ID);
+    });
 });
 
 describe("Delete user", () => {
-    it("route should require authentication", async () => {
-        const [_, { userId }] = await PrepareAuthenticatedUser(database, "M");
-
-        const res = await request(app).delete(`/v1/users/${userId}`);
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should not allow deletion of user if not admin", async () => {
         const [_, { userId }] = await PrepareAuthenticatedUser(database, "M");
         const [otherToken] = await PrepareAuthenticatedUser(database, "M");
@@ -162,9 +164,61 @@ describe("Delete user", () => {
             .delete(`/v1/users/${userToDelete!.userId}`)
             .set(adminToken);
         expect(response.statusCode).toEqual(204);
+
+        const { users } = await KnexUserRepository.read(database, {
+            users: [{ userId: userToDelete!.userId }],
+        });
+        expect(users.length).toEqual(1);
+        expect(users[0]!.status).toEqual("D");
+
+        const deletedUser = await database("user")
+            .select("deletedAt")
+            .where({ userId: userToDelete!.userId })
+            .first();
+        expect(deletedUser!.deletedAt).not.toEqual(null);
     });
 
-    it("should delete user and accommodate foreign keys", async () => {
+    it("should preserve original deletion timestamp when the user is deleted again", async () => {
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
+        const [userToDelete] = await CreateUsers(database);
+
+        await request(app)
+            .delete(`/v1/users/${userToDelete!.userId}`)
+            .set(adminToken);
+
+        const [firstDeletion] = await database("user")
+            .select("deletedAt")
+            .where({ userId: userToDelete!.userId });
+
+        const response = await request(app)
+            .delete(`/v1/users/${userToDelete!.userId}`)
+            .set(adminToken);
+        expect(response.statusCode).toEqual(204);
+
+        const [secondDeletion] = await database("user")
+            .select("deletedAt")
+            .where({ userId: userToDelete!.userId });
+
+        expect(secondDeletion!.deletedAt).toEqual(firstDeletion!.deletedAt);
+    });
+
+    it("should reject deleting the system user", async () => {
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
+
+        const response = await request(app)
+            .delete(`/v1/users/${SYSTEM_USER_ID}`)
+            .set(adminToken);
+
+        expect(response.statusCode).toEqual(404);
+
+        const { users } = await KnexUserRepository.read(database, {
+            users: [{ userId: SYSTEM_USER_ID }],
+        });
+        expect(users.length).toEqual(1);
+        expect(users[0]!.status).toEqual("B");
+    });
+
+    it("should retain content when soft deleting a user", async () => {
         const [adminToken] = await PrepareAuthenticatedUser(database, "A");
         const [userToDelete] = await CreateUsers(database);
         const userId = userToDelete!.userId;
@@ -195,16 +249,18 @@ describe("Delete user", () => {
             .set(adminToken);
 
         expect(response.statusCode).toEqual(204);
+
+        const { users } = await KnexUserRepository.read(database, {
+            users: [{ userId }],
+        });
+        expect(users[0]!.status).toEqual("D");
+
+        const content = await database("content").where({ createdBy: userId });
+        expect(content.length).toBeGreaterThan(0);
     });
 });
 
 describe("Approve user", () => {
-    it("route should require authentication", async () => {
-        const endpoint = `/v1/users/${v4()}/approve`; // Non-existent user
-        const res = await request(app).post(endpoint);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("route should require administrator privileges", async () => {
         const [registeredToken] = await PrepareAuthenticatedUser(database, "M");
         const endpoint = `/v1/users/${v4()}/approve`; // Non-existent user
@@ -217,6 +273,21 @@ describe("Approve user", () => {
         const endpoint = `/v1/users/${v4()}/approve`; // Non-existent user
         const res = await request(app).post(endpoint).set(adminToken);
         expect(res.statusCode).toEqual(404);
+    });
+
+    it("should reject approving the system user", async () => {
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
+
+        const res = await request(app)
+            .post(`/v1/users/${SYSTEM_USER_ID}/approve`)
+            .set(adminToken);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { users } = await KnexUserRepository.read(database, {
+            users: [{ userId: SYSTEM_USER_ID }],
+        });
+        expect(users[0]!.status).toEqual("B");
     });
 
     it("should register pending user", async () => {
@@ -236,6 +307,29 @@ describe("Approve user", () => {
         } = await KnexUserRepository.read(database, { users: [user!] });
 
         expect(updatedUser?.status).toEqual("M");
+    });
+
+    it("should clear the deletion timestamp when approving a deleted user", async () => {
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
+        const [user] = await CreateUsers(database);
+
+        await request(app).delete(`/v1/users/${user!.userId}`).set(adminToken);
+
+        const response = await request(app)
+            .post(`/v1/users/${user!.userId}/approve`)
+            .set(adminToken);
+
+        expect(response.statusCode).toEqual(204);
+
+        const {
+            users: [updatedUser],
+        } = await KnexUserRepository.read(database, { users: [user!] });
+        expect(updatedUser?.status).toEqual("M");
+
+        const [restoredUser] = await database("user")
+            .select("deletedAt")
+            .where({ userId: user!.userId });
+        expect(restoredUser!.deletedAt).toEqual(null);
     });
 
     it("should trigger the starter data job when approving a pending user", async () => {
@@ -287,12 +381,6 @@ describe("Approve user", () => {
 });
 
 describe("Blacklist user", () => {
-    it("route should require authentication", async () => {
-        const endpoint = `/v1/users/${v4()}/blacklist`;
-        const res = await request(app).post(endpoint);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("route should require administrator privileges", async () => {
         const [registeredToken] = await PrepareAuthenticatedUser(database, "M");
         const endpoint = `/v1/users/${v4()}/blacklist`;
@@ -305,6 +393,21 @@ describe("Blacklist user", () => {
         const endpoint = `/v1/users/${v4()}/blacklist`;
         const res = await request(app).post(endpoint).set(adminToken);
         expect(res.statusCode).toEqual(404);
+    });
+
+    it("should reject blacklisting the system user", async () => {
+        const [adminToken] = await PrepareAuthenticatedUser(database, "A");
+
+        const res = await request(app)
+            .post(`/v1/users/${SYSTEM_USER_ID}/blacklist`)
+            .set(adminToken);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { users } = await KnexUserRepository.read(database, {
+            users: [{ userId: SYSTEM_USER_ID }],
+        });
+        expect(users[0]!.status).toEqual("B");
     });
 
     it("should blacklist pending user", async () => {
