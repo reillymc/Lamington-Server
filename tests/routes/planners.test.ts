@@ -1104,6 +1104,72 @@ describe("Add a meal to a planner", () => {
         expect(res.statusCode).toEqual(404);
     });
 
+    it("should reject a recipe owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser!.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/meals`)
+            .set(token)
+            .send({
+                dayOfMonth: randomDay(),
+                month: randomMonth(),
+                course: randomCourse(),
+                year: randomYear(),
+                description: uuid(),
+                recipeId: recipe!.recipeId,
+            } satisfies components["schemas"]["PlannerMealCreate"]);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
+    it("should create a meal with a public recipe owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser!.userId,
+            recipes: [{ name: uuid(), public: true }],
+        });
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/planners/${planner!.plannerId}/meals`)
+            .set(token)
+            .send({
+                dayOfMonth: randomDay(),
+                month: randomMonth(),
+                course: randomCourse(),
+                year: randomYear(),
+                description: uuid(),
+                recipeId: recipe!.recipeId,
+            } satisfies components["schemas"]["PlannerMealCreate"]);
+
+        expect(res.statusCode).toEqual(201);
+    });
+
     it("should create a planner meal and return the correct details", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -1433,6 +1499,49 @@ describe("Update a meal in a planner", () => {
         expect(res.statusCode).toEqual(404);
     });
 
+    it("should reject a recipe owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser!.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const {
+            planners: [planner],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [{ name: uuid(), description: uuid() }],
+        });
+
+        const {
+            meals: [meal],
+        } = await KnexPlannerRepository.createMeals(database, {
+            userId: user.userId,
+            plannerId: planner!.plannerId,
+            meals: [
+                {
+                    dayOfMonth: randomDay(),
+                    month: randomMonth(),
+                    course: randomCourse(),
+                    year: randomYear(),
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/planners/${planner!.plannerId}/meals/${meal!.mealId}`)
+            .set(token)
+            .send({
+                recipeId: recipe!.recipeId,
+            } satisfies components["schemas"]["PlannerMealUpdate"]);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
     it("should allow editing a meal if the user is the planner owner", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -1478,6 +1587,111 @@ describe("Update a meal in a planner", () => {
         const [plannerMeal] = plannerMeals;
 
         expect(plannerMeal?.description).toEqual("Updated Description");
+    });
+
+    it("should not allow editing a meal belonging to another planner", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            planners: [plannerA, plannerB],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [
+                { name: uuid(), description: uuid() },
+                { name: uuid(), description: uuid() },
+            ],
+        });
+
+        const {
+            meals: [meal],
+        } = await KnexPlannerRepository.createMeals(database, {
+            userId: user.userId,
+            plannerId: plannerB!.plannerId,
+            meals: [randomMeal()],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/planners/${plannerA!.plannerId}/meals/${meal!.mealId}`)
+            .set(token)
+            .send({ description: "Updated Description" });
+
+        expect(res.statusCode).toEqual(404);
+
+        const { meals: plannerMeals } =
+            await KnexPlannerRepository.readAllMeals(database, {
+                userId: user.userId,
+                filter: { plannerId: plannerB!.plannerId },
+            });
+
+        expect(plannerMeals[0]?.description).toEqual(meal!.description);
+    });
+
+    it("should not mutate a meal hero image when editing via another planner", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            attachments: [originalAttachment, otherAttachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}, {}],
+        });
+
+        const {
+            planners: [plannerA, plannerB],
+        } = await KnexPlannerRepository.create(database, {
+            userId: user.userId,
+            planners: [
+                { name: uuid(), description: uuid() },
+                { name: uuid(), description: uuid() },
+            ],
+        });
+
+        const {
+            meals: [meal],
+        } = await KnexPlannerRepository.createMeals(database, {
+            userId: user.userId,
+            plannerId: plannerB!.plannerId,
+            meals: [
+                {
+                    ...randomMeal(),
+                    heroImage: originalAttachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/planners/${plannerA!.plannerId}/meals/${meal!.mealId}`)
+            .set(token)
+            .send({ heroImage: otherAttachment!.attachmentId });
+
+        expect(res.statusCode).toEqual(404);
+
+        const { meals: plannerMeals } =
+            await KnexPlannerRepository.readAllMeals(database, {
+                userId: user.userId,
+                filter: { plannerId: plannerB!.plannerId },
+            });
+
+        expect(plannerMeals[0]?.heroImage?.attachmentId).toEqual(
+            originalAttachment!.attachmentId,
+        );
+
+        const attachmentRows: Array<{
+            attachmentId: string;
+            deletedAt: Date | null;
+        }> = await database("attachment").select("attachmentId", "deletedAt");
+
+        expect(
+            attachmentRows
+                .filter(({ deletedAt }) => deletedAt === null)
+                .map(({ attachmentId }) => attachmentId)
+                .sort(),
+        ).toEqual(
+            [
+                originalAttachment!.attachmentId,
+                otherAttachment!.attachmentId,
+            ].sort(),
+        );
     });
 
     it("should not allow editing a meal if the user is a planner member without edit permission", async () => {

@@ -28,6 +28,7 @@ export const createDiskFileRepository = (
             await sharp(file).toFile(localPath);
             return { attachmentId, succeeded: true };
         } catch {
+            await unlink(localPath).catch(() => undefined);
             return { attachmentId, succeeded: false };
         }
     };

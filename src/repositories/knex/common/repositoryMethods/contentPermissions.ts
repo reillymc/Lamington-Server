@@ -6,6 +6,7 @@ import type { ContentMemberStatus } from "./contentMember.ts";
 export type ContentEntity = {
     table: string;
     idColumn: string;
+    publicColumn?: string;
 };
 
 export const verifyContentPermissions = async (
@@ -16,7 +17,7 @@ export const verifyContentPermissions = async (
         | ContentMemberStatus
         | [ContentMemberStatus, ...ContentMemberStatus[]],
     entity: ContentEntity,
-    options?: { includeSystem?: boolean },
+    options?: { includeSystem?: boolean; includePublic?: boolean },
 ): Promise<Record<string, boolean>> => {
     const requestedIds = [...new Set(contentIds)];
     if (requestedIds.length === 0) return {};
@@ -33,6 +34,9 @@ export const verifyContentPermissions = async (
                 idColumn: ContentTable.contentId,
                 statuses: statuses,
                 includeSystem: options?.includeSystem,
+                publicColumn: options?.includePublic
+                    ? entity.publicColumn
+                    : undefined,
             }),
         );
 

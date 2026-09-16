@@ -35,28 +35,31 @@ const formatIngredient = (
             : undefined,
 });
 
+const selectIngredients = (db: KnexDatabase) =>
+    db(lamington.ingredient)
+        .select(
+            IngredientTable.ingredientId,
+            IngredientTable.namePlural,
+            IngredientTable.name,
+            IngredientTable.description,
+        )
+        .leftJoin(
+            lamington.content,
+            IngredientTable.ingredientId,
+            ContentTable.contentId,
+        )
+        .modify(withContentAuthor);
+
 export const KnexIngredientRepository: IngredientRepository<KnexDatabase> = {
     readAll: async (db, { userId }) => {
-        const result: IngredientRow[] = await db(lamington.ingredient)
-            .select(
-                IngredientTable.ingredientId,
-                IngredientTable.namePlural,
-                IngredientTable.name,
-                IngredientTable.description,
-            )
-            .leftJoin(
-                lamington.content,
-                IngredientTable.ingredientId,
-                ContentTable.contentId,
-            )
-            .where((builder) =>
+        const result: IngredientRow[] = await selectIngredients(db).where(
+            (builder) =>
                 userId !== undefined
                     ? builder.where({ [ContentTable.createdBy]: userId })
                     : builder.where({
                           [ContentTable.createdBy]: SYSTEM_USER_ID,
                       }),
-            )
-            .modify(withContentAuthor);
+        );
 
         return {
             userId,
@@ -75,23 +78,21 @@ export const KnexIngredientRepository: IngredientRepository<KnexDatabase> = {
             ingredientId: contentId,
         }));
 
-        const result = await db(lamington.ingredient)
-            .insert(
-                ingredientsToCreate.map(
-                    ({ name, ingredientId, description, namePlural }) => ({
-                        name,
-                        ingredientId,
-                        description,
-                        namePlural,
-                    }),
-                ),
-            )
-            .returning([
-                IngredientTable.ingredientId,
-                IngredientTable.namePlural,
-                IngredientTable.name,
-                IngredientTable.description,
-            ]);
+        await db(lamington.ingredient).insert(
+            ingredientsToCreate.map(
+                ({ name, ingredientId, description, namePlural }) => ({
+                    name,
+                    ingredientId,
+                    description,
+                    namePlural,
+                }),
+            ),
+        );
+
+        const result: IngredientRow[] = await selectIngredients(db).whereIn(
+            IngredientTable.ingredientId,
+            newContent.map(({ contentId }) => contentId),
+        );
 
         return {
             userId,

@@ -691,14 +691,22 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
 
         return read(db, { userId, recipes });
     },
-    verifyPermissions: async (db, { userId, recipes, status }) => {
+    verifyPermissions: async (
+        db,
+        { userId, recipes, status, includePublic },
+    ) => {
         const recipeIds = recipes.map((r) => r.recipeId);
         const permissions = await verifyContentPermissions(
             db,
             userId,
             recipeIds,
             status,
-            { table: lamington.recipe, idColumn: RecipeTable.recipeId },
+            {
+                table: lamington.recipe,
+                idColumn: RecipeTable.recipeId,
+                publicColumn: RecipeTable.public,
+            },
+            { includePublic },
         );
         return {
             userId,
@@ -844,6 +852,8 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             "recipeId",
             "raterId",
         );
+        if (!dedupedRatings.length) return { userId, ratings: [] };
+
         const savedRatings = await db<RecipeRating>(lamington.recipeRating)
             .insert(dedupedRatings)
             .onConflict(["recipeId", "raterId"])

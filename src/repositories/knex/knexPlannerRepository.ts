@@ -271,6 +271,7 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
                     );
             })
             .delete();
+
         return { plannerId, count };
     },
     read,
@@ -410,6 +411,26 @@ export const KnexPlannerRepository: PlannerRepository<KnexDatabase> = {
             planners: plannerIds.map((plannerId) => ({
                 plannerId,
                 hasPermissions: permissions[plannerId] ?? false,
+            })),
+        };
+    },
+    verifyMealsBelongToPlanner: async (db, { userId, plannerId, meals }) => {
+        const mealIds = meals.map(({ mealId }) => mealId);
+
+        const ownedRows: Array<{ mealId: string }> = mealIds.length
+            ? await db(lamington.plannerMeal)
+                  .select(PlannerMealTable.mealId)
+                  .where(PlannerMealTable.plannerId, plannerId)
+                  .whereIn(PlannerMealTable.mealId, mealIds)
+            : [];
+
+        const ownedIds = new Set(ownedRows.map(({ mealId }) => mealId));
+
+        return {
+            userId,
+            meals: meals.map(({ mealId }) => ({
+                mealId,
+                belongsToPlanner: ownedIds.has(mealId),
             })),
         };
     },

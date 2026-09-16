@@ -352,7 +352,7 @@ describe("Register a new user", () => {
 
 describe("Refresh authentication token", () => {
     const createValidRefreshToken = (userId: string) => {
-        return jwt.sign({ userId }, refreshSecret, {
+        return jwt.sign({ userId, tokenUse: "refresh" }, refreshSecret, {
             noTimestamp: true,
             expiresIn: "5m",
         });
@@ -405,10 +405,11 @@ describe("Refresh authentication token", () => {
     });
 
     it("should fail with expired refresh token", async () => {
-        const expiredToken = jwt.sign({ userId: "some-id" }, refreshSecret, {
-            noTimestamp: true,
-            expiresIn: "-1s",
-        });
+        const expiredToken = jwt.sign(
+            { userId: "some-id", tokenUse: "refresh" },
+            refreshSecret,
+            { noTimestamp: true, expiresIn: "-1s" },
+        );
 
         const res = await request(app)
             .post("/v1/auth/refresh")

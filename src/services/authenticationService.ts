@@ -1,5 +1,6 @@
 import { UniqueViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
+import { UnauthorizedError } from "../utils/errors.ts";
 import { comparePassword, hashPassword } from "../utils/password.ts";
 import {
     createAccessToken,
@@ -10,7 +11,6 @@ import {
     CreatedDataFetchError,
     type CreateService,
     InvalidOperationError,
-    UnauthorizedError,
 } from "./service.ts";
 
 export interface AuthenticationService {
@@ -44,8 +44,9 @@ export const createAuthenticationService: CreateService<
             const { users } = await userRepository.create(database, {
                 users: [
                     {
-                        ...user,
-                        email: user.email.toLowerCase(),
+                        email: user.email.toLowerCase().trim(),
+                        firstName: user.firstName,
+                        lastName: user.lastName,
                         password,
                         status: "P",
                     },
@@ -76,7 +77,7 @@ export const createAuthenticationService: CreateService<
         const {
             users: [user],
         } = await userRepository.readCredentials(database, {
-            users: [{ email }],
+            users: [{ email: email.toLowerCase().trim() }],
         });
 
         if (!user || user.status === "D" || user.status === "B") {

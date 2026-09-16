@@ -52,8 +52,8 @@ import { createTagService } from "./services/tagService.ts";
 import { createUserService } from "./services/userService.ts";
 import "winston-daily-rotate-file";
 
-const port = parseInt(process.env.PORT ?? "3000", 10);
-const trustProxyHops = parseInt(process.env.TRUST_PROXY_HOPS ?? "0", 10);
+const port = Number.parseInt(process.env.PORT ?? "3000", 10);
+const trustProxyHops = Number.parseInt(process.env.TRUST_PROXY_HOPS ?? "0", 10);
 
 const uploadDirectory = process.env.UPLOAD_DIRECTORY ?? "uploads";
 const assetDirectory = process.env.ASSET_DIRECTORY ?? "assets";
@@ -172,7 +172,10 @@ const refreshExpiration = ms(
     (process.env.JWT_REFRESH_EXPIRATION as StringValue | undefined) ?? "7d",
 );
 
-if (!accessSecret || !refreshSecret) {
+if (!accessSecret || !refreshSecret || accessSecret === refreshSecret) {
+    logger.error(
+        "Invalid JWT configuration: JWT_SECRET and JWT_REFRESH_SECRET must both be set and differ",
+    );
     throw "Error starting Lamington Server";
 }
 

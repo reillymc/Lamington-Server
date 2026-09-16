@@ -4,13 +4,9 @@ import * as OpenApiValidator from "express-openapi-validator";
 import jwt from "jsonwebtoken";
 import multer, { type FileFilterCallback } from "multer";
 import { openApiSpec } from "../openApiSpec.ts";
+import { UnauthorizedError, ValidationError } from "../utils/errors.ts";
 import { verifyAccessToken } from "../utils/token.ts";
-import {
-    type CreateMiddleware,
-    type Middleware,
-    UnauthorizedError,
-    ValidationError,
-} from "./middleware.ts";
+import type { CreateMiddleware, Middleware } from "./middleware.ts";
 
 const { JsonWebTokenError, NotBeforeError, TokenExpiredError } = jwt;
 

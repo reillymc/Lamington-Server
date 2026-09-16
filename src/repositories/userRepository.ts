@@ -52,6 +52,7 @@ type ReadAllUsersResponse = {
 
 type ReadPurgeableUsersRequest = {
     deletedBefore: Date;
+    limit: number;
 };
 
 type ReadPurgeableUsersResponse = {

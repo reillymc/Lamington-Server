@@ -4,6 +4,7 @@ import type { CreateJob } from "./job.ts";
 
 const RETENTION_DAYS = 30;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const BATCH_SIZE = 100;
 
 interface CreatePurgeDeletedUsersJobParams {
     database: Database;
@@ -22,37 +23,60 @@ export const createPurgeDeletedUsersJob: CreateJob<
     logger,
 }) => ({
     run: async () => {
+        let hadFailures = false;
         const cutOff = new Date(Date.now() - RETENTION_DAYS * ONE_DAY_MS);
 
         try {
-            const { users } = await userRepository.readPurgeableUsers(
-                database,
-                { deletedBefore: cutOff },
-            );
+            for (;;) {
+                const { users, attachments } = await database.transaction(
+                    async (trx) => {
+                        const { users } =
+                            await userRepository.readPurgeableUsers(trx, {
+                                deletedBefore: cutOff,
+                                limit: BATCH_SIZE,
+                            });
 
-            // Attachment rows cascade away with the user, so their URIs must
-            // be collected first in order to delete the stored files.
-            const { attachments } = await attachmentRepository.readAllForUsers(
-                database,
-                { users },
-            );
+                        if (!users.length) {
+                            return { users, attachments: [] };
+                        }
 
-            await userRepository.delete(database, { users });
+                        // Attachment rows cascade away with the user, so their
+                        // ids must be collected first in order to delete files.
+                        const { attachments } =
+                            await attachmentRepository.readAllForUsers(trx, {
+                                users,
+                            });
 
-            if (!attachments.length) return true;
+                        await userRepository.delete(trx, { users });
 
-            const results = await fileRepository.delete(undefined, attachments);
+                        return { users, attachments };
+                    },
+                );
 
-            const failed = results.filter(({ succeeded }) => !succeeded);
+                if (!users.length) break;
 
-            if (failed.length) {
-                logger.error("Failed to delete attachment files", {
-                    attachments: failed,
-                });
-                return false;
+                if (attachments.length) {
+                    const results = await fileRepository.delete(
+                        undefined,
+                        attachments,
+                    );
+
+                    const failed = results.filter(
+                        ({ succeeded }) => !succeeded,
+                    );
+
+                    if (failed.length) {
+                        logger.error("Failed to delete attachment files", {
+                            attachments: failed,
+                        });
+                        hadFailures = true;
+                    }
+                }
+
+                if (users.length < BATCH_SIZE) break;
             }
 
-            return true;
+            return !hadFailures;
         } catch (error) {
             logger.error("Failed to purge deleted users", error);
             return false;

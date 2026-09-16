@@ -6,94 +6,105 @@ import {
     lamington,
 } from "../../spec/index.ts";
 
-export class DeletedAttachmentError extends Error {
-    public attachmentIds: ReadonlyArray<string>;
+const HERO_DISPLAY_TYPE = "hero";
 
-    constructor(attachmentIds: ReadonlyArray<string>) {
-        super(`Cannot link deleted attachments: ${attachmentIds.join(", ")}`);
-        this.name = "DeletedAttachmentError";
-        this.attachmentIds = attachmentIds;
-    }
-}
+type HeroItem = {
+    contentId: string;
+    attachmentId?: string | null;
+};
+
+const hasAttachmentIntent = (
+    item: HeroItem,
+): item is { contentId: string; attachmentId: string | null } =>
+    item.attachmentId !== undefined;
+
+const toDesiredByContent = (items: Array<HeroItem>) =>
+    new Map(
+        dedupeLast(items.filter(hasAttachmentIntent), "contentId").map(
+            ({ contentId, attachmentId }) => [contentId, attachmentId] as const,
+        ),
+    );
+
+const readExistingLinks = (
+    db: KnexDatabase,
+    contentIds: ReadonlyArray<string>,
+) =>
+    db(lamington.contentAttachment)
+        .select(
+            ContentAttachmentTable.contentId,
+            ContentAttachmentTable.attachmentId,
+        )
+        .whereIn(ContentAttachmentTable.contentId, contentIds)
+        .andWhere(ContentAttachmentTable.displayType, HERO_DISPLAY_TYPE);
+
+const lockAttachments = async (
+    db: KnexDatabase,
+    attachmentIds: ReadonlyArray<string>,
+): Promise<void> => {
+    const ids = [...new Set(attachmentIds)].sort();
+
+    if (!ids.length) return;
+
+    await db(lamington.attachment)
+        .select(AttachmentTable.attachmentId)
+        .whereIn(AttachmentTable.attachmentId, ids)
+        .orderBy(AttachmentTable.attachmentId)
+        .forUpdate();
+};
 
 export const HeroAttachmentActions = {
-    save: async (
-        db: KnexDatabase,
-        items: Array<{ contentId: string; attachmentId?: string | null }>,
-    ): Promise<void> => {
-        const itemsToProcess = dedupeLast(
-            items.filter((item) => item.attachmentId !== undefined),
-            "contentId",
-        );
+    save: async (db: KnexDatabase, items: Array<HeroItem>): Promise<void> => {
+        const desiredByContent = toDesiredByContent(items);
 
-        if (!itemsToProcess.length) return;
+        if (!desiredByContent.size) return;
 
-        const desiredLinks = itemsToProcess.flatMap(
-            ({ contentId, attachmentId }) =>
+        const existingLinks = await readExistingLinks(db, [
+            ...desiredByContent.keys(),
+        ]);
+
+        const desiredLinks = [...desiredByContent].flatMap(
+            ([contentId, attachmentId]) =>
                 attachmentId
                     ? [
                           {
                               contentId,
                               attachmentId,
-                              displayType: "hero",
+                              displayType: HERO_DISPLAY_TYPE,
                           },
                       ]
                     : [],
         );
 
+        await lockAttachments(db, [
+            ...desiredLinks.map(({ attachmentId }) => attachmentId),
+            ...existingLinks.map(({ attachmentId }) => attachmentId),
+        ]);
+
         if (desiredLinks.length) {
-            const desiredAttachmentIds = [
-                ...new Set(
-                    desiredLinks.map(({ attachmentId }) => attachmentId),
-                ),
-            ];
-            const desiredAttachments = await db(lamington.attachment)
-                .select(AttachmentTable.attachmentId, AttachmentTable.deletedAt)
-                .whereIn(AttachmentTable.attachmentId, desiredAttachmentIds)
-                .orderBy(AttachmentTable.attachmentId)
-                .forUpdate();
-
-            const deletedAttachmentIds = desiredAttachments
-                .filter(({ deletedAt }) => deletedAt !== null)
-                .map(({ attachmentId }) => attachmentId);
-
-            if (deletedAttachmentIds.length) {
-                throw new DeletedAttachmentError(deletedAttachmentIds);
-            }
-
             await db(lamington.contentAttachment)
                 .insert(desiredLinks)
                 .onConflict(["attachmentId", "contentId"])
                 .merge();
+        }
 
-            const desiredPairs = desiredLinks.map(
-                ({ contentId, attachmentId }) => [contentId, attachmentId],
-            );
+        const removedLinks = existingLinks.filter(
+            ({ contentId, attachmentId }) =>
+                desiredByContent.get(contentId) !== attachmentId,
+        );
 
+        if (removedLinks.length) {
             await db(lamington.contentAttachment)
                 .whereIn(
-                    ContentAttachmentTable.contentId,
-                    desiredLinks.map(({ contentId }) => contentId),
-                )
-                .andWhere(ContentAttachmentTable.displayType, "hero")
-                .whereNotIn(
                     [
                         ContentAttachmentTable.contentId,
                         ContentAttachmentTable.attachmentId,
                     ],
-                    desiredPairs,
+                    removedLinks.map(({ contentId, attachmentId }) => [
+                        contentId,
+                        attachmentId,
+                    ]),
                 )
-                .delete();
-        }
-
-        const clearedContentIds = itemsToProcess
-            .filter(({ attachmentId }) => attachmentId === null)
-            .map(({ contentId }) => contentId);
-
-        if (clearedContentIds.length) {
-            await db(lamington.contentAttachment)
-                .whereIn(ContentAttachmentTable.contentId, clearedContentIds)
-                .andWhere(ContentAttachmentTable.displayType, "hero")
+                .andWhere(ContentAttachmentTable.displayType, HERO_DISPLAY_TYPE)
                 .delete();
         }
     },

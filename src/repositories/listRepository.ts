@@ -77,6 +77,7 @@ type BaseListResponse = {
     listId: List["listId"];
     name: List["name"];
     description: List["description"];
+    color?: List["color"];
     icon: List["icon"];
     owner: {
         userId: User["userId"];
@@ -258,6 +259,7 @@ type UpdateItemsResponse = {
 type MoveItemsRequest = {
     userId: User["userId"];
     listId: ListItem["listId"];
+    sourceListId?: ListItem["listId"];
     items: ReadonlyArray<{
         itemId: ListItem["itemId"];
     }>;

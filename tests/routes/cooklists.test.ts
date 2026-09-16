@@ -150,6 +150,56 @@ describe("Add meal to cook list", () => {
         expect(res.statusCode).toEqual(404);
     });
 
+    it("should not create a meal with a recipe owned by another user", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser!.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .post("/v1/cooklist/meals")
+            .set(token)
+            .send([
+                {
+                    description: uuid(),
+                    course: randomCourse(),
+                    recipeId: recipe!.recipeId,
+                },
+            ] satisfies components["schemas"]["CookListMealCreate"][]);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
+    it("should create a meal with a public recipe owned by another user", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser!.userId,
+            recipes: [{ name: uuid(), public: true }],
+        });
+
+        const res = await request(app)
+            .post("/v1/cooklist/meals")
+            .set(token)
+            .send([
+                {
+                    description: uuid(),
+                    course: randomCourse(),
+                    recipeId: recipe!.recipeId,
+                },
+            ] satisfies components["schemas"]["CookListMealCreate"][]);
+
+        expect(res.statusCode).toEqual(201);
+    });
+
     it("should create multiple cooklist meals", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
@@ -310,6 +360,34 @@ describe("Update meal in cook list", () => {
             .set(token)
             .send({
                 heroImage: attachment!.attachmentId,
+            } satisfies components["schemas"]["CookListMealUpdate"]);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
+    it("should not update a meal with a recipe owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser!.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const {
+            meals: [createdMeal],
+        } = await KnexCookListRepository.createMeals(database, {
+            userId: user.userId,
+            meals: [{ description: uuid(), course: randomCourse() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send({
+                recipeId: recipe!.recipeId,
             } satisfies components["schemas"]["CookListMealUpdate"]);
 
         expect(res.statusCode).toEqual(404);

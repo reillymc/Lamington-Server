@@ -112,8 +112,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Ingredient"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         429:
           $ref: "#/components/responses/TooManyRequests"
+        500:
+          $ref: "#/components/responses/InternalServerError"
   /tags:
     get:
       tags:
@@ -2675,6 +2679,8 @@ components:
           $ref: "#/components/schemas/Owner"
         description:
           type: string
+        color:
+          type: string
         icon:
           $ref: "#/components/schemas/Icon"
         status:
@@ -2710,6 +2716,8 @@ components:
         description:
           type: string
           maxLength: 255
+        color:
+          type: string
         icon:
           $ref: "#/components/schemas/Icon"
       required:
@@ -2728,6 +2736,8 @@ components:
             - "null"
           minLength: 1
           maxLength: 255
+        color:
+          type: string
         icon:
           $ref: "#/components/schemas/Icon"
       unevaluatedProperties: false

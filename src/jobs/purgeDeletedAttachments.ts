@@ -28,14 +28,16 @@ export const createPurgeDeletedAttachmentsJob: CreateJob<
             const createdBefore = new Date(Date.now() - NEVER_LINKED_CUTOFF_MS);
 
             for (;;) {
-                const { attachments } =
-                    await attachmentRepository.readPurgeable(database, {
+                const { attachments } = await database.transaction((trx) =>
+                    attachmentRepository.claimPurgeable(trx, {
                         limit: BATCH_SIZE,
                         createdBefore,
-                    });
+                    }),
+                );
 
                 if (!attachments.length) break;
 
+                // Phase 2: file IO outside any transaction.
                 const results = await fileRepository.delete(
                     undefined,
                     attachments,
@@ -45,9 +47,11 @@ export const createPurgeDeletedAttachmentsJob: CreateJob<
                 const failed = results.filter(({ succeeded }) => !succeeded);
 
                 if (succeeded.length) {
-                    await attachmentRepository.deletePurgeable(database, {
-                        attachments: succeeded,
-                    });
+                    await database.transaction((trx) =>
+                        attachmentRepository.deletePurgeable(trx, {
+                            attachments: succeeded,
+                        }),
+                    );
                 }
 
                 if (failed.length) {

@@ -57,13 +57,10 @@ const MockFailingAttachmentRepository: AttachmentRepository = {
     create: async () => {
         throw "Mock Error";
     },
-    update: async () => {
-        throw "Mock Error";
-    },
     verifyPermissions: async () => {
         throw "Mock Error";
     },
-    readPurgeable: async () => {
+    claimPurgeable: async () => {
         throw "Mock Error";
     },
     deletePurgeable: async () => {

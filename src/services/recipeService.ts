@@ -42,16 +42,27 @@ export interface RecipeService {
     delete: (userId: string, recipeId: string) => Promise<void>;
 }
 
+type RecipeIngredientSections =
+    | components["schemas"]["RecipeCreate"]["ingredients"]
+    | components["schemas"]["RecipeUpdate"]["ingredients"];
+
 const extractIngredientIds = (
-    sections:
-        | components["schemas"]["RecipeCreate"]["ingredients"]
-        | components["schemas"]["RecipeUpdate"]["ingredients"],
+    sections: RecipeIngredientSections,
 ): Array<{ ingredientId: components["schemas"]["Uuid"] }> =>
     (sections ?? []).flatMap(({ items }) =>
         items
             .map(({ ingredient }) =>
                 ingredient?.ingredientId ? ingredient : undefined,
             )
+            .filter(Undefined),
+    );
+
+const extractSubRecipeIds = (
+    sections: RecipeIngredientSections,
+): Array<{ recipeId: components["schemas"]["Uuid"] }> =>
+    (sections ?? []).flatMap(({ items }) =>
+        items
+            .map(({ recipe }) => (recipe?.recipeId ? recipe : undefined))
             .filter(Undefined),
     );
 
@@ -117,6 +128,22 @@ export const createRecipeService: CreateService<
                 throw new NotFoundError("ingredient", disallowedIngredientIds);
             }
 
+            const { recipes: subRecipes } =
+                await recipeRepository.verifyPermissions(trx, {
+                    userId,
+                    recipes: extractSubRecipeIds(request.ingredients),
+                    status: "O",
+                    includePublic: true,
+                });
+
+            const disallowedSubRecipeIds = subRecipes
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ recipeId }) => recipeId);
+
+            if (disallowedSubRecipeIds.length > 0) {
+                throw new NotFoundError("recipe", disallowedSubRecipeIds);
+            }
+
             const { attachments } =
                 await attachmentRepository.verifyPermissions(trx, {
                     userId,
@@ -170,6 +197,22 @@ export const createRecipeService: CreateService<
 
             if (disallowedIngredientIds.length > 0) {
                 throw new NotFoundError("ingredient", disallowedIngredientIds);
+            }
+
+            const { recipes: subRecipes } =
+                await recipeRepository.verifyPermissions(trx, {
+                    userId,
+                    recipes: extractSubRecipeIds(request.ingredients),
+                    status: "O",
+                    includePublic: true,
+                });
+
+            const disallowedSubRecipeIds = subRecipes
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ recipeId }) => recipeId);
+
+            if (disallowedSubRecipeIds.length > 0) {
+                throw new NotFoundError("recipe", disallowedSubRecipeIds);
             }
 
             const { attachments } =

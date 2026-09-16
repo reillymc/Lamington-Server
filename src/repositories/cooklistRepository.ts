@@ -70,6 +70,7 @@ type UpdateCookListMealPayload = {
 };
 
 type UpdateMealsRequest = {
+    userId: User["userId"];
     meals: ReadonlyArray<UpdateCookListMealPayload>;
 };
 

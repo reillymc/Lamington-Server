@@ -32,27 +32,18 @@ export type CreateService<
             config: TConfig,
         ) => T;
 
-type KnownEntities =
-    | "attachment"
-    | "book"
-    | "book member"
-    | "book recipe"
-    | "cooklist meal"
-    | "ingredient"
-    | "list item"
-    | "list member"
-    | "list"
-    | "meal"
-    | "planner meal"
-    | "planner member"
-    | "recipe"
-    | "recipe rating"
-    | "planner"
-    | "resource"
-    | "user";
+export class ServiceError extends AppError {
+    protected static formatEntityIds(
+        entityIds?: string | readonly string[],
+    ): string {
+        return entityIds?.length
+            ? `Ids: ${EnsureArray(entityIds).join(", ")}`
+            : "";
+    }
+}
 
-export class PermissionError extends AppError {
-    constructor(entity: KnownEntities) {
+export class PermissionError extends ServiceError {
+    constructor(entity: string) {
         super({
             status: 403,
             code: "MISSING_PERMISSIONS",
@@ -61,35 +52,32 @@ export class PermissionError extends AppError {
     }
 }
 
-export class NotFoundError extends AppError {
-    constructor(entity: KnownEntities, entityIds?: string | readonly string[]) {
+export class NotFoundError extends ServiceError {
+    constructor(entity: string, entityIds?: string | readonly string[]) {
         super({
             status: 404,
             code: "NOT_FOUND",
-            message: `The requested ${entity} entries were not found: ${
-                entityIds?.length
-                    ? `Ids: ${EnsureArray(entityIds).join(", ")}`
-                    : ""
-            }`,
+            message: `The requested ${entity} entries were not found: ${ServiceError.formatEntityIds(
+                entityIds,
+            )}`,
         });
     }
 }
 
-export class UpdatedDataFetchError extends AppError {
-    constructor(entity: KnownEntities, entityIds: string | readonly string[]) {
+export class UpdatedDataFetchError extends ServiceError {
+    constructor(entity: string, entityIds: string | readonly string[]) {
         super({
             status: 500,
             code: "UPDATE_READ_FAILED",
-            message: `The updated ${entity} entries were not found: ${
-                entityIds.length
-                    ? `Ids: ${EnsureArray(entityIds).join(", ")}`
-                    : ""
-            }`,
+            message: `The updated ${entity} entries were not found: ${ServiceError.formatEntityIds(
+                entityIds,
+            )}`,
         });
     }
 }
-export class CreatedDataFetchError extends AppError {
-    constructor(entity: KnownEntities) {
+
+export class CreatedDataFetchError extends ServiceError {
+    constructor(entity: string) {
         super({
             status: 500,
             code: "CREATE_READ_FAILED",
@@ -98,8 +86,8 @@ export class CreatedDataFetchError extends AppError {
     }
 }
 
-export class InsufficientDataError extends AppError {
-    constructor(entity: KnownEntities) {
+export class InsufficientDataError extends ServiceError {
+    constructor(entity: string) {
         super({
             status: 400,
             code: "INSUFFICIENT_DATA",
@@ -108,8 +96,8 @@ export class InsufficientDataError extends AppError {
     }
 }
 
-export class InvalidOperationError extends AppError {
-    constructor(entity: KnownEntities, reason?: string) {
+export class InvalidOperationError extends ServiceError {
+    constructor(entity: string, reason?: string) {
         super({
             status: 400,
             code: "INVALID_OPERATION",
@@ -118,21 +106,10 @@ export class InvalidOperationError extends AppError {
     }
 }
 
-export class UnknownError extends AppError {
+export class UnknownError extends ServiceError {
     constructor(innerError: unknown) {
         super({
             status: 500,
-            innerError,
-        });
-    }
-}
-
-export class UnauthorizedError extends AppError {
-    constructor(reason = "Unauthorised", innerError?: unknown) {
-        super({
-            status: 401,
-            code: "UNAUTHORIZED",
-            message: reason,
             innerError,
         });
     }

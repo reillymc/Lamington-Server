@@ -24,8 +24,11 @@ export interface CooklistService {
 
 export const createCooklistService: CreateService<
     CooklistService,
-    "cooklistRepository" | "attachmentRepository"
-> = (database, { cooklistRepository, attachmentRepository }) => ({
+    "cooklistRepository" | "attachmentRepository" | "recipeRepository"
+> = (
+    database,
+    { cooklistRepository, attachmentRepository, recipeRepository },
+) => ({
     getMeals: async (userId) => {
         const { meals } = await cooklistRepository.readAllMeals(database, {
             userId,
@@ -50,11 +53,29 @@ export const createCooklistService: CreateService<
                 throw new NotFoundError("attachment", disallowedAttachmentIds);
             }
 
+            const { recipes: recipePermissions } =
+                await recipeRepository.verifyPermissions(trx, {
+                    userId,
+                    recipes: meals.flatMap(({ recipeId }) =>
+                        recipeId ? [{ recipeId }] : [],
+                    ),
+                    status: "O",
+                    includePublic: true,
+                });
+
+            const disallowedRecipeIds = recipePermissions
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ recipeId }) => recipeId);
+
+            if (disallowedRecipeIds.length > 0) {
+                throw new NotFoundError("recipe", disallowedRecipeIds);
+            }
+
             const { meals: createdMeals } =
                 await cooklistRepository.createMeals(trx, { userId, meals });
 
             if (createdMeals.length !== meals.length) {
-                throw new CreatedDataFetchError("planner meal");
+                throw new CreatedDataFetchError("cooklist meal");
             }
 
             return createdMeals;
@@ -89,7 +110,26 @@ export const createCooklistService: CreateService<
                 throw new NotFoundError("attachment", disallowedAttachmentIds);
             }
 
+            const { recipes: recipePermissions } =
+                await recipeRepository.verifyPermissions(trx, {
+                    userId,
+                    recipes: request.recipeId
+                        ? [{ recipeId: request.recipeId }]
+                        : [],
+                    status: "O",
+                    includePublic: true,
+                });
+
+            const disallowedRecipeIds = recipePermissions
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ recipeId }) => recipeId);
+
+            if (disallowedRecipeIds.length > 0) {
+                throw new NotFoundError("recipe", disallowedRecipeIds);
+            }
+
             const { meals } = await cooklistRepository.updateMeals(trx, {
+                userId,
                 meals: [{ mealId, ...request }],
             });
 

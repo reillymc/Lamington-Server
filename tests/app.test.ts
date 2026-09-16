@@ -41,7 +41,7 @@ describe("Authentication Middleware", () => {
     });
 
     it("should return 401 if user status is Pending (P)", async () => {
-        const payload = { userId: v4(), status: "P" };
+        const payload = { userId: v4(), status: "P", tokenUse: "access" };
         const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
             expiresIn: "1h",
@@ -55,7 +55,7 @@ describe("Authentication Middleware", () => {
     });
 
     it("should return 401 if user status is Blocked (B)", async () => {
-        const payload = { userId: v4(), status: "B" };
+        const payload = { userId: v4(), status: "B", tokenUse: "access" };
         const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
             expiresIn: "1h",
@@ -69,7 +69,7 @@ describe("Authentication Middleware", () => {
     });
 
     it("should return 401 if token format is invalid", async () => {
-        const payload = { userName: v4(), status: "B" };
+        const payload = { userName: v4(), status: "B", tokenUse: "access" };
         const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
             expiresIn: "1h",
@@ -84,7 +84,11 @@ describe("Authentication Middleware", () => {
 
     it("should authorise valid user", async () => {
         const [user] = await CreateUsers(database, { status: "M" });
-        const payload = { userId: user!.userId, status: "M" };
+        const payload = {
+            userId: user!.userId,
+            status: "M",
+            tokenUse: "access",
+        };
         const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
             expiresIn: "1h",

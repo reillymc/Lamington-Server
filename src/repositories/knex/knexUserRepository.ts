@@ -99,16 +99,18 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
             })),
         };
     },
-    readPurgeableUsers: async (db, { deletedBefore }) => {
+    readPurgeableUsers: async (db, { deletedBefore, limit }) => {
         const result = await db(lamington.user)
             .select(UserTable.userId)
             .whereNotNull(UserTable.deletedAt)
             .where(UserTable.deletedAt, "<", deletedBefore)
-            .whereNot(UserTable.userId, SYSTEM_USER_ID);
+            .whereNot(UserTable.userId, SYSTEM_USER_ID)
+            .orderBy(UserTable.deletedAt)
+            .forUpdate()
+            .skipLocked()
+            .limit(limit);
 
-        return {
-            users: result.map(({ userId }) => ({ userId })),
-        };
+        return { users: result };
     },
     create: async (db, { users }) => {
         const usersToCreate = users.map((u) => ({
@@ -163,6 +165,7 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
 
         const count = await db(lamington.user)
             .whereIn(UserTable.userId, userIds)
+            .whereNot(UserTable.userId, SYSTEM_USER_ID)
             .update({
                 status: "D",
                 deletedAt: db.raw('COALESCE("deletedAt", now())'),
@@ -177,6 +180,7 @@ export const KnexUserRepository: UserRepository<KnexDatabase> = {
 
         const count = await db(lamington.user)
             .whereIn(UserTable.userId, userIds)
+            .whereNot(UserTable.userId, SYSTEM_USER_ID)
             .delete();
         return { count };
     },

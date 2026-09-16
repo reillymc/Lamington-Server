@@ -2,14 +2,11 @@ import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import { v4 as uuid } from "uuid";
 import { createContentRows } from "../../src/repositories/knex/common/repositoryMethods/content.ts";
-import {
-    DeletedAttachmentError,
-    HeroAttachmentActions,
-} from "../../src/repositories/knex/common/repositoryMethods/contentAttachment.ts";
+import { HeroAttachmentActions } from "../../src/repositories/knex/common/repositoryMethods/contentAttachment.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
 import { KnexListRepository } from "../../src/repositories/knex/knexListRepository.ts";
-import { PrepareAuthenticatedUser } from "../helpers/index.ts";
+import { CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
 import { db } from "../helpers/setup.ts";
 
 let database: KnexDatabase;
@@ -99,28 +96,97 @@ describe("Content attachment internal semantics", () => {
             expect(await readDeletedAttachmentIds()).toEqual([]);
         });
 
-        it("should reject linking an attachment marked for deletion", async () => {
+        it("should mark an attachment deleted when its hero is replaced", async () => {
+            const [, { userId }] = await PrepareAuthenticatedUser(database);
+
+            const [content] = await createContentRows(database, userId, 1);
+
+            const attachmentA = await createAttachmentRow(userId);
+            const attachmentB = await createAttachmentRow(userId);
+
+            await HeroAttachmentActions.save(database, [
+                {
+                    contentId: content!.contentId,
+                    attachmentId: attachmentA.attachmentId,
+                },
+            ]);
+
+            await HeroAttachmentActions.save(database, [
+                {
+                    contentId: content!.contentId,
+                    attachmentId: attachmentB.attachmentId,
+                },
+            ]);
+
+            expect(await readActiveAttachmentIds()).toEqual([
+                attachmentB.attachmentId,
+            ]);
+            expect(await readDeletedAttachmentIds()).toEqual([
+                attachmentA.attachmentId,
+            ]);
+        });
+
+        it("should mark an attachment deleted when its hero is cleared", async () => {
             const [, { userId }] = await PrepareAuthenticatedUser(database);
 
             const [content] = await createContentRows(database, userId, 1);
 
             const attachment = await createAttachmentRow(userId);
-            await database("attachment")
-                .where("attachmentId", attachment.attachmentId)
-                .update({ deletedAt: new Date() });
 
-            await expect(
-                HeroAttachmentActions.save(database, [
-                    {
-                        contentId: content!.contentId,
-                        attachmentId: attachment.attachmentId,
-                    },
-                ]),
-            ).rejects.toThrow(DeletedAttachmentError);
+            await HeroAttachmentActions.save(database, [
+                {
+                    contentId: content!.contentId,
+                    attachmentId: attachment.attachmentId,
+                },
+            ]);
 
-            expect(
-                await database("content_attachment").select("*"),
-            ).toHaveLength(0);
+            await HeroAttachmentActions.save(database, [
+                {
+                    contentId: content!.contentId,
+                    attachmentId: null,
+                },
+            ]);
+
+            expect(await readActiveAttachmentIds()).toEqual([]);
+            expect(await readDeletedAttachmentIds()).toEqual([
+                attachment.attachmentId,
+            ]);
+        });
+
+        it("should keep an attachment active while another content references it", async () => {
+            const [, { userId }] = await PrepareAuthenticatedUser(database);
+
+            const [contentA, contentB] = await createContentRows(
+                database,
+                userId,
+                2,
+            );
+
+            const attachmentA = await createAttachmentRow(userId);
+            const attachmentB = await createAttachmentRow(userId);
+
+            await HeroAttachmentActions.save(database, [
+                {
+                    contentId: contentA!.contentId,
+                    attachmentId: attachmentA.attachmentId,
+                },
+                {
+                    contentId: contentB!.contentId,
+                    attachmentId: attachmentA.attachmentId,
+                },
+            ]);
+
+            await HeroAttachmentActions.save(database, [
+                {
+                    contentId: contentA!.contentId,
+                    attachmentId: attachmentB.attachmentId,
+                },
+            ]);
+
+            expect(await readActiveAttachmentIds()).toEqual(
+                [attachmentA.attachmentId, attachmentB.attachmentId].sort(),
+            );
+            expect(await readDeletedAttachmentIds()).toEqual([]);
         });
     });
 
@@ -195,9 +261,86 @@ describe("Content attachment internal semantics", () => {
             expect(await readContentIds()).not.toContain(
                 noteContent!.contentId,
             );
+            expect(
+                await database("content_attachment")
+                    .select("attachmentId")
+                    .where("attachmentId", attachment.attachmentId),
+            ).toHaveLength(0);
             expect(await readDeletedAttachmentIds()).toEqual([
                 attachment.attachmentId,
             ]);
+        });
+    });
+
+    describe("concurrent saves", () => {
+        it("does not deadlock when attachments are swapped between contents", async () => {
+            const [user] = await db.transaction((trx) => CreateUsers(trx));
+            const userId = user!.userId;
+
+            const [contentA] = await db("content")
+                .insert({ createdBy: userId })
+                .returning("contentId");
+            const [contentB] = await db("content")
+                .insert({ createdBy: userId })
+                .returning("contentId");
+            const [attachmentA] = await db("attachment")
+                .insert({ createdBy: userId })
+                .returning("attachmentId");
+            const [attachmentB] = await db("attachment")
+                .insert({ createdBy: userId })
+                .returning("attachmentId");
+
+            const contentIds = [contentA!.contentId, contentB!.contentId];
+            const attachmentIds = [
+                attachmentA!.attachmentId,
+                attachmentB!.attachmentId,
+            ];
+
+            try {
+                await Promise.all(
+                    Array.from({ length: 5 }, () =>
+                        Promise.all([
+                            db.transaction((trx) =>
+                                HeroAttachmentActions.save(trx, [
+                                    {
+                                        contentId: contentIds[0]!,
+                                        attachmentId: attachmentIds[0]!,
+                                    },
+                                    {
+                                        contentId: contentIds[1]!,
+                                        attachmentId: attachmentIds[1]!,
+                                    },
+                                ]),
+                            ),
+                            db.transaction((trx) =>
+                                HeroAttachmentActions.save(trx, [
+                                    {
+                                        contentId: contentIds[0]!,
+                                        attachmentId: attachmentIds[1]!,
+                                    },
+                                    {
+                                        contentId: contentIds[1]!,
+                                        attachmentId: attachmentIds[0]!,
+                                    },
+                                ]),
+                            ),
+                        ]),
+                    ),
+                );
+
+                expect(
+                    await db("attachment")
+                        .select("attachmentId")
+                        .whereIn("attachmentId", attachmentIds)
+                        .whereNotNull("deletedAt"),
+                ).toHaveLength(0);
+            } finally {
+                await db("content").whereIn("contentId", contentIds).delete();
+                await db("attachment")
+                    .whereIn("attachmentId", attachmentIds)
+                    .delete();
+                await db("user").where("userId", userId).delete();
+            }
         });
     });
 });

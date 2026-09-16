@@ -1,7 +1,7 @@
 import { EnsureArray } from "@reillymc/es-utils";
 import type { Knex } from "knex";
 import type { AttachmentRepository } from "../attachmentRepository.ts";
-import { buildUpdateRecord } from "./common/dataFormatting/buildUpdateRecord.ts";
+import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import type { KnexDatabase } from "./knex.ts";
 import {
     AttachmentTable,
@@ -29,33 +29,13 @@ export const KnexAttachmentRepository: AttachmentRepository<KnexDatabase> = {
             )
             .returning("*");
 
-        return { userId, attachments: results };
-    },
-    update: async (db, { userId, attachments }) => {
-        for (const attachmentItem of attachments) {
-            const updateData = buildUpdateRecord(
-                attachmentItem,
-                AttachmentTable,
-            );
-
-            if (updateData) {
-                await db(lamington.attachment)
-                    .where(
-                        AttachmentTable.attachmentId,
-                        attachmentItem.attachmentId,
-                    )
-                    .update(updateData);
-            }
-        }
-
-        const results = await db(lamington.attachment)
-            .whereIn(
-                AttachmentTable.attachmentId,
-                attachments.map(({ attachmentId }) => attachmentId),
-            )
-            .select("*");
-
-        return { userId, attachments: results };
+        return {
+            userId,
+            attachments: results.map((attachment) => ({
+                ...attachment,
+                preview: toUndefined(attachment.preview),
+            })),
+        };
     },
     verifyPermissions: async (db, { userId, attachments }) => {
         const requestedIds = attachments.map(
@@ -80,7 +60,7 @@ export const KnexAttachmentRepository: AttachmentRepository<KnexDatabase> = {
             })),
         };
     },
-    readPurgeable: async (db, { limit, createdBefore }) => {
+    claimPurgeable: async (db, { limit, createdBefore }) => {
         const attachments = await db(lamington.attachment)
             .select(AttachmentTable.attachmentId)
             .where((builder) =>
@@ -89,11 +69,21 @@ export const KnexAttachmentRepository: AttachmentRepository<KnexDatabase> = {
                     .orWhere(AttachmentTable.createdAt, "<", createdBefore),
             )
             .whereNotExists(withoutReferences)
-            // Soft-deleted rows sort first (NULLS LAST in ascending order),
-            // then never-linked uploads past the grace period, oldest first.
-            .orderBy(AttachmentTable.deletedAt)
-            .orderBy(AttachmentTable.createdAt)
+            .orderBy(AttachmentTable.attachmentId)
+            .forUpdate()
+            .skipLocked()
             .limit(limit);
+
+        const attachmentIds = attachments.map(
+            ({ attachmentId }) => attachmentId,
+        );
+
+        if (attachmentIds.length) {
+            await db(lamington.attachment)
+                .whereIn(AttachmentTable.attachmentId, attachmentIds)
+                .whereNull(AttachmentTable.deletedAt)
+                .update({ deletedAt: db.fn.now() });
+        }
 
         return { attachments };
     },

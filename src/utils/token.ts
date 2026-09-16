@@ -1,13 +1,19 @@
 import jwt, { type JwtPayload } from "jsonwebtoken";
 
 import type { components } from "../routes/spec/index.ts";
-import { UnauthorizedError } from "../services/service.ts";
+import { UnauthorizedError } from "./errors.ts";
 
 type UserStatus = components["schemas"]["UserStatus"];
 
 interface AuthData {
     userId: string;
     status: UserStatus;
+    tokenUse: "access";
+}
+
+interface RefreshData {
+    userId: string;
+    tokenUse: "refresh";
 }
 
 const isAccessToken = (
@@ -15,27 +21,40 @@ const isAccessToken = (
 ): decoded is AuthData => {
     if (decoded === undefined || typeof decoded === "string") return false;
 
-    if ("userId" in decoded && "status" in decoded) return true;
+    if (
+        "userId" in decoded &&
+        "status" in decoded &&
+        "tokenUse" in decoded &&
+        decoded.tokenUse === "access"
+    )
+        return true;
 
     return false;
 };
 
 const isRefreshToken = (
     decoded: string | undefined | JwtPayload,
-): decoded is { userId: string } => {
+): decoded is RefreshData => {
     if (decoded === undefined || typeof decoded === "string") return false;
 
-    if ("userId" in decoded) return true;
+    if (
+        "userId" in decoded &&
+        "tokenUse" in decoded &&
+        decoded.tokenUse === "refresh"
+    )
+        return true;
 
     return false;
 };
 
 const toTokenPayload = (
     user: components["schemas"]["AuthResponse"]["user"],
+    tokenUse: "access" | "refresh",
 ) => ({
     userId: user.userId,
     email: user.email,
     status: user.status,
+    tokenUse,
 });
 
 export const createAccessToken = (
@@ -43,7 +62,7 @@ export const createAccessToken = (
     expiresIn: number,
     user: components["schemas"]["AuthResponse"]["user"],
 ) =>
-    jwt.sign(toTokenPayload(user), jwtAccessSecret, {
+    jwt.sign(toTokenPayload(user, "access"), jwtAccessSecret, {
         noTimestamp: true,
         expiresIn,
     });
@@ -53,7 +72,7 @@ export const createRefreshToken = (
     expiresIn: number,
     user: components["schemas"]["AuthResponse"]["user"],
 ) =>
-    jwt.sign(toTokenPayload(user), jwtRefreshSecret, {
+    jwt.sign(toTokenPayload(user, "refresh"), jwtRefreshSecret, {
         noTimestamp: true,
         expiresIn,
     });

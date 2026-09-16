@@ -22,19 +22,6 @@ type CreateResponse = {
     attachments: ReadonlyArray<Attachment>;
 };
 
-type UpdateRequest = {
-    userId: User["userId"];
-    attachments: ReadonlyArray<{
-        attachmentId: Attachment["attachmentId"];
-        preview?: Attachment["preview"];
-    }>;
-};
-
-type UpdateResponse = {
-    userId: User["userId"];
-    attachments: ReadonlyArray<Attachment>;
-};
-
 type VerifyPermissionsRequest = {
     userId: User["userId"];
     attachments: ReadonlyArray<{
@@ -50,12 +37,12 @@ type VerifyPermissionsResponse = {
     }>;
 };
 
-type ReadPurgeableAttachmentsRequest = {
+type ClaimPurgeableAttachmentsRequest = {
     limit: number;
     createdBefore: Date;
 };
 
-type ReadPurgeableAttachmentsResponse = {
+type ClaimPurgeableAttachmentsResponse = {
     attachments: ReadonlyArray<{
         attachmentId: Attachment["attachmentId"];
     }>;
@@ -85,16 +72,15 @@ type ReadAttachmentsForUsersResponse = {
 
 export interface AttachmentRepository<TDatabase extends Database = Database> {
     create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;
-    update: RepositoryService<TDatabase, UpdateRequest, UpdateResponse>;
     verifyPermissions: RepositoryService<
         TDatabase,
         VerifyPermissionsRequest,
         VerifyPermissionsResponse
     >;
-    readPurgeable: RepositoryService<
+    claimPurgeable: RepositoryService<
         TDatabase,
-        ReadPurgeableAttachmentsRequest,
-        ReadPurgeableAttachmentsResponse
+        ClaimPurgeableAttachmentsRequest,
+        ClaimPurgeableAttachmentsResponse
     >;
     deletePurgeable: RepositoryService<
         TDatabase,

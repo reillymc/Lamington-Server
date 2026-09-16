@@ -6,7 +6,7 @@ export const dedupeLast = <T>(
 
     for (const item of items) {
         deduped.set(
-            keys.map((property) => String(item[property])).join(""),
+            JSON.stringify(keys.map((property) => item[property])),
             item,
         );
     }

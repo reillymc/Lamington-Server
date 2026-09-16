@@ -22,59 +22,43 @@ export const createAttachmentService: CreateService<
             throw new InsufficientDataError("attachment");
         }
 
-        let attachmentId: string | undefined;
+        const [compressedImage, previewHash] = await Promise.all([
+            compressImage(file.buffer),
+            computePreviewHash(file.buffer).catch(() => undefined),
+        ]);
+
+        const {
+            attachments: [attachmentEntry],
+        } = await attachmentRepository.create(database, {
+            userId,
+            attachments: [{ preview: previewHash }],
+        });
+
+        if (!attachmentEntry) {
+            throw new CreatedDataFetchError("attachment");
+        }
+
+        const attachmentId = attachmentEntry.attachmentId;
 
         try {
-            const [compressedImage, previewHash] = await Promise.all([
-                compressImage(file.buffer),
-                computePreviewHash(file.buffer).catch(() => undefined),
-            ]);
-
-            return await database.transaction(async (trx) => {
-                const {
-                    attachments: [attachmentEntry],
-                } = await attachmentRepository.create(trx, {
-                    userId,
-                    attachments: [{ preview: previewHash }],
-                });
-
-                if (!attachmentEntry) {
-                    throw new CreatedDataFetchError("attachment");
-                }
-
-                attachmentId = attachmentEntry.attachmentId;
-
-                const [createdFile] = await fileRepository.create(undefined, {
-                    attachmentId,
-                    file: compressedImage,
-                });
-
-                if (!createdFile?.succeeded) {
-                    throw new CreatedDataFetchError("attachment");
-                }
-
-                return { attachmentId, preview: attachmentEntry.preview };
+            const [createdFile] = await fileRepository.create(undefined, {
+                attachmentId,
+                file: compressedImage,
             });
-        } catch (error) {
-            // If attachment row rolled back with the transaction, delete file
-            if (attachmentId) {
-                const attachmentExists = await attachmentRepository
-                    .verifyPermissions(database, {
-                        userId,
-                        attachments: [{ attachmentId }],
-                    })
-                    .then(
-                        ({ attachments: [permission] }) =>
-                            permission?.hasPermissions === true,
-                    )
-                    .catch(() => false);
 
-                if (!attachmentExists) {
-                    await fileRepository
-                        .delete(undefined, { attachmentId })
-                        .catch(() => undefined);
-                }
+            if (!createdFile?.succeeded) {
+                throw new CreatedDataFetchError("attachment");
             }
+
+            return { attachmentId, preview: attachmentEntry.preview };
+        } catch (error) {
+            await attachmentRepository.deletePurgeable(database, {
+                attachments: [{ attachmentId }],
+            });
+
+            await fileRepository
+                .delete(undefined, { attachmentId })
+                .catch(() => undefined);
             throw error;
         }
     },

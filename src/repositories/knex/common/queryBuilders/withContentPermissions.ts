@@ -15,6 +15,7 @@ type WithContentReadPermissionsParams = {
         | ContentMemberStatus
         | [ContentMemberStatus, ...ReadonlyArray<ContentMemberStatus>];
     includeSystem?: boolean;
+    publicColumn?: string; // TODO: remove once cleaned up recipe public column
 };
 
 export const withContentPermissions =
@@ -45,6 +46,10 @@ export const withContentPermissions =
 
                 if (params.includeSystem) {
                     b.orWhere(ContentTable.createdBy, SYSTEM_USER_ID);
+                }
+
+                if (params.publicColumn) {
+                    b.orWhere(params.publicColumn, true);
                 }
             });
     };

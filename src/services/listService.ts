@@ -320,6 +320,7 @@ export const createListService: CreateService<
             const { items: movedItems } = await listRepository.moveItems(trx, {
                 userId,
                 listId: destinationListId,
+                sourceListId: listId,
                 items: itemIds.map((itemId) => ({ itemId })),
             });
 

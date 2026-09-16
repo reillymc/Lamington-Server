@@ -155,6 +155,7 @@ export const KnexCookListRepository: CookListRepository<KnexDatabase> = {
             if (updateData) {
                 await db(lamington.plannerMeal)
                     .where(PlannerMealTable.mealId, meal.mealId)
+                    .whereNull(PlannerMealTable.plannerId)
                     .update(updateData);
             }
         }

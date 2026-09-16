@@ -75,8 +75,11 @@ export interface PlannerService {
 
 export const createPlannerService: CreateService<
     PlannerService,
-    "plannerRepository" | "attachmentRepository"
-> = (database, { plannerRepository, attachmentRepository }) => ({
+    "plannerRepository" | "attachmentRepository" | "recipeRepository"
+> = (
+    database,
+    { plannerRepository, attachmentRepository, recipeRepository },
+) => ({
     getAll: async (userId) => {
         const { planners } = await plannerRepository.readAll(database, {
             userId,
@@ -189,6 +192,24 @@ export const createPlannerService: CreateService<
                 throw new NotFoundError("attachment", disallowedAttachmentIds);
             }
 
+            const { recipes: recipePermissions } =
+                await recipeRepository.verifyPermissions(trx, {
+                    userId,
+                    recipes: meals.flatMap(({ recipeId }) =>
+                        recipeId ? [{ recipeId }] : [],
+                    ),
+                    status: "O",
+                    includePublic: true,
+                });
+
+            const disallowedRecipeIds = recipePermissions
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ recipeId }) => recipeId);
+
+            if (disallowedRecipeIds.length > 0) {
+                throw new NotFoundError("recipe", disallowedRecipeIds);
+            }
+
             const { meals: createdMeals } = await plannerRepository.createMeals(
                 trx,
                 { plannerId, userId, meals },
@@ -242,6 +263,21 @@ export const createPlannerService: CreateService<
                 throw new NotFoundError("planner", plannerId);
             }
 
+            const mealPlannerOwnership =
+                await plannerRepository.verifyMealsBelongToPlanner(trx, {
+                    userId,
+                    plannerId,
+                    meals: [{ mealId }],
+                });
+
+            if (
+                mealPlannerOwnership.meals.some(
+                    ({ belongsToPlanner }) => !belongsToPlanner,
+                )
+            ) {
+                throw new NotFoundError("planner meal", mealId);
+            }
+
             const { attachments } =
                 await attachmentRepository.verifyPermissions(trx, {
                     userId,
@@ -258,7 +294,26 @@ export const createPlannerService: CreateService<
                 throw new NotFoundError("attachment", disallowedAttachmentIds);
             }
 
+            const { recipes: recipePermissions } =
+                await recipeRepository.verifyPermissions(trx, {
+                    userId,
+                    recipes: request.recipeId
+                        ? [{ recipeId: request.recipeId }]
+                        : [],
+                    status: "O",
+                    includePublic: true,
+                });
+
+            const disallowedRecipeIds = recipePermissions
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ recipeId }) => recipeId);
+
+            if (disallowedRecipeIds.length > 0) {
+                throw new NotFoundError("recipe", disallowedRecipeIds);
+            }
+
             const { meals } = await plannerRepository.updateMeals(trx, {
+                userId,
                 plannerId,
                 meals: [{ ...request, mealId }],
             });

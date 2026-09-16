@@ -167,6 +167,7 @@ type VerifyPermissionsRequest = {
     recipes: ReadonlyArray<{
         recipeId: Recipe["recipeId"];
     }>;
+    includePublic?: boolean;
 };
 
 type VerifyPermissionsResponse = {

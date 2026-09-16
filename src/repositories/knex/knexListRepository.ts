@@ -67,6 +67,7 @@ const formatList = (
     listId: l.listId,
     name: l.name,
     description: toUndefined(l.description),
+    color: toUndefined(l.color),
     icon: toUndefined(l.icon),
     owner: { userId: l.createdBy, firstName: l.firstName },
     status: l.status ?? "O",
@@ -319,19 +320,24 @@ export const KnexListRepository: ListRepository<KnexDatabase> = {
                     );
             })
             .delete();
+
         return { listId, count };
     },
-    moveItems: async (db, { userId, listId, items }) => {
+    moveItems: async (db, { userId, listId, sourceListId, items }) => {
         if (items.length === 0) {
             return { listId, items: [] };
         }
 
-        await db(lamington.listItem)
-            .whereIn(
-                ListItemTable.itemId,
-                items.map((i) => i.itemId),
-            )
-            .update({ listId });
+        const query = db(lamington.listItem).whereIn(
+            ListItemTable.itemId,
+            items.map((i) => i.itemId),
+        );
+
+        if (sourceListId !== undefined) {
+            query.andWhere(ListItemTable.listId, sourceListId);
+        }
+
+        await query.update({ listId });
 
         const updatedItems = await readItemsByIds(
             db,
