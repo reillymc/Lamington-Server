@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler } from "express";
+import { type FieldError, ValidationError } from "../utils/errors.ts";
 import { AppError, type Logger } from "../utils/logger.ts";
 import type { CreateMiddleware, Middleware } from "./middleware.ts";
 
@@ -16,13 +17,20 @@ export const createErrorHandlerMiddleware: CreateMiddleware<
         _next,
     ) => {
         let status = 500;
+        let code: string | undefined;
         let message = "Internal Server Error";
         let innerError: unknown;
+        let fieldErrors: FieldError[] | undefined;
 
         if (error instanceof AppError) {
             status = error.status;
+            code = error.code;
             message = error.message;
             innerError = error.innerError;
+
+            if (error instanceof ValidationError) {
+                fieldErrors = error.fieldErrors;
+            }
         } else if (error instanceof Error) {
             innerError = error;
 
@@ -62,7 +70,14 @@ export const createErrorHandlerMiddleware: CreateMiddleware<
             },
         });
 
-        return response.status(status).json({ error: true, message });
+        const hasFieldErrors = !!fieldErrors && fieldErrors.length > 0;
+
+        return response.status(status).json({
+            error: true,
+            ...(code ? { code } : {}),
+            message: hasFieldErrors ? "Some fields are not valid" : message,
+            ...(hasFieldErrors ? { fieldErrors } : {}),
+        });
     };
 
     return [errorHandler as unknown as Middleware];

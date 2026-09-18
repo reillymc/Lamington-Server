@@ -2155,10 +2155,58 @@ components:
         error:
           type: boolean
           example: true
+        code:
+          type: string
+          description: Stable machine-readable error code.
+          example: VALIDATION_FAILED
         message:
           type: string
+        fieldErrors:
+          type: array
+          description: >
+            Field-level validation failures.
+          items:
+            $ref: "#/components/schemas/FieldError"
       required:
         - error
+      unevaluatedProperties: false
+    FieldError:
+      type: object
+      properties:
+        path:
+          type: array
+          description: >
+            Ordered segments addressing the offending request field, with the
+            location prefix removed, e.g. `["ingredients", "0", "name"]`.
+          items:
+            type: string
+          example:
+            - ingredients
+            - "0"
+            - name
+        location:
+          type: string
+          description: Where the field lives in the request.
+          enum:
+            - body
+            - query
+            - params
+            - headers
+          example: body
+        code:
+          type: string
+          description: >
+            Stable, semantic validation code for i18n lookup. Falls back to the
+            underlying JSON Schema keyword when no mapping exists.
+          example: format
+        message:
+          type: string
+          description: English developer fallback; clients should prefer `code`.
+          example: must match format "email"
+      required:
+        - path
+        - code
+        - message
       unevaluatedProperties: false
     TagBase:
       type: object

@@ -69,7 +69,7 @@ export const createValidatorMiddleware: CreateMiddleware<
     const openApiValidatorMiddlewares = OpenApiValidator.middleware({
         apiSpec: openApiSpec,
         validateRequests: {
-            allErrors: process.env.NODE_ENV !== "production",
+            allErrors: true,
             allowUnknownQueryParameters: false,
             removeAdditional: true,
         },

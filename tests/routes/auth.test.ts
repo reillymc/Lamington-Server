@@ -214,6 +214,20 @@ describe("Register a new user", () => {
             .send(requestBody);
 
         expect(res.statusCode).toEqual(400);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "VALIDATION_FAILED",
+            message: "Some fields are not valid",
+        });
+        expect(res.body.fieldErrors).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    path: ["password"],
+                    location: "body",
+                    code: "required",
+                }),
+            ]),
+        );
     });
 
     it("should fail register missing email", async () => {
@@ -243,6 +257,28 @@ describe("Register a new user", () => {
             .send(requestBody);
 
         expect(res.statusCode).toEqual(400);
+        expect(res.body.fieldErrors).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    path: ["password"],
+                    location: "body",
+                    code: "minLength",
+                }),
+            ]),
+        );
+    });
+
+    it("should report every invalid field at once", async () => {
+        const res = await request(app)
+            .post("/v1/auth/register")
+            .send({ firstName: "John", lastName: "Doe" });
+
+        expect(res.statusCode).toEqual(400);
+
+        const paths = (res.body.fieldErrors ?? []).map(
+            (error: { path: string[] }) => error.path.join("."),
+        );
+        expect(paths).toEqual(expect.arrayContaining(["email", "password"]));
     });
 
     it("should register new user with valid request and set to pending", async () => {
