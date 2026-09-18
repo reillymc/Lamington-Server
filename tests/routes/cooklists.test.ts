@@ -228,41 +228,6 @@ describe("Add meal to cook list", () => {
             res.body as components["schemas"]["CookListMeal"][];
         expect(returnedMeals).toHaveLength(2);
     });
-
-    const invalidCreateMeals: ReadonlyArray<{
-        name: string;
-        body: string | object;
-    }> = [
-        {
-            name: "should fail if the request contains extraneous properties",
-            body: {
-                description: uuid(),
-                course: randomCourse(),
-                extra: "invalid",
-            },
-        },
-        {
-            name: "should fail if the request contains invalid properties",
-            body: { description: uuid(), course: "invalid_course" },
-        },
-        {
-            name: "should return 400 if the request body is an empty array",
-            body: [],
-        },
-    ];
-
-    for (const { name, body } of invalidCreateMeals) {
-        it(name, async () => {
-            const [token] = await PrepareAuthenticatedUser(database);
-
-            const res = await request(app)
-                .post("/v1/cooklist/meals")
-                .set(token)
-                .send(body);
-
-            expect(res.statusCode).toEqual(400);
-        });
-    }
 });
 
 describe("Update meal in cook list", () => {

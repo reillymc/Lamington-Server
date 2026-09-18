@@ -21,6 +21,10 @@ type OpenApiOperation = {
     isPublic: boolean;
     summary?: string;
     tags: string[];
+    /** True when the operation validates a request body, parameters, or both. */
+    hasInputSchema: boolean;
+    /** `$ref` of the documented 400 response, if any. */
+    badRequestRef?: string;
 };
 
 type SecurityRequirement = Record<string, unknown>;
@@ -29,9 +33,15 @@ type OperationObject = {
     tags?: string[];
     summary?: string;
     security?: SecurityRequirement[];
+    parameters?: unknown[];
+    requestBody?: unknown;
+    responses?: Record<string, { $ref?: string } | undefined>;
 };
 
-type PathItemObject = Record<string, OperationObject | undefined>;
+type PathItemObject = {
+    parameters?: unknown[];
+    [method: string]: unknown;
+};
 
 type OpenApiDocument = {
     security?: SecurityRequirement[];
@@ -86,10 +96,15 @@ export const readOpenApiOperations = (): OpenApiOperation[] => {
     return Object.entries(document.paths ?? {}).flatMap(
         ([specPath, pathItem]) =>
             HTTP_METHODS.flatMap((method) => {
-                const operation = pathItem[method];
+                const operation = pathItem[method] as
+                    | OperationObject
+                    | undefined;
                 if (!operation) return [];
 
                 const security = operation.security ?? document.security;
+                const pathLevelParameters = Array.isArray(pathItem.parameters)
+                    ? pathItem.parameters
+                    : [];
 
                 return [
                     {
@@ -100,6 +115,11 @@ export const readOpenApiOperations = (): OpenApiOperation[] => {
                             Array.isArray(security) && security.length === 0,
                         summary: operation.summary,
                         tags: operation.tags ?? [],
+                        hasInputSchema:
+                            !!operation.requestBody ||
+                            (operation.parameters?.length ?? 0) > 0 ||
+                            pathLevelParameters.length > 0,
+                        badRequestRef: operation.responses?.["400"]?.$ref,
                     },
                 ];
             }),
