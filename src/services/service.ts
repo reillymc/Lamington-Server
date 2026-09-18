@@ -32,7 +32,7 @@ export type CreateService<
             config: TConfig,
         ) => T;
 
-export class ServiceError extends AppError {
+class ServiceError extends AppError {
     protected static formatEntityIds(
         entityIds?: string | readonly string[],
     ): string {
