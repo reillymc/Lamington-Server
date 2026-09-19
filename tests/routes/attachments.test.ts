@@ -159,6 +159,12 @@ describe("Upload an image", () => {
             .attach("image", Buffer.alloc(6 * 1024 * 1024), "large.jpg");
 
         expect(res.statusCode).toEqual(413);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "PAYLOAD_TOO_LARGE",
+            message: "File too large",
+        });
+        expect(res.body.fieldErrors).toBeUndefined();
     });
 
     it("should upload valid image", async () => {

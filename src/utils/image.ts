@@ -5,8 +5,8 @@ export const compressImage = (file: Buffer): Promise<Buffer> =>
     sharp(file)
         .rotate()
         .resize({
-            width: 1600,
-            height: 1600,
+            width: 2048,
+            height: 2048,
             fit: "inside",
             withoutEnlargement: true,
         })

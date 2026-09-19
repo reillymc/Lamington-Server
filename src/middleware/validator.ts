@@ -4,7 +4,11 @@ import * as OpenApiValidator from "express-openapi-validator";
 import jwt from "jsonwebtoken";
 import multer, { type FileFilterCallback } from "multer";
 import { openApiSpec } from "../openApiSpec.ts";
-import { UnauthorizedError, ValidationError } from "../utils/errors.ts";
+import {
+    PayloadTooLargeError,
+    UnauthorizedError,
+    ValidationError,
+} from "../utils/errors.ts";
 import { verifyAccessToken } from "../utils/token.ts";
 import type { CreateMiddleware, Middleware } from "./middleware.ts";
 
@@ -105,6 +109,14 @@ export const createValidatorMiddleware: CreateMiddleware<
             async (req, res, next) => {
                 await middleware(req, res, (error) => {
                     if (error) {
+                        if (
+                            error instanceof
+                            OpenApiValidator.error.RequestEntityTooLarge
+                        ) {
+                            return next(
+                                new PayloadTooLargeError(error.message),
+                            );
+                        }
                         return next(new ValidationError(error));
                     }
                     next();

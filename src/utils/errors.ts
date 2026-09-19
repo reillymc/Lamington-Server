@@ -20,6 +20,16 @@ export class UnauthorizedError extends AppError {
     }
 }
 
+export class PayloadTooLargeError extends AppError {
+    constructor(reason = "File too large") {
+        super({
+            status: 413,
+            code: "PAYLOAD_TOO_LARGE",
+            message: reason,
+        });
+    }
+}
+
 type RawValidationError = {
     path?: unknown;
     message?: unknown;
