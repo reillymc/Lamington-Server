@@ -148,6 +148,12 @@ describe("Upload an image", () => {
         const res = await request(app).post("/v1/attachments/image").set(token);
 
         expect(res.statusCode).toEqual(415);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "UNSUPPORTED_MEDIA_TYPE",
+            message: "Unsupported media type",
+        });
+        expect(res.body.fieldErrors).toBeUndefined();
     });
 
     it("should return 413 for uploads exceeding the size limit", async () => {

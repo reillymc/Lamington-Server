@@ -7,6 +7,7 @@ import { openApiSpec } from "../openApiSpec.ts";
 import {
     PayloadTooLargeError,
     UnauthorizedError,
+    UnsupportedMediaTypeError,
     ValidationError,
 } from "../utils/errors.ts";
 import { verifyAccessToken } from "../utils/token.ts";
@@ -116,6 +117,12 @@ export const createValidatorMiddleware: CreateMiddleware<
                             return next(
                                 new PayloadTooLargeError(error.message),
                             );
+                        }
+                        if (
+                            error instanceof
+                            OpenApiValidator.error.UnsupportedMediaType
+                        ) {
+                            return next(new UnsupportedMediaTypeError());
                         }
                         return next(new ValidationError(error));
                     }

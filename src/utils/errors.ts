@@ -30,6 +30,16 @@ export class PayloadTooLargeError extends AppError {
     }
 }
 
+export class UnsupportedMediaTypeError extends AppError {
+    constructor(reason = "Unsupported media type") {
+        super({
+            status: 415,
+            code: "UNSUPPORTED_MEDIA_TYPE",
+            message: reason,
+        });
+    }
+}
+
 type RawValidationError = {
     path?: unknown;
     message?: unknown;
