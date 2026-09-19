@@ -9,7 +9,7 @@ type NumberAmount = components["schemas"]["AmountNumber"];
 type FractionAmount = components["schemas"]["AmountFraction"];
 type RangeAmount = components["schemas"]["AmountRange"];
 type Amount = NumberAmount | FractionAmount | RangeAmount;
-type ParsedIngredient = components["schemas"]["RecipeIngredientItem"];
+type ParsedIngredient = components["schemas"]["ExtractedRecipeIngredientItem"];
 type TagRef = components["schemas"]["RecipeTagRef"];
 
 const stripUndefined = <T extends object>(obj: T): T => {

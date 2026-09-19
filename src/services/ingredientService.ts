@@ -19,6 +19,7 @@ export const createIngredientService: CreateService<
     getAll: async (userId) => {
         const { ingredients } = await ingredientRepository.readAll(database, {
             userId,
+            filter: { owner: userId },
         });
 
         return ingredients;

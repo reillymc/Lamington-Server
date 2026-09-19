@@ -25,9 +25,10 @@ export const createExtractorRouter: CreateRouter<
             paths["/extractor/recipe"]["get"]["responses"]["200"]["content"]["application/json"],
             paths["/extractor/recipe"]["get"]["requestBody"],
             paths["/extractor/recipe"]["get"]["parameters"]["query"]
-        >("/extractor/recipe", async ({ query }, res) => {
+        >("/extractor/recipe", async ({ query, session }, res) => {
             const data = await contentExtractionService.extractRecipe(
                 query.url,
+                session.userId,
             );
             return res.status(200).json(data);
         });

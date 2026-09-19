@@ -224,7 +224,7 @@ const services: AppServices = {
         refreshSecret,
     }),
     bookService: createBookService(db, repositories),
-    contentExtractionService: createContentExtractionService(),
+    contentExtractionService: createContentExtractionService(db, repositories),
     cooklistService: createCooklistService(db, repositories),
     ingredientService: createIngredientService(db, repositories, jobs),
     listService: createListService(db, repositories),
