@@ -1,6 +1,7 @@
 import knex from "knex";
 import { v4 } from "uuid";
 import { createLogger, transports } from "winston";
+import type { AppConfig } from "../../src/app.ts";
 import { setupApp } from "../../src/app.ts";
 import type { AppJobs } from "../../src/jobs/index.ts";
 import { createErrorHandlerMiddleware } from "../../src/middleware/errorHandler.ts";
@@ -27,6 +28,7 @@ import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepo
 import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import { createAttachmentService } from "../../src/services/attachmentService.ts";
+import { createAuthenticationService } from "../../src/services/authenticationService.ts";
 import { createBookService } from "../../src/services/bookService.ts";
 import { createContentExtractionService } from "../../src/services/contentExtractionService.ts";
 import { createCooklistService } from "../../src/services/cooklistService.ts";
@@ -48,8 +50,13 @@ const defaultAppRepositories: AppRepositories = {
     bookRepository: KnexBookRepository,
     cooklistRepository: KnexCookListRepository,
     fileRepository: {
-        create: async () => "uri://",
-        delete: async () => true,
+        create: async () => [{ attachmentId: v4(), succeeded: true }],
+        read: async (_, { attachmentId }) => ({
+            attachmentId,
+            type: "redirect",
+            url: `https://cdn.test/${attachmentId}`,
+        }),
+        delete: async () => [{ attachmentId: v4(), succeeded: true }],
     },
     ingredientRepository: KnexIngredientRepository,
     listRepository: KnexListRepository,
@@ -80,6 +87,12 @@ const defaultAppJobs: AppJobs = {
     createUserStarterData: {
         run: async () => true,
     },
+    purgeDeletedUsers: {
+        run: async () => true,
+    },
+    purgeDeletedAttachments: {
+        run: async () => true,
+    },
 };
 
 export const db = knex(testConfig);
@@ -90,12 +103,14 @@ export const createTestApp = ({
     middleware,
     services,
     jobs,
+    config,
 }: {
     database: Database;
     repositories?: Partial<AppRepositories>;
     middleware?: Partial<AppMiddleware>;
     services?: Partial<AppServices>;
     jobs?: Partial<AppJobs>;
+    config?: Partial<AppConfig>;
 }) => {
     const appRepositories = {
         ...defaultAppRepositories,
@@ -113,6 +128,16 @@ export const createTestApp = ({
                 database,
                 appRepositories,
             ),
+            authenticationService: createAuthenticationService(
+                database,
+                appRepositories,
+                {
+                    accessExpiration: 1000,
+                    accessSecret,
+                    refreshExpiration: 1000,
+                    refreshSecret,
+                },
+            ),
             bookService: createBookService(database, appRepositories),
             contentExtractionService: createContentExtractionService(),
             cooklistService: createCooklistService(database, appRepositories),
@@ -126,12 +151,7 @@ export const createTestApp = ({
             plannerService: createPlannerService(database, appRepositories),
             recipeService: createRecipeService(database, appRepositories),
             tagService: createTagService(database, appRepositories),
-            userService: createUserService(database, appRepositories, appJobs, {
-                accessExpiration: 1000,
-                accessSecret,
-                refreshExpiration: 1000,
-                refreshSecret,
-            }),
+            userService: createUserService(database, appRepositories, appJobs),
             ...services,
         },
         middleware: {
@@ -145,7 +165,9 @@ export const createTestApp = ({
             allowedOrigin: "test.origin",
             externalHost: "https://test.host",
             uploadDirectory: "uploads",
-            assetDirectory: "tests/resources/testAssets",
+            assetDirectory: "assets",
+            trustProxyHops: 0,
+            ...config,
         },
     });
 };

@@ -65,27 +65,21 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        413:
+          $ref: "#/components/responses/RequestEntityTooLarge"
+        415:
+          $ref: "#/components/responses/UnsupportedMediaType"
         429:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
-  /attachments/image/{attachmentPath}/{userId}/{attachmentId}:
+  /attachments/image/{attachmentId}:
     parameters:
-      - name: attachmentPath
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: userId
-        in: path
-        required: true
-        schema:
-          type: string
       - name: attachmentId
         in: path
         required: true
         schema:
-          type: string
+          $ref: "#/components/schemas/Uuid"
     get:
       tags:
         - Attachments
@@ -99,6 +93,20 @@ paths:
               schema:
                 type: string
                 format: binary
+        301:
+          description: Redirect to the publicly hosted image
+          headers:
+            Location:
+              description: Public URL of the image
+              schema:
+                type: string
+                format: uri
+          content:
+            text/plain:
+              schema:
+                type: string
+        400:
+          $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
         404:
@@ -122,8 +130,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Ingredient"
+        401:
+          $ref: "#/components/responses/Unauthorized"
         429:
           $ref: "#/components/responses/TooManyRequests"
+        500:
+          $ref: "#/components/responses/InternalServerError"
   /tags:
     get:
       tags:
@@ -200,6 +212,8 @@ paths:
                     type: integer
                 required:
                   - recipes
+        400:
+          $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
         429:
@@ -226,6 +240,8 @@ paths:
                 $ref: "#/components/schemas/Recipe"
         400:
           $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
         429:
@@ -251,6 +267,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Recipe"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -295,6 +313,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -328,6 +348,7 @@ paths:
                   maximum: 5
               required:
                 - rating
+              unevaluatedProperties: false
       responses:
         200:
           description: Successful response
@@ -414,6 +435,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Book"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -458,6 +481,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -511,6 +536,8 @@ paths:
                     type: integer
                 required:
                   - recipes
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -570,6 +597,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -599,6 +628,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Member"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -679,6 +710,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -813,6 +846,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
+        400:
+          $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
         429:
@@ -837,6 +872,7 @@ paths:
                   type: string
               required:
                 - refreshToken
+              unevaluatedProperties: false
       responses:
         200:
           description: Successful response
@@ -844,6 +880,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
+        400:
+          $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
         429:
@@ -899,6 +937,8 @@ paths:
                   $ref: "#/components/schemas/CookListMeal"
         400:
           $ref: "#/components/responses/BadRequest"
+        404:
+          $ref: "#/components/responses/NotFound"
         401:
           $ref: "#/components/responses/Unauthorized"
         429:
@@ -920,6 +960,8 @@ paths:
       responses:
         204:
           description: Deleted
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -975,6 +1017,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Meal"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1077,6 +1121,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Planner"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1093,6 +1139,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1175,6 +1223,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/PlannerMeal"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1262,6 +1312,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Member"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1515,6 +1567,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/List"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1541,6 +1595,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/List"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1557,6 +1613,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1586,6 +1644,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ListItem"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1609,6 +1669,7 @@ paths:
                 - type: array
                   items:
                     $ref: "#/components/schemas/ListItemCreate"
+                  maxItems: 50
       responses:
         201:
           description: Created
@@ -1658,6 +1719,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ListItem"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1713,6 +1776,7 @@ paths:
               required:
                 - destinationListId
                 - itemIds
+              unevaluatedProperties: false
       responses:
         200:
           description: Successful response
@@ -1755,6 +1819,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Member"
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1835,6 +1901,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1858,6 +1926,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1881,6 +1951,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1904,6 +1976,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         404:
           $ref: "#/components/responses/NotFound"
         401:
@@ -1934,6 +2008,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExtractedRecipeMetadata"
+        400:
+          $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
         429:
@@ -1962,6 +2038,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExtractedRecipe"
+        400:
+          $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
         429:
@@ -2023,6 +2101,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/User"
+        400:
+          $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
         403:
@@ -2046,10 +2126,14 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
         403:
           $ref: "#/components/responses/Forbidden"
+        404:
+          $ref: "#/components/responses/NotFound"
         429:
           $ref: "#/components/responses/TooManyRequests"
         500:
@@ -2069,6 +2153,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
         403:
@@ -2094,6 +2180,8 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
         403:
@@ -2147,6 +2235,18 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    RequestEntityTooLarge:
+      description: File exceeds the 5MB upload limit
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnsupportedMediaType:
+      description: Media type not specified or unsupported
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     ErrorResponse:
       type: object
@@ -2154,10 +2254,58 @@ components:
         error:
           type: boolean
           example: true
+        code:
+          type: string
+          description: Stable machine-readable error code.
+          example: VALIDATION_FAILED
         message:
           type: string
+        fieldErrors:
+          type: array
+          description: >
+            Field-level validation failures.
+          items:
+            $ref: "#/components/schemas/FieldError"
       required:
         - error
+      unevaluatedProperties: false
+    FieldError:
+      type: object
+      properties:
+        path:
+          type: array
+          description: >
+            Ordered segments addressing the offending request field, with the
+            location prefix removed, e.g. `["ingredients", "0", "name"]`.
+          items:
+            type: string
+          example:
+            - ingredients
+            - "0"
+            - name
+        location:
+          type: string
+          description: Where the field lives in the request.
+          enum:
+            - body
+            - query
+            - params
+            - headers
+          example: body
+        code:
+          type: string
+          description: >
+            Stable, semantic validation code for i18n lookup. Falls back to the
+            underlying JSON Schema keyword when no mapping exists.
+          example: format
+        message:
+          type: string
+          description: English developer fallback; clients should prefer `code`.
+          example: must match format "email"
+      required:
+        - path
+        - code
+        - message
       unevaluatedProperties: false
     TagBase:
       type: object
@@ -2191,8 +2339,7 @@ components:
         userId:
           $ref: "#/components/schemas/Uuid"
         email:
-          type: string
-          format: email
+          $ref: "#/components/schemas/Email"
         firstName:
           type: string
         lastName:
@@ -2220,6 +2367,11 @@ components:
     Uuid:
       type: string
       format: uuid
+      maxLength: 36
+    Email:
+      type: string
+      format: email
+      maxLength: 255
     Year:
       type: integer
       minimum: 2000
@@ -2240,12 +2392,14 @@ components:
         * `M` - Member
         * `P` - Pending
         * `B` - Blocked
+        * `D` - Deleted
       enum:
         - O
         - A
         - M
         - P
         - B
+        - D
     Course:
       type: string
       enum:
@@ -2518,26 +2672,22 @@ components:
       required:
         - userId
       unevaluatedProperties: false
-    ListIcon:
-      type: string
-      enum:
-        - variant1
-        - variant2
-        - variant3
-        - variant4
-        - variant5
-        - variant6
-        - variant7
-        - variant8
-        - variant9
-        - variant10
-        - variant11
-        - variant12
-        - variant13
-        - variant14
-        - variant15
-        - variant16
-        - variant17
+    Icon:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - icon
+            - custom
+        value:
+          type: string
+          minLength: 1
+          maxLength: 32
+      required:
+        - type
+        - value
+      unevaluatedProperties: false
     ItemAmount:
       oneOf:
         - $ref: "#/components/schemas/AmountFraction"
@@ -2553,6 +2703,7 @@ components:
           type: array
           items:
             type: string
+            maxLength: 4
           minItems: 3
           maxItems: 3
       required:
@@ -2569,6 +2720,7 @@ components:
           type: array
           items:
             type: string
+            maxLength: 4
           minItems: 2
           maxItems: 2
       required:
@@ -2583,6 +2735,7 @@ components:
           enum: [number]
         value:
           type: string
+          maxLength: 4
       required:
         - representation
         - value
@@ -2594,15 +2747,18 @@ components:
           $ref: "#/components/schemas/Uuid"
         name:
           type: string
+          maxLength: 255
         updatedAt:
           type: string
           format: date-time
+          maxLength: 35
         completed:
           type: boolean
         ingredientId:
           type: string
         unit:
           type: string
+          maxLength: 50
         amount:
           $ref: "#/components/schemas/ItemAmount"
         notes:
@@ -2675,8 +2831,10 @@ components:
           $ref: "#/components/schemas/Owner"
         description:
           type: string
+        color:
+          type: string
         icon:
-          $ref: "#/components/schemas/ListIcon"
+          $ref: "#/components/schemas/Icon"
         status:
           $ref: "#/components/schemas/UserStatus"
       required:
@@ -2697,6 +2855,7 @@ components:
             lastUpdated:
               type: string
               format: date-time
+              maxLength: 35
       unevaluatedProperties: false
     ListCreate:
       type: object
@@ -2710,8 +2869,10 @@ components:
         description:
           type: string
           maxLength: 255
+        color:
+          type: string
         icon:
-          $ref: "#/components/schemas/ListIcon"
+          $ref: "#/components/schemas/Icon"
       required:
         - name
       unevaluatedProperties: false
@@ -2728,8 +2889,10 @@ components:
             - "null"
           minLength: 1
           maxLength: 255
+        color:
+          type: string
         icon:
-          $ref: "#/components/schemas/ListIcon"
+          $ref: "#/components/schemas/Icon"
       unevaluatedProperties: false
     PlannerMeal:
       allOf:
@@ -2866,8 +3029,41 @@ components:
     RecipeTimesCooked:
       type: integer
 
+    RecipeNutritionValue:
+      type: string
+      maxLength: 100
+
+    RecipeServingsUnit:
+      type: string
+      maxLength: 255
+
     RecipeNutrition:
       type: object
+      properties:
+        servingSize:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        calories:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        carbohydrateContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        sugarContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        fiberContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        proteinContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        fatContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        saturatedFatContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        transFatContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        unsaturatedFatContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        cholesterolContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
+        sodiumContent:
+          $ref: "#/components/schemas/RecipeNutritionValue"
       unevaluatedProperties: false
 
     RecipeRating:
@@ -2875,21 +3071,25 @@ components:
 
     RecipeIngredientSections:
       type: array
+      maxItems: 10
       items:
         $ref: "#/components/schemas/RecipeIngredientSection"
 
     RecipeIngredientSectionsCreate:
       type: array
+      maxItems: 10
       items:
         $ref: "#/components/schemas/RecipeIngredientSectionCreate"
 
     RecipeIngredientSectionsUpdate:
       type: array
+      maxItems: 10
       items:
         $ref: "#/components/schemas/RecipeIngredientSectionUpdate"
 
     RecipeMethod:
       type: array
+      maxItems: 10
       items:
         $ref: "#/components/schemas/RecipeMethodSection"
 
@@ -2919,13 +3119,9 @@ components:
         timesCooked:
           $ref: "#/components/schemas/RecipeTimesCooked"
         ingredients:
-          type: array
-          items:
-            $ref: "#/components/schemas/RecipeIngredientSection"
+          $ref: "#/components/schemas/RecipeIngredientSections"
         method:
-          type: array
-          items:
-            $ref: "#/components/schemas/RecipeMethodSection"
+          $ref: "#/components/schemas/RecipeMethod"
         rating:
           type: object
           properties:
@@ -3047,13 +3243,9 @@ components:
         timesCooked:
           $ref: "#/components/schemas/RecipeTimesCooked"
         ingredients:
-          type: array
-          items:
-            $ref: "#/components/schemas/RecipeIngredientSectionCreate"
+          $ref: "#/components/schemas/RecipeIngredientSectionsCreate"
         method:
-          type: array
-          items:
-            $ref: "#/components/schemas/RecipeMethodSection"
+          $ref: "#/components/schemas/RecipeMethod"
         rating:
           type: number
         tags:
@@ -3114,15 +3306,11 @@ components:
             - type: "null"
         ingredients:
           anyOf:
-            - type: array
-              items:
-                $ref: "#/components/schemas/RecipeIngredientSectionUpdate"
+            - $ref: "#/components/schemas/RecipeIngredientSectionsUpdate"
             - type: "null"
         method:
           anyOf:
-            - type: array
-              items:
-                $ref: "#/components/schemas/RecipeMethodSection"
+            - $ref: "#/components/schemas/RecipeMethod"
             - type: "null"
         rating:
           anyOf:
@@ -3149,11 +3337,10 @@ components:
       properties:
         attachmentId:
           $ref: "#/components/schemas/Uuid"
-        uri:
+        preview:
           type: string
       required:
         - attachmentId
-        - uri
       unevaluatedProperties: false
     Password:
       type: string
@@ -3163,9 +3350,7 @@ components:
       type: object
       properties:
         email:
-          type: string
-          format: email
-          maxLength: 255
+          $ref: "#/components/schemas/Email"
         firstName:
           type: string
           maxLength: 255
@@ -3184,8 +3369,7 @@ components:
       type: object
       properties:
         email:
-          type: string
-          format: email
+          $ref: "#/components/schemas/Email"
         password:
           $ref: "#/components/schemas/Password"
       required:
@@ -3211,8 +3395,7 @@ components:
             userId:
               $ref: "#/components/schemas/Uuid"
             email:
-              type: string
-              format: email
+              $ref: "#/components/schemas/Email"
             status:
               $ref: "#/components/schemas/UserStatus"
           required:
@@ -3233,8 +3416,7 @@ components:
             userId:
               $ref: "#/components/schemas/Uuid"
             email:
-              type: string
-              format: email
+              $ref: "#/components/schemas/Email"
             status:
               $ref: "#/components/schemas/UserStatus"
           required:
@@ -3252,19 +3434,6 @@ components:
         - variant3
         - variant4
         - variant5
-    BookIcon:
-      type: string
-      enum:
-        - variant1
-        - variant2
-        - variant3
-        - variant4
-        - variant5
-        - variant6
-        - variant7
-        - variant8
-        - variant9
-        - variant10
     Book:
       type: object
       properties:
@@ -3279,7 +3448,7 @@ components:
         color:
           $ref: "#/components/schemas/BookColor"
         icon:
-          $ref: "#/components/schemas/BookIcon"
+          $ref: "#/components/schemas/Icon"
         status:
           $ref: "#/components/schemas/UserStatus"
       required:
@@ -3302,7 +3471,7 @@ components:
         color:
           $ref: "#/components/schemas/BookColor"
         icon:
-          $ref: "#/components/schemas/BookIcon"
+          $ref: "#/components/schemas/Icon"
       required:
         - name
       unevaluatedProperties: false
@@ -3310,7 +3479,7 @@ components:
       type: object
       properties:
         unit:
-          type: string
+          $ref: "#/components/schemas/RecipeServingsUnit"
         count:
           oneOf:
             - $ref: "#/components/schemas/AmountRange"
@@ -3403,6 +3572,7 @@ components:
           properties:
             items:
               type: array
+              maxItems: 50
               items:
                 $ref: "#/components/schemas/RecipeIngredientItem"
           required:
@@ -3455,6 +3625,7 @@ components:
           properties:
             items:
               type: array
+              maxItems: 50
               items:
                 $ref: "#/components/schemas/RecipeIngredientItemCreate"
           required:
@@ -3507,6 +3678,7 @@ components:
           properties:
             items:
               type: array
+              maxItems: 50
               items:
                 $ref: "#/components/schemas/RecipeIngredientItemUpdate"
           required:
@@ -3528,6 +3700,7 @@ components:
           properties:
             items:
               type: array
+              maxItems: 50
               items:
                 $ref: "#/components/schemas/RecipeMethodStep"
           required:
@@ -3549,7 +3722,7 @@ components:
         color:
           $ref: "#/components/schemas/BookColor"
         icon:
-          $ref: "#/components/schemas/BookIcon"
+          $ref: "#/components/schemas/Icon"
       unevaluatedProperties: false
     BookRecipeCreate:
       type: object

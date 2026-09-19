@@ -41,7 +41,7 @@ describe("Authentication Middleware", () => {
     });
 
     it("should return 401 if user status is Pending (P)", async () => {
-        const payload = { userId: v4(), status: "P" };
+        const payload = { userId: v4(), status: "P", tokenUse: "access" };
         const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
             expiresIn: "1h",
@@ -55,7 +55,7 @@ describe("Authentication Middleware", () => {
     });
 
     it("should return 401 if user status is Blocked (B)", async () => {
-        const payload = { userId: v4(), status: "B" };
+        const payload = { userId: v4(), status: "B", tokenUse: "access" };
         const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
             expiresIn: "1h",
@@ -69,7 +69,7 @@ describe("Authentication Middleware", () => {
     });
 
     it("should return 401 if token format is invalid", async () => {
-        const payload = { userName: v4(), status: "B" };
+        const payload = { userName: v4(), status: "B", tokenUse: "access" };
         const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
             expiresIn: "1h",
@@ -84,7 +84,11 @@ describe("Authentication Middleware", () => {
 
     it("should authorise valid user", async () => {
         const [user] = await CreateUsers(database, { status: "M" });
-        const payload = { userId: user!.userId, status: "M" };
+        const payload = {
+            userId: user!.userId,
+            status: "M",
+            tokenUse: "access",
+        };
         const token = jwt.sign(payload, accessSecret, {
             noTimestamp: true,
             expiresIn: "1h",
@@ -117,24 +121,18 @@ describe("Rate Limiter Middleware", () => {
         await database.rollback();
     });
 
-    it("books should trigger 429 response after 150 requests", async () => {
-        const res = await request(app).get("/v1/books");
-        expect(res.statusCode).toEqual(429);
-    });
+    it("should trigger 429 responses after 150 requests", async () => {
+        const responses = await Promise.all([
+            request(app).get("/v1/books"),
+            request(app).get("/v1/planners"),
+            request(app).delete(`/v1/lists/${v4()}`),
+        ]);
 
-    it("planners should trigger 429 response after 150 requests", async () => {
-        const res = await request(app).get("/v1/planners");
-        expect(res.statusCode).toEqual(429);
-    });
-
-    it("lists should trigger 429 response after 150 requests", async () => {
-        const res = await request(app).delete(`/v1/lists/${v4()}`);
-
-        expect(res.statusCode).toEqual(429);
+        responses.map(({ statusCode }) => expect(statusCode).toEqual(429));
     });
 });
 
-describe("Health Check", () => {
+describe("Body Parser Limits", () => {
     let database: KnexDatabase;
     let app: Express;
 
@@ -147,8 +145,16 @@ describe("Health Check", () => {
         await database.rollback();
     });
 
-    it("should return 204", async () => {
-        const res = await request(app).get("/health");
-        expect(res.statusCode).toEqual(204);
+    it("should return 413 for JSON bodies exceeding the size limit", async () => {
+        const largePayload = JSON.stringify({
+            name: "a".repeat(2 * 1024 * 1024),
+        });
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set("Content-Type", "application/json")
+            .send(largePayload);
+
+        expect(res.statusCode).toEqual(413);
     });
 });

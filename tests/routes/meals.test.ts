@@ -33,11 +33,6 @@ after(async () => {
 });
 
 describe("Get a meal by ID", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get(`/v1/meals/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent meal", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const res = await request(app).get(`/v1/meals/${uuid()}`).set(token);

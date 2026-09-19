@@ -65,7 +65,7 @@ type PlannerMealResponse = {
     notes: Meal["notes"] | null;
     heroImage: {
         attachmentId: string;
-        uri: string;
+        preview?: string;
     } | null;
 };
 
@@ -120,6 +120,7 @@ type UpdatePlannerMealPayload = {
 };
 
 type UpdateMealsRequest = {
+    userId: User["userId"];
     plannerId: Planner["plannerId"];
     meals: ReadonlyArray<UpdatePlannerMealPayload>;
 };
@@ -139,6 +140,22 @@ type DeleteMealsRequest = {
 type DeleteMealsResponse = {
     plannerId: Planner["plannerId"];
     count: number;
+};
+
+type VerifyMealsBelongToPlannerRequest = {
+    userId: User["userId"];
+    plannerId: Planner["plannerId"];
+    meals: ReadonlyArray<{
+        mealId: Meal["mealId"];
+    }>;
+};
+
+type VerifyMealsBelongToPlannerResponse = {
+    userId: User["userId"];
+    meals: ReadonlyArray<{
+        mealId: Meal["mealId"];
+        belongsToPlanner: boolean;
+    }>;
 };
 
 type MemberSaveItem = {
@@ -320,5 +337,10 @@ export interface PlannerRepository<TDatabase extends Database = Database> {
         TDatabase,
         VerifyPermissionsRequest,
         VerifyPermissionsResponse
+    >;
+    verifyMealsBelongToPlanner: RepositoryService<
+        TDatabase,
+        VerifyMealsBelongToPlannerRequest,
+        VerifyMealsBelongToPlannerResponse
     >;
 }

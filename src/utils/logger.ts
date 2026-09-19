@@ -1,4 +1,4 @@
-export { Logger } from "winston";
+export type { Logger } from "winston";
 
 interface AppErrorConstructor {
     status?: number;
@@ -6,10 +6,9 @@ interface AppErrorConstructor {
     message?: string;
     innerError?: unknown;
 }
-export class AppError {
+export class AppError extends Error {
     status: number;
     code: string;
-    message: string;
     innerError: unknown;
     constructor({
         status = 500,
@@ -17,6 +16,8 @@ export class AppError {
         message = "An unknown error occurred",
         innerError,
     }: AppErrorConstructor) {
+        super(message);
+        this.name = this.constructor.name;
         this.status = status;
         this.code = code;
         this.message = message;

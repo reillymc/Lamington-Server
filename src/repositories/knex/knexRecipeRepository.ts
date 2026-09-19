@@ -1,4 +1,5 @@
 import { EnsureArray, Undefined } from "@reillymc/es-utils";
+import { dedupeLast } from "../../utils/dedupeLast.ts";
 import type { Ingredient } from "../ingredientRepository.ts";
 import type {
     ReadTagsResponse,
@@ -154,10 +155,17 @@ const saveRecipeIngredientRows = async (
         .whereIn(RecipeIngredientTable.recipeId, recipeIds)
         .delete();
 
-    const ingredients = recipeIngredients.flatMap(({ recipeId, ingredients }) =>
-        ingredients.map(
-            (ingredientId): RecipeIngredient => ({ ingredientId, recipeId }),
+    const ingredients = dedupeLast(
+        recipeIngredients.flatMap(({ recipeId, ingredients }) =>
+            ingredients.map(
+                (ingredientId): RecipeIngredient => ({
+                    ingredientId,
+                    recipeId,
+                }),
+            ),
         ),
+        "recipeId",
+        "ingredientId",
     );
 
     if (ingredients.length > 0) {
@@ -184,8 +192,14 @@ const saveRecipeRecipeRows = async (
         .whereIn(RecipeRecipeTable.recipeId, recipeIds)
         .delete();
 
-    const recipes = recipeRecipes.flatMap(({ recipeId, recipes }) =>
-        recipes.map((subRecipeId): RecipeRecipe => ({ recipeId, subRecipeId })),
+    const recipes = dedupeLast(
+        recipeRecipes.flatMap(({ recipeId, recipes }) =>
+            recipes.map(
+                (subRecipeId): RecipeRecipe => ({ recipeId, subRecipeId }),
+            ),
+        ),
+        "recipeId",
+        "subRecipeId",
     );
 
     if (recipes.length > 0) {
@@ -300,7 +314,12 @@ const queryFullRecipes = (
             db.ref(`avg_ratings.${ratingAverageName}`),
             withPersonalRating(db, userId),
         )
-        .whereIn(RecipeTable.recipeId, recipeIds);
+        .whereIn(RecipeTable.recipeId, recipeIds)
+        .where((builder) =>
+            builder
+                .where({ [ContentTable.createdBy]: userId })
+                .orWhere({ [RecipeTable.public]: true }),
+        );
 
 const formatRecipe = (recipe: FullRecipeRow) => ({
     recipeId: recipe.recipeId,
@@ -493,7 +512,7 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
                     tags: tags.get(recipeId),
                     photo: formatHeroAttachment(
                         recipe.heroAttachmentId,
-                        recipe.heroAttachmentUri,
+                        recipe.heroAttachmentPreview,
                     ),
                 },
             ];
@@ -553,11 +572,15 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             })),
         );
 
-        const recipeRatingRows = recipesToCreate
-            .map(({ recipeId, rating }): RecipeRating | undefined =>
-                rating ? { raterId: userId, rating, recipeId } : undefined,
-            )
-            .filter(Undefined);
+        const recipeRatingRows = dedupeLast(
+            recipesToCreate
+                .map(({ recipeId, rating }): RecipeRating | undefined =>
+                    rating ? { raterId: userId, rating, recipeId } : undefined,
+                )
+                .filter(Undefined),
+            "recipeId",
+            "raterId",
+        );
         if (recipeRatingRows.length) {
             await db<RecipeRating>(lamington.recipeRating)
                 .insert(recipeRatingRows)
@@ -627,11 +650,15 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             })),
         );
 
-        const recipeRatingRows = recipes
-            .map(({ recipeId, rating }): RecipeRating | undefined =>
-                rating ? { raterId: userId, rating, recipeId } : undefined,
-            )
-            .filter(Undefined);
+        const recipeRatingRows = dedupeLast(
+            recipes
+                .map(({ recipeId, rating }): RecipeRating | undefined =>
+                    rating ? { raterId: userId, rating, recipeId } : undefined,
+                )
+                .filter(Undefined),
+            "recipeId",
+            "raterId",
+        );
 
         const recipeRatingDeleteRows = recipes.filter(
             ({ rating }) => rating === null,
@@ -664,13 +691,22 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
 
         return read(db, { userId, recipes });
     },
-    verifyPermissions: async (db, { userId, recipes, status }) => {
-        const recipeIds = EnsureArray(recipes).map((r) => r.recipeId);
+    verifyPermissions: async (
+        db,
+        { userId, recipes, status, includePublic },
+    ) => {
+        const recipeIds = recipes.map((r) => r.recipeId);
         const permissions = await verifyContentPermissions(
             db,
             userId,
             recipeIds,
             status,
+            {
+                table: lamington.recipe,
+                idColumn: RecipeTable.recipeId,
+                publicColumn: RecipeTable.public,
+            },
+            { includePublic },
         );
         return {
             userId,
@@ -781,7 +817,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                     [ratingAverageName]: ratingAverage,
                     [ratingPersonalName]: ratingPersonal,
                     heroAttachmentId,
-                    heroAttachmentUri,
+                    heroAttachmentPreview,
                     ...recipe
                 }) => ({
                     recipeId: recipe.recipeId,
@@ -795,23 +831,31 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                     rating: formatRating(ratingAverage, ratingPersonal),
                     photo: formatHeroAttachment(
                         heroAttachmentId,
-                        heroAttachmentUri,
+                        heroAttachmentPreview,
                     ),
                 }),
             ),
         };
     },
     read,
-    delete: createDeleteContent("recipes", "recipeId"),
+    delete: createDeleteContent("recipes", "recipeId", {
+        table: lamington.recipe,
+        idColumn: RecipeTable.recipeId,
+    }),
     saveRating: async (db, { userId, ratings }) => {
+        const dedupedRatings = dedupeLast(
+            ratings.map(({ rating, recipeId }) => ({
+                rating,
+                recipeId,
+                raterId: userId,
+            })),
+            "recipeId",
+            "raterId",
+        );
+        if (!dedupedRatings.length) return { userId, ratings: [] };
+
         const savedRatings = await db<RecipeRating>(lamington.recipeRating)
-            .insert(
-                ratings.map(({ rating, recipeId }) => ({
-                    rating,
-                    recipeId,
-                    raterId: userId,
-                })),
-            )
+            .insert(dedupedRatings)
             .onConflict(["recipeId", "raterId"])
             .merge()
             .returning(["recipeId", "rating"]);

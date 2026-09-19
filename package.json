@@ -1,6 +1,6 @@
 {
     "name": "lamington-server",
-    "version": "1.8.1",
+    "version": "1.9.0",
     "private": true,
     "main": "src/index.ts",
     "type": "module",
@@ -47,6 +47,7 @@
         "schema-dts": "^1.1.5",
         "sharp": "^0.34.5",
         "swagger-ui-express": "^5.0.1",
+        "thumbhash": "^0.1.1",
         "uuid": "^13.0.0",
         "winston": "^3.19.0",
         "winston-daily-rotate-file": "^5.0.0",
@@ -65,6 +66,7 @@
         "@types/node": "^24.10.13",
         "@types/supertest": "^6.0.3",
         "@types/swagger-ui-express": "^4.1.8",
+        "ajv": "^8.20.0",
         "dependency-cruiser": "^17.3.8",
         "expect": "^30.2.0",
         "knip": "^5.83.1",

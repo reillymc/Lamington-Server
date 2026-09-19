@@ -1,32 +1,62 @@
-import { existsSync } from "node:fs";
 import { mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
+import { EnsureArray } from "@reillymc/es-utils";
 import sharp from "sharp";
-import type { FileRepository } from "../fileRepository.ts";
-
-const getLocalPath = (uploadDirectory: string, filePath: string) =>
-    `${uploadDirectory}/${filePath}`;
+import { mapInBatches } from "../common/mapInBatches.ts";
+import type {
+    CreateRequest,
+    CreateResponse,
+    DeleteRequest,
+    DeleteResponse,
+    FileRepository,
+} from "../fileRepository.ts";
 
 export const createDiskFileRepository = (
     uploadDirectory: string,
-    subPath: string,
-): FileRepository => ({
-    delete: async (_, { path }) => {
-        const localPath = getLocalPath(uploadDirectory, path);
+    keyPrefix?: string,
+): FileRepository => {
+    const getLocalPath = (attachmentId: string) =>
+        `${uploadDirectory}/${keyPrefix ? `${keyPrefix}/` : ""}${attachmentId}`;
 
-        if (existsSync(localPath)) await unlink(localPath);
-        return true;
-    },
-    create: async (_, { file, attachmentId, userId }) => {
-        const filePath = `${subPath}/${userId}/${attachmentId}`;
+    const createFile = async ({
+        file,
+        attachmentId,
+    }: CreateRequest): Promise<CreateResponse> => {
+        const localPath = getLocalPath(attachmentId);
 
-        const localPath = getLocalPath(uploadDirectory, filePath);
-        const localDir = path.dirname(localPath);
+        try {
+            await mkdir(path.dirname(localPath), { recursive: true });
+            await sharp(file).toFile(localPath);
+            return { attachmentId, succeeded: true };
+        } catch {
+            await unlink(localPath).catch(() => undefined);
+            return { attachmentId, succeeded: false };
+        }
+    };
 
-        if (!existsSync(localDir)) await mkdir(localDir, { recursive: true });
+    const deleteFile = async ({
+        attachmentId,
+    }: DeleteRequest): Promise<DeleteResponse> => {
+        const localPath = getLocalPath(attachmentId);
 
-        await sharp(file).toFile(localPath);
+        try {
+            await unlink(localPath);
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+                return { attachmentId, succeeded: false };
+            }
+        }
 
-        return `local:${filePath}`;
-    },
-});
+        return { attachmentId, succeeded: true };
+    };
+
+    return {
+        create: (_, request) => mapInBatches(createFile, EnsureArray(request)),
+        read: async (_, { attachmentId }) => ({
+            attachmentId,
+            type: "file",
+            path: path.resolve(getLocalPath(attachmentId)),
+        }),
+        delete: (_, request) => mapInBatches(deleteFile, EnsureArray(request)),
+    };
+};

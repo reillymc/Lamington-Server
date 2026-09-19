@@ -1,15 +1,17 @@
 import path from "node:path";
 import type { Request } from "express";
 import * as OpenApiValidator from "express-openapi-validator";
-import jwt, { type JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import multer, { type FileFilterCallback } from "multer";
 import { openApiSpec } from "../openApiSpec.ts";
 import {
-    type CreateMiddleware,
-    type Middleware,
+    PayloadTooLargeError,
     UnauthorizedError,
+    UnsupportedMediaTypeError,
     ValidationError,
-} from "./middleware.ts";
+} from "../utils/errors.ts";
+import { verifyAccessToken } from "../utils/token.ts";
+import type { CreateMiddleware, Middleware } from "./middleware.ts";
 
 const { JsonWebTokenError, NotBeforeError, TokenExpiredError } = jwt;
 
@@ -28,17 +30,6 @@ const fileFilter = (
     callback(null, validFile);
 };
 
-const isAccessToken = (
-    decoded: string | undefined | JwtPayload,
-): decoded is Request["session"] => {
-    if (decoded === undefined || typeof decoded === "string") return false;
-
-    if ("userId" in decoded) return true;
-    if ("status" in decoded) return true;
-
-    return false;
-};
-
 type ValidatorMiddlewareConfig = {
     accessSecret: string;
 };
@@ -46,28 +37,18 @@ type ValidatorMiddlewareConfig = {
 export const createValidatorMiddleware: CreateMiddleware<
     ValidatorMiddlewareConfig
 > = ({ accessSecret }) => {
-    const verifyAccessToken = (token: string | undefined) => {
-        if (!token) {
-            throw new UnauthorizedError("No Token Provided");
-        }
-
-        const decoded = jwt.verify(token, accessSecret);
-
-        if (!isAccessToken(decoded)) {
-            throw new UnauthorizedError("Invalid Token Structure");
-        }
-
-        return decoded;
-    };
-
     const bearerAuthValidator = (request: Request): boolean => {
         const authHeader = request.headers.authorization;
 
         try {
             const token = authHeader?.substring(7, authHeader.length);
-            const decoded = verifyAccessToken(token);
+            const decoded = verifyAccessToken(accessSecret, token);
 
-            if (decoded.status === "P" || decoded.status === "B") {
+            if (
+                decoded.status === "P" ||
+                decoded.status === "B" ||
+                decoded.status === "D"
+            ) {
                 throw new UnauthorizedError("Access Denied");
             }
 
@@ -93,7 +74,7 @@ export const createValidatorMiddleware: CreateMiddleware<
     const openApiValidatorMiddlewares = OpenApiValidator.middleware({
         apiSpec: openApiSpec,
         validateRequests: {
-            allErrors: process.env.NODE_ENV !== "production",
+            allErrors: true,
             allowUnknownQueryParameters: false,
             removeAdditional: true,
         },
@@ -114,7 +95,13 @@ export const createValidatorMiddleware: CreateMiddleware<
         fileUploader: {
             storage: multer.memoryStorage(),
             fileFilter,
-            limits: {},
+            limits: {
+                fileSize: 5 * 1024 * 1024,
+                files: 1,
+                fields: 10,
+                fieldSize: 1024 * 1024,
+                fieldNameSize: 100,
+            },
         },
     });
 
@@ -123,6 +110,20 @@ export const createValidatorMiddleware: CreateMiddleware<
             async (req, res, next) => {
                 await middleware(req, res, (error) => {
                     if (error) {
+                        if (
+                            error instanceof
+                            OpenApiValidator.error.RequestEntityTooLarge
+                        ) {
+                            return next(
+                                new PayloadTooLargeError(error.message),
+                            );
+                        }
+                        if (
+                            error instanceof
+                            OpenApiValidator.error.UnsupportedMediaType
+                        ) {
+                            return next(new UnsupportedMediaTypeError());
+                        }
                         return next(new ValidationError(error));
                     }
                     next();

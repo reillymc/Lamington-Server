@@ -1,24 +1,18 @@
-import sharp from "sharp";
+import type { ReadResponse } from "../repositories/fileRepository.ts";
 import type { components } from "../routes/spec/schema.js";
+import { compressImage, computePreviewHash } from "../utils/image.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
     InsufficientDataError,
 } from "./service.ts";
 
-const compressImage = (file: Buffer) =>
-    sharp(file)
-        .toFormat("jpeg", { mozjpeg: true, quality: 60 })
-        .resize({ width: 2048, height: 2048, fit: "inside" })
-        .rotate()
-        .withMetadata()
-        .toBuffer();
-
 export interface AttachmentService {
     create: (
         userId: string,
         file: { buffer: Buffer } | undefined,
     ) => Promise<components["schemas"]["ImageAttachment"]>;
+    read: (attachmentId: string) => Promise<ReadResponse>;
 }
 
 export const createAttachmentService: CreateService<
@@ -30,47 +24,45 @@ export const createAttachmentService: CreateService<
             throw new InsufficientDataError("attachment");
         }
 
-        return database.transaction(async (trx) => {
-            const {
-                attachments: [attachmentEntry],
-            } = await attachmentRepository.create(trx, {
-                userId,
-                attachments: [{ uri: "" }],
-            });
+        const [compressedImage, previewHash] = await Promise.all([
+            compressImage(file.buffer),
+            computePreviewHash(file.buffer).catch(() => undefined),
+        ]);
 
-            if (!attachmentEntry) {
-                throw new CreatedDataFetchError("attachment");
-            }
-
-            const compressedImage = await compressImage(file.buffer);
-
-            const result = await fileRepository.create(undefined, {
-                file: compressedImage,
-                userId,
-                attachmentId: attachmentEntry.attachmentId,
-            });
-
-            if (!result) {
-                throw new CreatedDataFetchError("attachment");
-            }
-
-            const {
-                attachments: [finalAttachmentEntry],
-            } = await attachmentRepository.update(trx, {
-                userId,
-                attachments: [
-                    { attachmentId: attachmentEntry.attachmentId, uri: result },
-                ],
-            });
-
-            if (!finalAttachmentEntry) {
-                throw new CreatedDataFetchError("attachment");
-            }
-
-            return {
-                attachmentId: finalAttachmentEntry.attachmentId,
-                uri: finalAttachmentEntry.uri,
-            };
+        const {
+            attachments: [attachmentEntry],
+        } = await attachmentRepository.create(database, {
+            userId,
+            attachments: [{ preview: previewHash }],
         });
+
+        if (!attachmentEntry) {
+            throw new CreatedDataFetchError("attachment");
+        }
+
+        const attachmentId = attachmentEntry.attachmentId;
+
+        try {
+            const [createdFile] = await fileRepository.create(undefined, {
+                attachmentId,
+                file: compressedImage,
+            });
+
+            if (!createdFile?.succeeded) {
+                throw new CreatedDataFetchError("attachment");
+            }
+
+            return { attachmentId, preview: attachmentEntry.preview };
+        } catch (error) {
+            await attachmentRepository.deletePurgeable(database, {
+                attachments: [{ attachmentId }],
+            });
+
+            await fileRepository
+                .delete(undefined, { attachmentId })
+                .catch(() => undefined);
+            throw error;
+        }
     },
+    read: (attachmentId) => fileRepository.read(undefined, { attachmentId }),
 });

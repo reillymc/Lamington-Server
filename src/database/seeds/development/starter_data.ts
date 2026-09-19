@@ -640,6 +640,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         {
             mealId: "d1749d9e-1a6e-42f7-9292-bb9a1533d6ab",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
+            createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             meal: "dinner",
             description: "Risotto-Stuffed Tomatoes",
             year: 2024,
@@ -649,6 +650,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         {
             mealId: "eec01654-1a29-48de-bdac-70b0267f9087",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
+            createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             meal: "dinner",
             description: "Black Bean Enchiladas",
             year: 2024,
@@ -659,6 +661,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         {
             mealId: "f4795472-90cc-493b-af99-523a23bcff3c",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
+            createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             meal: "dinner",
             description: "Risotto-Stuffed Tomatoes",
             year: 2024,
@@ -668,6 +671,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         {
             mealId: "f65ebeef-a0bc-4d27-b865-caf3c6fb8023",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
+            createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             meal: "breakfast",
             description: "Overnight Oats",
             year: 2024,
@@ -677,6 +681,7 @@ export const seed = async (knex: Knex): Promise<void> => {
         {
             mealId: "e7aaf2b9-631b-4b07-b624-ccd0b479ed7b",
             plannerId: "eabedc0b-8b45-4432-9ddd-4b9855cb06ce",
+            createdBy: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
             meal: "breakfast",
             description: "Fruit Smoothie",
             year: 2024,
