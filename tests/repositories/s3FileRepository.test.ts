@@ -8,6 +8,8 @@ import { expect } from "expect";
 import { v4 as uuid } from "uuid";
 import { createS3FileRepository } from "../../src/repositories/s3/s3FileRepository.ts";
 
+const publicBaseUrl = "https://cdn.example.com";
+
 type BatchResponse = {
     $metadata: { httpStatusCode: number };
     Errors?: Array<{ Key: string; Code: string; Message: string }>;
@@ -29,7 +31,11 @@ describe("s3FileRepository", () => {
             sent.push((command as { input: (typeof sent)[number] }).input);
             return { $metadata: { httpStatusCode: 200 } };
         });
-        const repository = createS3FileRepository(client, "bucket");
+        const repository = createS3FileRepository(
+            client,
+            "bucket",
+            publicBaseUrl,
+        );
 
         const attachmentId = uuid();
         await expect(
@@ -42,7 +48,11 @@ describe("s3FileRepository", () => {
         const client = createMockClient(() => ({
             $metadata: { httpStatusCode: 500 },
         }));
-        const repository = createS3FileRepository(client, "bucket");
+        const repository = createS3FileRepository(
+            client,
+            "bucket",
+            publicBaseUrl,
+        );
 
         const attachmentId = uuid();
         await expect(
@@ -60,7 +70,11 @@ describe("s3FileRepository", () => {
             sent.push((command as { input: (typeof sent)[number] }).input);
             return { $metadata: { httpStatusCode: 200 } };
         });
-        const repository = createS3FileRepository(client, "bucket");
+        const repository = createS3FileRepository(
+            client,
+            "bucket",
+            publicBaseUrl,
+        );
 
         const attachments = [uuid(), uuid()].map((attachmentId) => ({
             attachmentId,
@@ -97,7 +111,11 @@ describe("s3FileRepository", () => {
                 },
             ],
         }));
-        const repository = createS3FileRepository(client, "bucket");
+        const repository = createS3FileRepository(
+            client,
+            "bucket",
+            publicBaseUrl,
+        );
 
         await expect(
             repository.delete(undefined, [
@@ -114,7 +132,11 @@ describe("s3FileRepository", () => {
         const client = createMockClient(() => {
             throw new Error("network unavailable");
         });
-        const repository = createS3FileRepository(client, "bucket");
+        const repository = createS3FileRepository(
+            client,
+            "bucket",
+            publicBaseUrl,
+        );
 
         const attachments = [
             { attachmentId: uuid() },
@@ -137,13 +159,18 @@ describe("s3FileRepository", () => {
             Key?: unknown;
             Body?: unknown;
             ContentType?: unknown;
+            CacheControl?: unknown;
         }> = [];
         const client = createMockClient((command) => {
             expect(command).toBeInstanceOf(PutObjectCommand);
             sent.push((command as { input: (typeof sent)[number] }).input);
             return { $metadata: { httpStatusCode: 200 } };
         });
-        const repository = createS3FileRepository(client, "bucket");
+        const repository = createS3FileRepository(
+            client,
+            "bucket",
+            publicBaseUrl,
+        );
 
         const attachmentIds = [uuid(), uuid()];
         const file = Buffer.from("image");
@@ -167,13 +194,20 @@ describe("s3FileRepository", () => {
         expect(sent[0]?.Key).toEqual(attachmentIds[0]);
         expect(sent[0]?.Body).toEqual(file);
         expect(sent[0]?.ContentType).toEqual("image/jpeg");
+        expect(sent[0]?.CacheControl).toEqual(
+            "public, max-age=31536000, immutable",
+        );
     });
 
     it("should report failure when the upload returns a non-2xx status", async () => {
         const client = createMockClient(() => ({
             $metadata: { httpStatusCode: 500 },
         }));
-        const repository = createS3FileRepository(client, "bucket");
+        const repository = createS3FileRepository(
+            client,
+            "bucket",
+            publicBaseUrl,
+        );
 
         const attachmentId = uuid();
 
@@ -194,7 +228,11 @@ describe("s3FileRepository", () => {
         const client = createMockClient(() => {
             throw new Error("network unavailable");
         });
-        const repository = createS3FileRepository(client, "bucket");
+        const repository = createS3FileRepository(
+            client,
+            "bucket",
+            publicBaseUrl,
+        );
 
         const attachmentId = uuid();
 
@@ -208,6 +246,113 @@ describe("s3FileRepository", () => {
                 attachmentId,
                 succeeded: false,
             },
+        ]);
+    });
+
+    it("should resolve a redirect to the public base url", async () => {
+        let sends = 0;
+        const client = createMockClient(() => {
+            sends += 1;
+            return { $metadata: { httpStatusCode: 200 } };
+        });
+        const repository = createS3FileRepository(
+            client,
+            "bucket",
+            publicBaseUrl,
+        );
+
+        const attachmentId = uuid();
+
+        await expect(
+            repository.read(undefined, { attachmentId }),
+        ).resolves.toEqual({
+            attachmentId,
+            type: "redirect",
+            url: `${publicBaseUrl}/${attachmentId}`,
+        });
+        expect(sends).toEqual(0);
+    });
+
+    it("should apply the key prefix to uploads, deletes and redirects", async () => {
+        const keyPrefix = "dev/attachments";
+        const prefixedKey = (attachmentId: string) =>
+            `dev/attachments/${attachmentId}`;
+
+        const commands: Array<unknown> = [];
+        const client = createMockClient((command) => {
+            commands.push(command);
+            return { $metadata: { httpStatusCode: 200 } };
+        });
+        const repository = createS3FileRepository(
+            client,
+            "bucket",
+            publicBaseUrl,
+            keyPrefix,
+        );
+
+        const attachmentId = uuid();
+
+        await repository.create(undefined, {
+            file: Buffer.from("image"),
+            attachmentId,
+        });
+
+        const put = commands.find((c) => c instanceof PutObjectCommand) as {
+            input: { Key?: unknown };
+        };
+        expect(put.input.Key).toEqual(prefixedKey(attachmentId));
+
+        commands.length = 0;
+        await repository.delete(undefined, { attachmentId });
+
+        const remove = commands.find(
+            (c) => c instanceof DeleteObjectsCommand,
+        ) as {
+            input: { Delete?: { Objects?: Array<{ Key?: unknown }> } };
+        };
+        expect(remove.input.Delete?.Objects?.[0]?.Key).toEqual(
+            prefixedKey(attachmentId),
+        );
+
+        await expect(
+            repository.read(undefined, { attachmentId }),
+        ).resolves.toEqual({
+            attachmentId,
+            type: "redirect",
+            url: `${publicBaseUrl}/${prefixedKey(attachmentId)}`,
+        });
+    });
+
+    it("should match prefixed keys reported as failed by a delete batch", async () => {
+        const keyPrefix = "dev/attachments";
+        const failedAttachmentId = uuid();
+        const succeededAttachmentId = uuid();
+
+        const client = createMockClient(() => ({
+            $metadata: { httpStatusCode: 200 },
+            Errors: [
+                {
+                    Key: `${keyPrefix}/${failedAttachmentId}`,
+                    Code: "InternalError",
+                    Message: "boom",
+                },
+            ],
+        }));
+        const repository = createS3FileRepository(
+            client,
+            "bucket",
+            publicBaseUrl,
+            keyPrefix,
+        );
+
+        await expect(
+            repository.delete(undefined, [
+                { attachmentId: failedAttachmentId },
+                { attachmentId: succeededAttachmentId },
+            ]),
+        ).resolves.toEqual([
+            { attachmentId: failedAttachmentId, succeeded: false },
+            { attachmentId: succeededAttachmentId, succeeded: true },
         ]);
     });
 });

@@ -145,4 +145,54 @@ describe("diskFileRepository", () => {
 
         expect(existsSync(path.join(root, attachmentId))).toEqual(false);
     });
+
+    it("should resolve the absolute path for the attachmentId", async (t) => {
+        const root = await createRoot(t);
+
+        const repository = createDiskFileRepository(root);
+
+        const attachmentId = uuid();
+
+        await expect(
+            repository.read(undefined, { attachmentId }),
+        ).resolves.toEqual({
+            attachmentId,
+            type: "file",
+            path: path.resolve(root, attachmentId),
+        });
+    });
+
+    it("should store, resolve and delete files under the key prefix", async (t) => {
+        const root = await createRoot(t);
+
+        const repository = createDiskFileRepository(root, "dev/attachments");
+
+        const attachmentId = uuid();
+        const file = await createImage();
+
+        await expect(
+            repository.create(undefined, { file, attachmentId }),
+        ).resolves.toEqual([{ attachmentId, succeeded: true }]);
+
+        const prefixedPath = path.join(
+            root,
+            "dev",
+            "attachments",
+            attachmentId,
+        );
+        expect(existsSync(prefixedPath)).toEqual(true);
+
+        await expect(
+            repository.read(undefined, { attachmentId }),
+        ).resolves.toEqual({
+            attachmentId,
+            type: "file",
+            path: prefixedPath,
+        });
+
+        await expect(
+            repository.delete(undefined, { attachmentId }),
+        ).resolves.toEqual([{ attachmentId, succeeded: true }]);
+        expect(existsSync(prefixedPath)).toEqual(false);
+    });
 });

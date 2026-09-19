@@ -89,6 +89,18 @@ paths:
               schema:
                 type: string
                 format: binary
+        301:
+          description: Redirect to the publicly hosted image
+          headers:
+            Location:
+              description: Public URL of the image
+              schema:
+                type: string
+                format: uri
+          content:
+            text/plain:
+              schema:
+                type: string
         400:
           $ref: "#/components/responses/BadRequest"
         401:

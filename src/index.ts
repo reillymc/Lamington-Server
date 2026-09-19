@@ -58,6 +58,7 @@ const trustProxyHops = Number.parseInt(process.env.TRUST_PROXY_HOPS ?? "0", 10);
 const uploadDirectory = process.env.UPLOAD_DIRECTORY ?? "uploads";
 const assetDirectory = process.env.ASSET_DIRECTORY ?? "assets";
 const logDirectory = process.env.LOG_DIRECTORY ?? "logs";
+const attachmentPath = process.env.ATTACHMENT_PATH;
 
 const ErrorLogFileTransport = new transports.DailyRotateFile({
     level: "error",
@@ -120,21 +121,30 @@ const selectDatabaseConfig = () => {
 
 const db = knex(selectDatabaseConfig());
 
-let fileRepository = createDiskFileRepository(uploadDirectory);
+let fileRepository = createDiskFileRepository(uploadDirectory, attachmentPath);
 
 if (process.env.ATTACHMENT_STORAGE_SERVICE === "s3") {
     const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
     const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
     const awsRegion = process.env.AWS_REGION;
     const awsBucketName = process.env.AWS_BUCKET_NAME;
+    const attachmentPublicBaseUrl = process.env.ATTACHMENT_PUBLIC_BASE_URL;
 
-    if (!accessKeyId || !secretAccessKey || !awsRegion || !awsBucketName) {
+    if (
+        !accessKeyId ||
+        !secretAccessKey ||
+        !awsRegion ||
+        !awsBucketName ||
+        !attachmentPublicBaseUrl
+    ) {
         logger.error(
             `Incomplete S3 details
 accessKeyId: ${accessKeyId ? "provided" : "missing"},
 secretAccessKey: ${secretAccessKey ? "provided" : "missing"},
 awsRegion: ${awsRegion ? "provided" : "missing"},
-awsBucketName: ${awsBucketName ? "provided" : "missing"}`,
+awsBucketName: ${awsBucketName ? "provided" : "missing"},
+attachmentPublicBaseUrl: ${attachmentPublicBaseUrl ? "provided" : "missing"},
+attachmentPath: ${attachmentPath ?? "(none)"}`,
         );
         throw "Error starting Lamington Server";
     }
@@ -146,6 +156,8 @@ awsBucketName: ${awsBucketName ? "provided" : "missing"}`,
             useDualstackEndpoint: true,
         }),
         awsBucketName,
+        attachmentPublicBaseUrl,
+        attachmentPath,
     );
 }
 

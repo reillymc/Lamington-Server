@@ -1,3 +1,4 @@
+import type { ReadResponse } from "../repositories/fileRepository.ts";
 import type { components } from "../routes/spec/schema.js";
 import { compressImage, computePreviewHash } from "../utils/image.ts";
 import {
@@ -11,6 +12,7 @@ export interface AttachmentService {
         userId: string,
         file: { buffer: Buffer } | undefined,
     ) => Promise<components["schemas"]["ImageAttachment"]>;
+    read: (attachmentId: string) => Promise<ReadResponse>;
 }
 
 export const createAttachmentService: CreateService<
@@ -62,4 +64,5 @@ export const createAttachmentService: CreateService<
             throw error;
         }
     },
+    read: (attachmentId) => fileRepository.read(undefined, { attachmentId }),
 });

@@ -11,17 +11,18 @@ import type {
     FileRepository,
 } from "../fileRepository.ts";
 
-const getLocalPath = (uploadDirectory: string, attachmentId: string) =>
-    `${uploadDirectory}/${attachmentId}`;
-
 export const createDiskFileRepository = (
     uploadDirectory: string,
+    keyPrefix?: string,
 ): FileRepository => {
+    const getLocalPath = (attachmentId: string) =>
+        `${uploadDirectory}/${keyPrefix ? `${keyPrefix}/` : ""}${attachmentId}`;
+
     const createFile = async ({
         file,
         attachmentId,
     }: CreateRequest): Promise<CreateResponse> => {
-        const localPath = getLocalPath(uploadDirectory, attachmentId);
+        const localPath = getLocalPath(attachmentId);
 
         try {
             await mkdir(path.dirname(localPath), { recursive: true });
@@ -36,7 +37,7 @@ export const createDiskFileRepository = (
     const deleteFile = async ({
         attachmentId,
     }: DeleteRequest): Promise<DeleteResponse> => {
-        const localPath = getLocalPath(uploadDirectory, attachmentId);
+        const localPath = getLocalPath(attachmentId);
 
         try {
             await unlink(localPath);
@@ -51,6 +52,11 @@ export const createDiskFileRepository = (
 
     return {
         create: (_, request) => mapInBatches(createFile, EnsureArray(request)),
+        read: async (_, { attachmentId }) => ({
+            attachmentId,
+            type: "file",
+            path: path.resolve(getLocalPath(attachmentId)),
+        }),
         delete: (_, request) => mapInBatches(deleteFile, EnsureArray(request)),
     };
 };

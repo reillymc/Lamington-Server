@@ -1,9 +1,13 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
 import { EnsureArray } from "@reillymc/es-utils";
 import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { thumbHashToRGBA } from "thumbhash";
+import { v4 as uuid } from "uuid";
 import type { AttachmentRepository } from "../../src/repositories/attachmentRepository.ts";
 import type { FileRepository } from "../../src/repositories/fileRepository.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
@@ -27,8 +31,17 @@ const mockDeleteFile = mock.fn<FileRepository["delete"]>(async (_, request) =>
     })),
 );
 
+const mockReadFile = mock.fn<FileRepository["read"]>(
+    async (_, { attachmentId }) => ({
+        attachmentId,
+        type: "redirect" as const,
+        url: `https://cdn.example.com/${attachmentId}`,
+    }),
+);
+
 const MockSuccessfulFileRepository: FileRepository = {
     create: mockCreateFile,
+    read: mockReadFile,
     delete: mockDeleteFile,
 };
 
@@ -50,6 +63,7 @@ const mockDeleteFailingFile = mock.fn<FileRepository["delete"]>(
 
 const MockFailingFileRepository: FileRepository = {
     create: mockCreateFailingFile,
+    read: mockReadFile,
     delete: mockDeleteFailingFile,
 };
 
@@ -97,6 +111,7 @@ describe("Upload an image", () => {
         mockDeleteFile.mock.resetCalls();
         mockCreateFailingFile.mock.resetCalls();
         mockDeleteFailingFile.mock.resetCalls();
+        mockReadFile.mock.resetCalls();
     });
 
     it("should respect controlled rate limit", async () => {
@@ -224,4 +239,81 @@ describe("Upload an image", () => {
     });
 });
 
-describe("Get an image", () => {});
+describe("Get an image", () => {
+    afterEach(() => {
+        mockReadFile.mock.resetCalls();
+    });
+
+    const withReadResult = (read: FileRepository["read"]) =>
+        createTestApp({
+            database,
+            repositories: {
+                fileRepository: { ...MockSuccessfulFileRepository, read },
+            },
+        });
+
+    it("should redirect to the stored image location", async () => {
+        const localApp = withReadResult(async (_, { attachmentId }) => ({
+            attachmentId,
+            type: "redirect" as const,
+            url: `https://cdn.example.com/${attachmentId}`,
+        }));
+
+        const [token] = await PrepareAuthenticatedUser(database);
+        const attachmentId = uuid();
+
+        const res = await request(localApp)
+            .get(`/v1/attachments/image/${attachmentId}`)
+            .set(token)
+            .redirects(0);
+
+        expect(res.statusCode).toEqual(301);
+        expect(res.headers.location).toEqual(
+            `https://cdn.example.com/${attachmentId}`,
+        );
+    });
+
+    it("should stream a local file as jpeg", async () => {
+        const root = await mkdtemp(path.join(tmpdir(), "attachments-"));
+        try {
+            const attachmentId = uuid();
+            const filePath = path.join(root, attachmentId);
+            const contents = Buffer.from("jpeg-bytes");
+            await writeFile(filePath, contents);
+
+            const localApp = withReadResult(async (_, request) => ({
+                attachmentId: request.attachmentId,
+                type: "file" as const,
+                path: filePath,
+            }));
+
+            const [token] = await PrepareAuthenticatedUser(database);
+
+            const res = await request(localApp)
+                .get(`/v1/attachments/image/${attachmentId}`)
+                .set(token);
+
+            expect(res.statusCode).toEqual(200);
+            expect(res.headers["content-type"]).toContain("image/jpeg");
+            expect(Buffer.from(res.body)).toEqual(contents);
+        } finally {
+            await rm(root, { recursive: true, force: true });
+        }
+    });
+
+    it("should return 404 when the local file is missing", async () => {
+        const localApp = withReadResult(async (_, { attachmentId }) => ({
+            attachmentId,
+            type: "file" as const,
+            path: path.join(tmpdir(), `missing-${attachmentId}`),
+        }));
+
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(localApp)
+            .get(`/v1/attachments/image/${uuid()}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(404);
+    });
+});

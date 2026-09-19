@@ -21,7 +21,12 @@ const S3_DELETE_BATCH_SIZE = 1000;
 export const createS3FileRepository = (
     s3Client: S3Client,
     bucket: string,
+    publicBaseUrl: string,
+    keyPrefix?: string,
 ): FileRepository => {
+    const getKey = (attachmentId: string) =>
+        keyPrefix ? `${keyPrefix}/${attachmentId}` : attachmentId;
+
     const createFile = async ({
         file,
         attachmentId,
@@ -30,9 +35,10 @@ export const createS3FileRepository = (
             const result = await s3Client.send(
                 new PutObjectCommand({
                     Bucket: bucket,
-                    Key: attachmentId,
+                    Key: getKey(attachmentId),
                     Body: file,
                     ContentType: "image/jpeg",
+                    CacheControl: "public, max-age=31536000, immutable",
                 }),
             );
 
@@ -55,7 +61,7 @@ export const createS3FileRepository = (
                     Bucket: bucket,
                     Delete: {
                         Objects: batch.map(({ attachmentId }) => ({
-                            Key: attachmentId,
+                            Key: getKey(attachmentId),
                         })),
                         Quiet: true,
                     },
@@ -75,7 +81,7 @@ export const createS3FileRepository = (
 
             return batch.map(({ attachmentId }) => ({
                 attachmentId,
-                succeeded: !failedKeys.has(attachmentId),
+                succeeded: !failedKeys.has(getKey(attachmentId)),
             }));
         } catch {
             return batch.map(({ attachmentId }) => ({
@@ -107,6 +113,11 @@ export const createS3FileRepository = (
 
     return {
         create: (_, request) => mapInBatches(createFile, EnsureArray(request)),
+        read: async (_, { attachmentId }) => ({
+            attachmentId,
+            type: "redirect",
+            url: `${publicBaseUrl}/${getKey(attachmentId)}`,
+        }),
         delete: (_, request) => deleteFiles(EnsureArray(request)),
     };
 };

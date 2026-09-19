@@ -2,15 +2,10 @@ import express from "express";
 import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
-export type AttachmentsRouterConfig = {
-    uploadDirectory: string;
-};
-
 export const createAttachmentsRouter: CreateRouter<
     "attachmentService",
-    "rateLimiterControlled",
-    AttachmentsRouterConfig
-> = ({ attachmentService }, middleware, config) =>
+    "rateLimiterControlled"
+> = ({ attachmentService }, middleware) =>
     express
         .Router()
         .post<
@@ -35,7 +30,22 @@ export const createAttachmentsRouter: CreateRouter<
                 return res.status(200).json(attachmentEntry);
             },
         )
-        .use(
-            "/attachments/image" satisfies routes,
-            express.static(config.uploadDirectory),
-        );
+        .get<
+            routes,
+            paths["/attachments/image/{attachmentId}"]["get"]["parameters"]["path"],
+            paths["/attachments/image/{attachmentId}"]["get"]["responses"]["200"]["content"]["image/*"],
+            paths["/attachments/image/{attachmentId}"]["get"]["requestBody"],
+            paths["/attachments/image/{attachmentId}"]["get"]["parameters"]["query"]
+        >("/attachments/image/:attachmentId", async ({ params }, res) => {
+            const location = await attachmentService.read(params.attachmentId);
+
+            if (location.type === "redirect") {
+                return res.redirect(301, location.url);
+            }
+
+            return res.type("image/jpeg").sendFile(location.path, (error) => {
+                if (error && !res.headersSent) {
+                    res.sendStatus(404);
+                }
+            });
+        });
