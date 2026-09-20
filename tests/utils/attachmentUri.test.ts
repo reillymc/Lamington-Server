@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import { expect } from "expect";
 import {
     createPopulateAttachmentUri,
-    createS3AttachmentUri,
+    createPublicAttachmentUri,
     defaultAttachmentUri,
 } from "../../src/utils/attachmentUri.ts";
 
@@ -13,14 +13,16 @@ describe("attachmentUri", () => {
         );
     });
 
-    it("should resolve an s3 public url without a key prefix", () => {
-        const attachmentUri = createS3AttachmentUri("https://cdn.example.com");
+    it("should resolve a public url without a key prefix", () => {
+        const attachmentUri = createPublicAttachmentUri(
+            "https://cdn.example.com",
+        );
 
         expect(attachmentUri("abc")).toEqual("https://cdn.example.com/abc");
     });
 
-    it("should apply a key prefix to the s3 public url", () => {
-        const attachmentUri = createS3AttachmentUri(
+    it("should apply a key prefix to the public url", () => {
+        const attachmentUri = createPublicAttachmentUri(
             "https://cdn.example.com",
             "dev/attachments",
         );

@@ -1,4 +1,3 @@
-import path from "node:path";
 import { S3Client } from "@aws-sdk/client-s3";
 import { Undefined } from "@reillymc/es-utils";
 import knex from "knex";
@@ -25,7 +24,6 @@ import {
     createRateLimiterRestrictive,
 } from "./middleware/rateLimiters.ts";
 import { createValidatorMiddleware } from "./middleware/validator.ts";
-import { createDiskFileRepository } from "./repositories/disk/diskFileRepository.ts";
 import type { AppRepositories } from "./repositories/index.ts";
 import { KnexAttachmentRepository } from "./repositories/knex/knexAttachmentRepository.ts";
 import { KnexBookRepository } from "./repositories/knex/knexBookRepository.ts";
@@ -37,7 +35,8 @@ import { KnexPlannerRepository } from "./repositories/knex/knexPlannerRepository
 import { KnexRecipeRepository } from "./repositories/knex/knexRecipeRepository.ts";
 import { KnexTagRepository } from "./repositories/knex/knexTagRepository.ts";
 import { KnexUserRepository } from "./repositories/knex/knexUserRepository.ts";
-import { createS3FileRepository } from "./repositories/s3/s3FileRepository.ts";
+import { createLocalDiskFileRepository } from "./repositories/localDisk/localDiskFileRepository.ts";
+import { createObjectStorageFileRepository } from "./repositories/objectStorage/objectStorageFileRepository.ts";
 import { createAttachmentService } from "./services/attachmentService.ts";
 import { createAuthenticationService } from "./services/authenticationService.ts";
 import { createBookService } from "./services/bookService.ts";
@@ -51,10 +50,11 @@ import { createPlannerService } from "./services/plannerService.ts";
 import { createRecipeService } from "./services/recipeService.ts";
 import { createTagService } from "./services/tagService.ts";
 import { createUserService } from "./services/userService.ts";
+import { buildAttachmentDirectory } from "./utils/attachmentPath.ts";
 import {
     type AttachmentUri,
     createPopulateAttachmentUri,
-    createS3AttachmentUri,
+    createPublicAttachmentUri,
     defaultAttachmentUri,
 } from "./utils/attachmentUri.ts";
 import "winston-daily-rotate-file";
@@ -128,55 +128,70 @@ const selectDatabaseConfig = () => {
 
 const db = knex(selectDatabaseConfig());
 
-let fileRepository = createDiskFileRepository(uploadDirectory, attachmentPath);
+const storageService = process.env.ATTACHMENT_STORAGE_SERVICE ?? "localdisk";
+
+if (storageService !== "localdisk" && storageService !== "s3") {
+    logger.error(
+        `Invalid ATTACHMENT_STORAGE_SERVICE: "${storageService}". Options: "localdisk" | "s3"`,
+    );
+    throw "Error starting Lamington Server";
+}
+
+let fileRepository = createLocalDiskFileRepository(
+    uploadDirectory,
+    attachmentPath,
+);
 let attachmentUri: AttachmentUri = defaultAttachmentUri;
 
-if (process.env.ATTACHMENT_STORAGE_SERVICE === "s3") {
-    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-    const awsRegion = process.env.AWS_REGION;
-    const awsBucketName = process.env.AWS_BUCKET_NAME;
+if (storageService === "s3") {
+    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+    const s3Region = process.env.S3_REGION;
+    const s3BucketName = process.env.S3_BUCKET_NAME;
+    const s3Endpoint = process.env.S3_ENDPOINT;
+    const forcePathStyle = process.env.S3_FORCE_PATH_STYLE === "true";
     const attachmentPublicBaseUrl = process.env.ATTACHMENT_PUBLIC_BASE_URL;
 
     if (
         !accessKeyId ||
         !secretAccessKey ||
-        !awsRegion ||
-        !awsBucketName ||
+        !s3Region ||
+        !s3BucketName ||
         !attachmentPublicBaseUrl
     ) {
         logger.error(
-            `Incomplete S3 details
+            `Incomplete S3-compatible object storage details
 accessKeyId: ${accessKeyId ? "provided" : "missing"},
 secretAccessKey: ${secretAccessKey ? "provided" : "missing"},
-awsRegion: ${awsRegion ? "provided" : "missing"},
-awsBucketName: ${awsBucketName ? "provided" : "missing"},
+s3Region: ${s3Region ? "provided" : "missing"},
+s3BucketName: ${s3BucketName ? "provided" : "missing"},
 attachmentPublicBaseUrl: ${attachmentPublicBaseUrl ? "provided" : "missing"},
 attachmentPath: ${attachmentPath ?? "(none)"}`,
         );
         throw "Error starting Lamington Server";
     }
 
-    attachmentUri = createS3AttachmentUri(
+    attachmentUri = createPublicAttachmentUri(
         attachmentPublicBaseUrl,
         attachmentPath,
     );
 
-    fileRepository = createS3FileRepository(
+    fileRepository = createObjectStorageFileRepository(
         new S3Client({
-            region: awsRegion,
+            region: s3Region,
             credentials: { accessKeyId, secretAccessKey },
-            useDualstackEndpoint: true,
+            ...(s3Endpoint ? { endpoint: s3Endpoint } : {}),
+            ...(forcePathStyle ? { forcePathStyle: true } : {}),
         }),
-        awsBucketName,
+        s3BucketName,
         attachmentPath,
     );
 }
 
 const attachmentDirectory =
-    process.env.ATTACHMENT_STORAGE_SERVICE === "s3"
+    storageService === "s3"
         ? undefined
-        : path.join(uploadDirectory, attachmentPath ?? "");
+        : buildAttachmentDirectory(uploadDirectory, attachmentPath);
 
 const populateAttachmentUri = createPopulateAttachmentUri(attachmentUri);
 

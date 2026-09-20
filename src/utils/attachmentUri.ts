@@ -1,14 +1,16 @@
+import { buildAttachmentPath } from "./attachmentPath.ts";
+
 export type AttachmentUri = (attachmentId: string) => string;
 
 export const defaultAttachmentUri: AttachmentUri = (attachmentId) =>
     `/v1/attachments/image/${attachmentId}`;
 
-export const createS3AttachmentUri = (
+export const createPublicAttachmentUri = (
     publicBaseUrl: string,
     keyPrefix?: string,
 ): AttachmentUri => {
     return (attachmentId) =>
-        `${publicBaseUrl}/${keyPrefix ? `${keyPrefix}/` : ""}${attachmentId}`;
+        `${publicBaseUrl}/${buildAttachmentPath(attachmentId, keyPrefix)}`;
 };
 
 type Attachment = { attachmentId: string; preview?: string };

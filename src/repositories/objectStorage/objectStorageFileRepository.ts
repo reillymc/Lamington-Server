@@ -4,6 +4,7 @@ import {
     type S3Client,
 } from "@aws-sdk/client-s3";
 import { EnsureArray } from "@reillymc/es-utils";
+import { buildAttachmentPath } from "../../utils/attachmentPath.ts";
 import { mapInBatches } from "../common/mapInBatches.ts";
 import type {
     CreateRequest,
@@ -18,13 +19,13 @@ const isSuccessStatus = (statusCode?: number) =>
 
 const S3_DELETE_BATCH_SIZE = 1000;
 
-export const createS3FileRepository = (
+export const createObjectStorageFileRepository = (
     s3Client: S3Client,
     bucket: string,
     keyPrefix?: string,
 ): FileRepository => {
     const getKey = (attachmentId: string) =>
-        keyPrefix ? `${keyPrefix}/${attachmentId}` : attachmentId;
+        buildAttachmentPath(attachmentId, keyPrefix);
 
     const createFile = async ({
         file,

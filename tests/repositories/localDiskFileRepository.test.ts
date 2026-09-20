@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { expect } from "expect";
 import { v4 as uuid } from "uuid";
-import { createDiskFileRepository } from "../../src/repositories/disk/diskFileRepository.ts";
+import { createLocalDiskFileRepository } from "../../src/repositories/localDisk/localDiskFileRepository.ts";
 import { createImage } from "../helpers/image.ts";
 
 const createRoot = async (t: { after: (fn: () => Promise<void>) => void }) => {
@@ -14,11 +14,11 @@ const createRoot = async (t: { after: (fn: () => Promise<void>) => void }) => {
     return root;
 };
 
-describe("diskFileRepository", () => {
+describe("localDiskFileRepository", () => {
     it("should delete the file at the attachmentId key", async (t) => {
         const root = await createRoot(t);
 
-        const repository = createDiskFileRepository(root);
+        const repository = createLocalDiskFileRepository(root);
 
         const attachmentId = uuid();
         const absolutePath = path.join(root, attachmentId);
@@ -33,7 +33,7 @@ describe("diskFileRepository", () => {
     it("should return true when the file does not exist", async (t) => {
         const root = await createRoot(t);
 
-        const repository = createDiskFileRepository(root);
+        const repository = createLocalDiskFileRepository(root);
 
         const attachmentId = uuid();
         await expect(
@@ -44,7 +44,7 @@ describe("diskFileRepository", () => {
     it("should report files that could not be deleted", async (t) => {
         const root = await createRoot(t);
 
-        const repository = createDiskFileRepository(root);
+        const repository = createLocalDiskFileRepository(root);
 
         const attachmentId = uuid();
         await mkdir(path.join(root, attachmentId), { recursive: true });
@@ -57,7 +57,7 @@ describe("diskFileRepository", () => {
     it("should delete every file passed to delete", async (t) => {
         const root = await createRoot(t);
 
-        const repository = createDiskFileRepository(root);
+        const repository = createLocalDiskFileRepository(root);
 
         const attachments = [uuid(), uuid()].map((attachmentId) => ({
             attachmentId,
@@ -87,7 +87,7 @@ describe("diskFileRepository", () => {
     it("should swallow missing files passed to delete", async (t) => {
         const root = await createRoot(t);
 
-        const repository = createDiskFileRepository(root);
+        const repository = createLocalDiskFileRepository(root);
 
         const attachmentId = uuid();
 
@@ -99,7 +99,7 @@ describe("diskFileRepository", () => {
     it("should create every file passed to create", async (t) => {
         const root = await createRoot(t);
 
-        const repository = createDiskFileRepository(root);
+        const repository = createLocalDiskFileRepository(root);
 
         const attachmentIds = [uuid(), uuid()];
         const file = await createImage();
@@ -127,7 +127,7 @@ describe("diskFileRepository", () => {
     it("should report files that failed to be created", async (t) => {
         const root = await createRoot(t);
 
-        const repository = createDiskFileRepository(root);
+        const repository = createLocalDiskFileRepository(root);
 
         const attachmentId = uuid();
 
@@ -149,7 +149,10 @@ describe("diskFileRepository", () => {
     it("should store and delete files under the key prefix", async (t) => {
         const root = await createRoot(t);
 
-        const repository = createDiskFileRepository(root, "dev/attachments");
+        const repository = createLocalDiskFileRepository(
+            root,
+            "dev/attachments",
+        );
 
         const attachmentId = uuid();
         const file = await createImage();

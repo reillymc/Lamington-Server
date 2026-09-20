@@ -2,6 +2,7 @@ import { mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
 import { EnsureArray } from "@reillymc/es-utils";
 import sharp from "sharp";
+import { buildAttachmentPath } from "../../utils/attachmentPath.ts";
 import { mapInBatches } from "../common/mapInBatches.ts";
 import type {
     CreateRequest,
@@ -11,12 +12,15 @@ import type {
     FileRepository,
 } from "../fileRepository.ts";
 
-export const createDiskFileRepository = (
+export const createLocalDiskFileRepository = (
     uploadDirectory: string,
     keyPrefix?: string,
 ): FileRepository => {
     const getLocalPath = (attachmentId: string) =>
-        `${uploadDirectory}/${keyPrefix ? `${keyPrefix}/` : ""}${attachmentId}`;
+        path.join(
+            uploadDirectory,
+            buildAttachmentPath(attachmentId, keyPrefix),
+        );
 
     const createFile = async ({
         file,
