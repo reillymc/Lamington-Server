@@ -40,10 +40,16 @@ import { createPlannerService } from "../../src/services/plannerService.ts";
 import { createRecipeService } from "../../src/services/recipeService.ts";
 import { createTagService } from "../../src/services/tagService.ts";
 import { createUserService } from "../../src/services/userService.ts";
+import {
+    createPopulateAttachmentUri,
+    defaultAttachmentUri,
+} from "../../src/utils/attachmentUri.ts";
 import testConfig from "./knexfile.testing.ts";
 
 export const accessSecret = v4();
 export const refreshSecret = v4();
+
+const populateAttachmentUri = createPopulateAttachmentUri(defaultAttachmentUri);
 
 const defaultAppRepositories: AppRepositories = {
     attachmentRepository: KnexAttachmentRepository,
@@ -127,6 +133,7 @@ export const createTestApp = ({
             attachmentService: createAttachmentService(
                 database,
                 appRepositories,
+                { populateAttachmentUri },
             ),
             authenticationService: createAuthenticationService(
                 database,
@@ -138,21 +145,31 @@ export const createTestApp = ({
                     refreshSecret,
                 },
             ),
-            bookService: createBookService(database, appRepositories),
+            bookService: createBookService(database, appRepositories, {
+                populateAttachmentUri,
+            }),
             contentExtractionService: createContentExtractionService(
                 database,
                 appRepositories,
             ),
-            cooklistService: createCooklistService(database, appRepositories),
+            cooklistService: createCooklistService(database, appRepositories, {
+                populateAttachmentUri,
+            }),
             ingredientService: createIngredientService(
                 database,
                 appRepositories,
                 appJobs,
             ),
             listService: createListService(database, appRepositories),
-            mealService: createMealService(database, appRepositories),
-            plannerService: createPlannerService(database, appRepositories),
-            recipeService: createRecipeService(database, appRepositories),
+            mealService: createMealService(database, appRepositories, {
+                populateAttachmentUri,
+            }),
+            plannerService: createPlannerService(database, appRepositories, {
+                populateAttachmentUri,
+            }),
+            recipeService: createRecipeService(database, appRepositories, {
+                populateAttachmentUri,
+            }),
             tagService: createTagService(database, appRepositories),
             userService: createUserService(database, appRepositories, appJobs),
             ...services,

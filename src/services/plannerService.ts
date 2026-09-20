@@ -1,5 +1,6 @@
 import { ForeignKeyViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
+import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
@@ -75,10 +76,13 @@ export interface PlannerService {
 
 export const createPlannerService: CreateService<
     PlannerService,
-    "plannerRepository" | "attachmentRepository" | "recipeRepository"
+    "plannerRepository" | "attachmentRepository" | "recipeRepository",
+    never,
+    { populateAttachmentUri: PopulateAttachmentUri }
 > = (
     database,
     { plannerRepository, attachmentRepository, recipeRepository },
+    { populateAttachmentUri },
 ) => ({
     getAll: async (userId) => {
         const { planners } = await plannerRepository.readAll(database, {
@@ -219,7 +223,9 @@ export const createPlannerService: CreateService<
                 throw new CreatedDataFetchError("planner meal");
             }
 
-            return createdMeals;
+            return createdMeals.map((meal) =>
+                populateAttachmentUri(meal, "heroImage"),
+            );
         }),
     getMeals: async (userId, plannerId, year, month) => {
         const permissions = await plannerRepository.verifyPermissions(
@@ -245,7 +251,7 @@ export const createPlannerService: CreateService<
                 year,
             },
         });
-        return meals;
+        return meals.map((meal) => populateAttachmentUri(meal, "heroImage"));
     },
     updateMeal: (userId, plannerId, mealId, request) =>
         database.transaction(async (trx) => {
@@ -322,7 +328,7 @@ export const createPlannerService: CreateService<
                 throw new NotFoundError("planner meal", mealId);
             }
 
-            return meal;
+            return populateAttachmentUri(meal, "heroImage");
         }),
     deleteMeal: (userId, plannerId, mealId) =>
         database.transaction(async (trx) => {

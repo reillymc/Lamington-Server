@@ -501,7 +501,7 @@ describe("Delete a planner", () => {
             recipes: [
                 {
                     name: uuid(),
-                    photo: { attachmentId: attachment!.attachmentId },
+                    heroImage: attachment!.attachmentId,
                 },
             ],
         });

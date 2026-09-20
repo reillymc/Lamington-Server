@@ -1,5 +1,6 @@
 import type { ReadResponse } from "../repositories/fileRepository.ts";
 import type { components } from "../routes/spec/schema.js";
+import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
 import { compressImage, computePreviewHash } from "../utils/image.ts";
 import {
     CreatedDataFetchError,
@@ -17,8 +18,14 @@ export interface AttachmentService {
 
 export const createAttachmentService: CreateService<
     AttachmentService,
-    "attachmentRepository" | "fileRepository"
-> = (database, { attachmentRepository, fileRepository }) => ({
+    "attachmentRepository" | "fileRepository",
+    never,
+    { populateAttachmentUri: PopulateAttachmentUri }
+> = (
+    database,
+    { attachmentRepository, fileRepository },
+    { populateAttachmentUri },
+) => ({
     create: async (userId, file) => {
         if (!file) {
             throw new InsufficientDataError("attachment");
@@ -52,7 +59,10 @@ export const createAttachmentService: CreateService<
                 throw new CreatedDataFetchError("attachment");
             }
 
-            return { attachmentId, preview: attachmentEntry.preview };
+            return populateAttachmentUri({
+                attachmentId,
+                preview: attachmentEntry.preview,
+            });
         } catch (error) {
             await attachmentRepository.deletePurgeable(database, {
                 attachments: [{ attachmentId }],

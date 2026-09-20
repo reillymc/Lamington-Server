@@ -66,7 +66,7 @@ describe("Get recipes", () => {
                 {
                     name: uuid(),
                     rating: randomNumber(),
-                    photo: attachment,
+                    heroImage: attachment!.attachmentId,
                 },
             ],
         });
@@ -92,7 +92,7 @@ describe("Get recipes", () => {
         expect(recipeResponse!.rating?.average).toEqual(
             recipe!.rating!.personal,
         );
-        expect(recipeResponse!.photo?.attachmentId).toEqual(
+        expect(recipeResponse!.heroImage?.attachmentId).toEqual(
             attachment!.attachmentId,
         );
     });
@@ -957,7 +957,7 @@ describe("Create a recipe", () => {
             ingredients: [],
             timesCooked: randomNumber(),
             rating: randomNumber(),
-            photo: attachment,
+            heroImage: attachment!.attachmentId,
             tags: [{ tagId: childTag!.tagId }, { tagId: soloTag!.tagId }],
         };
 
@@ -981,7 +981,9 @@ describe("Create a recipe", () => {
         expect(response!.timesCooked).toBe(recipe.timesCooked);
         expect(response!.rating!.personal).toBe(recipe.rating);
         expect(response!.rating!.average).toEqual(recipe.rating);
-        expect(response!.photo!.attachmentId).toBe(attachment!.attachmentId);
+        expect(response!.heroImage!.attachmentId).toBe(
+            attachment!.attachmentId,
+        );
         expect(response!.tags).toStrictEqual({
             [parentTag!.tagId]: {
                 tagId: parentTag!.tagId,
@@ -1010,7 +1012,7 @@ describe("Create a recipe", () => {
 
         const recipe: components["schemas"]["RecipeCreate"] = {
             name: uuid(),
-            photo: { attachmentId: attachment!.attachmentId },
+            heroImage: attachment!.attachmentId,
         };
 
         const res = await request(app)
@@ -1068,7 +1070,7 @@ describe("Create a recipe", () => {
                 .set(token)
                 .send({
                     name: uuid(),
-                    photo: { attachmentId },
+                    heroImage: attachmentId,
                 } satisfies components["schemas"]["RecipeCreate"]);
 
             expect(res.statusCode).toEqual(404);
@@ -1601,7 +1603,7 @@ describe("Update a recipe", () => {
                     cookTime: randomNumber(),
                     method: generateRandomRecipeMethodSections(),
                     name: uuid(),
-                    photo: attachment1,
+                    heroImage: attachment1!.attachmentId,
                     prepTime: randomNumber(),
                     public: randomBoolean(),
                     rating: randomNumber(),
@@ -1627,7 +1629,7 @@ describe("Update a recipe", () => {
             cookTime: randomNumber(),
             method: generateRandomRecipeMethodSections(),
             name: uuid(),
-            photo: attachment2,
+            heroImage: attachment2!.attachmentId,
             prepTime: randomNumber(),
             public: !recipe!.public,
             rating: randomNumber(),
@@ -1667,7 +1669,7 @@ describe("Update a recipe", () => {
         expect(recipeResponse!.summary).toEqual(updatedRecipe.summary);
         expect(recipeResponse!.timesCooked).toEqual(updatedRecipe.timesCooked);
         expect(recipeResponse!.tips).toEqual(updatedRecipe.tips);
-        expect(recipeResponse!.photo!.attachmentId).toEqual(
+        expect(recipeResponse!.heroImage!.attachmentId).toEqual(
             attachment2!.attachmentId,
         );
         expect(Object.keys(recipeResponse!.tags ?? {}).sort()).toStrictEqual(
@@ -1695,7 +1697,7 @@ describe("Update a recipe", () => {
                     method: generateRandomRecipeMethodSections(),
                     name: uuid(),
                     nutritionalInformation: {},
-                    photo: attachment,
+                    heroImage: attachment!.attachmentId,
                     prepTime: randomNumber(),
                     public: true,
                     rating: randomNumber(),
@@ -1713,7 +1715,7 @@ describe("Update a recipe", () => {
             cookTime: null,
             method: null,
             nutritionalInformation: null,
-            photo: null,
+            heroImage: null,
             prepTime: null,
             public: null,
             rating: null,
@@ -1743,7 +1745,7 @@ describe("Update a recipe", () => {
         expect(updatedRecipe!.method).toBeUndefined();
         expect(updatedRecipe!.name).toEqual(recipe!.name);
         expect(updatedRecipe!.nutritionalInformation).toBeUndefined();
-        expect(updatedRecipe!.photo).toBeUndefined();
+        expect(updatedRecipe!.heroImage).toBeUndefined();
         expect(updatedRecipe!.prepTime).toBeUndefined();
         expect(updatedRecipe!.public).toBeUndefined();
         expect(updatedRecipe!.rating.average).toBeUndefined();
@@ -2655,7 +2657,7 @@ describe("Update a recipe", () => {
         const res = await request(app)
             .patch(`/v1/recipes/${recipe!.recipeId}`)
             .set(token)
-            .send({ photo: { attachmentId: attachment!.attachmentId } });
+            .send({ heroImage: attachment!.attachmentId });
 
         expect(res.statusCode).toEqual(404);
 
@@ -2666,7 +2668,7 @@ describe("Update a recipe", () => {
             recipes: [recipe!],
         });
 
-        expect(unchangedRecipe!.photo).toBeUndefined();
+        expect(unchangedRecipe!.heroImage).toBeUndefined();
     });
 
     it("should not affect other recipe photo", async () => {
@@ -2686,11 +2688,11 @@ describe("Update a recipe", () => {
             recipes: [
                 {
                     name: uuid(),
-                    photo: { attachmentId: attachmentA!.attachmentId },
+                    heroImage: attachmentA!.attachmentId,
                 },
                 {
                     name: uuid(),
-                    photo: { attachmentId: attachmentA!.attachmentId },
+                    heroImage: attachmentA!.attachmentId,
                 },
             ],
         });
@@ -2698,14 +2700,16 @@ describe("Update a recipe", () => {
         const res = await request(app)
             .patch(`/v1/recipes/${recipe!.recipeId}`)
             .set(token)
-            .send({ photo: { attachmentId: attachmentB!.attachmentId } });
+            .send({ heroImage: attachmentB!.attachmentId });
 
         expect(res.statusCode).toEqual(200);
 
         const response = res.body as components["schemas"]["Recipe"];
 
         // Photo on recipe was updated
-        expect(response.photo!.attachmentId).toEqual(attachmentB!.attachmentId);
+        expect(response.heroImage!.attachmentId).toEqual(
+            attachmentB!.attachmentId,
+        );
 
         const {
             recipes: [otherRecipeRes],
@@ -2715,7 +2719,7 @@ describe("Update a recipe", () => {
         });
 
         // Photo on other recipe was not affected
-        expect(otherRecipeRes!.photo!.attachmentId).toEqual(
+        expect(otherRecipeRes!.heroImage!.attachmentId).toEqual(
             attachmentA!.attachmentId,
         );
     });
@@ -2740,7 +2744,7 @@ describe("Update a recipe", () => {
             recipes: [
                 {
                     name: uuid(),
-                    photo: { attachmentId: attachmentA!.attachmentId },
+                    heroImage: attachmentA!.attachmentId,
                 },
             ],
         });
@@ -2748,7 +2752,7 @@ describe("Update a recipe", () => {
         const res = await request(app)
             .patch(`/v1/recipes/${recipe!.recipeId}`)
             .set(token)
-            .send({ photo: { attachmentId: attachmentB!.attachmentId } });
+            .send({ heroImage: attachmentB!.attachmentId });
 
         expect(res.statusCode).toEqual(200);
 
@@ -2787,7 +2791,7 @@ describe("Update a recipe", () => {
             recipes: [
                 {
                     name: uuid(),
-                    photo: { attachmentId: attachment!.attachmentId },
+                    heroImage: attachment!.attachmentId,
                 },
             ],
         });
@@ -2795,7 +2799,7 @@ describe("Update a recipe", () => {
         const res = await request(app)
             .patch(`/v1/recipes/${recipe!.recipeId}`)
             .set(token)
-            .send({ photo: { attachmentId: attachment!.attachmentId } });
+            .send({ heroImage: attachment!.attachmentId });
 
         expect(res.statusCode).toEqual(200);
 
@@ -2831,7 +2835,7 @@ describe("Update a recipe", () => {
             recipes: [
                 {
                     name: uuid(),
-                    photo: { attachmentId: attachmentA!.attachmentId },
+                    heroImage: attachmentA!.attachmentId,
                 },
             ],
         });
@@ -2839,7 +2843,7 @@ describe("Update a recipe", () => {
         const res = await request(app)
             .patch(`/v1/recipes/${recipe!.recipeId}`)
             .set(token)
-            .send({ photo: null });
+            .send({ heroImage: null });
 
         expect(res.statusCode).toEqual(200);
 
@@ -2876,11 +2880,11 @@ describe("Update a recipe", () => {
             recipes: [
                 {
                     name: uuid(),
-                    photo: { attachmentId: attachmentA!.attachmentId },
+                    heroImage: attachmentA!.attachmentId,
                 },
                 {
                     name: uuid(),
-                    photo: { attachmentId: attachmentA!.attachmentId },
+                    heroImage: attachmentA!.attachmentId,
                 },
             ],
         });
@@ -2888,7 +2892,7 @@ describe("Update a recipe", () => {
         const res = await request(app)
             .patch(`/v1/recipes/${recipe!.recipeId}`)
             .set(token)
-            .send({ photo: { attachmentId: attachmentB!.attachmentId } });
+            .send({ heroImage: attachmentB!.attachmentId });
 
         expect(res.statusCode).toEqual(200);
 
@@ -2900,7 +2904,7 @@ describe("Update a recipe", () => {
         });
 
         // Other recipe still references the attachment
-        expect(otherRecipeRes!.photo!.attachmentId).toEqual(
+        expect(otherRecipeRes!.heroImage!.attachmentId).toEqual(
             attachmentA!.attachmentId,
         );
 
@@ -2948,7 +2952,7 @@ describe("Update a recipe", () => {
             recipes: [
                 {
                     name: uuid(),
-                    photo: { attachmentId: ownedAttachment!.attachmentId },
+                    heroImage: ownedAttachment!.attachmentId,
                 },
             ],
         });
@@ -2956,7 +2960,7 @@ describe("Update a recipe", () => {
         const res = await request(app)
             .patch(`/v1/recipes/${recipe!.recipeId}`)
             .set(token)
-            .send({ photo: { attachmentId: foreignAttachment!.attachmentId } });
+            .send({ heroImage: foreignAttachment!.attachmentId });
 
         expect(res.statusCode).toEqual(404);
 
@@ -3023,7 +3027,7 @@ describe("Get a recipe", () => {
                     ingredients: generateRandomRecipeIngredientSections(),
                     timesCooked: randomNumber(),
                     rating: randomNumber(),
-                    photo: attachment,
+                    heroImage: attachment!.attachmentId,
                     tags: [{ tagId: tag!.tagId }],
                 },
             ],
@@ -3062,7 +3066,9 @@ describe("Get a recipe", () => {
         expect(response!.rating!.average).toEqual(
             (recipe!.rating.personal! + otherRating!.rating!) / 2,
         );
-        expect(response!.photo!.attachmentId).toBe(attachment!.attachmentId);
+        expect(response!.heroImage!.attachmentId).toBe(
+            attachment!.attachmentId,
+        );
         expect(response!.tags).toStrictEqual({
             [tag!.tagId]: { tagId: tag!.tagId, name: tag!.name },
         });
@@ -3299,7 +3305,7 @@ describe("Delete a recipe", () => {
             recipes: [
                 {
                     name: uuid(),
-                    photo: { attachmentId: attachment!.attachmentId },
+                    heroImage: attachment!.attachmentId,
                 },
             ],
         });
@@ -3343,11 +3349,11 @@ describe("Delete a recipe", () => {
             recipes: [
                 {
                     name: uuid(),
-                    photo: { attachmentId: attachment!.attachmentId },
+                    heroImage: attachment!.attachmentId,
                 },
                 {
                     name: uuid(),
-                    photo: { attachmentId: attachment!.attachmentId },
+                    heroImage: attachment!.attachmentId,
                 },
             ],
         });
@@ -3364,7 +3370,7 @@ describe("Delete a recipe", () => {
         });
 
         // Other recipe still references the attachment
-        expect(recipes[0]!.photo!.attachmentId).toEqual(
+        expect(recipes[0]!.heroImage!.attachmentId).toEqual(
             attachment!.attachmentId,
         );
 

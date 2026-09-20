@@ -147,7 +147,7 @@ type BaseResponse = {
         average: RecipeRating["rating"] | undefined;
         personal: RecipeRating["rating"] | undefined;
     };
-    photo:
+    heroImage:
         | {
               attachmentId: Attachment["attachmentId"];
               preview?: string;
@@ -195,7 +195,7 @@ export type RecipePayload = {
     > | null;
     method?: ReadonlyArray<RecipeSection<RecipeMethodStepRequest>> | null;
     tags?: ReadonlyArray<SaveTagRequest> | null;
-    photo?: { attachmentId: Attachment["attachmentId"] } | null;
+    heroImage?: Attachment["attachmentId"] | null;
 };
 
 type CreateRequest = {

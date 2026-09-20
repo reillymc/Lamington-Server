@@ -1,5 +1,6 @@
 import { Undefined } from "@reillymc/es-utils";
 import type { components } from "../routes/spec/index.ts";
+import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
@@ -68,10 +69,13 @@ const extractSubRecipeIds = (
 
 export const createRecipeService: CreateService<
     RecipeService,
-    "recipeRepository" | "ingredientRepository" | "attachmentRepository"
+    "recipeRepository" | "ingredientRepository" | "attachmentRepository",
+    never,
+    { populateAttachmentUri: PopulateAttachmentUri }
 > = (
     database,
     { recipeRepository, ingredientRepository, attachmentRepository },
+    { populateAttachmentUri },
 ) => ({
     getAll: async (
         userId,
@@ -97,7 +101,12 @@ export const createRecipeService: CreateService<
                 })),
             },
         });
-        return { recipes, nextPage };
+        return {
+            recipes: recipes.map((recipe) =>
+                populateAttachmentUri(recipe, "heroImage"),
+            ),
+            nextPage,
+        };
     },
     get: async (userId, recipeId) => {
         const { recipes } = await recipeRepository.read(database, {
@@ -110,7 +119,7 @@ export const createRecipeService: CreateService<
             throw new NotFoundError("recipe", recipeId);
         }
 
-        return recipe;
+        return populateAttachmentUri(recipe, "heroImage");
     },
     create: (userId, request) =>
         database.transaction(async (trx) => {
@@ -147,8 +156,8 @@ export const createRecipeService: CreateService<
             const { attachments } =
                 await attachmentRepository.verifyPermissions(trx, {
                     userId,
-                    attachments: request.photo?.attachmentId
-                        ? [{ attachmentId: request.photo.attachmentId }]
+                    attachments: request.heroImage
+                        ? [{ attachmentId: request.heroImage }]
                         : [],
                 });
 
@@ -168,7 +177,7 @@ export const createRecipeService: CreateService<
             if (!recipe) {
                 throw new CreatedDataFetchError("recipe");
             }
-            return recipe;
+            return populateAttachmentUri(recipe, "heroImage");
         }),
     update: (userId, recipeId, request) =>
         database.transaction(async (trx) => {
@@ -218,8 +227,8 @@ export const createRecipeService: CreateService<
             const { attachments } =
                 await attachmentRepository.verifyPermissions(trx, {
                     userId,
-                    attachments: request.photo?.attachmentId
-                        ? [{ attachmentId: request.photo.attachmentId }]
+                    attachments: request.heroImage
+                        ? [{ attachmentId: request.heroImage }]
                         : [],
                 });
 
@@ -239,7 +248,7 @@ export const createRecipeService: CreateService<
             if (!recipe) {
                 throw new UpdatedDataFetchError("recipe", recipeId);
             }
-            return recipe;
+            return populateAttachmentUri(recipe, "heroImage");
         }),
     delete: (userId, recipeId) =>
         database.transaction(async (trx) => {

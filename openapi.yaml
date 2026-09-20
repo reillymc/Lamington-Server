@@ -3152,7 +3152,7 @@ components:
                     - name
             required:
               - tagId
-        photo:
+        heroImage:
           $ref: "#/components/schemas/ImageAttachment"
         owner:
           $ref: "#/components/schemas/Owner"
@@ -3209,7 +3209,7 @@ components:
                     - name
             required:
               - tagId
-        photo:
+        heroImage:
           $ref: "#/components/schemas/ImageAttachment"
         owner:
           $ref: "#/components/schemas/Owner"
@@ -3252,13 +3252,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RecipeTagRef"
-        photo:
-          type: object
-          properties:
-            attachmentId:
-              $ref: "#/components/schemas/Uuid"
-          required:
-            - attachmentId
+        heroImage:
+          $ref: "#/components/schemas/Uuid"
       required:
         - name
       unevaluatedProperties: false
@@ -3322,14 +3317,9 @@ components:
               items:
                 $ref: "#/components/schemas/RecipeTagRef"
             - type: "null"
-        photo:
-          anyOf:
-            - type: object
-              properties:
-                attachmentId:
-                  $ref: "#/components/schemas/Uuid"
-              required:
-                - attachmentId
+        heroImage:
+          oneOf:
+            - $ref: "#/components/schemas/Uuid"
             - type: "null"
       unevaluatedProperties: false
     ImageAttachment:
@@ -3337,10 +3327,15 @@ components:
       properties:
         attachmentId:
           $ref: "#/components/schemas/Uuid"
+        uri:
+          type: string
+          format: uri-reference
+          maxLength: 2048
         preview:
           type: string
       required:
         - attachmentId
+        - uri
       unevaluatedProperties: false
     Password:
       type: string

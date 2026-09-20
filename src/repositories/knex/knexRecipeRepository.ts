@@ -510,7 +510,7 @@ const read: RecipeRepository<KnexDatabase>["read"] = async (
                         }),
                     })),
                     tags: tags.get(recipeId),
-                    photo: formatHeroAttachment(
+                    heroImage: formatHeroAttachment(
                         recipe.heroAttachmentId,
                         recipe.heroAttachmentPreview,
                     ),
@@ -590,9 +590,9 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
 
         await HeroAttachmentActions.save(
             db,
-            recipesToCreate.map(({ recipeId, photo }) => ({
+            recipesToCreate.map(({ recipeId, heroImage }) => ({
                 contentId: recipeId,
-                attachmentId: photo?.attachmentId,
+                attachmentId: heroImage,
             })),
         );
 
@@ -683,9 +683,9 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
 
         await HeroAttachmentActions.save(
             db,
-            recipes.map(({ recipeId, photo }) => ({
+            recipes.map(({ recipeId, heroImage }) => ({
                 contentId: recipeId,
-                attachmentId: photo === null ? null : photo?.attachmentId,
+                attachmentId: heroImage === null ? null : heroImage,
             })),
         );
 
@@ -829,7 +829,7 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                         firstName: recipe.firstName,
                     },
                     rating: formatRating(ratingAverage, ratingPersonal),
-                    photo: formatHeroAttachment(
+                    heroImage: formatHeroAttachment(
                         heroAttachmentId,
                         heroAttachmentPreview,
                     ),

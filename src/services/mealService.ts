@@ -1,4 +1,5 @@
 import type { components } from "../routes/spec/index.ts";
+import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
 import { type CreateService, NotFoundError } from "./service.ts";
 
 export interface MealService {
@@ -10,8 +11,10 @@ export interface MealService {
 
 export const createMealService: CreateService<
     MealService,
-    "mealRepository" | "plannerRepository"
-> = (database, { mealRepository }) => ({
+    "mealRepository" | "plannerRepository",
+    never,
+    { populateAttachmentUri: PopulateAttachmentUri }
+> = (database, { mealRepository }, { populateAttachmentUri }) => ({
     get: async (userId, mealId) => {
         const { meals } = await mealRepository.read(database, {
             userId,
@@ -23,6 +26,6 @@ export const createMealService: CreateService<
             throw new NotFoundError("meal", mealId);
         }
 
-        return meal;
+        return populateAttachmentUri(meal, "heroImage");
     },
 });

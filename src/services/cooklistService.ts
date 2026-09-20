@@ -1,4 +1,5 @@
 import type { components } from "../routes/spec/index.ts";
+import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
@@ -24,16 +25,19 @@ export interface CooklistService {
 
 export const createCooklistService: CreateService<
     CooklistService,
-    "cooklistRepository" | "attachmentRepository" | "recipeRepository"
+    "cooklistRepository" | "attachmentRepository" | "recipeRepository",
+    never,
+    { populateAttachmentUri: PopulateAttachmentUri }
 > = (
     database,
     { cooklistRepository, attachmentRepository, recipeRepository },
+    { populateAttachmentUri },
 ) => ({
     getMeals: async (userId) => {
         const { meals } = await cooklistRepository.readAllMeals(database, {
             userId,
         });
-        return meals;
+        return meals.map((meal) => populateAttachmentUri(meal, "heroImage"));
     },
     createMeals: async (userId, meals) =>
         database.transaction(async (trx) => {
@@ -78,7 +82,9 @@ export const createCooklistService: CreateService<
                 throw new CreatedDataFetchError("cooklist meal");
             }
 
-            return createdMeals;
+            return createdMeals.map((meal) =>
+                populateAttachmentUri(meal, "heroImage"),
+            );
         }),
     updateMeal: (userId, mealId, request) =>
         database.transaction(async (trx) => {
@@ -138,7 +144,7 @@ export const createCooklistService: CreateService<
                 throw new UpdatedDataFetchError("cooklist meal", mealId);
             }
 
-            return meal;
+            return populateAttachmentUri(meal, "heroImage");
         }),
     deleteMeal: (userId, mealId) =>
         database.transaction(async (trx) => {

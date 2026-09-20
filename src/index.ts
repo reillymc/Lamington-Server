@@ -50,6 +50,12 @@ import { createPlannerService } from "./services/plannerService.ts";
 import { createRecipeService } from "./services/recipeService.ts";
 import { createTagService } from "./services/tagService.ts";
 import { createUserService } from "./services/userService.ts";
+import {
+    type AttachmentUri,
+    createPopulateAttachmentUri,
+    createS3AttachmentUri,
+    defaultAttachmentUri,
+} from "./utils/attachmentUri.ts";
 import "winston-daily-rotate-file";
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
@@ -122,6 +128,7 @@ const selectDatabaseConfig = () => {
 const db = knex(selectDatabaseConfig());
 
 let fileRepository = createDiskFileRepository(uploadDirectory, attachmentPath);
+let attachmentUri: AttachmentUri = defaultAttachmentUri;
 
 if (process.env.ATTACHMENT_STORAGE_SERVICE === "s3") {
     const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
@@ -149,6 +156,11 @@ attachmentPath: ${attachmentPath ?? "(none)"}`,
         throw "Error starting Lamington Server";
     }
 
+    attachmentUri = createS3AttachmentUri(
+        attachmentPublicBaseUrl,
+        attachmentPath,
+    );
+
     fileRepository = createS3FileRepository(
         new S3Client({
             region: awsRegion,
@@ -160,6 +172,8 @@ attachmentPath: ${attachmentPath ?? "(none)"}`,
         attachmentPath,
     );
 }
+
+const populateAttachmentUri = createPopulateAttachmentUri(attachmentUri);
 
 const repositories: AppRepositories = {
     attachmentRepository: KnexAttachmentRepository,
@@ -216,21 +230,33 @@ const jobs: AppJobs = {
 };
 
 const services: AppServices = {
-    attachmentService: createAttachmentService(db, repositories),
+    attachmentService: createAttachmentService(db, repositories, {
+        populateAttachmentUri,
+    }),
     authenticationService: createAuthenticationService(db, repositories, {
         accessExpiration,
         accessSecret,
         refreshExpiration,
         refreshSecret,
     }),
-    bookService: createBookService(db, repositories),
+    bookService: createBookService(db, repositories, {
+        populateAttachmentUri,
+    }),
     contentExtractionService: createContentExtractionService(db, repositories),
-    cooklistService: createCooklistService(db, repositories),
+    cooklistService: createCooklistService(db, repositories, {
+        populateAttachmentUri,
+    }),
     ingredientService: createIngredientService(db, repositories, jobs),
     listService: createListService(db, repositories),
-    mealService: createMealService(db, repositories),
-    plannerService: createPlannerService(db, repositories),
-    recipeService: createRecipeService(db, repositories),
+    mealService: createMealService(db, repositories, {
+        populateAttachmentUri,
+    }),
+    plannerService: createPlannerService(db, repositories, {
+        populateAttachmentUri,
+    }),
+    recipeService: createRecipeService(db, repositories, {
+        populateAttachmentUri,
+    }),
     tagService: createTagService(db, repositories),
     userService: createUserService(db, repositories, jobs),
 };
