@@ -8,8 +8,6 @@ import { expect } from "expect";
 import { v4 as uuid } from "uuid";
 import { createS3FileRepository } from "../../src/repositories/s3/s3FileRepository.ts";
 
-const publicBaseUrl = "https://cdn.example.com";
-
 type BatchResponse = {
     $metadata: { httpStatusCode: number };
     Errors?: Array<{ Key: string; Code: string; Message: string }>;
@@ -31,11 +29,7 @@ describe("s3FileRepository", () => {
             sent.push((command as { input: (typeof sent)[number] }).input);
             return { $metadata: { httpStatusCode: 200 } };
         });
-        const repository = createS3FileRepository(
-            client,
-            "bucket",
-            publicBaseUrl,
-        );
+        const repository = createS3FileRepository(client, "bucket");
 
         const attachmentId = uuid();
         await expect(
@@ -48,11 +42,7 @@ describe("s3FileRepository", () => {
         const client = createMockClient(() => ({
             $metadata: { httpStatusCode: 500 },
         }));
-        const repository = createS3FileRepository(
-            client,
-            "bucket",
-            publicBaseUrl,
-        );
+        const repository = createS3FileRepository(client, "bucket");
 
         const attachmentId = uuid();
         await expect(
@@ -70,11 +60,7 @@ describe("s3FileRepository", () => {
             sent.push((command as { input: (typeof sent)[number] }).input);
             return { $metadata: { httpStatusCode: 200 } };
         });
-        const repository = createS3FileRepository(
-            client,
-            "bucket",
-            publicBaseUrl,
-        );
+        const repository = createS3FileRepository(client, "bucket");
 
         const attachments = [uuid(), uuid()].map((attachmentId) => ({
             attachmentId,
@@ -111,11 +97,7 @@ describe("s3FileRepository", () => {
                 },
             ],
         }));
-        const repository = createS3FileRepository(
-            client,
-            "bucket",
-            publicBaseUrl,
-        );
+        const repository = createS3FileRepository(client, "bucket");
 
         await expect(
             repository.delete(undefined, [
@@ -132,11 +114,7 @@ describe("s3FileRepository", () => {
         const client = createMockClient(() => {
             throw new Error("network unavailable");
         });
-        const repository = createS3FileRepository(
-            client,
-            "bucket",
-            publicBaseUrl,
-        );
+        const repository = createS3FileRepository(client, "bucket");
 
         const attachments = [
             { attachmentId: uuid() },
@@ -166,11 +144,7 @@ describe("s3FileRepository", () => {
             sent.push((command as { input: (typeof sent)[number] }).input);
             return { $metadata: { httpStatusCode: 200 } };
         });
-        const repository = createS3FileRepository(
-            client,
-            "bucket",
-            publicBaseUrl,
-        );
+        const repository = createS3FileRepository(client, "bucket");
 
         const attachmentIds = [uuid(), uuid()];
         const file = Buffer.from("image");
@@ -203,11 +177,7 @@ describe("s3FileRepository", () => {
         const client = createMockClient(() => ({
             $metadata: { httpStatusCode: 500 },
         }));
-        const repository = createS3FileRepository(
-            client,
-            "bucket",
-            publicBaseUrl,
-        );
+        const repository = createS3FileRepository(client, "bucket");
 
         const attachmentId = uuid();
 
@@ -228,11 +198,7 @@ describe("s3FileRepository", () => {
         const client = createMockClient(() => {
             throw new Error("network unavailable");
         });
-        const repository = createS3FileRepository(
-            client,
-            "bucket",
-            publicBaseUrl,
-        );
+        const repository = createS3FileRepository(client, "bucket");
 
         const attachmentId = uuid();
 
@@ -249,31 +215,7 @@ describe("s3FileRepository", () => {
         ]);
     });
 
-    it("should resolve a redirect to the public base url", async () => {
-        let sends = 0;
-        const client = createMockClient(() => {
-            sends += 1;
-            return { $metadata: { httpStatusCode: 200 } };
-        });
-        const repository = createS3FileRepository(
-            client,
-            "bucket",
-            publicBaseUrl,
-        );
-
-        const attachmentId = uuid();
-
-        await expect(
-            repository.read(undefined, { attachmentId }),
-        ).resolves.toEqual({
-            attachmentId,
-            type: "redirect",
-            url: `${publicBaseUrl}/${attachmentId}`,
-        });
-        expect(sends).toEqual(0);
-    });
-
-    it("should apply the key prefix to uploads, deletes and redirects", async () => {
+    it("should apply the key prefix to uploads and deletes", async () => {
         const keyPrefix = "dev/attachments";
         const prefixedKey = (attachmentId: string) =>
             `dev/attachments/${attachmentId}`;
@@ -283,12 +225,7 @@ describe("s3FileRepository", () => {
             commands.push(command);
             return { $metadata: { httpStatusCode: 200 } };
         });
-        const repository = createS3FileRepository(
-            client,
-            "bucket",
-            publicBaseUrl,
-            keyPrefix,
-        );
+        const repository = createS3FileRepository(client, "bucket", keyPrefix);
 
         const attachmentId = uuid();
 
@@ -313,14 +250,6 @@ describe("s3FileRepository", () => {
         expect(remove.input.Delete?.Objects?.[0]?.Key).toEqual(
             prefixedKey(attachmentId),
         );
-
-        await expect(
-            repository.read(undefined, { attachmentId }),
-        ).resolves.toEqual({
-            attachmentId,
-            type: "redirect",
-            url: `${publicBaseUrl}/${prefixedKey(attachmentId)}`,
-        });
     });
 
     it("should match prefixed keys reported as failed by a delete batch", async () => {
@@ -338,12 +267,7 @@ describe("s3FileRepository", () => {
                 },
             ],
         }));
-        const repository = createS3FileRepository(
-            client,
-            "bucket",
-            publicBaseUrl,
-            keyPrefix,
-        );
+        const repository = createS3FileRepository(client, "bucket", keyPrefix);
 
         await expect(
             repository.delete(undefined, [

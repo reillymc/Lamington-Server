@@ -57,11 +57,6 @@ const defaultAppRepositories: AppRepositories = {
     cooklistRepository: KnexCookListRepository,
     fileRepository: {
         create: async () => [{ attachmentId: v4(), succeeded: true }],
-        read: async (_, { attachmentId }) => ({
-            attachmentId,
-            type: "redirect",
-            url: `https://cdn.test/${attachmentId}`,
-        }),
         delete: async () => [{ attachmentId: v4(), succeeded: true }],
     },
     ingredientRepository: KnexIngredientRepository,
@@ -185,6 +180,7 @@ export const createTestApp = ({
             allowedOrigin: "test.origin",
             externalHost: "https://test.host",
             uploadDirectory: "uploads",
+            attachmentDirectory: "uploads",
             assetDirectory: "assets",
             trustProxyHops: 0,
             ...config,

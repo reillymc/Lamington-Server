@@ -52,11 +52,6 @@ export const createDiskFileRepository = (
 
     return {
         create: (_, request) => mapInBatches(createFile, EnsureArray(request)),
-        read: async (_, { attachmentId }) => ({
-            attachmentId,
-            type: "file",
-            path: path.resolve(getLocalPath(attachmentId)),
-        }),
         delete: (_, request) => mapInBatches(deleteFile, EnsureArray(request)),
     };
 };

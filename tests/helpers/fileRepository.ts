@@ -25,11 +25,6 @@ export const createSpyingFileRepository = (deleteResult = true) => {
                 async ({ attachmentId }) => ({ attachmentId, succeeded: true }),
                 EnsureArray(request),
             ),
-        read: async (_, { attachmentId }) => ({
-            attachmentId,
-            type: "redirect",
-            url: `https://cdn.test/${attachmentId}`,
-        }),
         delete: (_, request) =>
             mapInBatches(
                 async ({ attachmentId }) => ({

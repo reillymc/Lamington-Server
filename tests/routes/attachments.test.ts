@@ -31,17 +31,8 @@ const mockDeleteFile = mock.fn<FileRepository["delete"]>(async (_, request) =>
     })),
 );
 
-const mockReadFile = mock.fn<FileRepository["read"]>(
-    async (_, { attachmentId }) => ({
-        attachmentId,
-        type: "redirect" as const,
-        url: `https://cdn.example.com/${attachmentId}`,
-    }),
-);
-
 const MockSuccessfulFileRepository: FileRepository = {
     create: mockCreateFile,
-    read: mockReadFile,
     delete: mockDeleteFile,
 };
 
@@ -63,7 +54,6 @@ const mockDeleteFailingFile = mock.fn<FileRepository["delete"]>(
 
 const MockFailingFileRepository: FileRepository = {
     create: mockCreateFailingFile,
-    read: mockReadFile,
     delete: mockDeleteFailingFile,
 };
 
@@ -111,7 +101,6 @@ describe("Upload an image", () => {
         mockDeleteFile.mock.resetCalls();
         mockCreateFailingFile.mock.resetCalls();
         mockDeleteFailingFile.mock.resetCalls();
-        mockReadFile.mock.resetCalls();
     });
 
     it("should respect controlled rate limit", async () => {
@@ -187,6 +176,7 @@ describe("Upload an image", () => {
         const data = res.body as components["schemas"]["ImageAttachment"];
 
         expect(data.attachmentId).toBeTruthy();
+        expect(data.uri).toEqual(`/v1/attachments/image/${data.attachmentId}`);
         expect(data.preview).toBeTruthy();
 
         const attachmentReadResponse = await readAllAttachments(database);
@@ -252,52 +242,21 @@ describe("Upload an image", () => {
 });
 
 describe("Get an image", () => {
-    afterEach(() => {
-        mockReadFile.mock.resetCalls();
-    });
-
-    const withReadResult = (read: FileRepository["read"]) =>
+    const withAttachmentDirectory = (attachmentDirectory?: string) =>
         createTestApp({
             database,
-            repositories: {
-                fileRepository: { ...MockSuccessfulFileRepository, read },
-            },
+            repositories: { fileRepository: MockSuccessfulFileRepository },
+            config: { attachmentDirectory },
         });
 
-    it("should redirect to the stored image location", async () => {
-        const localApp = withReadResult(async (_, { attachmentId }) => ({
-            attachmentId,
-            type: "redirect" as const,
-            url: `https://cdn.example.com/${attachmentId}`,
-        }));
-
-        const [token] = await PrepareAuthenticatedUser(database);
-        const attachmentId = uuid();
-
-        const res = await request(localApp)
-            .get(`/v1/attachments/image/${attachmentId}`)
-            .set(token)
-            .redirects(0);
-
-        expect(res.statusCode).toEqual(301);
-        expect(res.headers.location).toEqual(
-            `https://cdn.example.com/${attachmentId}`,
-        );
-    });
-
-    it("should stream a local file as jpeg", async () => {
+    it("should serve a local file as jpeg with immutable caching", async () => {
         const root = await mkdtemp(path.join(tmpdir(), "attachments-"));
         try {
             const attachmentId = uuid();
-            const filePath = path.join(root, attachmentId);
             const contents = Buffer.from("jpeg-bytes");
-            await writeFile(filePath, contents);
+            await writeFile(path.join(root, attachmentId), contents);
 
-            const localApp = withReadResult(async (_, request) => ({
-                attachmentId: request.attachmentId,
-                type: "file" as const,
-                path: filePath,
-            }));
+            const localApp = withAttachmentDirectory(root);
 
             const [token] = await PrepareAuthenticatedUser(database);
 
@@ -307,6 +266,7 @@ describe("Get an image", () => {
 
             expect(res.statusCode).toEqual(200);
             expect(res.headers["content-type"]).toContain("image/jpeg");
+            expect(res.headers["cache-control"]).toContain("immutable");
             expect(Buffer.from(res.body)).toEqual(contents);
         } finally {
             await rm(root, { recursive: true, force: true });
@@ -314,15 +274,28 @@ describe("Get an image", () => {
     });
 
     it("should return 404 when the local file is missing", async () => {
-        const localApp = withReadResult(async (_, { attachmentId }) => ({
-            attachmentId,
-            type: "file" as const,
-            path: path.join(tmpdir(), `missing-${attachmentId}`),
-        }));
+        const root = await mkdtemp(path.join(tmpdir(), "attachments-"));
+        try {
+            const localApp = withAttachmentDirectory(root);
+
+            const [token] = await PrepareAuthenticatedUser(database);
+
+            const res = await request(localApp)
+                .get(`/v1/attachments/image/${uuid()}`)
+                .set(token);
+
+            expect(res.statusCode).toEqual(404);
+        } finally {
+            await rm(root, { recursive: true, force: true });
+        }
+    });
+
+    it("should not serve local files when storage is remote", async () => {
+        const remoteApp = withAttachmentDirectory(undefined);
 
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(localApp)
+        const res = await request(remoteApp)
             .get(`/v1/attachments/image/${uuid()}`)
             .set(token);
 

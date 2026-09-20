@@ -21,7 +21,6 @@ const S3_DELETE_BATCH_SIZE = 1000;
 export const createS3FileRepository = (
     s3Client: S3Client,
     bucket: string,
-    publicBaseUrl: string,
     keyPrefix?: string,
 ): FileRepository => {
     const getKey = (attachmentId: string) =>
@@ -113,11 +112,6 @@ export const createS3FileRepository = (
 
     return {
         create: (_, request) => mapInBatches(createFile, EnsureArray(request)),
-        read: async (_, { attachmentId }) => ({
-            attachmentId,
-            type: "redirect",
-            url: `${publicBaseUrl}/${getKey(attachmentId)}`,
-        }),
         delete: (_, request) => deleteFiles(EnsureArray(request)),
     };
 };

@@ -1,3 +1,4 @@
+import path from "node:path";
 import { S3Client } from "@aws-sdk/client-s3";
 import { Undefined } from "@reillymc/es-utils";
 import knex from "knex";
@@ -168,10 +169,14 @@ attachmentPath: ${attachmentPath ?? "(none)"}`,
             useDualstackEndpoint: true,
         }),
         awsBucketName,
-        attachmentPublicBaseUrl,
         attachmentPath,
     );
 }
+
+const attachmentDirectory =
+    process.env.ATTACHMENT_STORAGE_SERVICE === "s3"
+        ? undefined
+        : path.join(uploadDirectory, attachmentPath ?? "");
 
 const populateAttachmentUri = createPopulateAttachmentUri(attachmentUri);
 
@@ -274,6 +279,7 @@ const config: AppConfig = {
     externalHost: process.env.EXTERNAL_HOST,
     allowedOrigin: process.env.CORS_ALLOWED_ORIGIN,
     uploadDirectory,
+    attachmentDirectory,
     assetDirectory,
     trustProxyHops,
 };

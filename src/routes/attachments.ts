@@ -2,11 +2,16 @@ import express from "express";
 import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
+export type AttachmentsRouterConfig = {
+    attachmentDirectory?: string;
+};
+
 export const createAttachmentsRouter: CreateRouter<
     "attachmentService",
-    "rateLimiterControlled"
-> = ({ attachmentService }, middleware) =>
-    express
+    "rateLimiterControlled",
+    AttachmentsRouterConfig
+> = ({ attachmentService }, middleware, { attachmentDirectory }) => {
+    const router = express
         .Router()
         .post<
             routes,
@@ -29,23 +34,18 @@ export const createAttachmentsRouter: CreateRouter<
 
                 return res.status(200).json(attachmentEntry);
             },
-        )
-        .get<
-            routes,
-            paths["/attachments/image/{attachmentId}"]["get"]["parameters"]["path"],
-            paths["/attachments/image/{attachmentId}"]["get"]["responses"]["200"]["content"]["image/*"],
-            paths["/attachments/image/{attachmentId}"]["get"]["requestBody"],
-            paths["/attachments/image/{attachmentId}"]["get"]["parameters"]["query"]
-        >("/attachments/image/:attachmentId", async ({ params }, res) => {
-            const location = await attachmentService.read(params.attachmentId);
+        );
 
-            if (location.type === "redirect") {
-                return res.redirect(301, location.url);
-            }
+    if (attachmentDirectory) {
+        router.use(
+            "/attachments/image",
+            express.static(attachmentDirectory, {
+                immutable: true,
+                maxAge: "365d",
+                setHeaders: (res) => res.type("image/jpeg"),
+            }),
+        );
+    }
 
-            return res.type("image/jpeg").sendFile(location.path, (error) => {
-                if (error && !res.headersSent) {
-                    res.sendStatus(404);
-                }
-            });
-        });
+    return router;
+};
