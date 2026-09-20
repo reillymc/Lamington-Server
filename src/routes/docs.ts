@@ -48,5 +48,6 @@ export const createDocsRouter: CreateRouter<never, never, DocsRouterConfig> = (
     return express
         .Router()
         .use(createDocsContentSecurityPolicyMiddleware(config.externalHost))
-        .use(swaggerUI.serve, swaggerUI.setup(swaggerDocument));
+        .use(swaggerUI.serve)
+        .get(["/", "/docs"], swaggerUI.setup(swaggerDocument));
 };

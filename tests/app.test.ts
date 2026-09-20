@@ -132,6 +132,37 @@ describe("Rate Limiter Middleware", () => {
     });
 });
 
+describe("API Docs", () => {
+    let database: KnexDatabase;
+    let app: Express;
+
+    before(async () => {
+        database = await db.transaction();
+        app = createTestApp({ database });
+    });
+
+    after(async () => {
+        await database.rollback();
+    });
+
+    it("should serve the docs at the root", async () => {
+        const res = await request(app).get("/");
+        expect(res.statusCode).toEqual(200);
+        expect(res.headers["content-type"]).toContain("text/html");
+    });
+
+    it("should serve the docs at /docs", async () => {
+        const res = await request(app).get("/docs");
+        expect(res.statusCode).toEqual(200);
+        expect(res.headers["content-type"]).toContain("text/html");
+    });
+
+    it("should not serve docs for unmatched routes", async () => {
+        const res = await request(app).get("/v1/not-a-real-route");
+        expect(res.statusCode).toEqual(404);
+    });
+});
+
 describe("Body Parser Limits", () => {
     let database: KnexDatabase;
     let app: Express;
