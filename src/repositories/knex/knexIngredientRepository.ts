@@ -51,15 +51,19 @@ const selectIngredients = (db: KnexDatabase) =>
         .modify(withContentAuthor);
 
 export const KnexIngredientRepository: IngredientRepository<KnexDatabase> = {
-    readAll: async (db, { userId }) => {
-        const result: IngredientRow[] = await selectIngredients(db).where(
-            (builder) =>
-                userId !== undefined
-                    ? builder.where({ [ContentTable.createdBy]: userId })
-                    : builder.where({
-                          [ContentTable.createdBy]: SYSTEM_USER_ID,
-                      }),
-        );
+    readAll: async (db, { userId, filter }) => {
+        const result: IngredientRow[] = await selectIngredients(db)
+            .where((builder) => {
+                builder.where({ [ContentTable.createdBy]: SYSTEM_USER_ID });
+                if (userId !== undefined) {
+                    builder.orWhere({ [ContentTable.createdBy]: userId });
+                }
+            })
+            .modify((qb) => {
+                if (filter?.owner) {
+                    qb.where({ [ContentTable.createdBy]: filter.owner });
+                }
+            });
 
         return {
             userId,

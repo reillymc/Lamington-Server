@@ -5,7 +5,10 @@ import request from "supertest";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
-import { PrepareAuthenticatedUser } from "../helpers/index.ts";
+import {
+    CreateSystemIngredients,
+    PrepareAuthenticatedUser,
+} from "../helpers/index.ts";
 import { createTestApp, db } from "../helpers/setup.ts";
 
 after(async () => {
@@ -51,5 +54,22 @@ describe("Get user ingredients", () => {
         expect(ingredient!.name).toEqual("Apple");
         expect(ingredient!.namePlural).toEqual("Apples");
         expect(ingredient!.description).toEqual("A delicious fruit");
+    });
+
+    it("should not return system ingredients", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        await CreateSystemIngredients(database, [{ name: "System Apple" }]);
+        await KnexIngredientRepository.create(database, {
+            userId,
+            ingredients: [{ name: "User Apple" }],
+        });
+
+        const res = await request(app).get("/v1/ingredients").set(token);
+
+        expect(res.statusCode).toEqual(200);
+
+        const ingredients = res.body as components["schemas"]["Ingredient"][];
+        expect(ingredients.map(({ name }) => name)).toEqual(["User Apple"]);
     });
 });

@@ -2970,7 +2970,7 @@ components:
         ingredients:
           type: array
           items:
-            $ref: "#/components/schemas/RecipeIngredientSection"
+            $ref: "#/components/schemas/ExtractedRecipeIngredientSection"
         method:
           type: array
           items:
@@ -3575,6 +3575,77 @@ components:
               maxItems: 50
               items:
                 $ref: "#/components/schemas/RecipeIngredientItem"
+          required:
+            - items
+      unevaluatedProperties: false
+    RecipeIngredientMatch:
+      type: object
+      properties:
+        ingredientId:
+          $ref: "#/components/schemas/Uuid"
+        name:
+          type: string
+          maxLength: 255
+        namePlural:
+          type: string
+          maxLength: 255
+        score:
+          type: number
+      required:
+        - ingredientId
+        - name
+      unevaluatedProperties: false
+    ExtractedRecipeIngredientItem:
+      type: object
+      properties:
+        ingredient:
+          type: object
+          properties:
+            ingredientId:
+              $ref: "#/components/schemas/Uuid"
+            name:
+              type: string
+              maxLength: 255
+            namePlural:
+              type: string
+              maxLength: 255
+          required:
+            - ingredientId
+            - name
+          unevaluatedProperties: false
+
+        ingredientCandidates:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/RecipeIngredientMatch"
+
+        amount:
+          $ref: "#/components/schemas/ItemAmount"
+
+        unit:
+          type: string
+          maxLength: 50
+
+        name:
+          type: string
+          maxLength: 255
+
+        preparation:
+          type: string
+          maxLength: 255
+
+      unevaluatedProperties: false
+    ExtractedRecipeIngredientSection:
+      allOf:
+        - $ref: "#/components/schemas/RecipeSectionBase"
+        - type: object
+          properties:
+            items:
+              type: array
+              maxItems: 50
+              items:
+                $ref: "#/components/schemas/ExtractedRecipeIngredientItem"
           required:
             - items
       unevaluatedProperties: false

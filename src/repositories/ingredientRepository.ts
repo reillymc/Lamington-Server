@@ -1,4 +1,5 @@
 import type { Database, RepositoryService } from "./repository.ts";
+import type { Content } from "./temp.ts";
 import type { User } from "./userRepository.ts";
 
 export interface Ingredient {
@@ -12,8 +13,13 @@ export interface Ingredient {
     } | null;
 }
 
+type ReadFilters = {
+    owner?: Content["createdBy"];
+};
+
 type ReadRequest = {
     userId?: User["userId"];
+    filter?: ReadFilters;
 };
 
 type ReadResponse = {
