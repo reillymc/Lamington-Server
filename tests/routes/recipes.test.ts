@@ -3450,6 +3450,33 @@ describe("Rate a recipe", () => {
         });
         expect(updatedRecipe!.rating!.personal).toEqual(5);
     });
+
+    it("should not rate a recipe the user cannot access", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [_, otherUser] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/recipes/${recipe!.recipeId}/rating`)
+            .set(token)
+            .send({ rating: randomNumber(5) });
+
+        expect(res.statusCode).toEqual(404);
+
+        const {
+            recipes: [unchangedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: otherUser.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+        expect(unchangedRecipe!.rating!.personal).toBeUndefined();
+    });
 });
 
 describe("Recipe JSON field parsing", () => {

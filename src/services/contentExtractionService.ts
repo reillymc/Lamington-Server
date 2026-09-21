@@ -1,11 +1,13 @@
 import { load } from "cheerio";
 import type { components } from "../routes/spec/index.ts";
 import { matchRecipeIngredients } from "../utils/ingredientMatcher.ts";
+import { AppError } from "../utils/logger.ts";
 import {
     convertRecipe,
     findRecipe,
     isRecipe,
 } from "../utils/recipeConverter.ts";
+import { safeFetchText } from "../utils/safeFetch.ts";
 import { type CreateService, UnknownError } from "./service.ts";
 
 export interface ContentExtractionService {
@@ -24,14 +26,13 @@ export const createContentExtractionService: CreateService<
 > = (database, { ingredientRepository }) => ({
     extractRecipeMetadata: async (url: string) => {
         try {
-            const response = await fetch(url);
+            const response = await safeFetchText(url);
             if (!response.ok) {
                 throw new UnknownError({
                     message: `Request failed with status ${response.status}`,
                 });
             }
-            const html = await response.text();
-            const page = load(html);
+            const page = load(response.text);
 
             const name =
                 page('meta[property="og:title"]').attr("content") ??
@@ -53,40 +54,42 @@ export const createContentExtractionService: CreateService<
         }
     },
     extractRecipe: async (url: string, userId: string) => {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new UnknownError({
-                message: `Request failed with status ${response.status}`,
-            });
-        }
-        const html = await response.text();
-        const page = load(html);
-
-        let recipeData: unknown = null;
-
-        page('script[type="application/ld+json"]').each((_, element) => {
-            const scriptContent = page(element).html();
-            if (!scriptContent) return;
-
-            try {
-                const json = JSON.parse(scriptContent);
-                const recipe = findRecipe(json);
-                if (recipe) {
-                    recipeData = recipe;
-                    return false;
-                }
-            } catch (_e) {
-                // Ignore parsing errors for invalid JSON
-            }
-        });
-
-        if (!isRecipe(recipeData)) {
-            throw new UnknownError({
-                message: "No valid JSON-LD recipe object found on the page.",
-            });
-        }
-
         try {
+            let response: Awaited<ReturnType<typeof safeFetchText>>;
+            response = await safeFetchText(url);
+
+            if (!response.ok) {
+                throw new UnknownError({
+                    message: `Request failed with status ${response.status}`,
+                });
+            }
+            const page = load(response.text);
+
+            let recipeData: unknown = null;
+
+            page('script[type="application/ld+json"]').each((_, element) => {
+                const scriptContent = page(element).html();
+                if (!scriptContent) return;
+
+                try {
+                    const json = JSON.parse(scriptContent);
+                    const recipe = findRecipe(json);
+                    if (recipe) {
+                        recipeData = recipe;
+                        return false;
+                    }
+                } catch (_e) {
+                    // Ignore parsing errors for invalid JSON
+                }
+            });
+
+            if (!isRecipe(recipeData)) {
+                throw new UnknownError({
+                    message:
+                        "No valid JSON-LD recipe object found on the page.",
+                });
+            }
+
             const { ingredients } = await ingredientRepository.readAll(
                 database,
                 { userId },
@@ -97,6 +100,10 @@ export const createContentExtractionService: CreateService<
                 ingredients,
             );
         } catch (e) {
+            if (e instanceof AppError) {
+                throw e;
+            }
+
             throw new UnknownError(e);
         }
     },

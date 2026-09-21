@@ -273,18 +273,34 @@ export const createRecipeService: CreateService<
                 throw new NotFoundError("recipe", recipeId);
             }
         }),
-    saveRating: async (userId, recipeId, ratingValue) => {
-        const {
-            ratings: [rating],
-        } = await recipeRepository.saveRating(database, {
-            userId,
-            ratings: [{ recipeId, rating: ratingValue }],
-        });
+    saveRating: (userId, recipeId, ratingValue) =>
+        database.transaction(async (trx) => {
+            const permissions = await recipeRepository.verifyPermissions(trx, {
+                userId,
+                recipes: [{ recipeId }],
+                status: "O",
+                includePublic: true,
+            });
 
-        if (!rating) {
-            throw new UpdatedDataFetchError("recipe rating", recipeId);
-        }
+            if (
+                permissions.recipes.some(
+                    ({ hasPermissions }) => !hasPermissions,
+                )
+            ) {
+                throw new NotFoundError("recipe", recipeId);
+            }
 
-        return { rating: rating.rating };
-    },
+            const {
+                ratings: [rating],
+            } = await recipeRepository.saveRating(trx, {
+                userId,
+                ratings: [{ recipeId, rating: ratingValue }],
+            });
+
+            if (!rating) {
+                throw new UpdatedDataFetchError("recipe rating", recipeId);
+            }
+
+            return { rating: rating.rating };
+        }),
 });
