@@ -1,4 +1,5 @@
 import express from "express";
+import { ATTACHMENTS_IMAGE_PATH } from "../utils/attachmentPath.ts";
 import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
@@ -20,7 +21,7 @@ export const createAttachmentsRouter: CreateRouter<
             paths["/attachments/image"]["post"]["requestBody"]["content"]["multipart/form-data"],
             paths["/attachments/image"]["post"]["parameters"]["query"]
         >(
-            "/attachments/image",
+            ATTACHMENTS_IMAGE_PATH,
             ...middleware.rateLimiterControlled,
             async ({ session, files }, res) => {
                 const file = Array.isArray(files)
@@ -38,7 +39,7 @@ export const createAttachmentsRouter: CreateRouter<
 
     if (attachmentDirectory) {
         router.use(
-            "/attachments/image",
+            ATTACHMENTS_IMAGE_PATH,
             express.static(attachmentDirectory, {
                 immutable: true,
                 maxAge: "365d",

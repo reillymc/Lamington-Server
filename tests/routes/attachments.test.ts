@@ -176,7 +176,7 @@ describe("Upload an image", () => {
         const data = res.body as components["schemas"]["ImageAttachment"];
 
         expect(data.attachmentId).toBeTruthy();
-        expect(data.uri).toEqual(`/v1/attachments/image/${data.attachmentId}`);
+        expect(data.uri).toEqual(`/attachments/image/${data.attachmentId}`);
         expect(data.preview).toBeTruthy();
 
         const attachmentReadResponse = await readAllAttachments(database);

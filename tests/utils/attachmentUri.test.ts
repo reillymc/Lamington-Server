@@ -8,9 +8,7 @@ import {
 
 describe("attachmentUri", () => {
     it("should resolve a relative local path by default", () => {
-        expect(defaultAttachmentUri("abc")).toEqual(
-            "/v1/attachments/image/abc",
-        );
+        expect(defaultAttachmentUri("abc")).toEqual("/attachments/image/abc");
     });
 
     it("should resolve a public url without a key prefix", () => {
@@ -49,7 +47,7 @@ describe("attachmentUri", () => {
             heroImage: {
                 attachmentId: "abc",
                 preview: "hash",
-                uri: "/v1/attachments/image/abc",
+                uri: "/attachments/image/abc",
             },
         });
     });
@@ -87,7 +85,7 @@ describe("attachmentUri", () => {
         ).toEqual({
             attachmentId: "abc",
             preview: "hash",
-            uri: "/v1/attachments/image/abc",
+            uri: "/attachments/image/abc",
         });
     });
 });

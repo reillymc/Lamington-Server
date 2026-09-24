@@ -1,5 +1,7 @@
 import path from "node:path";
 
+export const ATTACHMENTS_IMAGE_PATH = "/attachments/image";
+
 export const buildAttachmentPath = (
     attachmentId: string,
     keyPrefix?: string,
