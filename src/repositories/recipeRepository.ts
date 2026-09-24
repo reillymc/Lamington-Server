@@ -178,6 +178,22 @@ type VerifyPermissionsResponse = {
     }>;
 };
 
+// Temporary before wider permission overhaul. SHould be cleaned up
+type VerifyReadPermissionsRequest = {
+    userId: User["userId"];
+    recipes: ReadonlyArray<{
+        recipeId: Recipe["recipeId"];
+    }>;
+};
+
+type VerifyReadPermissionsResponse = {
+    userId: User["userId"];
+    recipes: ReadonlyArray<{
+        recipeId: Recipe["recipeId"];
+        hasPermissions: boolean;
+    }>;
+};
+
 export type RecipePayload = {
     name: Recipe["name"];
     public?: Recipe["public"] | null;
@@ -286,6 +302,11 @@ export interface RecipeRepository<TDatabase extends Database = Database> {
         TDatabase,
         VerifyPermissionsRequest,
         VerifyPermissionsResponse
+    >;
+    verifyReadPermissions: RepositoryService<
+        TDatabase,
+        VerifyReadPermissionsRequest,
+        VerifyReadPermissionsResponse
     >;
     read: RepositoryService<TDatabase, ReadRequest, ReadResponse>;
     create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;

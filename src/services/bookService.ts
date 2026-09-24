@@ -216,6 +216,18 @@ export const createBookService: CreateService<
                 throw new NotFoundError("book", bookId);
             }
 
+            const { recipes: recipePermissions } =
+                await recipeRepository.verifyReadPermissions(trx, {
+                    userId,
+                    recipes: [{ recipeId: request.recipeId }],
+                });
+
+            if (
+                recipePermissions.some(({ hasPermissions }) => !hasPermissions)
+            ) {
+                throw new NotFoundError("recipe", request.recipeId);
+            }
+
             const [result] = await bookRepository.saveRecipes(trx, {
                 bookId,
                 recipes: [{ recipeId: request.recipeId }],

@@ -19,6 +19,7 @@ import { toUndefined } from "./common/dataFormatting/toUndefined.ts";
 import { withContentAuthor } from "./common/queryBuilders/withContentAuthor.ts";
 import { withHeroAttachment } from "./common/queryBuilders/withHeroAttachment.ts";
 import { withPagination } from "./common/queryBuilders/withPagination.ts";
+import { withRecipeReadPermissions } from "./common/queryBuilders/withRecipeReadPermissions.ts";
 import {
     createContentRows,
     createDeleteContent,
@@ -315,11 +316,7 @@ const queryFullRecipes = (
             withPersonalRating(db, userId),
         )
         .whereIn(RecipeTable.recipeId, recipeIds)
-        .where((builder) =>
-            builder
-                .where({ [ContentTable.createdBy]: userId })
-                .orWhere({ [RecipeTable.public]: true }),
-        );
+        .modify(withRecipeReadPermissions(db, userId));
 
 const formatRecipe = (recipe: FullRecipeRow) => ({
     recipeId: recipe.recipeId,
@@ -717,6 +714,33 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
             })),
         };
     },
+    verifyReadPermissions: async (db, { userId, recipes }) => {
+        const recipeIds = [...new Set(recipes.map(({ recipeId }) => recipeId))];
+
+        if (recipeIds.length === 0) {
+            return { userId, recipes: [] };
+        }
+
+        const rows: Array<{ recipeId: string }> = await db(lamington.recipe)
+            .select(RecipeTable.recipeId)
+            .leftJoin(
+                lamington.content,
+                RecipeTable.recipeId,
+                ContentTable.contentId,
+            )
+            .whereIn(RecipeTable.recipeId, recipeIds)
+            .modify(withRecipeReadPermissions(db, userId));
+
+        const readableIds = new Set(rows.map(({ recipeId }) => recipeId));
+
+        return {
+            userId,
+            recipes: recipeIds.map((recipeId) => ({
+                recipeId,
+                hasPermissions: readableIds.has(recipeId),
+            })),
+        };
+    },
     readAll: async (
         db,
         { userId, order, page = 1, sort = "name", filter = {} },
@@ -747,14 +771,11 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
                     `%${filter.name}%`,
                 );
             })
+            .modify(withRecipeReadPermissions(db, userId))
             .where((builder) => {
-                builder
-                    .where({ [ContentTable.createdBy]: userId })
-                    .orWhere({ [RecipeTable.public]: true });
+                if (!filter.owner) return;
 
-                if (!filter.owner) return builder;
-
-                return builder.andWhere({
+                return builder.where({
                     [ContentTable.createdBy]: filter.owner,
                 });
             })

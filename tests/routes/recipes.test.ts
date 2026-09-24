@@ -163,6 +163,125 @@ describe("Get recipes", () => {
         expect(data!.length).toEqual(expectedCount);
     });
 
+    it("should return private recipes from books the user is an active member of", async () => {
+        const [token, member] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: owner!.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+
+        await KnexBookRepository.saveMembers(database, {
+            bookId: book!.bookId,
+            members: [{ userId: member.userId, status: "M" }],
+        });
+
+        const res = await request(app).get("/v1/recipes").set(token);
+
+        expect(res.statusCode).toEqual(200);
+
+        const { recipes: data } = res.body;
+        expect(
+            data.map(({ recipeId }: { recipeId: string }) => recipeId),
+        ).toContain(recipe!.recipeId);
+    });
+
+    it("should not return private recipes from books the user is only pending on", async () => {
+        const [token, member] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: owner!.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+
+        await KnexBookRepository.saveMembers(database, {
+            bookId: book!.bookId,
+            members: [{ userId: member.userId, status: "P" }],
+        });
+
+        const res = await request(app).get("/v1/recipes").set(token);
+
+        expect(res.statusCode).toEqual(200);
+
+        const { recipes: data } = res.body;
+        expect(
+            data.map(({ recipeId }: { recipeId: string }) => recipeId),
+        ).not.toContain(recipe!.recipeId);
+    });
+
+    it("should stop returning a book's recipes once membership is removed", async () => {
+        const [token, member] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: owner!.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+
+        await KnexBookRepository.saveMembers(database, {
+            bookId: book!.bookId,
+            members: [{ userId: member.userId, status: "M" }],
+        });
+
+        await KnexBookRepository.removeMembers(database, {
+            bookId: book!.bookId,
+            members: [{ userId: member.userId }],
+        });
+
+        const res = await request(app).get("/v1/recipes").set(token);
+
+        expect(res.statusCode).toEqual(200);
+
+        const { recipes: data } = res.body;
+        expect(
+            data.map(({ recipeId }: { recipeId: string }) => recipeId),
+        ).not.toContain(recipe!.recipeId);
+    });
+
     it("should respect pagination", async () => {
         const PAGE_SIZE = 50;
 
@@ -3113,6 +3232,79 @@ describe("Get a recipe", () => {
 
         const response = res.body as components["schemas"]["Recipe"];
         expect(response.recipeId).toEqual(recipe!.recipeId);
+    });
+
+    it("should return a private recipe to an active member of a book containing it", async () => {
+        const [token, member] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: owner!.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+
+        await KnexBookRepository.saveMembers(database, {
+            bookId: book!.bookId,
+            members: [{ userId: member.userId, status: "M" }],
+        });
+
+        const res = await request(app)
+            .get(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(200);
+
+        const response = res.body as components["schemas"]["Recipe"];
+        expect(response.recipeId).toEqual(recipe!.recipeId);
+    });
+
+    it("should not return a private recipe to a pending member of a book containing it", async () => {
+        const [token, member] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: owner!.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+
+        await KnexBookRepository.saveMembers(database, {
+            bookId: book!.bookId,
+            members: [{ userId: member.userId, status: "P" }],
+        });
+
+        const res = await request(app)
+            .get(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(404);
     });
 });
 

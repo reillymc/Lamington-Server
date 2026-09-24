@@ -1384,6 +1384,63 @@ describe("Add recipe to book", () => {
         expect(bookRecipes.length).toEqual(0);
     });
 
+    it("should not allow adding a recipe the user cannot read", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: user!.userId,
+            books: [{ name: uuid(), description: uuid() }],
+        });
+
+        const {
+            recipes: [privateRecipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser!.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/books/${book!.bookId}/recipes`)
+            .set(token)
+            .send({ recipeId: privateRecipe!.recipeId });
+
+        expect(res.statusCode).toEqual(404);
+
+        const rows = await database("book_recipe")
+            .select("recipeId")
+            .where("bookId", book!.bookId);
+        expect(rows).toEqual([]);
+    });
+
+    it("should allow adding another user's public recipe", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: user!.userId,
+            books: [{ name: uuid(), description: uuid() }],
+        });
+
+        const {
+            recipes: [publicRecipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser!.userId,
+            recipes: [{ name: uuid(), public: true }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/books/${book!.bookId}/recipes`)
+            .set(token)
+            .send({ recipeId: publicRecipe!.recipeId });
+
+        expect(res.statusCode).toEqual(201);
+    });
+
     it("should not allow adding recipe if book member without edit permission", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
         const [bookOwner] = await CreateUsers(database);
