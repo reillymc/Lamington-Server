@@ -332,12 +332,12 @@ export const seed = async (knex: Knex): Promise<void> => {
             {
                 recipeId: "02eab0b9-d8f2-4d64-bc76-cbac36e4c59f",
                 raterId: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
-                rating: 4,
+                rating: 80,
             },
             {
                 recipeId: "99656745-3325-4a47-9361-caba8849a4e2",
                 raterId: "2a596f2e-d604-4a99-af8f-ffb370ca6286",
-                rating: 4,
+                rating: 80,
             },
         ])
         .onConflict(["recipeId", "raterId"])

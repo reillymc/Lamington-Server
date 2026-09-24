@@ -572,7 +572,9 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
         const recipeRatingRows = dedupeLast(
             recipesToCreate
                 .map(({ recipeId, rating }): RecipeRating | undefined =>
-                    rating ? { raterId: userId, rating, recipeId } : undefined,
+                    rating !== null && rating !== undefined
+                        ? { raterId: userId, rating, recipeId }
+                        : undefined,
                 )
                 .filter(Undefined),
             "recipeId",
@@ -650,7 +652,9 @@ export const KnexRecipeRepository: RecipeRepository<KnexDatabase> = {
         const recipeRatingRows = dedupeLast(
             recipes
                 .map(({ recipeId, rating }): RecipeRating | undefined =>
-                    rating ? { raterId: userId, rating, recipeId } : undefined,
+                    rating !== null && rating !== undefined
+                        ? { raterId: userId, rating, recipeId }
+                        : undefined,
                 )
                 .filter(Undefined),
             "recipeId",

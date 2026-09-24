@@ -1075,7 +1075,7 @@ describe("Create a recipe", () => {
             method: [],
             ingredients: [],
             timesCooked: randomNumber(),
-            rating: randomNumber(),
+            rating: randomNumber(100, 0),
             heroImage: attachment!.attachmentId,
             tags: [{ tagId: childTag!.tagId }, { tagId: soloTag!.tagId }],
         };
@@ -1116,6 +1116,25 @@ describe("Create a recipe", () => {
         });
         expect(response!.owner.userId).toBe(user.userId);
         expect(response!.owner.firstName).toBe(user.firstName);
+    });
+
+    it("should persist a zero rating on create", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const recipe: components["schemas"]["RecipeCreate"] = {
+            name: uuid(),
+            rating: 0,
+        };
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send(recipe);
+
+        expect(res.statusCode).toEqual(201);
+
+        const response = res.body as components["schemas"]["Recipe"];
+        expect(response!.rating!.personal).toEqual(0);
     });
 
     it("should reject an attachment owned by another user", async () => {
@@ -1876,6 +1895,32 @@ describe("Update a recipe", () => {
         expect(updatedRecipe!.timesCooked).toBeUndefined();
         expect(updatedRecipe!.tips).toBeUndefined();
         expect(updatedRecipe!.tags).toBeUndefined();
+    });
+
+    it("should persist a zero rating on update", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ rating: 0 });
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            recipes: [updatedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+        expect(updatedRecipe!.rating!.personal).toEqual(0);
     });
 
     describe("ingredients", () => {
@@ -3609,6 +3654,59 @@ describe("Rate a recipe", () => {
             recipes: [{ recipeId: recipe!.recipeId }],
         });
         expect(updatedRecipe!.rating!.personal).toEqual(rating);
+    });
+
+    it("should accept a rating on the 0-100 scale", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/recipes/${recipe!.recipeId}/rating`)
+            .set(token)
+            .send({ rating: 100 });
+
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.rating).toEqual(100);
+
+        const {
+            recipes: [updatedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+        expect(updatedRecipe!.rating!.personal).toEqual(100);
+    });
+
+    it("should reject a rating above 100", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/recipes/${recipe!.recipeId}/rating`)
+            .set(token)
+            .send({ rating: 101 });
+
+        expect(res.statusCode).toEqual(400);
+
+        const {
+            recipes: [unchangedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+        expect(unchangedRecipe!.rating!.personal).toBeUndefined();
     });
 
     it("should keep the latest rating when rating again", async () => {

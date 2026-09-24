@@ -333,7 +333,7 @@ paths:
                 rating:
                   type: number
                   minimum: 0
-                  maximum: 5
+                  maximum: 100
               required:
                 - rating
               unevaluatedProperties: false
@@ -3236,6 +3236,8 @@ components:
           $ref: "#/components/schemas/RecipeMethod"
         rating:
           type: number
+          minimum: 0
+          maximum: 100
         tags:
           type: array
           items:
@@ -3298,6 +3300,8 @@ components:
         rating:
           anyOf:
             - type: number
+              minimum: 0
+              maximum: 100
             - type: "null"
         tags:
           anyOf:
