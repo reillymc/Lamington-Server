@@ -172,6 +172,102 @@ describe("Extract full recipe", () => {
     });
 });
 
+describe("Extract full recipe limits", () => {
+    it("should return a controlled error for an oversized recipe graph", async () => {
+        let recipeGraph: unknown = { "@type": "Person" };
+        for (let depth = 0; depth < 51; depth += 1) {
+            recipeGraph = [recipeGraph];
+        }
+
+        const html = `<!DOCTYPE html><html><head><script type="application/ld+json">${JSON.stringify(
+            recipeGraph,
+        )}</script></head><body></body></html>`;
+
+        mock.method(
+            globalThis,
+            "fetch",
+            async () => new Response(html, { status: 200 }),
+        );
+
+        const [token] = await PrepareAuthenticatedUser(database);
+        const res = await request(app)
+            .get("/v1/extractor/recipe")
+            .query({ url: "https://example.com/recipe" })
+            .set(token);
+
+        expect(res.statusCode).toEqual(400);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "EXTRACTION_LIMIT",
+        });
+    });
+
+    it("should return a controlled error for an oversized fetched page", async () => {
+        mock.method(
+            globalThis,
+            "fetch",
+            async () =>
+                new Response("small body", {
+                    status: 200,
+                    headers: { "content-length": String(5 * 1024 * 1024) },
+                }),
+        );
+
+        const [token] = await PrepareAuthenticatedUser(database);
+        const res = await request(app)
+            .get("/v1/extractor/recipeMetadata")
+            .query({ url: "https://example.com/recipe" })
+            .set(token);
+
+        expect(res.statusCode).toEqual(400);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "EXTRACTION_LIMIT",
+        });
+    });
+
+    it("should return schema-valid sectioned output at the extraction limits", async () => {
+        const recipe = {
+            "@type": "Recipe",
+            name: "Bounded Recipe",
+            recipeIngredient: Array.from(
+                { length: 51 },
+                (_, index) => `Ingredient ${index}`,
+            ),
+            recipeInstructions: Array.from(
+                { length: 51 },
+                (_, index) => `Step ${index}`,
+            ),
+        };
+        const html = `<!DOCTYPE html><html><head><script type="application/ld+json">${JSON.stringify(
+            recipe,
+        )}</script></head><body></body></html>`;
+
+        mock.method(
+            globalThis,
+            "fetch",
+            async () => new Response(html, { status: 200 }),
+        );
+
+        const [token] = await PrepareAuthenticatedUser(database);
+        const res = await request(app)
+            .get("/v1/extractor/recipe")
+            .query({ url: "https://example.com/recipe" })
+            .set(token);
+
+        expect(res.statusCode).toEqual(200);
+        const body = res.body as components["schemas"]["ExtractedRecipe"];
+        expect(body.ingredients).toHaveLength(2);
+        expect(
+            body.ingredients?.every((section) => section.items.length <= 50),
+        ).toBe(true);
+        expect(body.method).toHaveLength(2);
+        expect(
+            body.method?.every((section) => section.items.length <= 50),
+        ).toBe(true);
+    });
+});
+
 describe("Extract full recipe with ingredient matching", () => {
     it("should include matched system and user ingredients and candidates", async () => {
         const systemIngredients = await CreateSystemIngredients(database, [

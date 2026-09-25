@@ -1,6 +1,12 @@
 import { afterEach, describe, it, mock } from "node:test";
 import { expect } from "expect";
-import { safeFetchText } from "../../src/utils/safeFetch.ts";
+import { ExtractionLimitError } from "../../src/utils/errors.ts";
+import {
+    createSafeFetchText,
+    createSafeLookup,
+    isPublicAddress,
+    safeFetchText,
+} from "../../src/utils/safeFetch.ts";
 
 const mockFetch = (implementation: typeof fetch) =>
     mock.method(globalThis, "fetch", implementation);
@@ -15,6 +21,59 @@ const expectRejection = async (
 ) => {
     await expect(promise).rejects.toThrow(message);
 };
+
+describe("isPublicAddress", () => {
+    it("should reject benchmark and private addresses", () => {
+        expect(isPublicAddress("198.18.0.1")).toBe(false);
+        expect(isPublicAddress("198.19.255.255")).toBe(false);
+        expect(isPublicAddress("10.0.0.1")).toBe(false);
+        expect(isPublicAddress("::ffff:198.18.0.1")).toBe(false);
+    });
+
+    it("should allow public addresses", () => {
+        expect(isPublicAddress("8.8.8.8")).toBe(true);
+        expect(isPublicAddress("2001:4860:4860::8888")).toBe(true);
+    });
+});
+
+describe("createSafeLookup", () => {
+    it("should reject a mixed public and private DNS answer", async () => {
+        const lookup = createSafeLookup((_hostname, _options, callback) => {
+            callback(null, [
+                { address: "8.8.8.8", family: 4 },
+                { address: "127.0.0.1", family: 4 },
+            ]);
+        });
+
+        const result = new Promise<unknown>((resolve, reject) => {
+            lookup("example.com", {}, (error, address) => {
+                if (error) reject(error);
+                else resolve(address);
+            });
+        });
+
+        await expect(result).rejects.toThrow("Disallowed host");
+    });
+
+    it("should return all public DNS answers when requested", async () => {
+        const addresses = [
+            { address: "8.8.8.8", family: 4 },
+            { address: "2001:4860:4860::8888", family: 6 },
+        ];
+        const lookup = createSafeLookup((_hostname, _options, callback) => {
+            callback(null, addresses);
+        });
+
+        const result = new Promise<unknown>((resolve, reject) => {
+            lookup("example.com", { all: true }, (error, address) => {
+                if (error) reject(error);
+                else resolve(address);
+            });
+        });
+
+        await expect(result).resolves.toEqual(addresses);
+    });
+});
 
 describe("safeFetchText", () => {
     it("fetches an allowed http url", async () => {
@@ -79,6 +138,57 @@ describe("safeFetchText", () => {
         }
     });
 
+    it("rejects IPv6 literals and trailing-dot local hostnames", async () => {
+        for (const url of [
+            "http://[::1]/recipe",
+            "http://[2001:db8::1]/recipe",
+            "http://localhost./recipe",
+        ]) {
+            await expectRejection(
+                safeFetchText(url),
+                /Disallowed (address|host)/,
+            );
+        }
+    });
+
+    it("revalidates redirect targets before fetching them", async () => {
+        const fetchMock = mockFetch(
+            async () =>
+                new Response(null, {
+                    status: 302,
+                    headers: { location: "http://127.0.0.1/private" },
+                }),
+        );
+
+        await expectRejection(
+            safeFetchText("https://example.com/recipe"),
+            /Disallowed address/,
+        );
+        expect(fetchMock.mock.callCount()).toEqual(1);
+    });
+
+    it("uses the hardened dispatcher for the default fetch", async () => {
+        mockFetch(async (_input, init) => {
+            expect(
+                (init as RequestInit & { dispatcher?: unknown }).dispatcher,
+            ).toBeDefined();
+            return new Response("dispatched");
+        });
+
+        const result = await safeFetchText("https://example.com/recipe");
+
+        expect(result.text).toBe("dispatched");
+    });
+
+    it("supports an injected fetch implementation", async () => {
+        const fetchImplementation = async () => new Response("injected");
+        const fetchText = createSafeFetchText(fetchImplementation);
+
+        const result = await fetchText("https://example.com/recipe");
+
+        expect(result).toEqual({ ok: true, status: 200, text: "injected" });
+    });
+
     it("follows an allowed redirect", async () => {
         const fetchMock = mockFetch(async (input) => {
             if (String(input) === "https://example.com/recipe") {
@@ -125,9 +235,8 @@ describe("safeFetchText", () => {
                 }),
         );
 
-        await expectRejection(
+        await expect(
             safeFetchText("https://example.com/recipe"),
-            "size limit",
-        );
+        ).rejects.toThrow(ExtractionLimitError);
     });
 });

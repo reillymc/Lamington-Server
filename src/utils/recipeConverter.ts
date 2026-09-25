@@ -54,7 +54,7 @@ export const isRecipe = (input: unknown): input is RecipeSchema => {
     return false;
 };
 
-export type RecipeGraphBudget = {
+type RecipeGraphBudget = {
     visited: number;
 };
 
