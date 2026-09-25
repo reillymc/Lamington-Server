@@ -1,5 +1,6 @@
 import { load } from "cheerio";
 import type { components } from "../routes/spec/index.ts";
+import { ExtractionLimitError } from "../utils/errors.ts";
 import { matchRecipeIngredients } from "../utils/ingredientMatcher.ts";
 import { AppError } from "../utils/logger.ts";
 import {
@@ -46,7 +47,10 @@ export const createContentExtractionService: CreateService<
             }
 
             return { name, imageUrl };
-        } catch (_error) {
+        } catch (error) {
+            if (error instanceof ExtractionLimitError) {
+                throw error;
+            }
             throw new UnknownError({
                 message:
                     "Failed to fetch or parse content from the provided URL.",
@@ -66,6 +70,7 @@ export const createContentExtractionService: CreateService<
             const page = load(response.text);
 
             let recipeData: unknown = null;
+            const graphBudget = { visited: 0 };
 
             page('script[type="application/ld+json"]').each((_, element) => {
                 const scriptContent = page(element).html();
@@ -73,13 +78,15 @@ export const createContentExtractionService: CreateService<
 
                 try {
                     const json = JSON.parse(scriptContent);
-                    const recipe = findRecipe(json);
+                    const recipe = findRecipe(json, graphBudget);
                     if (recipe) {
                         recipeData = recipe;
                         return false;
                     }
-                } catch (_e) {
-                    // Ignore parsing errors for invalid JSON
+                } catch (error) {
+                    if (error instanceof ExtractionLimitError) {
+                        throw error;
+                    }
                 }
             });
 

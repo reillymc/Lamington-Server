@@ -3,6 +3,27 @@ import { expect } from "expect";
 import type { Recipe } from "schema-dts";
 import { Tags } from "../../src/database/seeds/production/01_default_tags.ts";
 import type { components } from "../../src/routes/spec/schema.js";
+import { ExtractionLimitError } from "../../src/utils/errors.ts";
+import {
+    MAX_AMOUNT_VALUE_LENGTH,
+    MAX_EXTRACTED_INGREDIENTS,
+    MAX_EXTRACTED_NAME_LENGTH,
+    MAX_EXTRACTED_SECTIONS,
+    MAX_EXTRACTED_SOURCE_LENGTH,
+    MAX_EXTRACTED_SUMMARY_LENGTH,
+    MAX_IMAGES,
+    MAX_INGREDIENT_NAME_LENGTH,
+    MAX_INGREDIENT_PREPARATION_LENGTH,
+    MAX_INGREDIENT_TEXT_LENGTH,
+    MAX_INGREDIENTS_PER_SECTION,
+    MAX_METHOD_ITEMS,
+    MAX_METHOD_ITEMS_PER_SECTION,
+    MAX_METHOD_TEXT_LENGTH,
+    MAX_RECIPE_GRAPH_DEPTH,
+    MAX_RECIPE_GRAPH_NODES,
+    MAX_SECTION_NAME_LENGTH,
+    MAX_TAG_CANDIDATES,
+} from "../../src/utils/extractionLimits.ts";
 import {
     convertRecipe,
     findRecipe,
@@ -83,6 +104,33 @@ describe("findRecipe", () => {
     runTestCases(testCases, ({ input, expected }) => {
         expect(findRecipe(input)).toEqual(expected);
     });
+
+    it("should reject recipe data nested beyond the depth limit", () => {
+        let input: unknown = { "@type": "Person" };
+        for (let depth = 0; depth <= MAX_RECIPE_GRAPH_DEPTH; depth += 1) {
+            input = [input];
+        }
+
+        expect(() => findRecipe(input)).toThrow(ExtractionLimitError);
+    });
+
+    it("should reject recipe data with too many graph nodes", () => {
+        const input = Array.from(
+            { length: MAX_RECIPE_GRAPH_NODES + 1 },
+            () => ({ "@type": "Person" }),
+        );
+
+        expect(() => findRecipe(input)).toThrow(ExtractionLimitError);
+    });
+
+    it("should share the graph budget across searches", () => {
+        const budget = { visited: MAX_RECIPE_GRAPH_NODES - 1 };
+        const input = { "@type": "Person" };
+
+        findRecipe(input, budget);
+
+        expect(() => findRecipe(input, budget)).toThrow(ExtractionLimitError);
+    });
 });
 
 describe("convertRecipe", () => {
@@ -136,6 +184,219 @@ describe("convertRecipe", () => {
         };
         const result = convertRecipe(recipe);
         expect(result.summary).toBe("A delicious test recipe.");
+    });
+
+    describe("extraction limits", () => {
+        it("should reject too many ingredients", () => {
+            const recipe: Recipe = {
+                ...baseRecipe,
+                recipeIngredient: Array.from(
+                    { length: MAX_EXTRACTED_INGREDIENTS + 1 },
+                    () => "flour",
+                ),
+            };
+
+            expect(() => convertRecipe(recipe)).toThrow(ExtractionLimitError);
+        });
+
+        it("should split the maximum ingredient count into bounded sections", () => {
+            const recipe: Recipe = {
+                ...baseRecipe,
+                recipeIngredient: Array.from(
+                    { length: MAX_EXTRACTED_INGREDIENTS },
+                    (_, index) => `Ingredient ${index}`,
+                ),
+            };
+
+            const result = convertRecipe(recipe);
+
+            expect(result.ingredients).toHaveLength(MAX_EXTRACTED_SECTIONS);
+            expect(
+                result.ingredients?.every(
+                    (section) =>
+                        section.items.length === MAX_INGREDIENTS_PER_SECTION,
+                ),
+            ).toBe(true);
+        });
+
+        it("should reject oversized ingredient text", () => {
+            const recipe: Recipe = {
+                ...baseRecipe,
+                recipeIngredient: ["x".repeat(MAX_INGREDIENT_TEXT_LENGTH + 1)],
+            };
+
+            expect(() => convertRecipe(recipe)).toThrow(ExtractionLimitError);
+        });
+
+        it("should reject too many method items", () => {
+            const recipe: Recipe = {
+                ...baseRecipe,
+                recipeInstructions: Array.from(
+                    { length: MAX_METHOD_ITEMS + 1 },
+                    (_, index) => `Step ${index}`,
+                ),
+            };
+
+            expect(() => convertRecipe(recipe)).toThrow(ExtractionLimitError);
+        });
+
+        it("should split the maximum method count into bounded sections", () => {
+            const recipe: Recipe = {
+                ...baseRecipe,
+                recipeInstructions: Array.from(
+                    { length: MAX_METHOD_ITEMS },
+                    (_, index) => `Step ${index}`,
+                ),
+            };
+
+            const result = convertRecipe(recipe);
+
+            expect(result.method).toHaveLength(MAX_EXTRACTED_SECTIONS);
+            expect(
+                result.method?.every(
+                    (section) =>
+                        section.items.length === MAX_METHOD_ITEMS_PER_SECTION,
+                ),
+            ).toBe(true);
+        });
+
+        it("should reject oversized method text", () => {
+            const recipe: Recipe = {
+                ...baseRecipe,
+                recipeInstructions: ["x".repeat(MAX_METHOD_TEXT_LENGTH + 1)],
+            };
+
+            expect(() => convertRecipe(recipe)).toThrow(ExtractionLimitError);
+        });
+
+        it("should reject too many method sections", () => {
+            const recipe: Recipe = {
+                ...baseRecipe,
+                recipeInstructions: Array.from(
+                    { length: MAX_EXTRACTED_SECTIONS + 1 },
+                    (_, index) => ({
+                        "@type": "HowToSection",
+                        name: `Section ${index}`,
+                        itemListElement: ["Step"],
+                    }),
+                ),
+            };
+
+            expect(() => convertRecipe(recipe)).toThrow(ExtractionLimitError);
+        });
+
+        it("should reject too many images", () => {
+            const recipe: Recipe = {
+                ...baseRecipe,
+                image: Array.from(
+                    { length: MAX_IMAGES + 1 },
+                    (_, index) =>
+                        `https://example.com/image-${index}.jpg` as string,
+                ),
+            };
+
+            expect(() => convertRecipe(recipe)).toThrow(ExtractionLimitError);
+        });
+
+        it("should reject too many tag candidates", () => {
+            const recipe: Recipe = {
+                ...baseRecipe,
+                keywords: Array.from(
+                    { length: MAX_TAG_CANDIDATES + 1 },
+                    (_, index) => `tag-${index}`,
+                ),
+            };
+
+            expect(() => convertRecipe(recipe)).toThrow(ExtractionLimitError);
+        });
+
+        it("should count tag candidates across recipe fields", () => {
+            const recipe: Recipe = {
+                ...baseRecipe,
+                recipeCuisine: Array.from(
+                    { length: MAX_TAG_CANDIDATES / 2 + 1 },
+                    (_, index) => `cuisine-${index}`,
+                ),
+                recipeCategory: Array.from(
+                    { length: MAX_TAG_CANDIDATES / 2 },
+                    (_, index) => `category-${index}`,
+                ),
+            };
+
+            expect(() => convertRecipe(recipe)).toThrow(ExtractionLimitError);
+        });
+
+        it("should reject oversized recipe fields", () => {
+            expect(() =>
+                convertRecipe({
+                    ...baseRecipe,
+                    name: "x".repeat(MAX_EXTRACTED_NAME_LENGTH + 1),
+                }),
+            ).toThrow(ExtractionLimitError);
+            expect(() =>
+                convertRecipe({
+                    ...baseRecipe,
+                    description: "x".repeat(MAX_EXTRACTED_SUMMARY_LENGTH + 1),
+                }),
+            ).toThrow(ExtractionLimitError);
+            expect(() =>
+                convertRecipe({
+                    ...baseRecipe,
+                    "@id": "x".repeat(MAX_EXTRACTED_SOURCE_LENGTH + 1),
+                }),
+            ).toThrow(ExtractionLimitError);
+        });
+
+        it("should reject oversized parsed ingredient fields", () => {
+            expect(() =>
+                convertRecipe({
+                    ...baseRecipe,
+                    recipeIngredient: [
+                        "x".repeat(MAX_INGREDIENT_NAME_LENGTH + 1),
+                    ],
+                }),
+            ).toThrow(ExtractionLimitError);
+            expect(() =>
+                convertRecipe({
+                    ...baseRecipe,
+                    recipeIngredient: [
+                        `1 item (${"x".repeat(MAX_INGREDIENT_PREPARATION_LENGTH + 1)})`,
+                    ],
+                }),
+            ).toThrow(ExtractionLimitError);
+        });
+
+        it("should reject oversized amount values", () => {
+            expect(() =>
+                convertRecipe({
+                    ...baseRecipe,
+                    recipeIngredient: [
+                        `${"9".repeat(MAX_AMOUNT_VALUE_LENGTH + 1)} flour`,
+                    ],
+                }),
+            ).toThrow(ExtractionLimitError);
+            expect(() =>
+                convertRecipe({
+                    ...baseRecipe,
+                    recipeYield: "9".repeat(MAX_AMOUNT_VALUE_LENGTH + 1),
+                }),
+            ).toThrow(ExtractionLimitError);
+        });
+
+        it("should reject oversized method section names", () => {
+            expect(() =>
+                convertRecipe({
+                    ...baseRecipe,
+                    recipeInstructions: [
+                        {
+                            "@type": "HowToSection",
+                            name: "x".repeat(MAX_SECTION_NAME_LENGTH + 1),
+                            itemListElement: ["Step"],
+                        },
+                    ],
+                }),
+            ).toThrow(ExtractionLimitError);
+        });
     });
 
     describe("prep time", () => {

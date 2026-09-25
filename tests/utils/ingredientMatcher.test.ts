@@ -1,6 +1,8 @@
 import { describe, it } from "node:test";
 import { expect } from "expect";
 import type { components } from "../../src/routes/spec/schema.js";
+import { ExtractionLimitError } from "../../src/utils/errors.ts";
+import { MAX_MATCH_CANDIDATES } from "../../src/utils/extractionLimits.ts";
 import {
     AUTO_MATCH_THRESHOLD,
     CANDIDATE_LIMIT,
@@ -178,6 +180,37 @@ describe("rankMatches", () => {
         const matches = rankMatches("candidate 1 generic extra", candidates);
 
         expect(matches.length).toBeLessThanOrEqual(CANDIDATE_LIMIT);
+    });
+
+    it("should reject more candidates than the matching limit", () => {
+        const candidates = Array.from(
+            { length: MAX_MATCH_CANDIDATES + 1 },
+            (_, index) => candidate(`candidate ${index}`),
+        );
+
+        expect(() => rankMatches("candidate", candidates)).toThrow(
+            ExtractionLimitError,
+        );
+    });
+
+    it("should bound matching work across recipe items", () => {
+        const candidates = Array.from({ length: MAX_MATCH_CANDIDATES }, () =>
+            candidate("shared"),
+        );
+        const recipe = {
+            ingredients: [
+                {
+                    name: "Ingredients",
+                    items: Array.from({ length: 101 }, () => ({
+                        name: "shared",
+                    })),
+                },
+            ],
+        } as components["schemas"]["ExtractedRecipe"];
+
+        expect(() => matchRecipeIngredients(recipe, candidates)).toThrow(
+            ExtractionLimitError,
+        );
     });
 });
 
