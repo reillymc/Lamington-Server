@@ -10,7 +10,9 @@ export interface AppConfig {
     externalHost: string | undefined;
     allowedOrigin: string | undefined;
     uploadDirectory: string;
+    attachmentDirectory?: string;
     assetDirectory: string;
+    trustProxyHops: number;
 }
 
 interface AppParams {
@@ -21,8 +23,9 @@ interface AppParams {
 
 export const setupApp = ({ services, middleware, config }: AppParams) =>
     express()
-        .use(express.json())
-        .use(express.urlencoded({ extended: false }))
+        .set("trust proxy", config.trustProxyHops)
+        .use(express.json({ limit: "1mb" }))
+        .use(express.urlencoded({ extended: false, limit: "1mb" }))
         .use(
             cors({
                 origin: config.allowedOrigin,
@@ -33,7 +36,11 @@ export const setupApp = ({ services, middleware, config }: AppParams) =>
         .use(
             helmet({
                 contentSecurityPolicy: {
-                    directives: { defaultSrc: ["'self'"] },
+                    useDefaults: true,
+                    directives: {
+                        defaultSrc: ["'self'"],
+                        upgradeInsecureRequests: null,
+                    },
                 },
             }),
         )

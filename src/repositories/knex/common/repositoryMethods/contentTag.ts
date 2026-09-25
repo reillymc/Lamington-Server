@@ -1,4 +1,5 @@
 import { EnsureArray } from "@reillymc/es-utils";
+import { dedupeLast } from "../../../../utils/dedupeLast.ts";
 import type { ReadTagsResponse } from "../../../recipeRepository.ts";
 import type { ContentTag } from "../../../temp.ts";
 import type { KnexDatabase } from "../../knex.ts";
@@ -112,16 +113,23 @@ export const ContentTagActions = {
             tags: ReadonlyArray<{ tagId: string }>;
         }>,
     ) => {
-        if (!items.length) return;
+        const dedupedItems = dedupeLast(items, "contentId").map(
+            ({ contentId, tags }) => ({
+                contentId,
+                tags: dedupeLast(tags, "tagId"),
+            }),
+        );
+
+        if (!dedupedItems.length) return;
 
         await db<ContentTag>(lamington.contentTag)
             .whereIn(
                 ContentTagTable.contentId,
-                items.map(({ contentId }) => contentId),
+                dedupedItems.map(({ contentId }) => contentId),
             )
             .del();
 
-        const tagsToInsert = items.flatMap(({ contentId, tags }) =>
+        const tagsToInsert = dedupedItems.flatMap(({ contentId, tags }) =>
             tags.map(({ tagId }) => ({ contentId, tagId })),
         );
 

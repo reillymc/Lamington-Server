@@ -3,16 +3,17 @@ import type { User } from "./userRepository.ts";
 
 export interface Attachment {
     attachmentId: string;
-    uri: string;
+    preview: string | null;
     createdBy: string;
     createdAt: string;
     updatedAt: string;
+    deletedAt: string | null;
 }
 
 type CreateRequest = {
     userId: User["userId"];
     attachments: ReadonlyArray<{
-        uri: Attachment["uri"];
+        preview?: Attachment["preview"];
     }>;
 };
 
@@ -21,20 +22,74 @@ type CreateResponse = {
     attachments: ReadonlyArray<Attachment>;
 };
 
-type UpdateRequest = {
+type VerifyPermissionsRequest = {
     userId: User["userId"];
     attachments: ReadonlyArray<{
         attachmentId: Attachment["attachmentId"];
-        uri: Attachment["uri"];
     }>;
 };
 
-type UpdateResponse = {
+type VerifyPermissionsResponse = {
     userId: User["userId"];
-    attachments: ReadonlyArray<Attachment>;
+    attachments: ReadonlyArray<{
+        attachmentId: Attachment["attachmentId"];
+        hasPermissions: boolean;
+    }>;
+};
+
+type ClaimPurgeableAttachmentsRequest = {
+    limit: number;
+    createdBefore: Date;
+};
+
+type ClaimPurgeableAttachmentsResponse = {
+    attachments: ReadonlyArray<{
+        attachmentId: Attachment["attachmentId"];
+    }>;
+};
+
+type DeletePurgeableAttachmentsRequest = {
+    attachments: ReadonlyArray<{
+        attachmentId: Attachment["attachmentId"];
+    }>;
+};
+
+type DeletePurgeableAttachmentsResponse = {
+    count: number;
+};
+
+type ReadAttachmentsForUsersRequest = {
+    users: ReadonlyArray<{
+        userId: User["userId"];
+    }>;
+};
+
+type ReadAttachmentsForUsersResponse = {
+    attachments: ReadonlyArray<{
+        attachmentId: Attachment["attachmentId"];
+    }>;
 };
 
 export interface AttachmentRepository<TDatabase extends Database = Database> {
     create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;
-    update: RepositoryService<TDatabase, UpdateRequest, UpdateResponse>;
+    verifyPermissions: RepositoryService<
+        TDatabase,
+        VerifyPermissionsRequest,
+        VerifyPermissionsResponse
+    >;
+    claimPurgeable: RepositoryService<
+        TDatabase,
+        ClaimPurgeableAttachmentsRequest,
+        ClaimPurgeableAttachmentsResponse
+    >;
+    deletePurgeable: RepositoryService<
+        TDatabase,
+        DeletePurgeableAttachmentsRequest,
+        DeletePurgeableAttachmentsResponse
+    >;
+    readAllForUsers: RepositoryService<
+        TDatabase,
+        ReadAttachmentsForUsersRequest,
+        ReadAttachmentsForUsersResponse
+    >;
 }

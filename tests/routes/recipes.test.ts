@@ -10,6 +10,11 @@ import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngred
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import type { components, paths } from "../../src/routes/spec/index.ts";
+import { SYSTEM_USER_ID } from "../../src/utils/systemUser.ts";
+import {
+    createSpyingFileRepository,
+    purgeDeletedAttachments,
+} from "../helpers/fileRepository.ts";
 import {
     CreateUsers,
     createRandomRecipeTags,
@@ -43,12 +48,6 @@ after(async () => {
 });
 
 describe("Get recipes", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get("/v1/recipes");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return correct recipe details", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -56,7 +55,7 @@ describe("Get recipes", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const {
@@ -67,7 +66,7 @@ describe("Get recipes", () => {
                 {
                     name: uuid(),
                     rating: randomNumber(),
-                    photo: attachment,
+                    heroImage: attachment!.attachmentId,
                 },
             ],
         });
@@ -93,10 +92,9 @@ describe("Get recipes", () => {
         expect(recipeResponse!.rating?.average).toEqual(
             recipe!.rating!.personal,
         );
-        expect(recipeResponse!.photo?.attachmentId).toEqual(
+        expect(recipeResponse!.heroImage?.attachmentId).toEqual(
             attachment!.attachmentId,
         );
-        expect(recipeResponse!.photo?.uri).toEqual(attachment!.uri);
     });
 
     it("should return all public recipes from other users", async () => {
@@ -108,7 +106,7 @@ describe("Get recipes", () => {
         for (const user of randomUsers) {
             const { recipes } = await KnexRecipeRepository.create(database, {
                 userId: user.userId,
-                recipes: Array.from({ length: randomNumber(1, 3) }).map(() => ({
+                recipes: Array.from({ length: randomNumber(3, 1) }).map(() => ({
                     name: uuid(),
                     public: true,
                 })),
@@ -134,7 +132,7 @@ describe("Get recipes", () => {
         for (const otherUser of randomUsers) {
             const { recipes } = await KnexRecipeRepository.create(database, {
                 userId: otherUser.userId,
-                recipes: Array.from({ length: randomNumber(1, 3) }).map(() => ({
+                recipes: Array.from({ length: randomNumber(3, 1) }).map(() => ({
                     name: uuid(),
                     public: randomBoolean(),
                 })),
@@ -163,6 +161,125 @@ describe("Get recipes", () => {
             myRecipes.length +
             otherUsersRecipes.filter((recipe) => recipe.public).length;
         expect(data!.length).toEqual(expectedCount);
+    });
+
+    it("should return private recipes from books the user is an active member of", async () => {
+        const [token, member] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: owner!.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+
+        await KnexBookRepository.saveMembers(database, {
+            bookId: book!.bookId,
+            members: [{ userId: member.userId, status: "M" }],
+        });
+
+        const res = await request(app).get("/v1/recipes").set(token);
+
+        expect(res.statusCode).toEqual(200);
+
+        const { recipes: data } = res.body;
+        expect(
+            data.map(({ recipeId }: { recipeId: string }) => recipeId),
+        ).toContain(recipe!.recipeId);
+    });
+
+    it("should not return private recipes from books the user is only pending on", async () => {
+        const [token, member] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: owner!.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+
+        await KnexBookRepository.saveMembers(database, {
+            bookId: book!.bookId,
+            members: [{ userId: member.userId, status: "P" }],
+        });
+
+        const res = await request(app).get("/v1/recipes").set(token);
+
+        expect(res.statusCode).toEqual(200);
+
+        const { recipes: data } = res.body;
+        expect(
+            data.map(({ recipeId }: { recipeId: string }) => recipeId),
+        ).not.toContain(recipe!.recipeId);
+    });
+
+    it("should stop returning a book's recipes once membership is removed", async () => {
+        const [token, member] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: owner!.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+
+        await KnexBookRepository.saveMembers(database, {
+            bookId: book!.bookId,
+            members: [{ userId: member.userId, status: "M" }],
+        });
+
+        await KnexBookRepository.removeMembers(database, {
+            bookId: book!.bookId,
+            members: [{ userId: member.userId }],
+        });
+
+        const res = await request(app).get("/v1/recipes").set(token);
+
+        expect(res.statusCode).toEqual(200);
+
+        const { recipes: data } = res.body;
+        expect(
+            data.map(({ recipeId }: { recipeId: string }) => recipeId),
+        ).not.toContain(recipe!.recipeId);
     });
 
     it("should respect pagination", async () => {
@@ -219,7 +336,7 @@ describe("Get recipes", () => {
             for (const randomUser of randomUsers) {
                 await KnexRecipeRepository.create(database, {
                     userId: randomUser.userId,
-                    recipes: Array.from({ length: randomNumber(1, 3) }).map(
+                    recipes: Array.from({ length: randomNumber(3, 1) }).map(
                         () => ({
                             name: uuid(),
                             public: true,
@@ -645,22 +762,187 @@ describe("Get recipes", () => {
     });
 
     describe("sorting/ordering", () => {
-        it("should return results by name", async () => {
-            const [token, user] = await PrepareAuthenticatedUser(database);
+        for (const order of ["asc", "desc"] as const) {
+            it(`should return results by name (${order})`, async () => {
+                const [token, user] = await PrepareAuthenticatedUser(database);
 
-            const order = randomBoolean() ? "asc" : "desc";
+                await KnexRecipeRepository.create(database, {
+                    userId: user.userId,
+                    recipes: Array.from({ length: TEST_ITEM_COUNT }).map(
+                        (_, index) => ({
+                            name: `recipe-${String(index).padStart(3, "0")}`,
+                            public: true,
+                        }),
+                    ),
+                });
 
-            await KnexRecipeRepository.create(database, {
-                userId: user.userId,
-                recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
-                    name: uuid(),
-                    public: true,
-                })),
+                const res = await request(app)
+                    .get("/v1/recipes")
+                    .query({ sort: "name", order })
+                    .set(token);
+
+                expect(res.statusCode).toEqual(200);
+
+                const { recipes: data } =
+                    res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
+
+                expect(data!.length).toEqual(TEST_ITEM_COUNT);
+
+                const recipeNames = data!.map(({ name }) => name);
+                const sortedNames = [...recipeNames].sort();
+                expect(recipeNames).toEqual(
+                    order === "asc" ? sortedNames : sortedNames.reverse(),
+                );
             });
+
+            it(`should return results by rating (${order})`, async () => {
+                const [token, user] = await PrepareAuthenticatedUser(database);
+
+                await KnexRecipeRepository.create(database, {
+                    userId: user.userId,
+                    recipes: Array.from({ length: TEST_ITEM_COUNT }).map(
+                        (_, index) => ({
+                            name: uuid(),
+                            rating: index + 1,
+                            public: true,
+                        }),
+                    ),
+                });
+
+                const res = await request(app)
+                    .get("/v1/recipes")
+                    .query({ sort: "ratingPersonal", order })
+                    .set(token);
+
+                expect(res.statusCode).toEqual(200);
+
+                const { recipes: data } =
+                    res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
+
+                expect(data!.length).toEqual(TEST_ITEM_COUNT);
+
+                const recipeRatings = data!.map(
+                    ({ rating }) => rating?.personal ?? 0,
+                );
+                const sortedRatings = [...recipeRatings].sort((a, b) => a - b);
+                expect(recipeRatings).toEqual(
+                    order === "asc" ? sortedRatings : sortedRatings.reverse(),
+                );
+            });
+
+            it(`should return results by time (${order})`, async () => {
+                const [token, user] = await PrepareAuthenticatedUser(database);
+
+                await KnexRecipeRepository.create(database, {
+                    userId: user.userId,
+                    recipes: Array.from({ length: TEST_ITEM_COUNT }).map(
+                        (_, index) => ({
+                            name: uuid(),
+                            cookTime: index + 1,
+                            public: true,
+                        }),
+                    ),
+                });
+
+                const res = await request(app)
+                    .get("/v1/recipes")
+                    .query({ sort: "cookTime", order })
+                    .set(token);
+
+                expect(res.statusCode).toEqual(200);
+
+                const { recipes: data } =
+                    res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
+
+                expect(data!.length).toEqual(TEST_ITEM_COUNT);
+
+                const recipeTimes = data!.map(({ cookTime }) => cookTime);
+                const sortedTimes = [...recipeTimes].sort(
+                    (a, b) => (a ?? 0) - (b ?? 0),
+                );
+                expect(recipeTimes).toEqual(
+                    order === "asc" ? sortedTimes : sortedTimes.reverse(),
+                );
+            });
+
+            it(`should return results by average rating (${order})`, async () => {
+                const [token, user] = await PrepareAuthenticatedUser(database);
+                const raters = await CreateUsers(database, { count: 2 });
+
+                const { recipes } = await KnexRecipeRepository.create(
+                    database,
+                    {
+                        userId: user.userId,
+                        recipes: Array.from({ length: TEST_ITEM_COUNT }).map(
+                            () => ({
+                                name: uuid(),
+                                public: true,
+                            }),
+                        ),
+                    },
+                );
+
+                for (const [raterIndex, rater] of raters.entries()) {
+                    await KnexRecipeRepository.saveRating(database, {
+                        userId: rater.userId,
+                        ratings: recipes.map((recipe, index) => ({
+                            recipeId: recipe.recipeId,
+                            rating: index + 1 + raterIndex * 2,
+                        })),
+                    });
+                }
+
+                const res = await request(app)
+                    .get("/v1/recipes")
+                    .query({ sort: "ratingAverage", order })
+                    .set(token);
+
+                expect(res.statusCode).toEqual(200);
+
+                const { recipes: data } =
+                    res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
+
+                expect(data!.length).toEqual(TEST_ITEM_COUNT);
+
+                for (const recipeResponse of data!) {
+                    expect(recipeResponse!.rating?.personal).toBeUndefined();
+                    expect(typeof recipeResponse!.rating?.average).toEqual(
+                        "number",
+                    );
+                }
+
+                const recipeAverages = data!.map(
+                    ({ rating }) => rating?.average ?? 0,
+                );
+                const sortedAverages = [...recipeAverages].sort(
+                    (a, b) => a - b,
+                );
+                expect(recipeAverages).toEqual(
+                    order === "asc" ? sortedAverages : sortedAverages.reverse(),
+                );
+            });
+        }
+
+        it("should return results by owner filter sorted", async () => {
+            const [token, ownerA] = await PrepareAuthenticatedUser(database);
+            const [_, ownerB] = await PrepareAuthenticatedUser(database);
+
+            for (const [prefix, owner] of [
+                ["a", ownerA] as const,
+                ["b", ownerB] as const,
+            ]) {
+                await KnexRecipeRepository.create(database, {
+                    userId: owner.userId,
+                    recipes: Array.from({ length: 5 }).map((_, index) => ({
+                        name: `${prefix}-${String(index).padStart(3, "0")}`,
+                        public: randomBoolean(),
+                    })),
+                });
+            }
 
             const res = await request(app)
                 .get("/v1/recipes")
-                .query({ sort: "name", order })
+                .query({ owner: ownerA.userId, sort: "name", order: "desc" })
                 .set(token);
 
             expect(res.statusCode).toEqual(200);
@@ -668,95 +950,99 @@ describe("Get recipes", () => {
             const { recipes: data } =
                 res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
 
-            expect(data!.length).toEqual(TEST_ITEM_COUNT);
+            expect(data!.length).toEqual(5);
 
             const recipeNames = data!.map(({ name }) => name);
-            expect(recipeNames).toEqual(
-                order === "asc"
-                    ? recipeNames.sort()
-                    : recipeNames.sort().reverse(),
+            expect([...recipeNames].sort().reverse()).toEqual(recipeNames);
+            expect(recipeNames.every((name) => name.startsWith("a-"))).toBe(
+                true,
             );
         });
 
-        it("should return results by rating", async () => {
-            const [token, user] = await PrepareAuthenticatedUser(database);
+        it("should apply ordering across pages", async () => {
+            const PAGE_SIZE = 50;
 
-            const order = randomBoolean() ? "asc" : "desc";
+            const [token, user] = await PrepareAuthenticatedUser(database);
 
             await KnexRecipeRepository.create(database, {
                 userId: user.userId,
-                recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
-                    name: uuid(),
-                    rating: randomNumber(),
-                    public: true,
-                })),
+                recipes: Array.from({ length: PAGE_SIZE + 10 }).map(
+                    (_, index) => ({
+                        name: `recipe-${String(index).padStart(3, "0")}`,
+                        public: true,
+                    }),
+                ),
             });
 
-            const res = await request(app)
-                .get("/v1/recipes")
-                .query({ sort: "ratingPersonal", order })
-                .set(token);
+            for (const order of ["asc", "desc"] as const) {
+                const allRecipeNames: string[] = [];
 
-            expect(res.statusCode).toEqual(200);
+                for (const page of [1, 2]) {
+                    const res = await request(app)
+                        .get("/v1/recipes")
+                        .query({ page, sort: "name", order })
+                        .set(token);
 
-            const { recipes: data } =
-                res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
+                    expect(res.statusCode).toEqual(200);
 
-            expect(data!.length).toEqual(TEST_ITEM_COUNT);
+                    const { recipes, nextPage } =
+                        res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
 
-            const recipeRatings = data!.map(
-                ({ rating }) => rating?.personal ?? 0,
-            );
-            expect(recipeRatings).toEqual(
-                order === "asc"
-                    ? recipeRatings!.sort()
-                    : recipeRatings!.sort().reverse(),
-            );
+                    expect(recipes!.length).toEqual(
+                        page === 1 ? PAGE_SIZE : 10,
+                    );
+                    expect(nextPage).toEqual(page === 1 ? 2 : undefined);
+
+                    allRecipeNames.push(...recipes!.map(({ name }) => name));
+                }
+
+                const sortedNames = [...allRecipeNames].sort();
+                expect(allRecipeNames).toEqual(
+                    order === "asc" ? sortedNames : sortedNames.reverse(),
+                );
+            }
         });
 
-        it("should return results by time", async () => {
-            const [token, user] = await PrepareAuthenticatedUser(database);
+        const invalidQueryTestCases: TestCase<
+            number,
+            Record<string, string>
+        >[] = [
+            {
+                name: "should reject an invalid sort field",
+                input: { sort: "bogus" },
+                expected: 400,
+            },
+            {
+                name: "should reject an invalid order value",
+                input: { order: "bogus" },
+                expected: 400,
+            },
+            {
+                name: "should reject an invalid order alongside a valid sort",
+                input: { sort: "name", order: "bogus" },
+                expected: 400,
+            },
+            {
+                name: "should reject an unknown query parameter",
+                input: { foo: "bar" },
+                expected: 400,
+            },
+        ];
 
-            const order = randomBoolean() ? "asc" : "desc";
-
-            await KnexRecipeRepository.create(database, {
-                userId: user.userId,
-                recipes: Array.from({ length: TEST_ITEM_COUNT }).map(() => ({
-                    name: uuid(),
-                    prepTime: randomNumber(5),
-                    public: true,
-                })),
-            });
+        runTestCases(invalidQueryTestCases, async ({ input, expected }) => {
+            const [token] = await PrepareAuthenticatedUser(database);
 
             const res = await request(app)
                 .get("/v1/recipes")
-                .query({ sort: "cookTime", order })
+                .query(input)
                 .set(token);
 
-            expect(res.statusCode).toEqual(200);
-
-            const { recipes: data } =
-                res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
-
-            expect(data!.length).toEqual(TEST_ITEM_COUNT);
-
-            const recipeTimes = data!.map(({ prepTime }) => prepTime);
-            expect(recipeTimes).toEqual(
-                order === "asc"
-                    ? recipeTimes.sort()
-                    : recipeTimes.sort().reverse(),
-            );
+            expect(res.statusCode).toEqual(expected);
         });
     });
 });
 
 describe("Create a recipe", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post("/v1/recipes");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should save correct basic details", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -764,7 +1050,7 @@ describe("Create a recipe", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const [parentTag, soloTag] = await KnexTagRepository.create(database, [
@@ -789,8 +1075,8 @@ describe("Create a recipe", () => {
             method: [],
             ingredients: [],
             timesCooked: randomNumber(),
-            rating: randomNumber(),
-            photo: attachment,
+            rating: randomNumber(100, 0),
+            heroImage: attachment!.attachmentId,
             tags: [{ tagId: childTag!.tagId }, { tagId: soloTag!.tagId }],
         };
 
@@ -814,8 +1100,9 @@ describe("Create a recipe", () => {
         expect(response!.timesCooked).toBe(recipe.timesCooked);
         expect(response!.rating!.personal).toBe(recipe.rating);
         expect(response!.rating!.average).toEqual(recipe.rating);
-        expect(response!.photo!.attachmentId).toBe(attachment!.attachmentId);
-        expect(response!.photo!.uri).toBe(attachment!.uri);
+        expect(response!.heroImage!.attachmentId).toBe(
+            attachment!.attachmentId,
+        );
         expect(response!.tags).toStrictEqual({
             [parentTag!.tagId]: {
                 tagId: parentTag!.tagId,
@@ -829,6 +1116,107 @@ describe("Create a recipe", () => {
         });
         expect(response!.owner.userId).toBe(user.userId);
         expect(response!.owner.firstName).toBe(user.firstName);
+    });
+
+    it("should persist a zero rating on create", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const recipe: components["schemas"]["RecipeCreate"] = {
+            name: uuid(),
+            rating: 0,
+        };
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send(recipe);
+
+        expect(res.statusCode).toEqual(201);
+
+        const response = res.body as components["schemas"]["Recipe"];
+        expect(response!.rating!.personal).toEqual(0);
+    });
+
+    it("should reject an attachment owned by another user", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{}],
+        });
+
+        const recipe: components["schemas"]["RecipeCreate"] = {
+            name: uuid(),
+            heroImage: attachment!.attachmentId,
+        };
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send(recipe);
+
+        expect(res.statusCode).toEqual(404);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows.map(({ attachmentId }) => attachmentId)).toEqual([
+            attachment!.attachmentId,
+        ]);
+    });
+
+    it("should collapse duplicate tags in a single request", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const [tag] = await KnexTagRepository.create(database, [
+            { name: uuid() },
+        ]);
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({
+                name: uuid(),
+                tags: [{ tagId: tag!.tagId }, { tagId: tag!.tagId }],
+            } satisfies components["schemas"]["RecipeCreate"]);
+
+        expect(res.statusCode).toEqual(201);
+
+        const rows = await database("content_tag").select("tagId");
+        expect(rows).toEqual([{ tagId: tag!.tagId }]);
+    });
+
+    it("should reject attachments that are deleted or do not exist", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}],
+        });
+
+        await database("attachment")
+            .where("attachmentId", attachment!.attachmentId)
+            .update({ deletedAt: new Date() });
+
+        for (const attachmentId of [attachment!.attachmentId, uuid()]) {
+            const res = await request(app)
+                .post("/v1/recipes")
+                .set(token)
+                .send({
+                    name: uuid(),
+                    heroImage: attachmentId,
+                } satisfies components["schemas"]["RecipeCreate"]);
+
+            expect(res.statusCode).toEqual(404);
+        }
+
+        expect(
+            await database("content_attachment").select("attachmentId"),
+        ).toEqual([]);
     });
 
     describe("method", () => {
@@ -1069,6 +1457,106 @@ describe("Create a recipe", () => {
                 );
             });
 
+            it("should accept system-owned ingredients", async () => {
+                const [token] = await PrepareAuthenticatedUser(database);
+
+                const {
+                    ingredients: [ingredient],
+                } = await KnexIngredientRepository.create(database, {
+                    userId: SYSTEM_USER_ID,
+                    ingredients: [{ name: "Global", namePlural: "Globals" }],
+                });
+
+                const recipe: components["schemas"]["RecipeCreate"] = {
+                    name: uuid(),
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                };
+
+                const res = await request(app)
+                    .post("/v1/recipes")
+                    .set(token)
+                    .send(recipe);
+
+                expect(res.statusCode).toEqual(201);
+            });
+
+            it("should reject ingredients owned by another user", async () => {
+                const [token] = await PrepareAuthenticatedUser(database);
+                const [otherUser] = await CreateUsers(database);
+
+                const {
+                    ingredients: [ingredient],
+                } = await KnexIngredientRepository.create(database, {
+                    userId: otherUser!.userId,
+                    ingredients: [{ name: "Private", namePlural: "Privates" }],
+                });
+
+                const recipe: components["schemas"]["RecipeCreate"] = {
+                    name: uuid(),
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                };
+
+                const res = await request(app)
+                    .post("/v1/recipes")
+                    .set(token)
+                    .send(recipe);
+
+                expect(res.statusCode).toEqual(404);
+            });
+
+            it("should reject a content id that is not an ingredient", async () => {
+                const [token, user] = await PrepareAuthenticatedUser(database);
+
+                const {
+                    recipes: [otherRecipe],
+                } = await KnexRecipeRepository.create(database, {
+                    userId: user.userId,
+                    recipes: [{ name: uuid() }],
+                });
+
+                const recipe: components["schemas"]["RecipeCreate"] = {
+                    name: uuid(),
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: otherRecipe!.recipeId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                };
+
+                const res = await request(app)
+                    .post("/v1/recipes")
+                    .set(token)
+                    .send(recipe);
+
+                expect(res.statusCode).toEqual(404);
+            });
+
             it("should save sub-recipe details", async () => {
                 const [token, { userId }] =
                     await PrepareAuthenticatedUser(database);
@@ -1109,17 +1597,112 @@ describe("Create a recipe", () => {
 
                 expect(subRecipeResponse.name).toStrictEqual("recipeA");
             });
+
+            it("should accept a public sub-recipe owned by another user", async () => {
+                const [token] = await PrepareAuthenticatedUser(database);
+                const [otherUser] = await CreateUsers(database);
+
+                const {
+                    recipes: [subRecipe],
+                } = await KnexRecipeRepository.create(database, {
+                    userId: otherUser!.userId,
+                    recipes: [{ name: uuid(), public: true }],
+                });
+
+                const recipe: components["schemas"]["RecipeCreate"] = {
+                    name: uuid(),
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    recipe: {
+                                        recipeId: subRecipe!.recipeId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                };
+
+                const res = await request(app)
+                    .post("/v1/recipes")
+                    .set(token)
+                    .send(recipe);
+
+                expect(res.statusCode).toEqual(201);
+            });
+
+            it("should reject a sub-recipe owned by another user", async () => {
+                const [token] = await PrepareAuthenticatedUser(database);
+                const [otherUser] = await CreateUsers(database);
+
+                const {
+                    recipes: [subRecipe],
+                } = await KnexRecipeRepository.create(database, {
+                    userId: otherUser!.userId,
+                    recipes: [{ name: uuid() }],
+                });
+
+                const recipe: components["schemas"]["RecipeCreate"] = {
+                    name: uuid(),
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    recipe: {
+                                        recipeId: subRecipe!.recipeId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                };
+
+                const res = await request(app)
+                    .post("/v1/recipes")
+                    .set(token)
+                    .send(recipe);
+
+                expect(res.statusCode).toEqual(404);
+            });
+
+            it("should reject a sub-recipe id that is not a recipe", async () => {
+                const [token, user] = await PrepareAuthenticatedUser(database);
+
+                const {
+                    ingredients: [ingredient],
+                } = await KnexIngredientRepository.create(database, {
+                    userId: user.userId,
+                    ingredients: [{ name: uuid() }],
+                });
+
+                const recipe: components["schemas"]["RecipeCreate"] = {
+                    name: uuid(),
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    recipe: {
+                                        recipeId: ingredient!.ingredientId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                };
+
+                const res = await request(app)
+                    .post("/v1/recipes")
+                    .set(token)
+                    .send(recipe);
+
+                expect(res.statusCode).toEqual(404);
+            });
         });
     });
 });
 
 describe("Update a recipe", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post("/v1/recipes");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should not allow editing if not recipe owner", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
         const [recipeOwner] = await CreateUsers(database);
@@ -1146,7 +1729,7 @@ describe("Update a recipe", () => {
             attachments: [attachment1, attachment2],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }, { uri: uuid() }],
+            attachments: [{}, {}],
         });
 
         const {
@@ -1158,7 +1741,7 @@ describe("Update a recipe", () => {
                     cookTime: randomNumber(),
                     method: generateRandomRecipeMethodSections(),
                     name: uuid(),
-                    photo: attachment1,
+                    heroImage: attachment1!.attachmentId,
                     prepTime: randomNumber(),
                     public: randomBoolean(),
                     rating: randomNumber(),
@@ -1184,7 +1767,7 @@ describe("Update a recipe", () => {
             cookTime: randomNumber(),
             method: generateRandomRecipeMethodSections(),
             name: uuid(),
-            photo: attachment2,
+            heroImage: attachment2!.attachmentId,
             prepTime: randomNumber(),
             public: !recipe!.public,
             rating: randomNumber(),
@@ -1224,10 +1807,9 @@ describe("Update a recipe", () => {
         expect(recipeResponse!.summary).toEqual(updatedRecipe.summary);
         expect(recipeResponse!.timesCooked).toEqual(updatedRecipe.timesCooked);
         expect(recipeResponse!.tips).toEqual(updatedRecipe.tips);
-        expect(recipeResponse!.photo!.attachmentId).toEqual(
+        expect(recipeResponse!.heroImage!.attachmentId).toEqual(
             attachment2!.attachmentId,
         );
-        expect(recipeResponse!.photo!.uri).toEqual(attachment2!.uri);
         expect(Object.keys(recipeResponse!.tags ?? {}).sort()).toStrictEqual(
             updatedTags.map(({ tagId }) => tagId).sort(),
         );
@@ -1240,7 +1822,7 @@ describe("Update a recipe", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const {
@@ -1253,7 +1835,7 @@ describe("Update a recipe", () => {
                     method: generateRandomRecipeMethodSections(),
                     name: uuid(),
                     nutritionalInformation: {},
-                    photo: attachment,
+                    heroImage: attachment!.attachmentId,
                     prepTime: randomNumber(),
                     public: true,
                     rating: randomNumber(),
@@ -1271,7 +1853,7 @@ describe("Update a recipe", () => {
             cookTime: null,
             method: null,
             nutritionalInformation: null,
-            photo: null,
+            heroImage: null,
             prepTime: null,
             public: null,
             rating: null,
@@ -1301,7 +1883,7 @@ describe("Update a recipe", () => {
         expect(updatedRecipe!.method).toBeUndefined();
         expect(updatedRecipe!.name).toEqual(recipe!.name);
         expect(updatedRecipe!.nutritionalInformation).toBeUndefined();
-        expect(updatedRecipe!.photo).toBeUndefined();
+        expect(updatedRecipe!.heroImage).toBeUndefined();
         expect(updatedRecipe!.prepTime).toBeUndefined();
         expect(updatedRecipe!.public).toBeUndefined();
         expect(updatedRecipe!.rating.average).toBeUndefined();
@@ -1313,6 +1895,32 @@ describe("Update a recipe", () => {
         expect(updatedRecipe!.timesCooked).toBeUndefined();
         expect(updatedRecipe!.tips).toBeUndefined();
         expect(updatedRecipe!.tags).toBeUndefined();
+    });
+
+    it("should persist a zero rating on update", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ rating: 0 });
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            recipes: [updatedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+        expect(updatedRecipe!.rating!.personal).toEqual(0);
     });
 
     describe("ingredients", () => {
@@ -1402,6 +2010,98 @@ describe("Update a recipe", () => {
     });
 
     describe("ingredient ingredient reference", () => {
+        it("should accept system-owned ingredients", async () => {
+            const [token, { userId }] =
+                await PrepareAuthenticatedUser(database);
+
+            const {
+                ingredients: [ingredient],
+            } = await KnexIngredientRepository.create(database, {
+                userId: SYSTEM_USER_ID,
+                ingredients: [{ name: "Global", namePlural: "Globals" }],
+            });
+
+            const {
+                recipes: [baseRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                .set(token)
+                .send({
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                });
+
+            expect(res.statusCode).toEqual(200);
+
+            const response = res.body as components["schemas"]["Recipe"];
+
+            expect(
+                response.ingredients![0]!.items![0]!.ingredient!.ingredientId,
+            ).toStrictEqual(ingredient!.ingredientId);
+        });
+
+        it("should reject ingredients owned by another user", async () => {
+            const [token, { userId }] =
+                await PrepareAuthenticatedUser(database);
+            const [otherUser] = await CreateUsers(database);
+
+            const {
+                ingredients: [ingredient],
+            } = await KnexIngredientRepository.create(database, {
+                userId: otherUser!.userId,
+                ingredients: [{ name: "Private", namePlural: "Privates" }],
+            });
+
+            const {
+                recipes: [baseRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                .set(token)
+                .send({
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                });
+
+            expect(res.statusCode).toEqual(404);
+
+            const {
+                recipes: [unchangedRecipe],
+            } = await KnexRecipeRepository.read(database, {
+                userId,
+                recipes: [{ recipeId: baseRecipe!.recipeId }],
+            });
+
+            expect(unchangedRecipe!.ingredients).toBeUndefined();
+        });
+
         it("should add reference", async () => {
             const [token, { userId }] =
                 await PrepareAuthenticatedUser(database);
@@ -1622,9 +2322,136 @@ describe("Update a recipe", () => {
 
             expect(otherRecipe).toStrictEqual(otherRecipePostRequest);
         });
+
+        it("should dedupe duplicate ingredient references in a single update", async () => {
+            const [token, { userId }] =
+                await PrepareAuthenticatedUser(database);
+
+            const {
+                ingredients: [ingredient],
+            } = await KnexIngredientRepository.create(database, {
+                userId,
+                ingredients: [{ name: uuid(), namePlural: uuid() }],
+            });
+
+            const {
+                recipes: [baseRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                .set(token)
+                .send({
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                                {
+                                    ingredient: {
+                                        ingredientId: ingredient!.ingredientId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                });
+
+            expect(res.statusCode).toEqual(200);
+
+            const rows = await database("recipe_ingredient")
+                .select("ingredientId")
+                .where("recipeId", baseRecipe!.recipeId);
+
+            expect(rows).toEqual([{ ingredientId: ingredient!.ingredientId }]);
+        });
     });
 
     describe("ingredient recipe reference", () => {
+        it("should reject a sub-recipe owned by another user", async () => {
+            const [token, { userId }] =
+                await PrepareAuthenticatedUser(database);
+            const [otherUser] = await CreateUsers(database);
+
+            const {
+                recipes: [subRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId: otherUser!.userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const {
+                recipes: [baseRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                .set(token)
+                .send({
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    recipe: {
+                                        recipeId: subRecipe!.recipeId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                });
+
+            expect(res.statusCode).toEqual(404);
+        });
+
+        it("should accept a public sub-recipe owned by another user", async () => {
+            const [token, { userId }] =
+                await PrepareAuthenticatedUser(database);
+            const [otherUser] = await CreateUsers(database);
+
+            const {
+                recipes: [subRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId: otherUser!.userId,
+                recipes: [{ name: uuid(), public: true }],
+            });
+
+            const {
+                recipes: [baseRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                .set(token)
+                .send({
+                    ingredients: [
+                        {
+                            items: [
+                                {
+                                    recipe: {
+                                        recipeId: subRecipe!.recipeId,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                });
+
+            expect(res.statusCode).toEqual(200);
+        });
+
         it("should add reference", async () => {
             const [token, { userId }] =
                 await PrepareAuthenticatedUser(database);
@@ -1826,6 +2653,47 @@ describe("Update a recipe", () => {
 
             expect(otherRecipe).toStrictEqual(otherRecipePostRequest);
         });
+
+        it("should dedupe duplicate sub recipe references in a single update", async () => {
+            const [token, { userId }] =
+                await PrepareAuthenticatedUser(database);
+
+            const {
+                recipes: [subRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const {
+                recipes: [baseRecipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId,
+                recipes: [{ name: uuid() }],
+            });
+
+            const res = await request(app)
+                .patch(`/v1/recipes/${baseRecipe!.recipeId}`)
+                .set(token)
+                .send({
+                    ingredients: [
+                        {
+                            items: [
+                                { recipe: { recipeId: subRecipe!.recipeId } },
+                                { recipe: { recipeId: subRecipe!.recipeId } },
+                            ],
+                        },
+                    ],
+                });
+
+            expect(res.statusCode).toEqual(200);
+
+            const rows = await database("recipe_recipe")
+                .select("subRecipeId")
+                .where("recipeId", baseRecipe!.recipeId);
+
+            expect(rows).toEqual([{ subRecipeId: subRecipe!.recipeId }]);
+        });
     });
 
     it("should not affect other recipe ratings", async () => {
@@ -1837,8 +2705,8 @@ describe("Update a recipe", () => {
         } = await KnexRecipeRepository.create(database, {
             userId,
             recipes: [
-                { name: uuid(), rating: randomNumber() },
-                { name: uuid(), rating: randomNumber() },
+                { name: uuid(), rating: randomNumber(), public: true },
+                { name: uuid(), rating: randomNumber(), public: true },
             ],
         });
 
@@ -1932,6 +2800,41 @@ describe("Update a recipe", () => {
         );
     });
 
+    it("should reject an attachment owned by another user", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{}],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ heroImage: attachment!.attachmentId });
+
+        expect(res.statusCode).toEqual(404);
+
+        const {
+            recipes: [unchangedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId,
+            recipes: [recipe!],
+        });
+
+        expect(unchangedRecipe!.heroImage).toBeUndefined();
+    });
+
     it("should not affect other recipe photo", async () => {
         const [token, { userId }] = await PrepareAuthenticatedUser(database);
 
@@ -1939,7 +2842,7 @@ describe("Update a recipe", () => {
             attachments: [attachmentA, attachmentB],
         } = await KnexAttachmentRepository.create(database, {
             userId,
-            attachments: [{ uri: uuid() }, { uri: uuid() }],
+            attachments: [{}, {}],
         });
 
         const {
@@ -1949,11 +2852,11 @@ describe("Update a recipe", () => {
             recipes: [
                 {
                     name: uuid(),
-                    photo: { attachmentId: attachmentA!.attachmentId },
+                    heroImage: attachmentA!.attachmentId,
                 },
                 {
                     name: uuid(),
-                    photo: { attachmentId: attachmentA!.attachmentId },
+                    heroImage: attachmentA!.attachmentId,
                 },
             ],
         });
@@ -1961,15 +2864,16 @@ describe("Update a recipe", () => {
         const res = await request(app)
             .patch(`/v1/recipes/${recipe!.recipeId}`)
             .set(token)
-            .send({ photo: { attachmentId: attachmentB!.attachmentId } });
+            .send({ heroImage: attachmentB!.attachmentId });
 
         expect(res.statusCode).toEqual(200);
 
         const response = res.body as components["schemas"]["Recipe"];
 
         // Photo on recipe was updated
-        expect(response.photo!.attachmentId).toEqual(attachmentB!.attachmentId);
-        expect(response.photo!.uri).toEqual(attachmentB!.uri);
+        expect(response.heroImage!.attachmentId).toEqual(
+            attachmentB!.attachmentId,
+        );
 
         const {
             recipes: [otherRecipeRes],
@@ -1979,25 +2883,276 @@ describe("Update a recipe", () => {
         });
 
         // Photo on other recipe was not affected
-        expect(otherRecipeRes!.photo!.attachmentId).toEqual(
+        expect(otherRecipeRes!.heroImage!.attachmentId).toEqual(
             attachmentA!.attachmentId,
         );
-        expect(otherRecipeRes!.photo!.uri).toEqual(attachmentA!.uri);
+    });
+
+    it("should delete the replaced attachment row and file when a recipe photo is replaced", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachmentA, attachmentB],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}, {}],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    heroImage: attachmentA!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ heroImage: attachmentB!.attachmentId });
+
+        expect(res.statusCode).toEqual(200);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(
+            attachmentRows.map(({ attachmentId }) => attachmentId).sort(),
+        ).toEqual([attachmentB!.attachmentId].sort());
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachmentA!.attachmentId]);
+    });
+
+    it("should keep the photo when the same attachment is set again", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    heroImage: attachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ heroImage: attachment!.attachmentId });
+
+        expect(res.statusCode).toEqual(200);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows = await database("attachment").select(
+            "attachmentId",
+            "deletedAt",
+        );
+        expect(attachmentRows).toEqual([
+            { attachmentId: attachment!.attachmentId, deletedAt: null },
+        ]);
+        expect(deleteFile.mock.calls).toHaveLength(0);
+    });
+
+    it("should delete the attachment row and file when a recipe photo is cleared", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachmentA],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    heroImage: attachmentA!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ heroImage: null });
+
+        expect(res.statusCode).toEqual(200);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows).toHaveLength(0);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachmentA!.attachmentId]);
+    });
+
+    it("should not delete a photo attachment still referenced by another recipe", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachmentA, attachmentB],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}, {}],
+        });
+
+        const {
+            recipes: [recipe, otherRecipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    heroImage: attachmentA!.attachmentId,
+                },
+                {
+                    name: uuid(),
+                    heroImage: attachmentA!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ heroImage: attachmentB!.attachmentId });
+
+        expect(res.statusCode).toEqual(200);
+
+        const {
+            recipes: [otherRecipeRes],
+        } = await KnexRecipeRepository.read(database, {
+            userId,
+            recipes: [otherRecipe!],
+        });
+
+        // Other recipe still references the attachment
+        expect(otherRecipeRes!.heroImage!.attachmentId).toEqual(
+            attachmentA!.attachmentId,
+        );
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(
+            attachmentRows.map(({ attachmentId }) => attachmentId).sort(),
+        ).toEqual(
+            [attachmentA!.attachmentId, attachmentB!.attachmentId].sort(),
+        );
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([]);
+    });
+
+    it("should not allow replacing a photo with another user's attachment", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [ownedAttachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}],
+        });
+        const {
+            attachments: [foreignAttachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{}],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    heroImage: ownedAttachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({ heroImage: foreignAttachment!.attachmentId });
+
+        expect(res.statusCode).toEqual(404);
+
+        // The foreign attachment row and file are untouched
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(
+            attachmentRows.map(({ attachmentId }) => attachmentId).sort(),
+        ).toEqual(
+            [
+                ownedAttachment!.attachmentId,
+                foreignAttachment!.attachmentId,
+            ].sort(),
+        );
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([]);
     });
 });
 
 describe("Get a recipe", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get(`/v1/recipes/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent recipe", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app)
-            .delete(`/v1/recipes/${uuid()}`)
-            .set(token);
+        const res = await request(app).get(`/v1/recipes/${uuid()}`).set(token);
 
         expect(res.statusCode).toEqual(404);
     });
@@ -2011,7 +3166,7 @@ describe("Get a recipe", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const [tag] = await KnexTagRepository.create(database, [
@@ -2036,7 +3191,7 @@ describe("Get a recipe", () => {
                     ingredients: generateRandomRecipeIngredientSections(),
                     timesCooked: randomNumber(),
                     rating: randomNumber(),
-                    photo: attachment,
+                    heroImage: attachment!.attachmentId,
                     tags: [{ tagId: tag!.tagId }],
                 },
             ],
@@ -2075,22 +3230,130 @@ describe("Get a recipe", () => {
         expect(response!.rating!.average).toEqual(
             (recipe!.rating.personal! + otherRating!.rating!) / 2,
         );
-        expect(response!.photo!.attachmentId).toBe(attachment!.attachmentId);
-        expect(response!.photo!.uri).toBe(attachment!.uri);
+        expect(response!.heroImage!.attachmentId).toBe(
+            attachment!.attachmentId,
+        );
         expect(response!.tags).toStrictEqual({
             [tag!.tagId]: { tagId: tag!.tagId, name: tag!.name },
         });
         expect(response!.owner.userId).toBe(userId);
         expect(response!.owner.firstName).toBe(firstName);
     });
+
+    it("should not return another user's private recipe", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        const res = await request(app)
+            .get(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
+    it("should return another user's public recipe", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: true }],
+        });
+
+        const res = await request(app)
+            .get(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(200);
+
+        const response = res.body as components["schemas"]["Recipe"];
+        expect(response.recipeId).toEqual(recipe!.recipeId);
+    });
+
+    it("should return a private recipe to an active member of a book containing it", async () => {
+        const [token, member] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: owner!.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+
+        await KnexBookRepository.saveMembers(database, {
+            bookId: book!.bookId,
+            members: [{ userId: member.userId, status: "M" }],
+        });
+
+        const res = await request(app)
+            .get(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(200);
+
+        const response = res.body as components["schemas"]["Recipe"];
+        expect(response.recipeId).toEqual(recipe!.recipeId);
+    });
+
+    it("should not return a private recipe to a pending member of a book containing it", async () => {
+        const [token, member] = await PrepareAuthenticatedUser(database);
+        const [owner] = await CreateUsers(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: owner!.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: owner!.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+
+        await KnexBookRepository.saveMembers(database, {
+            bookId: book!.bookId,
+            members: [{ userId: member.userId, status: "P" }],
+        });
+
+        const res = await request(app)
+            .get(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(404);
+    });
 });
 
 describe("Delete a recipe", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).delete(`/v1/recipes/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return 404 for non-existent recipe", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
@@ -2099,6 +3362,31 @@ describe("Delete a recipe", () => {
             .set(token);
 
         expect(res.statusCode).toEqual(404);
+    });
+
+    it("should not delete another entity when given a non-recipe content id", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { ingredients } = await KnexIngredientRepository.create(
+            database,
+            {
+                userId: user.userId,
+                ingredients: [{ name: uuid() }],
+            },
+        );
+        const ingredient = ingredients[0]!;
+
+        const res = await request(app)
+            .delete(`/v1/recipes/${ingredient.ingredientId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(404);
+
+        const { ingredients: savedIngredients } =
+            await KnexIngredientRepository.readAll(database, {
+                userId: user.userId,
+            });
+        expect(savedIngredients).toHaveLength(1);
     });
 
     it("should delete a recipe", async () => {
@@ -2167,6 +3455,20 @@ describe("Delete a recipe", () => {
             recipes: [{ recipeId: recipe!.recipeId }],
         });
         expect(recipes).toHaveLength(0);
+
+        const { ingredients } = await KnexIngredientRepository.readAll(
+            database,
+            { userId: user.userId },
+        );
+        expect(ingredients.map(({ ingredientId }) => ingredientId)).toEqual([
+            ingredient!.ingredientId,
+        ]);
+
+        expect(
+            await database("recipe_ingredient")
+                .select("ingredientId")
+                .where("recipeId", recipe!.recipeId),
+        ).toHaveLength(0);
     });
 
     it("should delete a recipe used as a sub-recipe", async () => {
@@ -2219,14 +3521,113 @@ describe("Delete a recipe", () => {
         );
         expect(parentRecipes).toHaveLength(1);
     });
+
+    it("should delete the photo attachment row and file when a recipe is deleted", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    heroImage: attachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(204);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows).toHaveLength(0);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachment!.attachmentId]);
+    });
+
+    it("should not delete a photo attachment still referenced by another recipe when a recipe is deleted", async () => {
+        const [token, { userId }] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId,
+            attachments: [{}],
+        });
+
+        const {
+            recipes: [recipe, otherRecipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId,
+            recipes: [
+                {
+                    name: uuid(),
+                    heroImage: attachment!.attachmentId,
+                },
+                {
+                    name: uuid(),
+                    heroImage: attachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token);
+
+        expect(res.statusCode).toEqual(204);
+
+        const { recipes } = await KnexRecipeRepository.read(database, {
+            userId,
+            recipes: [otherRecipe!],
+        });
+
+        // Other recipe still references the attachment
+        expect(recipes[0]!.heroImage!.attachmentId).toEqual(
+            attachment!.attachmentId,
+        );
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(
+            attachmentRows.map(({ attachmentId }) => attachmentId).sort(),
+        ).toEqual([attachment!.attachmentId].sort());
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([]);
+    });
 });
 
 describe("Rate a recipe", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post(`/v1/recipes/${uuid()}/rating`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should rate a recipe", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -2253,5 +3654,300 @@ describe("Rate a recipe", () => {
             recipes: [{ recipeId: recipe!.recipeId }],
         });
         expect(updatedRecipe!.rating!.personal).toEqual(rating);
+    });
+
+    it("should accept a rating on the 0-100 scale", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/recipes/${recipe!.recipeId}/rating`)
+            .set(token)
+            .send({ rating: 100 });
+
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.rating).toEqual(100);
+
+        const {
+            recipes: [updatedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+        expect(updatedRecipe!.rating!.personal).toEqual(100);
+    });
+
+    it("should reject a rating above 100", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/recipes/${recipe!.recipeId}/rating`)
+            .set(token)
+            .send({ rating: 101 });
+
+        expect(res.statusCode).toEqual(400);
+
+        const {
+            recipes: [unchangedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+        expect(unchangedRecipe!.rating!.personal).toBeUndefined();
+    });
+
+    it("should keep the latest rating when rating again", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        await request(app)
+            .post(`/v1/recipes/${recipe!.recipeId}/rating`)
+            .set(token)
+            .send({ rating: 3 });
+
+        const res = await request(app)
+            .post(`/v1/recipes/${recipe!.recipeId}/rating`)
+            .set(token)
+            .send({ rating: 5 });
+
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.rating).toEqual(5);
+
+        const {
+            recipes: [updatedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+        expect(updatedRecipe!.rating!.personal).toEqual(5);
+    });
+
+    it("should not rate a recipe the user cannot access", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [_, otherUser] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser.userId,
+            recipes: [{ name: uuid(), public: false }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/recipes/${recipe!.recipeId}/rating`)
+            .set(token)
+            .send({ rating: randomNumber(5) });
+
+        expect(res.statusCode).toEqual(404);
+
+        const {
+            recipes: [unchangedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: otherUser.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+        expect(unchangedRecipe!.rating!.personal).toBeUndefined();
+    });
+});
+
+describe("Recipe JSON field parsing", () => {
+    it("should save nutritional information with known keys", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const nutritionalInformation: components["schemas"]["RecipeNutrition"] =
+            {
+                servingSize: "2 slices",
+                calories: "450 kCal",
+                carbohydrateContent: "50 g",
+                sugarContent: "5 g",
+                fiberContent: "3 g",
+                proteinContent: "20 g",
+                fatContent: "12 g",
+                saturatedFatContent: "4 g",
+                transFatContent: "0 g",
+                unsaturatedFatContent: "8 g",
+                cholesterolContent: "30 mg",
+                sodiumContent: "500 mg",
+            };
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), nutritionalInformation });
+
+        expect(res.statusCode).toEqual(201);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: res.body.recipeId }],
+        });
+
+        expect(recipe!.nutritionalInformation).toEqual(nutritionalInformation);
+    });
+
+    it("should save empty nutritional information", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), nutritionalInformation: {} });
+
+        expect(res.statusCode).toEqual(201);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: res.body.recipeId }],
+        });
+
+        expect(recipe!.nutritionalInformation).toEqual({});
+    });
+
+    it("should reject oversized nutritional information values", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({
+                name: uuid(),
+                nutritionalInformation: { calories: "a".repeat(101) },
+            });
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should reject unknown nutritional information keys", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({
+                name: uuid(),
+                nutritionalInformation: { vitaminC: "10 mg" },
+            });
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should reject more than 10 ingredient sections", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const ingredients = Array.from({ length: 11 }).map((_, index) => ({
+            name: `Section ${index}`,
+            items: [{ name: uuid() }],
+        }));
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), ingredients });
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should reject more than 50 items in an ingredient section", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const ingredients = [
+            {
+                name: "Section",
+                items: Array.from({ length: 51 }).map(() => ({ name: uuid() })),
+            },
+        ];
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), ingredients });
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should reject more than 10 method sections", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const method = Array.from({ length: 11 }).map((_, index) => ({
+            name: `Section ${index}`,
+            items: [{ content: uuid() }],
+        }));
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), method });
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should reject more than 50 steps in a method section", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const method = [
+            {
+                name: "Section",
+                items: Array.from({ length: 51 }).map(() => ({
+                    content: uuid(),
+                })),
+            },
+        ];
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), method });
+
+        expect(res.statusCode).toEqual(400);
+    });
+
+    it("should accept 10 sections with 50 items each", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const ingredients = Array.from({ length: 10 }).map((_, index) => ({
+            name: `Section ${index}`,
+            items: Array.from({ length: 50 }).map(() => ({ name: uuid() })),
+        }));
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({ name: uuid(), ingredients });
+
+        expect(res.statusCode).toEqual(201);
+        expect(res.body.ingredients.length).toEqual(10);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: res.body.recipeId }],
+        });
+
+        expect(recipe!.ingredients?.length).toEqual(10);
+        expect(recipe!.ingredients?.[0]?.items.length).toEqual(50);
     });
 });

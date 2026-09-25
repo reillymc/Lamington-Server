@@ -8,26 +8,26 @@ const generateRandomAmount = [
     () =>
         ({
             representation: "number",
-            value: randomNumber(1, 100).toString(),
+            value: randomNumber(100, 1).toString(),
         }) satisfies components["schemas"]["ItemAmount"],
     () =>
         ({
             representation: "range",
             value: [
-                randomNumber(1, 100).toString(),
-                randomNumber(1, 100).toString(),
+                randomNumber(100, 1).toString(),
+                randomNumber(100, 1).toString(),
             ],
         }) satisfies components["schemas"]["ItemAmount"],
     () =>
         ({
             representation: "fraction",
             value: [
-                randomNumber(1, 100).toString(),
-                randomNumber(1, 100).toString(),
-                randomNumber(1, 100).toString(),
+                randomNumber(100, 1).toString(),
+                randomNumber(100, 1).toString(),
+                randomNumber(100, 1).toString(),
             ],
         }) satisfies components["schemas"]["ItemAmount"],
-][randomNumber(0, 2)]!;
+][randomNumber(2, 0)]!;
 
 export const generateRandomRecipeIngredientSections =
     (): components["schemas"]["RecipeIngredientSectionCreate"][] =>

@@ -4,12 +4,33 @@ import moment from "moment";
 import type { HowToSection, Recipe as RecipeSchema } from "schema-dts";
 import { DEFINITIONS } from "../database/seeds/production/01_default_tags.ts";
 import type { components } from "../routes/spec/schema.js";
+import { ExtractionLimitError } from "./errors.ts";
+import {
+    MAX_AMOUNT_VALUE_LENGTH,
+    MAX_EXTRACTED_INGREDIENTS,
+    MAX_EXTRACTED_NAME_LENGTH,
+    MAX_EXTRACTED_SECTIONS,
+    MAX_EXTRACTED_SOURCE_LENGTH,
+    MAX_EXTRACTED_SUMMARY_LENGTH,
+    MAX_IMAGES,
+    MAX_INGREDIENT_NAME_LENGTH,
+    MAX_INGREDIENT_PREPARATION_LENGTH,
+    MAX_INGREDIENT_TEXT_LENGTH,
+    MAX_INGREDIENTS_PER_SECTION,
+    MAX_METHOD_ITEMS,
+    MAX_METHOD_ITEMS_PER_SECTION,
+    MAX_METHOD_TEXT_LENGTH,
+    MAX_RECIPE_GRAPH_DEPTH,
+    MAX_RECIPE_GRAPH_NODES,
+    MAX_SECTION_NAME_LENGTH,
+    MAX_TAG_CANDIDATES,
+} from "./extractionLimits.ts";
 
 type NumberAmount = components["schemas"]["AmountNumber"];
 type FractionAmount = components["schemas"]["AmountFraction"];
 type RangeAmount = components["schemas"]["AmountRange"];
 type Amount = NumberAmount | FractionAmount | RangeAmount;
-type ParsedIngredient = components["schemas"]["RecipeIngredientItem"];
+type ParsedIngredient = components["schemas"]["ExtractedRecipeIngredientItem"];
 type TagRef = components["schemas"]["RecipeTagRef"];
 
 const stripUndefined = <T extends object>(obj: T): T => {
@@ -33,17 +54,76 @@ export const isRecipe = (input: unknown): input is RecipeSchema => {
     return false;
 };
 
-export const findRecipe = (input: unknown): RecipeSchema | undefined => {
-    if (isRecipe(input)) return input;
-    if (Array.isArray(input)) {
-        for (const item of input) {
-            const found = findRecipe(item);
-            if (found) return found;
+type RecipeGraphBudget = {
+    visited: number;
+};
+
+type RecipeTask =
+    | { kind: "value"; value: unknown; depth: number }
+    | {
+          kind: "array";
+          values: ReadonlyArray<unknown>;
+          index: number;
+          depth: number;
+      };
+
+export const findRecipe = (
+    input: unknown,
+    budget: RecipeGraphBudget = { visited: 0 },
+): RecipeSchema | undefined => {
+    const pending: RecipeTask[] = [{ kind: "value", value: input, depth: 0 }];
+
+    while (pending.length) {
+        const current = pending.pop();
+        if (!current) break;
+
+        if (current.kind === "array") {
+            if (current.index >= current.values.length) continue;
+
+            const value = current.values[current.index];
+            current.index += 1;
+            pending.push(current);
+            pending.push({
+                kind: "value",
+                value,
+                depth: current.depth + 1,
+            });
+            continue;
+        }
+
+        budget.visited += 1;
+        if (budget.visited > MAX_RECIPE_GRAPH_NODES) {
+            throw new ExtractionLimitError(
+                "Recipe data contains too many nodes",
+            );
+        }
+
+        const { value, depth } = current;
+        if (isRecipe(value)) return value;
+
+        if (depth >= MAX_RECIPE_GRAPH_DEPTH) {
+            throw new ExtractionLimitError("Recipe data is nested too deeply");
+        }
+
+        if (Array.isArray(value)) {
+            pending.push({
+                kind: "array",
+                values: value,
+                index: 0,
+                depth,
+            });
+            continue;
+        }
+
+        if (typeof value === "object" && value && "@graph" in value) {
+            pending.push({
+                kind: "value",
+                value: value["@graph"],
+                depth: depth + 1,
+            });
         }
     }
-    if (typeof input === "object" && input && "@graph" in input) {
-        return findRecipe(input["@graph"]);
-    }
+
     return undefined;
 };
 
@@ -51,6 +131,28 @@ const decodeHtml = (html: string | undefined) => {
     if (!html) return undefined;
     const text = load(html).text().trim();
     return text.length > 0 ? text : undefined;
+};
+
+const assertMaxLength = (
+    value: string | undefined,
+    maxLength: number,
+    reason: string,
+): string | undefined => {
+    if (value !== undefined && value.length > maxLength) {
+        throw new ExtractionLimitError(reason);
+    }
+    return value;
+};
+
+const assertAmountValues = (amount?: {
+    value: string | ReadonlyArray<string>;
+}): void => {
+    if (!amount) return;
+
+    const values = Array.isArray(amount.value) ? amount.value : [amount.value];
+    if (values.some((value) => value.length > MAX_AMOUNT_VALUE_LENGTH)) {
+        throw new ExtractionLimitError("Recipe amount value is too long");
+    }
 };
 
 const parseDuration = (duration?: unknown): number | undefined => {
@@ -70,6 +172,8 @@ const parseDuration = (duration?: unknown): number | undefined => {
     const minutes = d.asMinutes();
     return minutes > 0 ? minutes : undefined;
 };
+
+const maxServingsUnitLength = 255;
 
 const parseYield = (
     recipeYield?: RecipeSchema["recipeYield"],
@@ -106,16 +210,18 @@ const parseYield = (
         try {
             const lower = getCapture(rangeMatch, 1);
             const upper = getCapture(rangeMatch, 2);
-            const unit = getCapture(rangeMatch, 3).trim();
+            const unit = getCapture(rangeMatch, 3)
+                .trim()
+                .slice(0, maxServingsUnitLength);
 
-            return {
-                count: {
-                    representation: "range",
-                    value: [lower, upper],
-                },
-                unit,
+            const count: Amount = {
+                representation: "range",
+                value: [lower, upper],
             };
-        } catch {
+            assertAmountValues(count);
+            return { count, unit };
+        } catch (error) {
+            if (error instanceof ExtractionLimitError) throw error;
             return undefined;
         }
     }
@@ -124,16 +230,18 @@ const parseYield = (
     if (singleMatch) {
         try {
             const value = getCapture(singleMatch, 1);
-            const unit = getCapture(singleMatch, 2).trim();
+            const unit = getCapture(singleMatch, 2)
+                .trim()
+                .slice(0, maxServingsUnitLength);
 
-            return {
-                count: {
-                    representation: "number",
-                    value,
-                },
-                unit,
+            const count: Amount = {
+                representation: "number",
+                value,
             };
-        } catch {
+            assertAmountValues(count);
+            return { count, unit };
+        } catch (error) {
+            if (error instanceof ExtractionLimitError) throw error;
             return undefined;
         }
     }
@@ -178,8 +286,13 @@ type ImageCandidate = { url: string; area: number };
 const selectBestImage = (images: RecipeSchema["image"]): string | undefined => {
     if (!images) return undefined;
 
+    const imageList = EnsureArray(images);
+    if (imageList.length > MAX_IMAGES) {
+        throw new ExtractionLimitError("Recipe contains too many images");
+    }
+
     // Normalize to candidates
-    const candidates: ImageCandidate[] = EnsureArray(images)
+    const candidates: ImageCandidate[] = imageList
         .map((item): ImageCandidate | undefined => {
             if (typeof item === "string") {
                 const url = item.trim();
@@ -524,31 +637,70 @@ const parseIngredientString = (raw: string): ParsedIngredient => {
             : commaSuffix
         : parentDesc;
 
-    return stripUndefined({
+    assertAmountValues(amount);
+
+    const parsed = stripUndefined({
         name,
         amount,
         unit,
         preparation: description,
     });
+
+    assertMaxLength(
+        parsed.name,
+        MAX_INGREDIENT_NAME_LENGTH,
+        "Recipe ingredient name is too long",
+    );
+    assertMaxLength(
+        parsed.preparation,
+        MAX_INGREDIENT_PREPARATION_LENGTH,
+        "Recipe ingredient preparation is too long",
+    );
+
+    return parsed;
 };
 
 const parseIngredients = (
     recipeIngredient: RecipeSchema["recipeIngredient"],
 ): components["schemas"]["ExtractedRecipe"]["ingredients"] => {
-    const ingredients: components["schemas"]["RecipeIngredientSection"][] = [];
+    const ingredients: components["schemas"]["ExtractedRecipeIngredientSection"][] =
+        [];
     if (recipeIngredient) {
         const rawIngredients = Array.isArray(recipeIngredient)
             ? recipeIngredient
             : [recipeIngredient];
 
+        if (rawIngredients.length > MAX_EXTRACTED_INGREDIENTS) {
+            throw new ExtractionLimitError(
+                "Recipe contains too many ingredients",
+            );
+        }
+
         const items = rawIngredients
-            .map((i) => parseIngredientString(i.toString()))
+            .map((i) => {
+                const raw = i.toString();
+                if (raw.length > MAX_INGREDIENT_TEXT_LENGTH) {
+                    throw new ExtractionLimitError(
+                        "Recipe ingredient text is too long",
+                    );
+                }
+                return parseIngredientString(raw);
+            })
             .filter((i) => i.name);
 
-        if (items.length > 0) {
+        for (
+            let index = 0;
+            index < items.length;
+            index += MAX_INGREDIENTS_PER_SECTION
+        ) {
+            if (ingredients.length >= MAX_EXTRACTED_SECTIONS) {
+                throw new ExtractionLimitError(
+                    "Recipe contains too many ingredient sections",
+                );
+            }
             ingredients.push({
                 name: "Ingredients",
-                items,
+                items: items.slice(index, index + MAX_INGREDIENTS_PER_SECTION),
             });
         }
     }
@@ -561,6 +713,9 @@ const parseInstructions = (
     if (!recipeInstructions) return [];
 
     const instructions = EnsureArray(recipeInstructions);
+    if (instructions.length > MAX_METHOD_ITEMS) {
+        throw new ExtractionLimitError("Recipe contains too many method items");
+    }
 
     // biome-ignore lint/suspicious/noExplicitAny: step can have many complex shapes
     const getStepText = (step: any): string => {
@@ -596,6 +751,11 @@ const parseInstructions = (
                 currentStandaloneSteps = [];
             }
             const section = inst as HowToSection;
+            if (groups.length >= MAX_EXTRACTED_SECTIONS) {
+                throw new ExtractionLimitError(
+                    "Recipe contains too many method sections",
+                );
+            }
             groups.push({
                 name: section.name?.toString(),
                 steps: EnsureArray(section.itemListElement ?? []),
@@ -609,22 +769,57 @@ const parseInstructions = (
         groups.push({ steps: currentStandaloneSteps });
     }
 
-    return groups
-        .map((group) => {
-            const items = group.steps
-                .map(getStepText)
-                .map(decodeHtml)
-                .filter(Undefined)
-                .map((content) => ({ content }));
+    let methodItemCount = 0;
+    const method: Array<
+        NonNullable<components["schemas"]["ExtractedRecipe"]["method"]>[number]
+    > = [];
 
-            if (items.length === 0) return undefined;
+    for (const group of groups) {
+        const items: Array<{ content: string }> = [];
 
-            return {
-                name: decodeHtml(group.name) ?? "Method",
-                items,
-            };
-        })
-        .filter(Undefined);
+        for (const step of group.steps) {
+            const text = getStepText(step);
+            if (text.length > MAX_METHOD_TEXT_LENGTH) {
+                throw new ExtractionLimitError(
+                    "Recipe method text is too long",
+                );
+            }
+            methodItemCount += 1;
+            if (methodItemCount > MAX_METHOD_ITEMS) {
+                throw new ExtractionLimitError(
+                    "Recipe contains too many method items",
+                );
+            }
+
+            const content = decodeHtml(text);
+            if (content) items.push({ content });
+        }
+
+        const name = decodeHtml(group.name) ?? "Method";
+        assertMaxLength(
+            name,
+            MAX_SECTION_NAME_LENGTH,
+            "Recipe method section name is too long",
+        );
+
+        for (
+            let index = 0;
+            index < items.length;
+            index += MAX_METHOD_ITEMS_PER_SECTION
+        ) {
+            if (method.length >= MAX_EXTRACTED_SECTIONS) {
+                throw new ExtractionLimitError(
+                    "Recipe contains too many method sections",
+                );
+            }
+            method.push({
+                name,
+                items: items.slice(index, index + MAX_METHOD_ITEMS_PER_SECTION),
+            });
+        }
+    }
+
+    return method;
 };
 
 /** Configuration for tag extraction. Specifies which recipe fields contribute to which tag groups. */
@@ -664,6 +859,7 @@ const parseSource = (input: RecipeSchema): string | undefined => {
 
 const parseTags = (recipe: RecipeSchema): TagRef[] | undefined => {
     const tags = new Map<string, TagRef>();
+    let tagCandidateCount = 0;
 
     /**
      * Extract keywords/categories from a field.
@@ -671,13 +867,29 @@ const parseTags = (recipe: RecipeSchema): TagRef[] | undefined => {
      */
     const extractCandidates = (input: unknown): Set<string> => {
         const candidates = new Set<string>();
-        const collect = (val: unknown) => {
+        const addCandidate = (value: string) => {
+            const candidate = value.trim().toLowerCase();
+            if (!candidate) return;
+            tagCandidateCount += 1;
+            if (tagCandidateCount > MAX_TAG_CANDIDATES) {
+                throw new ExtractionLimitError(
+                    "Recipe contains too many tag candidates",
+                );
+            }
+            candidates.add(candidate);
+        };
+        const collect = (val: unknown, depth = 0) => {
+            if (depth > MAX_RECIPE_GRAPH_DEPTH) {
+                throw new ExtractionLimitError(
+                    "Recipe tag data is nested too deeply",
+                );
+            }
             if (typeof val === "string") {
-                val.split(",").forEach((s) => {
-                    candidates.add(s.trim().toLowerCase());
-                });
+                val.split(",").forEach(addCandidate);
             } else if (Array.isArray(val)) {
-                val.forEach(collect);
+                val.forEach((item) => {
+                    collect(item, depth + 1);
+                });
             }
         };
         collect(input);
@@ -714,18 +926,35 @@ const parseTags = (recipe: RecipeSchema): TagRef[] | undefined => {
 
 export const convertRecipe = (
     input: RecipeSchema,
-): components["schemas"]["ExtractedRecipe"] =>
-    stripUndefined({
-        name: decodeHtml(input.name?.toString()) ?? "Untitled Recipe",
-        summary: decodeHtml(input.description?.toString()),
+): components["schemas"]["ExtractedRecipe"] => {
+    const name = decodeHtml(input.name?.toString()) ?? "Untitled Recipe";
+    const summary = decodeHtml(input.description?.toString());
+    const source = parseSource(input);
+
+    assertMaxLength(name, MAX_EXTRACTED_NAME_LENGTH, "Recipe name is too long");
+    assertMaxLength(
+        summary,
+        MAX_EXTRACTED_SUMMARY_LENGTH,
+        "Recipe summary is too long",
+    );
+    assertMaxLength(
+        source,
+        MAX_EXTRACTED_SOURCE_LENGTH,
+        "Recipe source is too long",
+    );
+
+    return stripUndefined({
+        name,
+        summary,
         prepTime: parseDuration(input.prepTime),
         cookTime: parseDuration(input.cookTime),
         servings: parseYield(input.recipeYield),
         ingredients: parseIngredients(input.recipeIngredient),
         method: parseInstructions(input.recipeInstructions),
-        source: parseSource(input),
+        source,
         tags: parseTags(input),
         additionalData: stripUndefined({
             imageUrl: selectBestImage(input.image),
         }),
     });
+};

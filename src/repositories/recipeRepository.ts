@@ -17,6 +17,21 @@ type RecipeServings = {
     count: RangeValue | NumberValue;
 };
 
+export type RecipeNutrition = {
+    servingSize?: string;
+    calories?: string;
+    carbohydrateContent?: string;
+    sugarContent?: string;
+    fiberContent?: string;
+    proteinContent?: string;
+    fatContent?: string;
+    saturatedFatContent?: string;
+    transFatContent?: string;
+    unsaturatedFatContent?: string;
+    cholesterolContent?: string;
+    sodiumContent?: string;
+};
+
 /**
  * Recipe
  */
@@ -31,7 +46,7 @@ export interface Recipe {
         | ReadonlyArray<RecipeSection<RecipeIngredientItemResponse>>
         | undefined;
     method: ReadonlyArray<RecipeSection<RecipeMethodStepResponse>> | undefined;
-    nutritionalInformation: Record<string, never> | undefined;
+    nutritionalInformation: RecipeNutrition | undefined;
     summary: string | undefined;
     tips: string | undefined;
     public: boolean | undefined;
@@ -132,8 +147,11 @@ type BaseResponse = {
         average: RecipeRating["rating"] | undefined;
         personal: RecipeRating["rating"] | undefined;
     };
-    photo:
-        | { attachmentId: Attachment["attachmentId"]; uri: Attachment["uri"] }
+    heroImage:
+        | {
+              attachmentId: Attachment["attachmentId"];
+              preview?: string;
+          }
         | undefined;
 };
 
@@ -149,9 +167,26 @@ type VerifyPermissionsRequest = {
     recipes: ReadonlyArray<{
         recipeId: Recipe["recipeId"];
     }>;
+    includePublic?: boolean;
 };
 
 type VerifyPermissionsResponse = {
+    userId: User["userId"];
+    recipes: ReadonlyArray<{
+        recipeId: Recipe["recipeId"];
+        hasPermissions: boolean;
+    }>;
+};
+
+// Temporary before wider permission overhaul. SHould be cleaned up
+type VerifyReadPermissionsRequest = {
+    userId: User["userId"];
+    recipes: ReadonlyArray<{
+        recipeId: Recipe["recipeId"];
+    }>;
+};
+
+type VerifyReadPermissionsResponse = {
     userId: User["userId"];
     recipes: ReadonlyArray<{
         recipeId: Recipe["recipeId"];
@@ -176,7 +211,7 @@ export type RecipePayload = {
     > | null;
     method?: ReadonlyArray<RecipeSection<RecipeMethodStepRequest>> | null;
     tags?: ReadonlyArray<SaveTagRequest> | null;
-    photo?: { attachmentId: Attachment["attachmentId"] } | null;
+    heroImage?: Attachment["attachmentId"] | null;
 };
 
 type CreateRequest = {
@@ -267,6 +302,11 @@ export interface RecipeRepository<TDatabase extends Database = Database> {
         TDatabase,
         VerifyPermissionsRequest,
         VerifyPermissionsResponse
+    >;
+    verifyReadPermissions: RepositoryService<
+        TDatabase,
+        VerifyReadPermissionsRequest,
+        VerifyReadPermissionsResponse
     >;
     read: RepositoryService<TDatabase, ReadRequest, ReadResponse>;
     create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;

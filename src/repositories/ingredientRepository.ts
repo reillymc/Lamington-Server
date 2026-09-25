@@ -1,4 +1,5 @@
 import type { Database, RepositoryService } from "./repository.ts";
+import type { Content } from "./temp.ts";
 import type { User } from "./userRepository.ts";
 
 export interface Ingredient {
@@ -12,8 +13,13 @@ export interface Ingredient {
     } | null;
 }
 
+type ReadFilters = {
+    owner?: Content["createdBy"];
+};
+
 type ReadRequest = {
     userId?: User["userId"];
+    filter?: ReadFilters;
 };
 
 type ReadResponse = {
@@ -35,7 +41,27 @@ type CreateResponse = {
     ingredients: ReadonlyArray<Ingredient>;
 };
 
+type VerifyPermissionsRequest = {
+    userId: User["userId"];
+    ingredients: ReadonlyArray<{
+        ingredientId: Ingredient["ingredientId"];
+    }>;
+};
+
+type VerifyPermissionsResponse = {
+    userId: User["userId"];
+    ingredients: ReadonlyArray<{
+        ingredientId: Ingredient["ingredientId"];
+        hasPermissions: boolean;
+    }>;
+};
+
 export interface IngredientRepository<TDatabase extends Database = Database> {
     readAll: RepositoryService<TDatabase, ReadRequest, ReadResponse>;
     create: RepositoryService<TDatabase, CreateRequest, CreateResponse>;
+    verifyPermissions: RepositoryService<
+        TDatabase,
+        VerifyPermissionsRequest,
+        VerifyPermissionsResponse
+    >;
 }

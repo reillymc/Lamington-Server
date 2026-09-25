@@ -7,9 +7,16 @@ import { type AppConfig, setupApp } from "./app.ts";
 import development from "./database/knexfile.development.ts";
 import production from "./database/knexfile.production.ts";
 import { createUserStarterDataJob } from "./jobs/createUserStarterData.ts";
-import { type AppJobs, runStartupJobs } from "./jobs/index.ts";
+import {
+    type AppJobs,
+    runScheduledJobs,
+    runStartupJobs,
+} from "./jobs/index.ts";
+import { createPurgeDeletedAttachmentsJob } from "./jobs/purgeDeletedAttachments.ts";
+import { createPurgeDeletedUsersJob } from "./jobs/purgeDeletedUsers.ts";
 import { createRefreshIngredientsAssetJob } from "./jobs/refreshIngredientsAsset.ts";
 import { createErrorHandlerMiddleware } from "./middleware/errorHandler.ts";
+import type { AppMiddleware } from "./middleware/index.ts";
 import { createLoggerMiddleware } from "./middleware/logger.ts";
 import {
     createRateLimiterControlled,
@@ -17,7 +24,6 @@ import {
     createRateLimiterRestrictive,
 } from "./middleware/rateLimiters.ts";
 import { createValidatorMiddleware } from "./middleware/validator.ts";
-import { createDiskFileRepository } from "./repositories/disk/diskFileRepository.ts";
 import type { AppRepositories } from "./repositories/index.ts";
 import { KnexAttachmentRepository } from "./repositories/knex/knexAttachmentRepository.ts";
 import { KnexBookRepository } from "./repositories/knex/knexBookRepository.ts";
@@ -29,11 +35,14 @@ import { KnexPlannerRepository } from "./repositories/knex/knexPlannerRepository
 import { KnexRecipeRepository } from "./repositories/knex/knexRecipeRepository.ts";
 import { KnexTagRepository } from "./repositories/knex/knexTagRepository.ts";
 import { KnexUserRepository } from "./repositories/knex/knexUserRepository.ts";
-import { createS3FileRepository } from "./repositories/s3/s3FileRepository.ts";
+import { createLocalDiskFileRepository } from "./repositories/localDisk/localDiskFileRepository.ts";
+import { createObjectStorageFileRepository } from "./repositories/objectStorage/objectStorageFileRepository.ts";
 import { createAttachmentService } from "./services/attachmentService.ts";
+import { createAuthenticationService } from "./services/authenticationService.ts";
 import { createBookService } from "./services/bookService.ts";
 import { createContentExtractionService } from "./services/contentExtractionService.ts";
 import { createCooklistService } from "./services/cooklistService.ts";
+import type { AppServices } from "./services/index.ts";
 import { createIngredientService } from "./services/ingredientService.ts";
 import { createListService } from "./services/listService.ts";
 import { createMealService } from "./services/mealService.ts";
@@ -41,15 +50,22 @@ import { createPlannerService } from "./services/plannerService.ts";
 import { createRecipeService } from "./services/recipeService.ts";
 import { createTagService } from "./services/tagService.ts";
 import { createUserService } from "./services/userService.ts";
+import { buildAttachmentDirectory } from "./utils/attachmentPath.ts";
+import {
+    type AttachmentUri,
+    createPopulateAttachmentUri,
+    createPublicAttachmentUri,
+    defaultAttachmentUri,
+} from "./utils/attachmentUri.ts";
 import "winston-daily-rotate-file";
-import type { AppMiddleware } from "./middleware/index.ts";
-import type { AppServices } from "./services/index.ts";
 
-const port = parseInt(process.env.PORT ?? "3000", 10);
+const port = Number.parseInt(process.env.PORT ?? "3000", 10);
+const trustProxyHops = Number.parseInt(process.env.TRUST_PROXY_HOPS ?? "0", 10);
 
 const uploadDirectory = process.env.UPLOAD_DIRECTORY ?? "uploads";
 const assetDirectory = process.env.ASSET_DIRECTORY ?? "assets";
 const logDirectory = process.env.LOG_DIRECTORY ?? "logs";
+const attachmentPath = process.env.ATTACHMENT_PATH;
 
 const ErrorLogFileTransport = new transports.DailyRotateFile({
     level: "error",
@@ -112,38 +128,72 @@ const selectDatabaseConfig = () => {
 
 const db = knex(selectDatabaseConfig());
 
-let fileRepository = createDiskFileRepository(
+const storageService = process.env.ATTACHMENT_STORAGE_SERVICE ?? "localdisk";
+
+if (storageService !== "localdisk" && storageService !== "s3") {
+    logger.error(
+        `Invalid ATTACHMENT_STORAGE_SERVICE: "${storageService}". Options: "localdisk" | "s3"`,
+    );
+    throw "Error starting Lamington Server";
+}
+
+let fileRepository = createLocalDiskFileRepository(
     uploadDirectory,
-    process.env.ATTACHMENT_PATH ?? "prod",
+    attachmentPath,
 );
+let attachmentUri: AttachmentUri = defaultAttachmentUri;
 
-if (process.env.ATTACHMENT_STORAGE_SERVICE === "s3") {
-    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-    const awsRegion = process.env.AWS_REGION;
-    const awsBucketName = process.env.AWS_BUCKET_NAME;
+if (storageService === "s3") {
+    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+    const s3Region = process.env.S3_REGION;
+    const s3BucketName = process.env.S3_BUCKET_NAME;
+    const s3Endpoint = process.env.S3_ENDPOINT;
+    const forcePathStyle = process.env.S3_FORCE_PATH_STYLE === "true";
+    const attachmentPublicBaseUrl = process.env.ATTACHMENT_PUBLIC_BASE_URL;
 
-    if (!accessKeyId || !secretAccessKey || !awsRegion || !awsBucketName) {
+    if (
+        !accessKeyId ||
+        !secretAccessKey ||
+        !s3Region ||
+        !s3BucketName ||
+        !attachmentPublicBaseUrl
+    ) {
         logger.error(
-            `Incomplete S3 details
+            `Incomplete S3-compatible object storage details
 accessKeyId: ${accessKeyId ? "provided" : "missing"},
 secretAccessKey: ${secretAccessKey ? "provided" : "missing"},
-awsRegion: ${awsRegion ? "provided" : "missing"},
-awsBucketName: ${awsBucketName ? "provided" : "missing"}`,
+s3Region: ${s3Region ? "provided" : "missing"},
+s3BucketName: ${s3BucketName ? "provided" : "missing"},
+attachmentPublicBaseUrl: ${attachmentPublicBaseUrl ? "provided" : "missing"},
+attachmentPath: ${attachmentPath ?? "(none)"}`,
         );
         throw "Error starting Lamington Server";
     }
 
-    fileRepository = createS3FileRepository(
+    attachmentUri = createPublicAttachmentUri(
+        attachmentPublicBaseUrl,
+        attachmentPath,
+    );
+
+    fileRepository = createObjectStorageFileRepository(
         new S3Client({
-            region: awsRegion,
+            region: s3Region,
             credentials: { accessKeyId, secretAccessKey },
-            useDualstackEndpoint: true,
+            ...(s3Endpoint ? { endpoint: s3Endpoint } : {}),
+            ...(forcePathStyle ? { forcePathStyle: true } : {}),
         }),
-        awsBucketName,
-        process.env.ATTACHMENT_PATH ?? "prod",
+        s3BucketName,
+        attachmentPath,
     );
 }
+
+const attachmentDirectory =
+    storageService === "s3"
+        ? undefined
+        : buildAttachmentDirectory(uploadDirectory, attachmentPath);
+
+const populateAttachmentUri = createPopulateAttachmentUri(attachmentUri);
 
 const repositories: AppRepositories = {
     attachmentRepository: KnexAttachmentRepository,
@@ -168,7 +218,10 @@ const refreshExpiration = ms(
     (process.env.JWT_REFRESH_EXPIRATION as StringValue | undefined) ?? "7d",
 );
 
-if (!accessSecret || !refreshSecret) {
+if (!accessSecret || !refreshSecret || accessSecret === refreshSecret) {
+    logger.error(
+        "Invalid JWT configuration: JWT_SECRET and JWT_REFRESH_SECRET must both be set and differ",
+    );
     throw "Error starting Lamington Server";
 }
 
@@ -184,25 +237,48 @@ const jobs: AppJobs = {
         repositories,
         logger,
     }),
+    purgeDeletedUsers: createPurgeDeletedUsersJob({
+        database: db,
+        repositories,
+        logger,
+    }),
+    purgeDeletedAttachments: createPurgeDeletedAttachmentsJob({
+        database: db,
+        repositories,
+        logger,
+    }),
 };
 
 const services: AppServices = {
-    attachmentService: createAttachmentService(db, repositories),
-    bookService: createBookService(db, repositories),
-    contentExtractionService: createContentExtractionService(),
-    cooklistService: createCooklistService(db, repositories),
-    ingredientService: createIngredientService(db, repositories, jobs),
-    listService: createListService(db, repositories),
-    mealService: createMealService(db, repositories),
-    plannerService: createPlannerService(db, repositories),
-    recipeService: createRecipeService(db, repositories),
-    tagService: createTagService(db, repositories),
-    userService: createUserService(db, repositories, jobs, {
+    attachmentService: createAttachmentService(db, repositories, {
+        populateAttachmentUri,
+    }),
+    authenticationService: createAuthenticationService(db, repositories, {
         accessExpiration,
         accessSecret,
         refreshExpiration,
         refreshSecret,
     }),
+    bookService: createBookService(db, repositories, {
+        populateAttachmentUri,
+    }),
+    contentExtractionService: createContentExtractionService(db, repositories),
+    cooklistService: createCooklistService(db, repositories, {
+        populateAttachmentUri,
+    }),
+    ingredientService: createIngredientService(db, repositories, jobs),
+    listService: createListService(db, repositories),
+    mealService: createMealService(db, repositories, {
+        populateAttachmentUri,
+    }),
+    plannerService: createPlannerService(db, repositories, {
+        populateAttachmentUri,
+    }),
+    recipeService: createRecipeService(db, repositories, {
+        populateAttachmentUri,
+    }),
+    tagService: createTagService(db, repositories),
+    userService: createUserService(db, repositories, jobs),
 };
 
 const middleware: AppMiddleware = {
@@ -218,10 +294,13 @@ const config: AppConfig = {
     externalHost: process.env.EXTERNAL_HOST,
     allowedOrigin: process.env.CORS_ALLOWED_ORIGIN,
     uploadDirectory,
+    attachmentDirectory,
     assetDirectory,
+    trustProxyHops,
 };
 
 runStartupJobs(jobs);
+runScheduledJobs(jobs);
 
 const app = setupApp({ services, middleware, config });
 

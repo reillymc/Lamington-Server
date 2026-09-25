@@ -1,5 +1,6 @@
 import { ForeignKeyViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
+import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
@@ -74,8 +75,14 @@ export interface BookService {
 
 export const createBookService: CreateService<
     BookService,
-    "bookRepository" | "recipeRepository"
-> = (database, { bookRepository, recipeRepository }) => ({
+    "bookRepository" | "recipeRepository",
+    never,
+    { populateAttachmentUri: PopulateAttachmentUri }
+> = (
+    database,
+    { bookRepository, recipeRepository },
+    { populateAttachmentUri },
+) => ({
     getAll: async (userId) => {
         const { books } = await bookRepository.readAll(database, {
             userId,
@@ -105,8 +112,8 @@ export const createBookService: CreateService<
                     {
                         name: request.name,
                         description: request.description,
-                        color: request.color ?? "variant1",
-                        icon: request.icon ?? "variant1",
+                        color: request.color,
+                        icon: request.icon,
                     },
                 ],
             });
@@ -177,7 +184,7 @@ export const createBookService: CreateService<
             throw new NotFoundError("book", bookId);
         }
 
-        return recipeRepository.readAll(database, {
+        const { recipes, nextPage } = await recipeRepository.readAll(database, {
             userId,
             filter: {
                 books: [{ bookId }],
@@ -187,6 +194,13 @@ export const createBookService: CreateService<
             sort,
             order,
         });
+
+        return {
+            recipes: recipes.map((recipe) =>
+                populateAttachmentUri(recipe, "heroImage"),
+            ),
+            nextPage,
+        };
     },
     addRecipe: (userId, bookId, request) =>
         database.transaction(async (trx) => {
@@ -200,6 +214,18 @@ export const createBookService: CreateService<
 
             if (!permission?.hasPermissions) {
                 throw new NotFoundError("book", bookId);
+            }
+
+            const { recipes: recipePermissions } =
+                await recipeRepository.verifyReadPermissions(trx, {
+                    userId,
+                    recipes: [{ recipeId: request.recipeId }],
+                });
+
+            if (
+                recipePermissions.some(({ hasPermissions }) => !hasPermissions)
+            ) {
+                throw new NotFoundError("recipe", request.recipeId);
             }
 
             const [result] = await bookRepository.saveRecipes(trx, {

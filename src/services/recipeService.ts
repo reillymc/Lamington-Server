@@ -1,4 +1,6 @@
+import { Undefined } from "@reillymc/es-utils";
 import type { components } from "../routes/spec/index.ts";
+import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
@@ -41,10 +43,40 @@ export interface RecipeService {
     delete: (userId: string, recipeId: string) => Promise<void>;
 }
 
+type RecipeIngredientSections =
+    | components["schemas"]["RecipeCreate"]["ingredients"]
+    | components["schemas"]["RecipeUpdate"]["ingredients"];
+
+const extractIngredientIds = (
+    sections: RecipeIngredientSections,
+): Array<{ ingredientId: components["schemas"]["Uuid"] }> =>
+    (sections ?? []).flatMap(({ items }) =>
+        items
+            .map(({ ingredient }) =>
+                ingredient?.ingredientId ? ingredient : undefined,
+            )
+            .filter(Undefined),
+    );
+
+const extractSubRecipeIds = (
+    sections: RecipeIngredientSections,
+): Array<{ recipeId: components["schemas"]["Uuid"] }> =>
+    (sections ?? []).flatMap(({ items }) =>
+        items
+            .map(({ recipe }) => (recipe?.recipeId ? recipe : undefined))
+            .filter(Undefined),
+    );
+
 export const createRecipeService: CreateService<
     RecipeService,
-    "recipeRepository"
-> = (database, { recipeRepository }) => ({
+    "recipeRepository" | "ingredientRepository" | "attachmentRepository",
+    never,
+    { populateAttachmentUri: PopulateAttachmentUri }
+> = (
+    database,
+    { recipeRepository, ingredientRepository, attachmentRepository },
+    { populateAttachmentUri },
+) => ({
     getAll: async (
         userId,
         page,
@@ -69,7 +101,12 @@ export const createRecipeService: CreateService<
                 })),
             },
         });
-        return { recipes, nextPage };
+        return {
+            recipes: recipes.map((recipe) =>
+                populateAttachmentUri(recipe, "heroImage"),
+            ),
+            nextPage,
+        };
     },
     get: async (userId, recipeId) => {
         const { recipes } = await recipeRepository.read(database, {
@@ -82,10 +119,56 @@ export const createRecipeService: CreateService<
             throw new NotFoundError("recipe", recipeId);
         }
 
-        return recipe;
+        return populateAttachmentUri(recipe, "heroImage");
     },
     create: (userId, request) =>
         database.transaction(async (trx) => {
+            const { ingredients } =
+                await ingredientRepository.verifyPermissions(trx, {
+                    userId,
+                    ingredients: extractIngredientIds(request.ingredients),
+                });
+
+            const disallowedIngredientIds = ingredients
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ ingredientId }) => ingredientId);
+
+            if (disallowedIngredientIds.length > 0) {
+                throw new NotFoundError("ingredient", disallowedIngredientIds);
+            }
+
+            const { recipes: subRecipes } =
+                await recipeRepository.verifyPermissions(trx, {
+                    userId,
+                    recipes: extractSubRecipeIds(request.ingredients),
+                    status: "O",
+                    includePublic: true,
+                });
+
+            const disallowedSubRecipeIds = subRecipes
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ recipeId }) => recipeId);
+
+            if (disallowedSubRecipeIds.length > 0) {
+                throw new NotFoundError("recipe", disallowedSubRecipeIds);
+            }
+
+            const { attachments } =
+                await attachmentRepository.verifyPermissions(trx, {
+                    userId,
+                    attachments: request.heroImage
+                        ? [{ attachmentId: request.heroImage }]
+                        : [],
+                });
+
+            const disallowedAttachmentIds = attachments
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ attachmentId }) => attachmentId);
+
+            if (disallowedAttachmentIds.length > 0) {
+                throw new NotFoundError("attachment", disallowedAttachmentIds);
+            }
+
             const { recipes } = await recipeRepository.create(trx, {
                 userId,
                 recipes: [request],
@@ -94,7 +177,7 @@ export const createRecipeService: CreateService<
             if (!recipe) {
                 throw new CreatedDataFetchError("recipe");
             }
-            return recipe;
+            return populateAttachmentUri(recipe, "heroImage");
         }),
     update: (userId, recipeId, request) =>
         database.transaction(async (trx) => {
@@ -111,6 +194,52 @@ export const createRecipeService: CreateService<
                 throw new NotFoundError("recipe", recipeId);
             }
 
+            const { ingredients } =
+                await ingredientRepository.verifyPermissions(trx, {
+                    userId,
+                    ingredients: extractIngredientIds(request.ingredients),
+                });
+
+            const disallowedIngredientIds = ingredients
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ ingredientId }) => ingredientId);
+
+            if (disallowedIngredientIds.length > 0) {
+                throw new NotFoundError("ingredient", disallowedIngredientIds);
+            }
+
+            const { recipes: subRecipes } =
+                await recipeRepository.verifyPermissions(trx, {
+                    userId,
+                    recipes: extractSubRecipeIds(request.ingredients),
+                    status: "O",
+                    includePublic: true,
+                });
+
+            const disallowedSubRecipeIds = subRecipes
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ recipeId }) => recipeId);
+
+            if (disallowedSubRecipeIds.length > 0) {
+                throw new NotFoundError("recipe", disallowedSubRecipeIds);
+            }
+
+            const { attachments } =
+                await attachmentRepository.verifyPermissions(trx, {
+                    userId,
+                    attachments: request.heroImage
+                        ? [{ attachmentId: request.heroImage }]
+                        : [],
+                });
+
+            const disallowedAttachmentIds = attachments
+                .filter(({ hasPermissions }) => !hasPermissions)
+                .map(({ attachmentId }) => attachmentId);
+
+            if (disallowedAttachmentIds.length > 0) {
+                throw new NotFoundError("attachment", disallowedAttachmentIds);
+            }
+
             const { recipes } = await recipeRepository.update(trx, {
                 userId,
                 recipes: [{ ...request, recipeId }],
@@ -119,7 +248,7 @@ export const createRecipeService: CreateService<
             if (!recipe) {
                 throw new UpdatedDataFetchError("recipe", recipeId);
             }
-            return recipe;
+            return populateAttachmentUri(recipe, "heroImage");
         }),
     delete: (userId, recipeId) =>
         database.transaction(async (trx) => {
@@ -144,18 +273,34 @@ export const createRecipeService: CreateService<
                 throw new NotFoundError("recipe", recipeId);
             }
         }),
-    saveRating: async (userId, recipeId, ratingValue) => {
-        const {
-            ratings: [rating],
-        } = await recipeRepository.saveRating(database, {
-            userId,
-            ratings: [{ recipeId, rating: ratingValue }],
-        });
+    saveRating: (userId, recipeId, ratingValue) =>
+        database.transaction(async (trx) => {
+            const permissions = await recipeRepository.verifyPermissions(trx, {
+                userId,
+                recipes: [{ recipeId }],
+                status: "O",
+                includePublic: true,
+            });
 
-        if (!rating) {
-            throw new UpdatedDataFetchError("recipe rating", recipeId);
-        }
+            if (
+                permissions.recipes.some(
+                    ({ hasPermissions }) => !hasPermissions,
+                )
+            ) {
+                throw new NotFoundError("recipe", recipeId);
+            }
 
-        return { rating: rating.rating };
-    },
+            const {
+                ratings: [rating],
+            } = await recipeRepository.saveRating(trx, {
+                userId,
+                ratings: [{ recipeId, rating: ratingValue }],
+            });
+
+            if (!rating) {
+                throw new UpdatedDataFetchError("recipe rating", recipeId);
+            }
+
+            return { rating: rating.rating };
+        }),
 });

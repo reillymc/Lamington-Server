@@ -1,6 +1,7 @@
 import knex from "knex";
 import { v4 } from "uuid";
 import { createLogger, transports } from "winston";
+import type { AppConfig } from "../../src/app.ts";
 import { setupApp } from "../../src/app.ts";
 import type { AppJobs } from "../../src/jobs/index.ts";
 import { createErrorHandlerMiddleware } from "../../src/middleware/errorHandler.ts";
@@ -27,6 +28,7 @@ import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepo
 import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
 import { KnexUserRepository } from "../../src/repositories/knex/knexUserRepository.ts";
 import { createAttachmentService } from "../../src/services/attachmentService.ts";
+import { createAuthenticationService } from "../../src/services/authenticationService.ts";
 import { createBookService } from "../../src/services/bookService.ts";
 import { createContentExtractionService } from "../../src/services/contentExtractionService.ts";
 import { createCooklistService } from "../../src/services/cooklistService.ts";
@@ -38,18 +40,24 @@ import { createPlannerService } from "../../src/services/plannerService.ts";
 import { createRecipeService } from "../../src/services/recipeService.ts";
 import { createTagService } from "../../src/services/tagService.ts";
 import { createUserService } from "../../src/services/userService.ts";
+import {
+    createPopulateAttachmentUri,
+    defaultAttachmentUri,
+} from "../../src/utils/attachmentUri.ts";
 import testConfig from "./knexfile.testing.ts";
 
 export const accessSecret = v4();
 export const refreshSecret = v4();
+
+const populateAttachmentUri = createPopulateAttachmentUri(defaultAttachmentUri);
 
 const defaultAppRepositories: AppRepositories = {
     attachmentRepository: KnexAttachmentRepository,
     bookRepository: KnexBookRepository,
     cooklistRepository: KnexCookListRepository,
     fileRepository: {
-        create: async () => "uri://",
-        delete: async () => true,
+        create: async () => [{ attachmentId: v4(), succeeded: true }],
+        delete: async () => [{ attachmentId: v4(), succeeded: true }],
     },
     ingredientRepository: KnexIngredientRepository,
     listRepository: KnexListRepository,
@@ -80,6 +88,12 @@ const defaultAppJobs: AppJobs = {
     createUserStarterData: {
         run: async () => true,
     },
+    purgeDeletedUsers: {
+        run: async () => true,
+    },
+    purgeDeletedAttachments: {
+        run: async () => true,
+    },
 };
 
 export const db = knex(testConfig);
@@ -90,12 +104,14 @@ export const createTestApp = ({
     middleware,
     services,
     jobs,
+    config,
 }: {
     database: Database;
     repositories?: Partial<AppRepositories>;
     middleware?: Partial<AppMiddleware>;
     services?: Partial<AppServices>;
     jobs?: Partial<AppJobs>;
+    config?: Partial<AppConfig>;
 }) => {
     const appRepositories = {
         ...defaultAppRepositories,
@@ -112,26 +128,45 @@ export const createTestApp = ({
             attachmentService: createAttachmentService(
                 database,
                 appRepositories,
+                { populateAttachmentUri },
             ),
-            bookService: createBookService(database, appRepositories),
-            contentExtractionService: createContentExtractionService(),
-            cooklistService: createCooklistService(database, appRepositories),
+            authenticationService: createAuthenticationService(
+                database,
+                appRepositories,
+                {
+                    accessExpiration: 1000,
+                    accessSecret,
+                    refreshExpiration: 1000,
+                    refreshSecret,
+                },
+            ),
+            bookService: createBookService(database, appRepositories, {
+                populateAttachmentUri,
+            }),
+            contentExtractionService: createContentExtractionService(
+                database,
+                appRepositories,
+            ),
+            cooklistService: createCooklistService(database, appRepositories, {
+                populateAttachmentUri,
+            }),
             ingredientService: createIngredientService(
                 database,
                 appRepositories,
                 appJobs,
             ),
             listService: createListService(database, appRepositories),
-            mealService: createMealService(database, appRepositories),
-            plannerService: createPlannerService(database, appRepositories),
-            recipeService: createRecipeService(database, appRepositories),
-            tagService: createTagService(database, appRepositories),
-            userService: createUserService(database, appRepositories, appJobs, {
-                accessExpiration: 1000,
-                accessSecret,
-                refreshExpiration: 1000,
-                refreshSecret,
+            mealService: createMealService(database, appRepositories, {
+                populateAttachmentUri,
             }),
+            plannerService: createPlannerService(database, appRepositories, {
+                populateAttachmentUri,
+            }),
+            recipeService: createRecipeService(database, appRepositories, {
+                populateAttachmentUri,
+            }),
+            tagService: createTagService(database, appRepositories),
+            userService: createUserService(database, appRepositories, appJobs),
             ...services,
         },
         middleware: {
@@ -145,7 +180,10 @@ export const createTestApp = ({
             allowedOrigin: "test.origin",
             externalHost: "https://test.host",
             uploadDirectory: "uploads",
-            assetDirectory: "tests/resources/testAssets",
+            attachmentDirectory: "uploads",
+            assetDirectory: "assets",
+            trustProxyHops: 0,
+            ...config,
         },
     });
 };

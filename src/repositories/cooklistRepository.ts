@@ -27,7 +27,7 @@ type CookListMealResponse = {
     notes: Meal["notes"] | null;
     heroImage: {
         attachmentId: string;
-        uri: string;
+        preview?: string;
     } | null;
 };
 
@@ -70,7 +70,7 @@ type UpdateCookListMealPayload = {
 };
 
 type UpdateMealsRequest = {
-    // userId: User["userId"];
+    userId: User["userId"];
     meals: ReadonlyArray<UpdateCookListMealPayload>;
 };
 

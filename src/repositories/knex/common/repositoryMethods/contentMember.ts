@@ -1,3 +1,4 @@
+import { dedupeLast } from "../../../../utils/dedupeLast.ts";
 import { ForeignKeyViolationError } from "../../../common/errors.ts";
 import type { ContentMember } from "../../../temp.ts";
 import type { KnexDatabase } from "../../knex.ts";
@@ -61,17 +62,19 @@ export const ContentMemberActions = {
             status?: ContentMemberStatus;
         }>,
     ) => {
-        if (!items.length) return;
+        const dedupedItems = dedupeLast(items, "contentId", "userId");
+
+        if (!dedupedItems.length) return;
 
         try {
             await db<ContentMember>(lamington.contentMember)
-                .insert(items)
+                .insert(dedupedItems)
                 .onConflict(["contentId", "userId"])
                 .merge(["status"]);
 
             return ContentMemberActions.readByContentId(
                 db,
-                items.map(({ contentId }) => contentId),
+                dedupedItems.map(({ contentId }) => contentId),
             );
         } catch (error) {
             if (isForeignKeyViolation(error)) {

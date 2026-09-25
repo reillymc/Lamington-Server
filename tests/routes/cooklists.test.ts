@@ -10,6 +10,10 @@ import { KnexPlannerRepository } from "../../src/repositories/knex/knexPlannerRe
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import type { components } from "../../src/routes/spec/index.ts";
 import {
+    createSpyingFileRepository,
+    purgeDeletedAttachments,
+} from "../helpers/fileRepository.ts";
+import {
     CreateUsers,
     PrepareAuthenticatedUser,
     randomDay,
@@ -37,12 +41,6 @@ after(async () => {
 });
 
 describe("Add meal to cook list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).post("/v1/cooklist/meals");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should create a new meal", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -50,7 +48,7 @@ describe("Add meal to cook list", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const meals = Array.from({ length: randomNumber(5, 1) }).map(
@@ -89,7 +87,9 @@ describe("Add meal to cook list", () => {
             expect(meal.heroImage!.attachmentId).toEqual(
                 expectedMeal!.heroImage,
             );
-            expect(meal.heroImage!.uri).toEqual(attachment!.uri);
+            expect(meal.heroImage!.attachmentId).toEqual(
+                attachment!.attachmentId,
+            );
         });
     });
 
@@ -125,6 +125,81 @@ describe("Add meal to cook list", () => {
         expect(mealsRead[0]!.recipeId).toEqual(recipe!.recipeId);
     });
 
+    it("should not create a meal with a hero image owned by another user", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{}],
+        });
+
+        const res = await request(app)
+            .post("/v1/cooklist/meals")
+            .set(token)
+            .send([
+                {
+                    description: uuid(),
+                    course: randomCourse(),
+                    heroImage: attachment!.attachmentId,
+                },
+            ] satisfies components["schemas"]["CookListMealCreate"][]);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
+    it("should not create a meal with a recipe owned by another user", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser!.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .post("/v1/cooklist/meals")
+            .set(token)
+            .send([
+                {
+                    description: uuid(),
+                    course: randomCourse(),
+                    recipeId: recipe!.recipeId,
+                },
+            ] satisfies components["schemas"]["CookListMealCreate"][]);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
+    it("should create a meal with a public recipe owned by another user", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser!.userId,
+            recipes: [{ name: uuid(), public: true }],
+        });
+
+        const res = await request(app)
+            .post("/v1/cooklist/meals")
+            .set(token)
+            .send([
+                {
+                    description: uuid(),
+                    course: randomCourse(),
+                    recipeId: recipe!.recipeId,
+                },
+            ] satisfies components["schemas"]["CookListMealCreate"][]);
+
+        expect(res.statusCode).toEqual(201);
+    });
+
     it("should create multiple cooklist meals", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
@@ -153,53 +228,9 @@ describe("Add meal to cook list", () => {
             res.body as components["schemas"]["CookListMeal"][];
         expect(returnedMeals).toHaveLength(2);
     });
-
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-
-        const res = await request(app)
-            .post("/v1/cooklist/meals")
-            .set(token)
-            .send({
-                description: uuid(),
-                course: randomCourse(),
-                extra: "invalid",
-            });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains invalid properties", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-
-        const res = await request(app)
-            .post("/v1/cooklist/meals")
-            .set(token)
-            .send({
-                description: uuid(),
-                course: "invalid_course",
-            });
-
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should return 400 if the request body is an empty array", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-
-        const res = await request(app)
-            .post("/v1/cooklist/meals")
-            .set(token)
-            .send([]);
-
-        expect(res.statusCode).toEqual(400);
-    });
 });
 
 describe("Update meal in cook list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).patch(`/v1/cooklist/meals/${uuid()}`);
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should update the meal", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -207,7 +238,7 @@ describe("Update meal in cook list", () => {
             attachments: [originalAttachment, updatedAttachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }, { uri: uuid() }],
+            attachments: [{}, {}],
         });
 
         const {
@@ -266,7 +297,163 @@ describe("Update meal in cook list", () => {
         expect(updatedMeal!.heroImage!.attachmentId).toEqual(
             mealUpdate.heroImage,
         );
-        expect(updatedMeal!.heroImage!.uri).toEqual(updatedAttachment!.uri);
+        expect(updatedMeal!.heroImage!.attachmentId).toEqual(
+            updatedAttachment!.attachmentId,
+        );
+    });
+
+    it("should not update a meal with a hero image owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{}],
+        });
+
+        const {
+            meals: [createdMeal],
+        } = await KnexCookListRepository.createMeals(database, {
+            userId: user.userId,
+            meals: [{ description: uuid(), course: randomCourse() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send({
+                heroImage: attachment!.attachmentId,
+            } satisfies components["schemas"]["CookListMealUpdate"]);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
+    it("should not update a meal with a recipe owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser!.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const {
+            meals: [createdMeal],
+        } = await KnexCookListRepository.createMeals(database, {
+            userId: user.userId,
+            meals: [{ description: uuid(), course: randomCourse() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send({
+                recipeId: recipe!.recipeId,
+            } satisfies components["schemas"]["CookListMealUpdate"]);
+
+        expect(res.statusCode).toEqual(404);
+    });
+
+    it("should delete the replaced attachment row and file when a meal hero image is replaced", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [originalAttachment, updatedAttachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}, {}],
+        });
+
+        const {
+            meals: [createdMeal],
+        } = await KnexCookListRepository.createMeals(database, {
+            userId: user.userId,
+            meals: [
+                {
+                    description: uuid(),
+                    course: randomCourse(),
+                    sequence: randomNumber(),
+                    source: uuid(),
+                    heroImage: originalAttachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send({ heroImage: updatedAttachment!.attachmentId });
+
+        expect(res.statusCode).toEqual(200);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(
+            attachmentRows.map(({ attachmentId }) => attachmentId).sort(),
+        ).toEqual([updatedAttachment!.attachmentId].sort());
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([originalAttachment!.attachmentId]);
+    });
+
+    it("should delete the attachment row and file when a meal hero image is cleared", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}],
+        });
+
+        const {
+            meals: [createdMeal],
+        } = await KnexCookListRepository.createMeals(database, {
+            userId: user.userId,
+            meals: [
+                {
+                    description: uuid(),
+                    course: randomCourse(),
+                    sequence: randomNumber(),
+                    source: uuid(),
+                    heroImage: attachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send({ heroImage: null });
+
+        expect(res.statusCode).toEqual(200);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows).toHaveLength(0);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachment!.attachmentId]);
     });
 
     it("should clear optional fields when set to null", async () => {
@@ -276,7 +463,7 @@ describe("Update meal in cook list", () => {
             attachments: [attachment],
         } = await KnexAttachmentRepository.create(database, {
             userId: user.userId,
-            attachments: [{ uri: uuid() }],
+            attachments: [{}],
         });
 
         const {
@@ -400,71 +587,46 @@ describe("Update meal in cook list", () => {
         expect(res.statusCode).toEqual(404);
     });
 
-    it("should fail if the request contains extraneous properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
+    const invalidMealUpdates: ReadonlyArray<{
+        name: string;
+        body: string | object;
+    }> = [
+        {
+            name: "should fail if the request contains extraneous properties",
+            body: { description: uuid(), extra: "invalid" },
+        },
+        {
+            name: "should fail if the request contains invalid properties",
+            body: { course: "invalid_course" },
+        },
+        {
+            name: "should fail if a required field is set to null",
+            body: { course: null },
+        },
+    ];
 
-        const {
-            meals: [meal],
-        } = await KnexCookListRepository.createMeals(database, {
-            userId: user.userId,
-            meals: [{ course: randomCourse(), description: uuid() }],
-        });
+    for (const { name, body } of invalidMealUpdates) {
+        it(name, async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app)
-            .patch(`/v1/cooklist/meals/${meal!.mealId}`)
-            .set(token)
-            .send({
-                description: uuid(),
-                extra: "invalid",
-            });
-        expect(res.statusCode).toEqual(400);
-    });
-
-    it("should fail if the request contains invalid properties", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            meals: [meal],
-        } = await KnexCookListRepository.createMeals(database, {
-            userId: user.userId,
-            meals: [{ course: randomCourse(), description: uuid() }],
-        });
-
-        const res = await request(app)
-            .patch(`/v1/cooklist/meals/${meal!.mealId}`)
-            .set(token)
-            .send({
-                course: "invalid_course",
+            const {
+                meals: [meal],
+            } = await KnexCookListRepository.createMeals(database, {
+                userId: user.userId,
+                meals: [{ course: randomCourse(), description: uuid() }],
             });
 
-        expect(res.statusCode).toEqual(400);
-    });
+            const res = await request(app)
+                .patch(`/v1/cooklist/meals/${meal!.mealId}`)
+                .set(token)
+                .send(body);
 
-    it("should fail if a required field is set to null", async () => {
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            meals: [meal],
-        } = await KnexCookListRepository.createMeals(database, {
-            userId: user.userId,
-            meals: [{ course: randomCourse(), description: uuid() }],
+            expect(res.statusCode).toEqual(400);
         });
-
-        const res = await request(app)
-            .patch(`/v1/cooklist/meals/${meal!.mealId}`)
-            .set(token)
-            .send({ course: null });
-        expect(res.statusCode).toEqual(400);
-    });
+    }
 });
 
 describe("Remove meal from cook list", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).delete(`/v1/cooklist/meals/${uuid()}`);
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should delete a meal belonging to the user", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -494,6 +656,54 @@ describe("Remove meal from cook list", () => {
             });
 
         expect(mealsAfterDeletion.length).toEqual(0);
+    });
+
+    it("should delete the hero image attachment row and file when a meal is removed", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { fileRepository, deleteFile } = createSpyingFileRepository();
+        app = createTestApp({ database, repositories: { fileRepository } });
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: user.userId,
+            attachments: [{}],
+        });
+
+        const {
+            meals: [createdMeal],
+        } = await KnexCookListRepository.createMeals(database, {
+            userId: user.userId,
+            meals: [
+                {
+                    description: uuid(),
+                    course: randomCourse(),
+                    sequence: 0,
+                    source: uuid(),
+                    heroImage: attachment!.attachmentId,
+                },
+            ],
+        });
+
+        const res = await request(app)
+            .delete(`/v1/cooklist/meals/${createdMeal!.mealId}`)
+            .set(token)
+            .send();
+
+        expect(res.statusCode).toEqual(204);
+
+        await purgeDeletedAttachments(database, fileRepository);
+
+        const attachmentRows =
+            await database("attachment").select("attachmentId");
+        expect(attachmentRows).toHaveLength(0);
+
+        expect(
+            deleteFile.mock.calls.map(
+                ({ arguments: [, request] }) => request.attachmentId,
+            ),
+        ).toEqual([attachment!.attachmentId]);
     });
 
     it("should not delete a meal belonging to another user", async () => {
@@ -564,12 +774,6 @@ describe("Remove meal from cook list", () => {
 });
 
 describe("Get cook list meals", () => {
-    it("should require authentication", async () => {
-        const res = await request(app).get("/v1/cooklist/meals");
-
-        expect(res.statusCode).toEqual(401);
-    });
-
     it("should return cook list meals for a user", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 

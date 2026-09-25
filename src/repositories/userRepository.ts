@@ -1,6 +1,6 @@
 import type { Database, RepositoryService } from "./repository.ts";
 
-type UserStatus = "O" | "A" | "M" | "P" | "B";
+type UserStatus = "O" | "A" | "M" | "P" | "B" | "D";
 
 export type User = {
     userId: string;
@@ -10,6 +10,7 @@ export type User = {
     password: string;
     createdAt: string;
     updatedAt: string;
+    deletedAt: string | null;
     status: string;
     preferences: string | null;
 };
@@ -49,6 +50,17 @@ type ReadAllUsersResponse = {
     users: ReadonlyArray<UserProfile>;
 };
 
+type ReadPurgeableUsersRequest = {
+    deletedBefore: Date;
+    limit: number;
+};
+
+type ReadPurgeableUsersResponse = {
+    users: ReadonlyArray<{
+        userId: User["userId"];
+    }>;
+};
+
 type ReadCredentialsRequest = {
     users: ReadonlyArray<{ userId: User["userId"] } | { email: User["email"] }>;
 };
@@ -80,21 +92,30 @@ type CreateUsersResponse = {
     }>;
 };
 
-type UpdateUserPayload = {
+type UpdateStatusPayload = {
     userId: User["userId"];
-    email?: User["email"];
-    firstName?: User["firstName"];
-    lastName?: User["lastName"];
-    password?: User["password"];
-    status?: UserStatus;
+    status: Exclude<UserStatus, "D">;
 };
 
-type UpdateUsersRequest = {
-    users: ReadonlyArray<UpdateUserPayload>;
+type UpdateUserStatusRequest = {
+    users: ReadonlyArray<UpdateStatusPayload>;
 };
 
-type UpdateUsersResponse = {
-    users: ReadonlyArray<UserCredentials>;
+type UpdateUserStatusResponse = {
+    users: ReadonlyArray<{
+        userId: User["userId"];
+        status: UserStatus;
+    }>;
+};
+
+type SoftDeleteUserRequest = {
+    users: ReadonlyArray<{
+        userId: User["userId"];
+    }>;
+};
+
+type SoftDeleteUserResponse = {
+    count: number;
 };
 
 type DeleteUsersRequest = {
@@ -139,10 +160,20 @@ export interface UserRepository<TDatabase extends Database = Database> {
         ReadCredentialsRequest,
         ReadCredentialsResponse
     >;
-    update: RepositoryService<
+    readPurgeableUsers: RepositoryService<
         TDatabase,
-        UpdateUsersRequest,
-        UpdateUsersResponse
+        ReadPurgeableUsersRequest,
+        ReadPurgeableUsersResponse
+    >;
+    updateStatus: RepositoryService<
+        TDatabase,
+        UpdateUserStatusRequest,
+        UpdateUserStatusResponse
+    >;
+    softDelete: RepositoryService<
+        TDatabase,
+        SoftDeleteUserRequest,
+        SoftDeleteUserResponse
     >;
     verifyPermissions: RepositoryService<
         TDatabase,
