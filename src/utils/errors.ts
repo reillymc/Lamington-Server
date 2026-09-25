@@ -30,6 +30,16 @@ export class PayloadTooLargeError extends AppError {
     }
 }
 
+export class ExtractionLimitError extends AppError {
+    constructor(reason = "Recipe content exceeds extraction limits") {
+        super({
+            status: 400,
+            code: "EXTRACTION_LIMIT",
+            message: reason,
+        });
+    }
+}
+
 export class UnsupportedMediaTypeError extends AppError {
     constructor(reason = "Unsupported media type") {
         super({
@@ -49,6 +59,7 @@ type RawValidationError = {
 const ERROR_LOCATIONS = ["body", "query", "params", "headers"] as const;
 
 const MAX_VALIDATION_ERRORS = 10;
+const MAX_RAW_VALIDATION_ERRORS = 1_000;
 
 const ERROR_CODE_MAP: Record<string, string> = {
     required: "required",
@@ -122,6 +133,7 @@ export const normalizeFieldErrors = (
     rawErrors: readonly unknown[],
 ): FieldError[] => {
     const parsed = rawErrors
+        .slice(0, MAX_RAW_VALIDATION_ERRORS)
         .map((raw) => {
             if (raw === null || typeof raw !== "object") return undefined;
 
@@ -143,17 +155,25 @@ export const normalizeFieldErrors = (
                 !(error.keyword === "type" && error.message === "must be null"),
         );
 
+    const ancestorPointers = new Set<string>();
+    for (const error of parsed) {
+        let current = "";
+        for (const segment of error.pointer.split("/")) {
+            if (segment.length === 0) continue;
+            current += `/${segment}`;
+            if (current !== error.pointer) {
+                ancestorPointers.add(current);
+            }
+        }
+    }
+
     const seenFields = new Set<string>();
     const fieldErrors: FieldError[] = [];
 
     for (const error of parsed) {
         const isComposition =
             !!error.keyword && COMPOSITION_KEYWORDS.has(error.keyword);
-        const hasDescendantError = parsed.some(
-            (other) =>
-                other !== error &&
-                other.pointer.startsWith(`${error.pointer}/`),
-        );
+        const hasDescendantError = ancestorPointers.has(error.pointer);
 
         if (isComposition && hasDescendantError) continue;
 

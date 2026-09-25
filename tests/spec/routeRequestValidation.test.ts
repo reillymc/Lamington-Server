@@ -16,6 +16,10 @@ type LocatedFieldError = {
     code: string;
 };
 
+const tooManyTags = Array.from({ length: 51 }, () => uuid())
+    .map((id) => `tags=${id}`)
+    .join("&");
+
 type ValidationCase = {
     name: string;
     method: Method;
@@ -137,6 +141,13 @@ const validationCases: ValidationCase[] = [
         path: "/v1/extractor/recipe?url=not-a-uri",
         authenticated: true,
         expected: [{ path: ["url"], location: "query", code: "format" }],
+    },
+    {
+        name: "too many recipe tag filters",
+        method: "get",
+        path: `/v1/recipes?${tooManyTags}`,
+        authenticated: true,
+        expected: [{ path: ["tags"], location: "query", code: "maxItems" }],
     },
 ];
 

@@ -310,4 +310,21 @@ describe("normalizeFieldErrors", () => {
             `field${ERROR_LIMIT - 1}`,
         ]);
     });
+
+    it("should bound raw error processing before normalization", () => {
+        const rawErrors = [
+            ...Array.from({ length: 1_000 }, () => ({
+                path: "/body/ignored",
+                message: "internal",
+                errorCode: "if.openapi.validation",
+            })),
+            {
+                path: "/body/not-processed",
+                message: "must be string",
+                errorCode: "type.openapi.validation",
+            },
+        ];
+
+        expect(normalizeFieldErrors(rawErrors)).toEqual([]);
+    });
 });
