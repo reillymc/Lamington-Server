@@ -171,10 +171,7 @@ attachmentPath: ${attachmentPath ?? "(none)"}`,
         throw "Error starting Lamington Server";
     }
 
-    attachmentUri = createPublicAttachmentUri(
-        attachmentPublicBaseUrl,
-        attachmentPath,
-    );
+    attachmentUri = createPublicAttachmentUri(attachmentPublicBaseUrl);
 
     fileRepository = createObjectStorageFileRepository(
         new S3Client({

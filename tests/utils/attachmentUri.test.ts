@@ -11,23 +11,12 @@ describe("attachmentUri", () => {
         expect(defaultAttachmentUri("abc")).toEqual("/attachments/image/abc");
     });
 
-    it("should resolve a public url without a key prefix", () => {
+    it("should resolve a public url", () => {
         const attachmentUri = createPublicAttachmentUri(
             "https://cdn.example.com",
         );
 
         expect(attachmentUri("abc")).toEqual("https://cdn.example.com/abc");
-    });
-
-    it("should apply a key prefix to the public url", () => {
-        const attachmentUri = createPublicAttachmentUri(
-            "https://cdn.example.com",
-            "dev/attachments",
-        );
-
-        expect(attachmentUri("abc")).toEqual(
-            "https://cdn.example.com/dev/attachments/abc",
-        );
     });
 
     it("should populate the heroImage uri", () => {
