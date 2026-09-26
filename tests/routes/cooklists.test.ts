@@ -148,6 +148,14 @@ describe("Add meal to cook list", () => {
             ] satisfies components["schemas"]["CookListMealCreate"][]);
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["0", "heroImage"],
+                location: "body",
+                code: "unknownReference",
+                message: "Attachment not found",
+            },
+        ]);
     });
 
     it("should not create a meal with a recipe owned by another user", async () => {
@@ -173,6 +181,14 @@ describe("Add meal to cook list", () => {
             ] satisfies components["schemas"]["CookListMealCreate"][]);
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["0", "recipeId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Recipe not found",
+            },
+        ]);
     });
 
     it("should create a meal with a public recipe owned by another user", async () => {
@@ -328,6 +344,14 @@ describe("Update meal in cook list", () => {
             } satisfies components["schemas"]["CookListMealUpdate"]);
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["heroImage"],
+                location: "body",
+                code: "unknownReference",
+                message: "Attachment not found",
+            },
+        ]);
     });
 
     it("should not update a meal with a recipe owned by another user", async () => {
@@ -356,6 +380,14 @@ describe("Update meal in cook list", () => {
             } satisfies components["schemas"]["CookListMealUpdate"]);
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["recipeId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Recipe not found",
+            },
+        ]);
     });
 
     it("should delete the replaced attachment row and file when a meal hero image is replaced", async () => {

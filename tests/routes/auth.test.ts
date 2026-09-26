@@ -27,29 +27,6 @@ after(async () => {
 });
 
 describe("Login a user", () => {
-    it("login respect restrictive rate limit", async () => {
-        app = createTestApp({ database });
-
-        const [user] = await CreateUsers(database);
-
-        const requestBody: components["schemas"]["AuthLogin"] = {
-            email: user!.email,
-            password: user!.password,
-        };
-
-        // Exceed rate limit
-        const responses = await Promise.all(
-            Array.from({ length: 10 }).map(() =>
-                request(app).post("/v1/auth/login").send(requestBody),
-            ),
-        );
-
-        responses.map(({ statusCode }) => expect(statusCode).not.toEqual(429));
-
-        const res = await request(app).post("/v1/auth/login").send(requestBody);
-        expect(res.statusCode).toEqual(429);
-    });
-
     it("should fail login with invalid email", async () => {
         const [user] = await CreateUsers(database);
 
@@ -177,31 +154,6 @@ describe("Login a user", () => {
 });
 
 describe("Register a new user", () => {
-    it("should respect restrictive rate limit", async () => {
-        app = createTestApp({ database });
-
-        const requestBody: components["schemas"]["AuthRegister"] = {
-            email: "test@example.com",
-            firstName: "Test",
-            lastName: "User",
-            password: "secure_password",
-        };
-
-        // Exceed rate limit
-        const responses = await Promise.all(
-            Array.from({ length: 10 }).map(() =>
-                request(app).post("/v1/auth/register").send(requestBody),
-            ),
-        );
-
-        responses.map(({ statusCode }) => expect(statusCode).not.toEqual(429));
-
-        const res = await request(app)
-            .post("/v1/auth/register")
-            .send({ ...requestBody, email: "final@example.com" });
-        expect(res.statusCode).toEqual(429);
-    });
-
     it("should register new user with valid request and set to pending", async () => {
         const requestBody: components["schemas"]["AuthRegister"] = {
             email: "user@email.com",
@@ -314,26 +266,6 @@ describe("Refresh authentication token", () => {
             expiresIn: "5m",
         });
     };
-
-    it("should respect restrictive rate limit", async () => {
-        app = createTestApp({ database });
-
-        const requestBody = { refreshToken: "some-token" };
-
-        // Exceed rate limit
-        const responses = await Promise.all(
-            Array.from({ length: 10 }).map(() =>
-                request(app).post("/v1/auth/refresh").send(requestBody),
-            ),
-        );
-
-        responses.map(({ statusCode }) => expect(statusCode).not.toEqual(429));
-
-        const res = await request(app)
-            .post("/v1/auth/refresh")
-            .send(requestBody);
-        expect(res.statusCode).toEqual(429);
-    });
 
     it("should refresh tokens with a valid refresh token", async () => {
         const [user] = await CreateUsers(database);

@@ -1,6 +1,9 @@
 import { describe, it } from "node:test";
 import { expect } from "expect";
-import { normalizeFieldErrors } from "../../src/utils/errors.ts";
+import {
+    normalizeFieldErrors,
+    referenceFieldErrors,
+} from "../../src/utils/errors.ts";
 
 const ERROR_LIMIT = 10;
 
@@ -326,5 +329,44 @@ describe("normalizeFieldErrors", () => {
         ];
 
         expect(normalizeFieldErrors(rawErrors)).toEqual([]);
+    });
+});
+
+describe("referenceFieldErrors", () => {
+    it("should build unknownReference errors for every matching path", () => {
+        expect(
+            referenceFieldErrors(
+                [
+                    { id: "a", path: ["ingredients", "0", "ingredientId"] },
+                    { id: "b", path: ["ingredients", "1", "ingredientId"] },
+                    { id: "a", path: ["ingredients", "2", "ingredientId"] },
+                ],
+                ["a"],
+                "Ingredient",
+            ),
+        ).toEqual([
+            {
+                path: ["ingredients", "0", "ingredientId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Ingredient not found",
+            },
+            {
+                path: ["ingredients", "2", "ingredientId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Ingredient not found",
+            },
+        ]);
+    });
+
+    it("should return no errors when nothing is disallowed", () => {
+        expect(
+            referenceFieldErrors(
+                [{ id: "a", path: ["ingredientId"] }],
+                [],
+                "Ingredient",
+            ),
+        ).toEqual([]);
     });
 });

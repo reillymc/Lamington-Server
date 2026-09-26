@@ -1159,6 +1159,18 @@ describe("Create a recipe", () => {
             .send(recipe);
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "NOT_FOUND",
+        });
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["heroImage"],
+                location: "body",
+                code: "unknownReference",
+                message: "Attachment not found",
+            },
+        ]);
 
         const attachmentRows =
             await database("attachment").select("attachmentId");
@@ -1188,6 +1200,67 @@ describe("Create a recipe", () => {
         expect(rows).toEqual([{ tagId: tag!.tagId }]);
     });
 
+    it("should reject an unknown tag", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({
+                name: uuid(),
+                tags: [{ tagId: uuid() }, { tagId: uuid() }],
+            } satisfies components["schemas"]["RecipeCreate"]);
+
+        expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["tags", "0", "tagId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Tag not found",
+            },
+            {
+                path: ["tags", "1", "tagId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Tag not found",
+            },
+        ]);
+
+        expect(await database("content_tag").select("tagId")).toEqual([]);
+    });
+
+    it("should reject duplicate tags", async () => {
+        const [token] = await PrepareAuthenticatedUser(database);
+        const [tag] = await KnexTagRepository.create(database, [
+            { name: uuid() },
+        ]);
+
+        const res = await request(app)
+            .post("/v1/recipes")
+            .set(token)
+            .send({
+                name: uuid(),
+                tags: [{ tagId: tag!.tagId }, { tagId: tag!.tagId }],
+            } satisfies components["schemas"]["RecipeCreate"]);
+
+        expect(res.statusCode).toEqual(400);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "VALIDATION_FAILED",
+            message: "Some fields are not valid",
+        });
+        expect(res.body.fieldErrors).toEqual([
+            expect.objectContaining({
+                path: ["tags"],
+                location: "body",
+                code: "duplicate",
+            }),
+        ]);
+
+        expect(await database("content_tag").select("tagId")).toEqual([]);
+    });
+
     it("should reject attachments that are deleted or do not exist", async () => {
         const [token, { userId }] = await PrepareAuthenticatedUser(database);
 
@@ -1212,6 +1285,18 @@ describe("Create a recipe", () => {
                 } satisfies components["schemas"]["RecipeCreate"]);
 
             expect(res.statusCode).toEqual(404);
+            expect(res.body).toMatchObject({
+                error: true,
+                code: "NOT_FOUND",
+            });
+            expect(res.body.fieldErrors).toEqual([
+                {
+                    path: ["heroImage"],
+                    location: "body",
+                    code: "unknownReference",
+                    message: "Attachment not found",
+                },
+            ]);
         }
 
         expect(
@@ -1522,6 +1607,25 @@ describe("Create a recipe", () => {
                     .send(recipe);
 
                 expect(res.statusCode).toEqual(404);
+                expect(res.body).toMatchObject({
+                    error: true,
+                    code: "NOT_FOUND",
+                });
+                expect(res.body.fieldErrors).toEqual([
+                    {
+                        path: [
+                            "ingredients",
+                            "0",
+                            "items",
+                            "0",
+                            "ingredient",
+                            "ingredientId",
+                        ],
+                        location: "body",
+                        code: "unknownReference",
+                        message: "Ingredient not found",
+                    },
+                ]);
             });
 
             it("should reject a content id that is not an ingredient", async () => {
@@ -1555,6 +1659,84 @@ describe("Create a recipe", () => {
                     .send(recipe);
 
                 expect(res.statusCode).toEqual(404);
+                expect(res.body).toMatchObject({
+                    error: true,
+                    code: "NOT_FOUND",
+                });
+                expect(res.body.fieldErrors).toEqual([
+                    {
+                        path: [
+                            "ingredients",
+                            "0",
+                            "items",
+                            "0",
+                            "ingredient",
+                            "ingredientId",
+                        ],
+                        location: "body",
+                        code: "unknownReference",
+                        message: "Ingredient not found",
+                    },
+                ]);
+            });
+
+            it("should report every occurrence of an unknown ingredient reference", async () => {
+                const [token] = await PrepareAuthenticatedUser(database);
+
+                const unknownIngredientId = uuid();
+
+                const res = await request(app)
+                    .post("/v1/recipes")
+                    .set(token)
+                    .send({
+                        name: uuid(),
+                        ingredients: [
+                            {
+                                items: [
+                                    {
+                                        ingredient: {
+                                            ingredientId: unknownIngredientId,
+                                        },
+                                    },
+                                    {
+                                        ingredient: {
+                                            ingredientId: unknownIngredientId,
+                                        },
+                                    },
+                                ],
+                            },
+                        ],
+                    } satisfies components["schemas"]["RecipeCreate"]);
+
+                expect(res.statusCode).toEqual(404);
+                expect(res.body.fieldErrors).toEqual([
+                    {
+                        path: [
+                            "ingredients",
+                            "0",
+                            "items",
+                            "0",
+                            "ingredient",
+                            "ingredientId",
+                        ],
+                        location: "body",
+                        code: "unknownReference",
+                        message: "Ingredient not found",
+                    },
+                    {
+                        path: [
+                            "ingredients",
+                            "0",
+                            "items",
+                            "1",
+                            "ingredient",
+                            "ingredientId",
+                        ],
+                        location: "body",
+                        code: "unknownReference",
+                        message: "Ingredient not found",
+                    },
+                ]);
             });
 
             it("should save sub-recipe details", async () => {
@@ -1664,6 +1846,25 @@ describe("Create a recipe", () => {
                     .send(recipe);
 
                 expect(res.statusCode).toEqual(404);
+                expect(res.body).toMatchObject({
+                    error: true,
+                    code: "NOT_FOUND",
+                });
+                expect(res.body.fieldErrors).toEqual([
+                    {
+                        path: [
+                            "ingredients",
+                            "0",
+                            "items",
+                            "0",
+                            "recipe",
+                            "recipeId",
+                        ],
+                        location: "body",
+                        code: "unknownReference",
+                        message: "Recipe not found",
+                    },
+                ]);
             });
 
             it("should reject a sub-recipe id that is not a recipe", async () => {
@@ -1697,6 +1898,25 @@ describe("Create a recipe", () => {
                     .send(recipe);
 
                 expect(res.statusCode).toEqual(404);
+                expect(res.body).toMatchObject({
+                    error: true,
+                    code: "NOT_FOUND",
+                });
+                expect(res.body.fieldErrors).toEqual([
+                    {
+                        path: [
+                            "ingredients",
+                            "0",
+                            "items",
+                            "0",
+                            "recipe",
+                            "recipeId",
+                        ],
+                        location: "body",
+                        code: "unknownReference",
+                        message: "Recipe not found",
+                    },
+                ]);
             });
         });
     });
@@ -1720,6 +1940,225 @@ describe("Update a recipe", () => {
             .send({ name: "recipe" });
 
         expect(res.statusCode).toEqual(404);
+    });
+
+    it("should reject an unknown tag", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({
+                tags: [{ tagId: uuid() }],
+            } satisfies components["schemas"]["RecipeUpdate"]);
+
+        expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["tags", "0", "tagId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Tag not found",
+            },
+        ]);
+    });
+
+    it("should reject duplicate tags", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const [tag] = await KnexTagRepository.create(database, [
+            { name: uuid() },
+        ]);
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({
+                tags: [{ tagId: tag!.tagId }, { tagId: tag!.tagId }],
+            } satisfies components["schemas"]["RecipeUpdate"]);
+
+        expect(res.statusCode).toEqual(400);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "VALIDATION_FAILED",
+            message: "Some fields are not valid",
+        });
+        expect(res.body.fieldErrors).toEqual([
+            expect.objectContaining({
+                path: ["tags"],
+                location: "body",
+                code: "duplicate",
+            }),
+        ]);
+    });
+
+    it("should reject an ingredient owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            ingredients: [ingredient],
+        } = await KnexIngredientRepository.create(database, {
+            userId: otherUser!.userId,
+            ingredients: [{ name: "Private", namePlural: "Privates" }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({
+                ingredients: [
+                    {
+                        items: [
+                            {
+                                ingredient: {
+                                    ingredientId: ingredient!.ingredientId,
+                                },
+                            },
+                        ],
+                    },
+                ],
+            } satisfies components["schemas"]["RecipeUpdate"]);
+
+        expect(res.statusCode).toEqual(404);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "NOT_FOUND",
+        });
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: [
+                    "ingredients",
+                    "0",
+                    "items",
+                    "0",
+                    "ingredient",
+                    "ingredientId",
+                ],
+                location: "body",
+                code: "unknownReference",
+                message: "Ingredient not found",
+            },
+        ]);
+
+        const {
+            recipes: [storedRecipe],
+        } = await KnexRecipeRepository.read(database, {
+            userId: user.userId,
+            recipes: [{ recipeId: recipe!.recipeId }],
+        });
+        expect(storedRecipe!.ingredients).toBeUndefined();
+    });
+
+    it("should reject a sub-recipe owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            recipes: [subRecipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: otherUser!.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({
+                ingredients: [
+                    {
+                        items: [
+                            {
+                                recipe: {
+                                    recipeId: subRecipe!.recipeId,
+                                },
+                            },
+                        ],
+                    },
+                ],
+            } satisfies components["schemas"]["RecipeUpdate"]);
+
+        expect(res.statusCode).toEqual(404);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "NOT_FOUND",
+        });
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["ingredients", "0", "items", "0", "recipe", "recipeId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Recipe not found",
+            },
+        ]);
+    });
+
+    it("should reject an attachment owned by another user", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const [otherUser] = await CreateUsers(database);
+
+        const {
+            attachments: [attachment],
+        } = await KnexAttachmentRepository.create(database, {
+            userId: otherUser!.userId,
+            attachments: [{}],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .patch(`/v1/recipes/${recipe!.recipeId}`)
+            .set(token)
+            .send({
+                heroImage: attachment!.attachmentId,
+            } satisfies components["schemas"]["RecipeUpdate"]);
+
+        expect(res.statusCode).toEqual(404);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "NOT_FOUND",
+        });
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["heroImage"],
+                location: "body",
+                code: "unknownReference",
+                message: "Attachment not found",
+            },
+        ]);
     });
 
     it("should update basic recipe details", async () => {
