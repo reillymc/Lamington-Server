@@ -35,4 +35,22 @@ export const KnexTagRepository: TagRepository<KnexDatabase> = {
                 TagTable.name,
                 TagTable.description,
             ]),
+    verifyExists: async (db, { tags }) => {
+        const requestedIds = tags.map(({ tagId }) => tagId);
+
+        if (requestedIds.length === 0) return { tags: [] };
+
+        const rows = await db(lamington.tag)
+            .select(TagTable.tagId)
+            .whereIn(TagTable.tagId, requestedIds);
+
+        const existing = new Set(rows.map(({ tagId }) => tagId));
+
+        return {
+            tags: requestedIds.map((tagId) => ({
+                tagId,
+                exists: existing.has(tagId),
+            })),
+        };
+    },
 };

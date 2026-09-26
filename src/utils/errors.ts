@@ -1,13 +1,32 @@
+import type {
+    ErrorLocation,
+    FieldError,
+    FieldReference,
+} from "./errorTypes.ts";
 import { AppError } from "./logger.ts";
 
-export type ErrorLocation = "body" | "query" | "params" | "headers";
+export type { FieldError } from "./errorTypes.ts";
 
-export interface FieldError {
-    path: string[];
-    location?: ErrorLocation;
-    code: string;
-    message: string;
-}
+export const unknownReferenceFieldError = (
+    path: string[],
+    entity: string,
+): FieldError => ({
+    path,
+    location: "body",
+    code: "unknownReference",
+    message: `${entity} not found`,
+});
+
+export const referenceFieldErrors = (
+    references: ReadonlyArray<FieldReference>,
+    disallowedIds: readonly string[],
+    entity: string,
+): FieldError[] => {
+    const disallowed = new Set(disallowedIds);
+    return references
+        .filter(({ id }) => disallowed.has(id))
+        .map(({ path }) => unknownReferenceFieldError(path, entity));
+};
 
 export class UnauthorizedError extends AppError {
     constructor(reason = "Unauthorised", innerError?: unknown) {
@@ -193,7 +212,7 @@ export const normalizeFieldErrors = (
 };
 
 export class ValidationError extends AppError {
-    fieldErrors: FieldError[];
+    declare fieldErrors: FieldError[];
     constructor(innerError: unknown) {
         const innerErrorObject =
             innerError !== null && typeof innerError === "object"
@@ -221,15 +240,16 @@ export class ValidationError extends AppError {
                 ? innerErrorObject.errors
                 : undefined;
 
+        const fieldErrors = innerErrorItems
+            ? normalizeFieldErrors(innerErrorItems)
+            : [];
+
         super({
             status: innerErrorStatus ?? 500,
             code: "VALIDATION_FAILED",
             message: innerErrorString ?? "An unknown validation error occurred",
             innerError,
+            fieldErrors,
         });
-
-        this.fieldErrors = innerErrorItems
-            ? normalizeFieldErrors(innerErrorItems)
-            : [];
     }
 }

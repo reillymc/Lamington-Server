@@ -1761,6 +1761,7 @@ paths:
                 itemIds:
                   type: array
                   maxItems: 50
+                  uniqueItems: true
                   items:
                     $ref: "#/components/schemas/Uuid"
                   minItems: 1
@@ -3246,6 +3247,7 @@ components:
         tags:
           type: array
           maxItems: 50
+          uniqueItems: true
           items:
             $ref: "#/components/schemas/RecipeTagRef"
         heroImage:
@@ -3313,6 +3315,7 @@ components:
           anyOf:
             - type: array
               maxItems: 50
+              uniqueItems: true
               items:
                 $ref: "#/components/schemas/RecipeTagRef"
             - type: "null"

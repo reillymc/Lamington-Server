@@ -1,6 +1,10 @@
 import { ForeignKeyViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
 import {
+    referenceFieldErrors,
+    unknownReferenceFieldError,
+} from "../utils/errors.ts";
+import {
     CreatedDataFetchError,
     type CreateService,
     InvalidOperationError,
@@ -212,14 +216,22 @@ export const createListService: CreateService<
                 throw new NotFoundError("list", listId);
             }
 
+            const ingredientReferences = items.flatMap((item, index) =>
+                item.ingredientId !== undefined
+                    ? [
+                          {
+                              id: item.ingredientId,
+                              path: [`${index}`, "ingredientId"],
+                          },
+                      ]
+                    : [],
+            );
             const { ingredients } =
                 await ingredientRepository.verifyPermissions(trx, {
                     userId,
-                    ingredients: items.flatMap(({ ingredientId }) =>
-                        ingredientId !== undefined && ingredientId !== null
-                            ? [{ ingredientId }]
-                            : [],
-                    ),
+                    ingredients: ingredientReferences.map(({ id }) => ({
+                        ingredientId: id,
+                    })),
                 });
 
             const disallowedIngredientIds = ingredients
@@ -227,7 +239,15 @@ export const createListService: CreateService<
                 .map(({ ingredientId }) => ingredientId);
 
             if (disallowedIngredientIds.length > 0) {
-                throw new NotFoundError("ingredient", disallowedIngredientIds);
+                throw new NotFoundError(
+                    "ingredient",
+                    disallowedIngredientIds,
+                    referenceFieldErrors(
+                        ingredientReferences,
+                        disallowedIngredientIds,
+                        "Ingredient",
+                    ),
+                );
             }
 
             const { items: createdItems } = await listRepository.createItems(
@@ -251,12 +271,20 @@ export const createListService: CreateService<
                 throw new NotFoundError("list", listId);
             }
 
+            const ingredientReferences = request.ingredientId
+                ? [
+                      {
+                          id: request.ingredientId,
+                          path: ["ingredientId"],
+                      },
+                  ]
+                : [];
             const { ingredients } =
                 await ingredientRepository.verifyPermissions(trx, {
                     userId,
-                    ingredients: request.ingredientId
-                        ? [{ ingredientId: request.ingredientId }]
-                        : [],
+                    ingredients: ingredientReferences.map(({ id }) => ({
+                        ingredientId: id,
+                    })),
                 });
 
             const disallowedIngredientIds = ingredients
@@ -264,7 +292,15 @@ export const createListService: CreateService<
                 .map(({ ingredientId }) => ingredientId);
 
             if (disallowedIngredientIds.length > 0) {
-                throw new NotFoundError("ingredient", disallowedIngredientIds);
+                throw new NotFoundError(
+                    "ingredient",
+                    disallowedIngredientIds,
+                    referenceFieldErrors(
+                        ingredientReferences,
+                        disallowedIngredientIds,
+                        "Ingredient",
+                    ),
+                );
             }
 
             const { items } = await listRepository.updateItems(trx, {
@@ -298,6 +334,14 @@ export const createListService: CreateService<
                 ({ hasPermissions }) => !hasPermissions,
             );
             if (failedPermission) {
+                if (failedPermission.listId === destinationListId) {
+                    throw new NotFoundError("list", destinationListId, [
+                        unknownReferenceFieldError(
+                            ["destinationListId"],
+                            "List",
+                        ),
+                    ]);
+                }
                 throw new NotFoundError("list", failedPermission.listId);
             }
 
@@ -310,10 +354,26 @@ export const createListService: CreateService<
                 },
             );
 
-            if (currentItems.length !== itemIds.length) {
+            const existingItemIds = new Set(
+                currentItems.map(({ itemId }) => itemId),
+            );
+            const missingItemIds = itemIds.filter(
+                (itemId) => !existingItemIds.has(itemId),
+            );
+
+            if (missingItemIds.length > 0) {
+                const itemReferences = itemIds.map((itemId, index) => ({
+                    id: itemId,
+                    path: ["itemIds", `${index}`],
+                }));
                 throw new NotFoundError(
                     "list item",
-                    "One or more items not found in source list",
+                    missingItemIds,
+                    referenceFieldErrors(
+                        itemReferences,
+                        missingItemIds,
+                        "List item",
+                    ),
                 );
             }
 
@@ -412,7 +472,9 @@ export const createListService: CreateService<
                 });
             } catch (error: unknown) {
                 if (error instanceof ForeignKeyViolationError) {
-                    throw new NotFoundError("user", targetUserId);
+                    throw new NotFoundError("user", targetUserId, [
+                        unknownReferenceFieldError(["userId"], "User"),
+                    ]);
                 }
                 throw error;
             }
