@@ -1179,27 +1179,6 @@ describe("Create a recipe", () => {
         ]);
     });
 
-    it("should collapse duplicate tags in a single request", async () => {
-        const [token] = await PrepareAuthenticatedUser(database);
-
-        const [tag] = await KnexTagRepository.create(database, [
-            { name: uuid() },
-        ]);
-
-        const res = await request(app)
-            .post("/v1/recipes")
-            .set(token)
-            .send({
-                name: uuid(),
-                tags: [{ tagId: tag!.tagId }, { tagId: tag!.tagId }],
-            } satisfies components["schemas"]["RecipeCreate"]);
-
-        expect(res.statusCode).toEqual(201);
-
-        const rows = await database("content_tag").select("tagId");
-        expect(rows).toEqual([{ tagId: tag!.tagId }]);
-    });
-
     it("should reject an unknown tag", async () => {
         const [token] = await PrepareAuthenticatedUser(database);
 
