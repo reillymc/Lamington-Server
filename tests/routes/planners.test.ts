@@ -1102,6 +1102,14 @@ describe("Add a meal to a planner", () => {
             } satisfies components["schemas"]["PlannerMealCreate"]);
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["0", "heroImage"],
+                location: "body",
+                code: "unknownReference",
+                message: "Attachment not found",
+            },
+        ]);
     });
 
     it("should reject a recipe owned by another user", async () => {
@@ -1135,6 +1143,14 @@ describe("Add a meal to a planner", () => {
             } satisfies components["schemas"]["PlannerMealCreate"]);
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["0", "recipeId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Recipe not found",
+            },
+        ]);
     });
 
     it("should create a meal with a public recipe owned by another user", async () => {
@@ -1497,6 +1513,14 @@ describe("Update a meal in a planner", () => {
             } satisfies components["schemas"]["PlannerMealUpdate"]);
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["heroImage"],
+                location: "body",
+                code: "unknownReference",
+                message: "Attachment not found",
+            },
+        ]);
     });
 
     it("should reject a recipe owned by another user", async () => {
@@ -1540,6 +1564,14 @@ describe("Update a meal in a planner", () => {
             } satisfies components["schemas"]["PlannerMealUpdate"]);
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["recipeId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Recipe not found",
+            },
+        ]);
     });
 
     it("should allow editing a meal if the user is the planner owner", async () => {
@@ -2561,6 +2593,14 @@ describe("Invite a member to a planner", () => {
             .set(token)
             .send({ userId: uuid() });
         expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["userId"],
+                location: "body",
+                code: "unknownReference",
+                message: "User not found",
+            },
+        ]);
     });
 
     const invalidInvites: ReadonlyArray<{

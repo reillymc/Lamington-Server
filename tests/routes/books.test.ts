@@ -955,6 +955,32 @@ describe("Invite member to book", () => {
         expect(members!.members[0]!.userId).toEqual(invitee!.userId);
         expect(members!.members[0]!.status).toEqual("P");
     });
+
+    it("should return 404 if the user does not exist", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: user.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const res = await request(app)
+            .post(`/v1/books/${book!.bookId}/members`)
+            .set(token)
+            .send({ userId: uuid() });
+
+        expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["userId"],
+                location: "body",
+                code: "unknownReference",
+                message: "User not found",
+            },
+        ]);
+    });
 });
 
 describe("Update book member", () => {
@@ -1408,6 +1434,14 @@ describe("Add recipe to book", () => {
             .send({ recipeId: privateRecipe!.recipeId });
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["recipeId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Recipe not found",
+            },
+        ]);
 
         const rows = await database("book_recipe")
             .select("recipeId")

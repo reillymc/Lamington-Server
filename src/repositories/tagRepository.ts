@@ -21,7 +21,26 @@ type CreateRequest = {
 };
 type CreateResponse = Tag;
 
+type VerifyExistsRequest = {
+    tags: ReadonlyArray<{
+        tagId: Tag["tagId"];
+    }>;
+};
+
+type VerifyExistsResponse = {
+    tags: ReadonlyArray<{
+        tagId: Tag["tagId"];
+        exists: boolean;
+    }>;
+};
+
 export interface TagRepository<TDatabase extends Database = Database> {
     readAll: RepositoryService<TDatabase, ReadRequest, ReadResponse>;
     create: RepositoryBulkService<TDatabase, CreateRequest, CreateResponse>;
+    // TODO: possibly to be replaced with verify permissions when custom / user tags are supported
+    verifyExists: RepositoryService<
+        TDatabase,
+        VerifyExistsRequest,
+        VerifyExistsResponse
+    >;
 }

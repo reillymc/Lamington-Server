@@ -1,6 +1,10 @@
 import type { components } from "../routes/spec/index.ts";
 import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
 import {
+    collectMealReferences,
+    verifyMealReferences,
+} from "./common/mealReferences.ts";
+import {
     CreatedDataFetchError,
     type CreateService,
     NotFoundError,
@@ -41,39 +45,12 @@ export const createCooklistService: CreateService<
     },
     createMeals: async (userId, meals) =>
         database.transaction(async (trx) => {
-            const { attachments } =
-                await attachmentRepository.verifyPermissions(trx, {
-                    userId,
-                    attachments: meals.flatMap(({ heroImage }) =>
-                        heroImage ? [{ attachmentId: heroImage }] : [],
-                    ),
-                });
-
-            const disallowedAttachmentIds = attachments
-                .filter(({ hasPermissions }) => !hasPermissions)
-                .map(({ attachmentId }) => attachmentId);
-
-            if (disallowedAttachmentIds.length > 0) {
-                throw new NotFoundError("attachment", disallowedAttachmentIds);
-            }
-
-            const { recipes: recipePermissions } =
-                await recipeRepository.verifyPermissions(trx, {
-                    userId,
-                    recipes: meals.flatMap(({ recipeId }) =>
-                        recipeId ? [{ recipeId }] : [],
-                    ),
-                    status: "O",
-                    includePublic: true,
-                });
-
-            const disallowedRecipeIds = recipePermissions
-                .filter(({ hasPermissions }) => !hasPermissions)
-                .map(({ recipeId }) => recipeId);
-
-            if (disallowedRecipeIds.length > 0) {
-                throw new NotFoundError("recipe", disallowedRecipeIds);
-            }
+            await verifyMealReferences(
+                { attachmentRepository, recipeRepository },
+                trx,
+                userId,
+                collectMealReferences(meals, { indexed: true }),
+            );
 
             const { meals: createdMeals } =
                 await cooklistRepository.createMeals(trx, { userId, meals });
@@ -100,39 +77,12 @@ export const createCooklistService: CreateService<
                 throw new NotFoundError("cooklist meal", mealId);
             }
 
-            const { attachments } =
-                await attachmentRepository.verifyPermissions(trx, {
-                    userId,
-                    attachments: request.heroImage
-                        ? [{ attachmentId: request.heroImage }]
-                        : [],
-                });
-
-            const disallowedAttachmentIds = attachments
-                .filter(({ hasPermissions }) => !hasPermissions)
-                .map(({ attachmentId }) => attachmentId);
-
-            if (disallowedAttachmentIds.length > 0) {
-                throw new NotFoundError("attachment", disallowedAttachmentIds);
-            }
-
-            const { recipes: recipePermissions } =
-                await recipeRepository.verifyPermissions(trx, {
-                    userId,
-                    recipes: request.recipeId
-                        ? [{ recipeId: request.recipeId }]
-                        : [],
-                    status: "O",
-                    includePublic: true,
-                });
-
-            const disallowedRecipeIds = recipePermissions
-                .filter(({ hasPermissions }) => !hasPermissions)
-                .map(({ recipeId }) => recipeId);
-
-            if (disallowedRecipeIds.length > 0) {
-                throw new NotFoundError("recipe", disallowedRecipeIds);
-            }
+            await verifyMealReferences(
+                { attachmentRepository, recipeRepository },
+                trx,
+                userId,
+                collectMealReferences([request], { indexed: false }),
+            );
 
             const { meals } = await cooklistRepository.updateMeals(trx, {
                 userId,

@@ -3,10 +3,12 @@
     "tasks": [
         {
             "label": "watch:tsc",
-            "type": "typescript",
-            "tsconfig": "tsconfig.json",
-            "option": "watch",
-            "problemMatcher": ["$tsc-watch"],
+            "type": "shell",
+            "command": "mkdir -p .quality/logs && npm run typecheck:watch 2>&1 | tee .quality/logs/typecheck.log",
+            "problemMatcher": {
+                "base": "$tsc-watch",
+                "applyTo": "allDocuments"
+            },
             "group": "build",
             "icon": {
                 "id": "bracket-dot"
@@ -20,13 +22,15 @@
             "isBackground": true,
             "runOptions": {
                 "runOn": "folderOpen",
-                "instanceLimit": 1
+                "instanceLimit": 1,
+                "instancePolicy": "silent"
             }
         },
         {
             "label": "watch:tests",
             "type": "shell",
-            "command": "npm run test -- --watch",
+            "command": "mkdir -p .quality/logs && npm run test:watch 2>&1 | tee .quality/logs/tests.log",
+            "problemMatcher": [],
             "group": "test",
             "icon": {
                 "id": "beaker"
@@ -40,13 +44,15 @@
             "isBackground": true,
             "runOptions": {
                 "runOn": "folderOpen",
-                "instanceLimit": 1
+                "instanceLimit": 1,
+                "instancePolicy": "silent"
             }
         },
         {
             "label": "watch:knip",
             "type": "shell",
-            "command": "npm run knip -- --watch",
+            "command": "mkdir -p .quality/logs && npm run knip:watch 2>&1 | tee .quality/logs/knip.log",
+            "problemMatcher": [],
             "icon": {
                 "id": "search-fuzzy"
             },
@@ -59,14 +65,36 @@
             "isBackground": true,
             "runOptions": {
                 "runOn": "folderOpen",
-                "instanceLimit": 1
+                "instanceLimit": 1,
+                "instancePolicy": "silent"
+            }
+        },
+        {
+            "label": "watch:lint",
+            "type": "shell",
+            "command": "mkdir -p .quality/logs && npm run lint:watch 2>&1 | tee .quality/logs/lint.log",
+            "problemMatcher": [],
+            "icon": {
+                "id": "check-all"
+            },
+            "presentation": {
+                "reveal": "never",
+                "echo": false,
+                "focus": false,
+                "panel": "dedicated"
+            },
+            "isBackground": true,
+            "runOptions": {
+                "runOn": "folderOpen",
+                "instanceLimit": 1,
+                "instancePolicy": "silent"
             }
         },
         {
             "label": "watch:spec",
             "type": "shell",
-            "command": "node",
-            "args": ["./tools/Scripts/watch_spec.ts"],
+            "command": "mkdir -p .quality/logs && node ./tools/Scripts/watch_spec.ts 2>&1 | tee .quality/logs/spec.log",
+            "problemMatcher": [],
             "icon": {
                 "id": "link"
             },
@@ -79,9 +107,9 @@
             "isBackground": true,
             "runOptions": {
                 "runOn": "folderOpen",
-                "instanceLimit": 1
-            },
-            "problemMatcher": []
+                "instanceLimit": 1,
+                "instancePolicy": "silent"
+            }
         }
     ]
 }
