@@ -13,7 +13,11 @@ import {
     createSpyingFileRepository,
     purgeDeletedAttachments,
 } from "../helpers/fileRepository.ts";
-import { CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
+import {
+    CreateUsers,
+    PrepareAuthenticatedUser,
+    withUserTriggersSuppressed,
+} from "../helpers/index.ts";
 import { createTestApp, db } from "../helpers/setup.ts";
 
 const randomIcon = (): components["schemas"]["Icon"] => ({
@@ -1138,6 +1142,49 @@ describe("Update list item", () => {
 
         expect(returnedItem.name).toEqual(updateData.name);
         expect(returnedItem.completed).toEqual(true);
+    });
+
+    it("should update the last updated timestamp when toggling a list item", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const { items } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: list.listId,
+            items: [{ name: uuid() }],
+        });
+        const item = items[0]!;
+
+        const oldDate = new Date(Date.now() - 25 * 60 * 60 * 1000);
+        await withUserTriggersSuppressed(database, () =>
+            database("content")
+                .where("contentId", item.itemId)
+                .update({ updatedAt: oldDate }),
+        );
+
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send({ completed: true });
+
+        expect(res.statusCode).toEqual(200);
+        const returnedItem = res.body as components["schemas"]["ListItem"];
+        expect(new Date(returnedItem.updatedAt).getTime()).toBeGreaterThan(
+            oldDate.getTime(),
+        );
+
+        const listRes = await request(app).get("/v1/lists").set(token);
+        expect(listRes.statusCode).toEqual(200);
+        const [summary] =
+            listRes.body as components["schemas"]["ListSummary"][];
+        expect(new Date(summary!.lastUpdated!).getTime()).toBeGreaterThan(
+            oldDate.getTime(),
+        );
     });
 
     it("should update a list item with an ingredient", async () => {
