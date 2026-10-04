@@ -1,6 +1,7 @@
 import { EnsureArray } from "@reillymc/es-utils";
 import type { AppJobs } from "../jobs/index.ts";
 import type { AppRepositories, Database } from "../repositories/index.ts";
+import type { FieldError } from "../utils/errors.ts";
 import { AppError } from "../utils/logger.ts";
 
 export type CreateService<
@@ -53,13 +54,18 @@ export class PermissionError extends ServiceError {
 }
 
 export class NotFoundError extends ServiceError {
-    constructor(entity: string, entityIds?: string | readonly string[]) {
+    constructor(
+        entity: string,
+        entityIds?: string | readonly string[],
+        fieldErrors?: FieldError[],
+    ) {
         super({
             status: 404,
             code: "NOT_FOUND",
             message: `The requested ${entity} entries were not found: ${ServiceError.formatEntityIds(
                 entityIds,
             )}`,
+            fieldErrors,
         });
     }
 }

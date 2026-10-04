@@ -1,3 +1,5 @@
+import type { FieldError } from "./errorTypes.ts";
+
 export type { Logger } from "winston";
 
 interface AppErrorConstructor {
@@ -5,16 +7,19 @@ interface AppErrorConstructor {
     code?: string;
     message?: string;
     innerError?: unknown;
+    fieldErrors?: FieldError[];
 }
 export class AppError extends Error {
     status: number;
     code: string;
     innerError: unknown;
+    fieldErrors?: FieldError[];
     constructor({
         status = 500,
         code = "LAMINGTON_ERROR",
         message = "An unknown error occurred",
         innerError,
+        fieldErrors,
     }: AppErrorConstructor) {
         super(message);
         this.name = this.constructor.name;
@@ -22,5 +27,6 @@ export class AppError extends Error {
         this.code = code;
         this.message = message;
         this.innerError = innerError;
+        this.fieldErrors = fieldErrors;
     }
 }

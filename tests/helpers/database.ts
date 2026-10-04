@@ -8,6 +8,22 @@ import { SYSTEM_USER_ID } from "../../src/utils/systemUser.ts";
 
 const randomEmail = () => `${uuid()}@${uuid()}.${uuid()}`;
 
+/**
+ * Runs `action` with user-defined triggers and foreign key checks suppressed.
+ * Scoped to the current transaction by `SET LOCAL`, so it reverts on rollback.
+ */
+export const withUserTriggersSuppressed = async <T>(
+    database: KnexDatabase,
+    action: () => Promise<T>,
+): Promise<T> => {
+    await database.raw("SET LOCAL session_replication_role = replica");
+    try {
+        return await action();
+    } finally {
+        await database.raw("SET LOCAL session_replication_role = origin");
+    }
+};
+
 export const CreateUsers = async (
     database: KnexDatabase,
     {

@@ -13,7 +13,11 @@ import {
     createSpyingFileRepository,
     purgeDeletedAttachments,
 } from "../helpers/fileRepository.ts";
-import { CreateUsers, PrepareAuthenticatedUser } from "../helpers/index.ts";
+import {
+    CreateUsers,
+    PrepareAuthenticatedUser,
+    withUserTriggersSuppressed,
+} from "../helpers/index.ts";
 import { createTestApp, db } from "../helpers/setup.ts";
 
 const randomIcon = (): components["schemas"]["Icon"] => ({
@@ -807,6 +811,18 @@ describe("Add item to list", () => {
             } satisfies components["schemas"]["ListItemCreate"]);
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "NOT_FOUND",
+        });
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["0", "ingredientId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Ingredient not found",
+            },
+        ]);
     });
 
     it("should accept a system-owned ingredient", async () => {
@@ -956,6 +972,18 @@ describe("Add item to list", () => {
             ] satisfies components["schemas"]["ListItemCreate"][]);
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "NOT_FOUND",
+        });
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["1", "ingredientId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Ingredient not found",
+            },
+        ]);
 
         const { items } = await KnexListRepository.readAllItems(database, {
             userId: user.userId,
@@ -1116,6 +1144,49 @@ describe("Update list item", () => {
         expect(returnedItem.completed).toEqual(true);
     });
 
+    it("should update the last updated timestamp when toggling a list item", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }],
+        });
+        const list = lists[0]!;
+
+        const { items } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: list.listId,
+            items: [{ name: uuid() }],
+        });
+        const item = items[0]!;
+
+        const oldDate = new Date(Date.now() - 25 * 60 * 60 * 1000);
+        await withUserTriggersSuppressed(database, () =>
+            database("content")
+                .where("contentId", item.itemId)
+                .update({ updatedAt: oldDate }),
+        );
+
+        const res = await request(app)
+            .patch(`/v1/lists/${list.listId}/items/${item.itemId}`)
+            .set(token)
+            .send({ completed: true });
+
+        expect(res.statusCode).toEqual(200);
+        const returnedItem = res.body as components["schemas"]["ListItem"];
+        expect(new Date(returnedItem.updatedAt).getTime()).toBeGreaterThan(
+            oldDate.getTime(),
+        );
+
+        const listRes = await request(app).get("/v1/lists").set(token);
+        expect(listRes.statusCode).toEqual(200);
+        const [summary] =
+            listRes.body as components["schemas"]["ListSummary"][];
+        expect(new Date(summary!.lastUpdated!).getTime()).toBeGreaterThan(
+            oldDate.getTime(),
+        );
+    });
+
     it("should update a list item with an ingredient", async () => {
         const [token, user] = await PrepareAuthenticatedUser(database);
 
@@ -1183,6 +1254,18 @@ describe("Update list item", () => {
             } satisfies components["schemas"]["ListItemUpdate"]);
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "NOT_FOUND",
+        });
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["ingredientId"],
+                location: "body",
+                code: "unknownReference",
+                message: "Ingredient not found",
+            },
+        ]);
     });
 
     it("should accept a system-owned ingredient", async () => {
@@ -1676,6 +1759,14 @@ describe("Invite member to list", () => {
             .set(token)
             .send({ userId: uuid() });
         expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["userId"],
+                location: "body",
+                code: "unknownReference",
+                message: "User not found",
+            },
+        ]);
     });
 
     const invalidInvites: ReadonlyArray<{
@@ -2215,6 +2306,14 @@ describe("Move list items to another list", () => {
             });
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["destinationListId"],
+                location: "body",
+                code: "unknownReference",
+                message: "List not found",
+            },
+        ]);
     });
 
     it("should fail if item does not exist in source list", async () => {
@@ -2225,11 +2324,98 @@ describe("Move list items to another list", () => {
         });
         const [sourceList, destList] = lists;
 
+        const missingItemId = uuid();
+
         const res = await request(app)
             .post(`/v1/lists/${sourceList!.listId}/items/move`)
             .set(token)
-            .send({ destinationListId: destList!.listId, itemIds: [uuid()] });
+            .send({
+                destinationListId: destList!.listId,
+                itemIds: [missingItemId],
+            });
 
         expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["itemIds", "0"],
+                location: "body",
+                code: "unknownReference",
+                message: "List item not found",
+            },
+        ]);
+    });
+
+    it("should report the index of each missing item", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }, { name: uuid() }],
+        });
+        const [sourceList, destList] = lists;
+
+        const { items } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: sourceList!.listId,
+            items: [{ name: uuid() }],
+        });
+        const existingItem = items[0]!;
+
+        const missingItemId = uuid();
+
+        const res = await request(app)
+            .post(`/v1/lists/${sourceList!.listId}/items/move`)
+            .set(token)
+            .send({
+                destinationListId: destList!.listId,
+                itemIds: [existingItem.itemId, missingItemId],
+            });
+
+        expect(res.statusCode).toEqual(404);
+        expect(res.body.fieldErrors).toEqual([
+            {
+                path: ["itemIds", "1"],
+                location: "body",
+                code: "unknownReference",
+                message: "List item not found",
+            },
+        ]);
+    });
+
+    it("should reject duplicate item ids", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+        const { lists } = await KnexListRepository.create(database, {
+            userId: user.userId,
+            lists: [{ name: uuid() }, { name: uuid() }],
+        });
+        const [sourceList, destList] = lists;
+
+        const { items } = await KnexListRepository.createItems(database, {
+            userId: user.userId,
+            listId: sourceList!.listId,
+            items: [{ name: uuid() }],
+        });
+        const existingItem = items[0]!;
+
+        const res = await request(app)
+            .post(`/v1/lists/${sourceList!.listId}/items/move`)
+            .set(token)
+            .send({
+                destinationListId: destList!.listId,
+                itemIds: [existingItem.itemId, existingItem.itemId],
+            });
+
+        expect(res.statusCode).toEqual(400);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "VALIDATION_FAILED",
+            message: "Some fields are not valid",
+        });
+        expect(res.body.fieldErrors).toEqual([
+            expect.objectContaining({
+                path: ["itemIds"],
+                location: "body",
+                code: "duplicate",
+            }),
+        ]);
     });
 });

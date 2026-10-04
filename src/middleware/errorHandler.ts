@@ -27,10 +27,7 @@ export const createErrorHandlerMiddleware: CreateMiddleware<
             code = error.code;
             message = error.message;
             innerError = error.innerError;
-
-            if (error instanceof ValidationError) {
-                fieldErrors = error.fieldErrors;
-            }
+            fieldErrors = error.fieldErrors;
         } else if (error instanceof Error) {
             innerError = error;
 
@@ -52,6 +49,12 @@ export const createErrorHandlerMiddleware: CreateMiddleware<
             }
         }
 
+        const hasFieldErrors = !!fieldErrors && fieldErrors.length > 0;
+
+        if (error instanceof ValidationError && hasFieldErrors) {
+            message = "Some fields are not valid";
+        }
+
         logger.log({
             level: "error",
             message: message || "Unknown Error",
@@ -70,13 +73,11 @@ export const createErrorHandlerMiddleware: CreateMiddleware<
             },
         });
 
-        const hasFieldErrors = !!fieldErrors && fieldErrors.length > 0;
-
         return response.status(status).json({
             error: true,
-            ...(code ? { code } : {}),
-            message: hasFieldErrors ? "Some fields are not valid" : message,
-            ...(hasFieldErrors ? { fieldErrors } : {}),
+            code,
+            message: message,
+            fieldErrors: hasFieldErrors ? fieldErrors : undefined,
         });
     };
 

@@ -1,6 +1,11 @@
 import { ForeignKeyViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
 import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
+import { unknownReferenceFieldError } from "../utils/errors.ts";
+import {
+    collectMealReferences,
+    verifyMealReferences,
+} from "./common/mealReferences.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
@@ -180,39 +185,12 @@ export const createPlannerService: CreateService<
                 throw new NotFoundError("planner", plannerId);
             }
 
-            const { attachments } =
-                await attachmentRepository.verifyPermissions(trx, {
-                    userId,
-                    attachments: meals.flatMap(({ heroImage }) =>
-                        heroImage ? [{ attachmentId: heroImage }] : [],
-                    ),
-                });
-
-            const disallowedAttachmentIds = attachments
-                .filter(({ hasPermissions }) => !hasPermissions)
-                .map(({ attachmentId }) => attachmentId);
-
-            if (disallowedAttachmentIds.length > 0) {
-                throw new NotFoundError("attachment", disallowedAttachmentIds);
-            }
-
-            const { recipes: recipePermissions } =
-                await recipeRepository.verifyPermissions(trx, {
-                    userId,
-                    recipes: meals.flatMap(({ recipeId }) =>
-                        recipeId ? [{ recipeId }] : [],
-                    ),
-                    status: "O",
-                    includePublic: true,
-                });
-
-            const disallowedRecipeIds = recipePermissions
-                .filter(({ hasPermissions }) => !hasPermissions)
-                .map(({ recipeId }) => recipeId);
-
-            if (disallowedRecipeIds.length > 0) {
-                throw new NotFoundError("recipe", disallowedRecipeIds);
-            }
+            await verifyMealReferences(
+                { attachmentRepository, recipeRepository },
+                trx,
+                userId,
+                collectMealReferences(meals, { indexed: true }),
+            );
 
             const { meals: createdMeals } = await plannerRepository.createMeals(
                 trx,
@@ -284,39 +262,12 @@ export const createPlannerService: CreateService<
                 throw new NotFoundError("planner meal", mealId);
             }
 
-            const { attachments } =
-                await attachmentRepository.verifyPermissions(trx, {
-                    userId,
-                    attachments: request.heroImage
-                        ? [{ attachmentId: request.heroImage }]
-                        : [],
-                });
-
-            const disallowedAttachmentIds = attachments
-                .filter(({ hasPermissions }) => !hasPermissions)
-                .map(({ attachmentId }) => attachmentId);
-
-            if (disallowedAttachmentIds.length > 0) {
-                throw new NotFoundError("attachment", disallowedAttachmentIds);
-            }
-
-            const { recipes: recipePermissions } =
-                await recipeRepository.verifyPermissions(trx, {
-                    userId,
-                    recipes: request.recipeId
-                        ? [{ recipeId: request.recipeId }]
-                        : [],
-                    status: "O",
-                    includePublic: true,
-                });
-
-            const disallowedRecipeIds = recipePermissions
-                .filter(({ hasPermissions }) => !hasPermissions)
-                .map(({ recipeId }) => recipeId);
-
-            if (disallowedRecipeIds.length > 0) {
-                throw new NotFoundError("recipe", disallowedRecipeIds);
-            }
+            await verifyMealReferences(
+                { attachmentRepository, recipeRepository },
+                trx,
+                userId,
+                collectMealReferences([request], { indexed: false }),
+            );
 
             const { meals } = await plannerRepository.updateMeals(trx, {
                 userId,
@@ -418,7 +369,9 @@ export const createPlannerService: CreateService<
                 });
             } catch (error: unknown) {
                 if (error instanceof ForeignKeyViolationError) {
-                    throw new NotFoundError("user", targetUserId);
+                    throw new NotFoundError("user", targetUserId, [
+                        unknownReferenceFieldError(["userId"], "User"),
+                    ]);
                 }
                 throw error;
             }

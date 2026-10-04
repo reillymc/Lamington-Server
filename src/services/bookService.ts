@@ -1,6 +1,7 @@
 import { ForeignKeyViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
 import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
+import { unknownReferenceFieldError } from "../utils/errors.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
@@ -225,7 +226,9 @@ export const createBookService: CreateService<
             if (
                 recipePermissions.some(({ hasPermissions }) => !hasPermissions)
             ) {
-                throw new NotFoundError("recipe", request.recipeId);
+                throw new NotFoundError("recipe", request.recipeId, [
+                    unknownReferenceFieldError(["recipeId"], "Recipe"),
+                ]);
             }
 
             const [result] = await bookRepository.saveRecipes(trx, {
@@ -317,7 +320,9 @@ export const createBookService: CreateService<
                 });
             } catch (error: unknown) {
                 if (error instanceof ForeignKeyViolationError) {
-                    throw new NotFoundError("user", targetUserId);
+                    throw new NotFoundError("user", targetUserId, [
+                        unknownReferenceFieldError(["userId"], "User"),
+                    ]);
                 }
                 throw error;
             }

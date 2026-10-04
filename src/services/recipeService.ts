@@ -1,6 +1,8 @@
-import { Undefined } from "@reillymc/es-utils";
+import type { AppRepositories, Database } from "../repositories/index.ts";
 import type { components } from "../routes/spec/index.ts";
 import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
+import { referenceFieldErrors } from "../utils/errors.ts";
+import type { FieldReference } from "../utils/errorTypes.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
@@ -47,34 +49,105 @@ type RecipeIngredientSections =
     | components["schemas"]["RecipeCreate"]["ingredients"]
     | components["schemas"]["RecipeUpdate"]["ingredients"];
 
-const extractIngredientIds = (
+const extractIngredientReferences = (
     sections: RecipeIngredientSections,
-): Array<{ ingredientId: components["schemas"]["Uuid"] }> =>
-    (sections ?? []).flatMap(({ items }) =>
-        items
-            .map(({ ingredient }) =>
-                ingredient?.ingredientId ? ingredient : undefined,
-            )
-            .filter(Undefined),
+): FieldReference[] =>
+    (sections ?? []).flatMap((section, sectionIndex) =>
+        section.items.flatMap((item, itemIndex) =>
+            item.ingredient?.ingredientId
+                ? [
+                      {
+                          id: item.ingredient.ingredientId,
+                          path: [
+                              "ingredients",
+                              `${sectionIndex}`,
+                              "items",
+                              `${itemIndex}`,
+                              "ingredient",
+                              "ingredientId",
+                          ],
+                      },
+                  ]
+                : [],
+        ),
     );
 
-const extractSubRecipeIds = (
+const extractSubRecipeReferences = (
     sections: RecipeIngredientSections,
-): Array<{ recipeId: components["schemas"]["Uuid"] }> =>
-    (sections ?? []).flatMap(({ items }) =>
-        items
-            .map(({ recipe }) => (recipe?.recipeId ? recipe : undefined))
-            .filter(Undefined),
+): FieldReference[] =>
+    (sections ?? []).flatMap((section, sectionIndex) =>
+        section.items.flatMap((item, itemIndex) =>
+            item.recipe?.recipeId
+                ? [
+                      {
+                          id: item.recipe.recipeId,
+                          path: [
+                              "ingredients",
+                              `${sectionIndex}`,
+                              "items",
+                              `${itemIndex}`,
+                              "recipe",
+                              "recipeId",
+                          ],
+                      },
+                  ]
+                : [],
+        ),
     );
+
+const extractAttachmentReferences = (
+    heroImage: string | null | undefined,
+): FieldReference[] =>
+    heroImage ? [{ id: heroImage, path: ["heroImage"] }] : [];
+
+const extractTagReferences = (
+    tags: ReadonlyArray<{ tagId: string }> | null | undefined,
+): FieldReference[] =>
+    (tags ?? []).map((tag, index) => ({
+        id: tag.tagId,
+        path: ["tags", `${index}`, "tagId"],
+    }));
+
+const verifyTags = async (
+    tagRepository: AppRepositories["tagRepository"],
+    database: Database,
+    tags: ReadonlyArray<{ tagId: string }> | null | undefined,
+): Promise<void> => {
+    const tagReferences = extractTagReferences(tags);
+
+    const { tags: tagResults } = await tagRepository.verifyExists(database, {
+        tags: tagReferences.map(({ id }) => ({ tagId: id })),
+    });
+
+    const missingTagIds = tagResults
+        .filter(({ exists }) => !exists)
+        .map(({ tagId }) => tagId);
+
+    if (missingTagIds.length > 0) {
+        throw new NotFoundError(
+            "tag",
+            missingTagIds,
+            referenceFieldErrors(tagReferences, missingTagIds, "Tag"),
+        );
+    }
+};
 
 export const createRecipeService: CreateService<
     RecipeService,
-    "recipeRepository" | "ingredientRepository" | "attachmentRepository",
+    | "recipeRepository"
+    | "ingredientRepository"
+    | "attachmentRepository"
+    | "tagRepository",
     never,
     { populateAttachmentUri: PopulateAttachmentUri }
 > = (
     database,
-    { recipeRepository, ingredientRepository, attachmentRepository },
+    {
+        recipeRepository,
+        ingredientRepository,
+        attachmentRepository,
+        tagRepository,
+    },
     { populateAttachmentUri },
 ) => ({
     getAll: async (
@@ -123,10 +196,15 @@ export const createRecipeService: CreateService<
     },
     create: (userId, request) =>
         database.transaction(async (trx) => {
+            const ingredientReferences = extractIngredientReferences(
+                request.ingredients,
+            );
             const { ingredients } =
                 await ingredientRepository.verifyPermissions(trx, {
                     userId,
-                    ingredients: extractIngredientIds(request.ingredients),
+                    ingredients: ingredientReferences.map(({ id }) => ({
+                        ingredientId: id,
+                    })),
                 });
 
             const disallowedIngredientIds = ingredients
@@ -134,13 +212,26 @@ export const createRecipeService: CreateService<
                 .map(({ ingredientId }) => ingredientId);
 
             if (disallowedIngredientIds.length > 0) {
-                throw new NotFoundError("ingredient", disallowedIngredientIds);
+                throw new NotFoundError(
+                    "ingredient",
+                    disallowedIngredientIds,
+                    referenceFieldErrors(
+                        ingredientReferences,
+                        disallowedIngredientIds,
+                        "Ingredient",
+                    ),
+                );
             }
 
+            const subRecipeReferences = extractSubRecipeReferences(
+                request.ingredients,
+            );
             const { recipes: subRecipes } =
                 await recipeRepository.verifyPermissions(trx, {
                     userId,
-                    recipes: extractSubRecipeIds(request.ingredients),
+                    recipes: subRecipeReferences.map(({ id }) => ({
+                        recipeId: id,
+                    })),
                     status: "O",
                     includePublic: true,
                 });
@@ -150,15 +241,26 @@ export const createRecipeService: CreateService<
                 .map(({ recipeId }) => recipeId);
 
             if (disallowedSubRecipeIds.length > 0) {
-                throw new NotFoundError("recipe", disallowedSubRecipeIds);
+                throw new NotFoundError(
+                    "recipe",
+                    disallowedSubRecipeIds,
+                    referenceFieldErrors(
+                        subRecipeReferences,
+                        disallowedSubRecipeIds,
+                        "Recipe",
+                    ),
+                );
             }
 
+            const attachmentReferences = extractAttachmentReferences(
+                request.heroImage,
+            );
             const { attachments } =
                 await attachmentRepository.verifyPermissions(trx, {
                     userId,
-                    attachments: request.heroImage
-                        ? [{ attachmentId: request.heroImage }]
-                        : [],
+                    attachments: attachmentReferences.map(({ id }) => ({
+                        attachmentId: id,
+                    })),
                 });
 
             const disallowedAttachmentIds = attachments
@@ -166,8 +268,18 @@ export const createRecipeService: CreateService<
                 .map(({ attachmentId }) => attachmentId);
 
             if (disallowedAttachmentIds.length > 0) {
-                throw new NotFoundError("attachment", disallowedAttachmentIds);
+                throw new NotFoundError(
+                    "attachment",
+                    disallowedAttachmentIds,
+                    referenceFieldErrors(
+                        attachmentReferences,
+                        disallowedAttachmentIds,
+                        "Attachment",
+                    ),
+                );
             }
+
+            await verifyTags(tagRepository, trx, request.tags);
 
             const { recipes } = await recipeRepository.create(trx, {
                 userId,
@@ -194,10 +306,15 @@ export const createRecipeService: CreateService<
                 throw new NotFoundError("recipe", recipeId);
             }
 
+            const ingredientReferences = extractIngredientReferences(
+                request.ingredients,
+            );
             const { ingredients } =
                 await ingredientRepository.verifyPermissions(trx, {
                     userId,
-                    ingredients: extractIngredientIds(request.ingredients),
+                    ingredients: ingredientReferences.map(({ id }) => ({
+                        ingredientId: id,
+                    })),
                 });
 
             const disallowedIngredientIds = ingredients
@@ -205,13 +322,26 @@ export const createRecipeService: CreateService<
                 .map(({ ingredientId }) => ingredientId);
 
             if (disallowedIngredientIds.length > 0) {
-                throw new NotFoundError("ingredient", disallowedIngredientIds);
+                throw new NotFoundError(
+                    "ingredient",
+                    disallowedIngredientIds,
+                    referenceFieldErrors(
+                        ingredientReferences,
+                        disallowedIngredientIds,
+                        "Ingredient",
+                    ),
+                );
             }
 
+            const subRecipeReferences = extractSubRecipeReferences(
+                request.ingredients,
+            );
             const { recipes: subRecipes } =
                 await recipeRepository.verifyPermissions(trx, {
                     userId,
-                    recipes: extractSubRecipeIds(request.ingredients),
+                    recipes: subRecipeReferences.map(({ id }) => ({
+                        recipeId: id,
+                    })),
                     status: "O",
                     includePublic: true,
                 });
@@ -221,15 +351,26 @@ export const createRecipeService: CreateService<
                 .map(({ recipeId }) => recipeId);
 
             if (disallowedSubRecipeIds.length > 0) {
-                throw new NotFoundError("recipe", disallowedSubRecipeIds);
+                throw new NotFoundError(
+                    "recipe",
+                    disallowedSubRecipeIds,
+                    referenceFieldErrors(
+                        subRecipeReferences,
+                        disallowedSubRecipeIds,
+                        "Recipe",
+                    ),
+                );
             }
 
+            const attachmentReferences = extractAttachmentReferences(
+                request.heroImage,
+            );
             const { attachments } =
                 await attachmentRepository.verifyPermissions(trx, {
                     userId,
-                    attachments: request.heroImage
-                        ? [{ attachmentId: request.heroImage }]
-                        : [],
+                    attachments: attachmentReferences.map(({ id }) => ({
+                        attachmentId: id,
+                    })),
                 });
 
             const disallowedAttachmentIds = attachments
@@ -237,8 +378,18 @@ export const createRecipeService: CreateService<
                 .map(({ attachmentId }) => attachmentId);
 
             if (disallowedAttachmentIds.length > 0) {
-                throw new NotFoundError("attachment", disallowedAttachmentIds);
+                throw new NotFoundError(
+                    "attachment",
+                    disallowedAttachmentIds,
+                    referenceFieldErrors(
+                        attachmentReferences,
+                        disallowedAttachmentIds,
+                        "Attachment",
+                    ),
+                );
             }
+
+            await verifyTags(tagRepository, trx, request.tags);
 
             const { recipes } = await recipeRepository.update(trx, {
                 userId,
