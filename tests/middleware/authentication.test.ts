@@ -27,14 +27,48 @@ after(async () => {
 describe("Authentication Middleware", () => {
     it("should return 401 if no token provided", async () => {
         const res = await request(app).get("/v1/profile");
+
         expect(res.statusCode).toEqual(401);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "UNAUTHORIZED",
+            message: "Authorization header required",
+        });
+        expect(res.body.fieldErrors).toBeUndefined();
     });
 
     it("should return 401 if token verification fails", async () => {
         const res = await request(app)
             .get("/v1/profile")
             .set("Authorization", "Bearer invalid-token");
+
         expect(res.statusCode).toEqual(401);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "UNAUTHORIZED",
+            message: "Invalid Token",
+        });
+        expect(res.body.fieldErrors).toBeUndefined();
+    });
+
+    it("should return 401 with Token Expired for an expired access token", async () => {
+        const payload = { userId: v4(), status: "M", tokenUse: "access" };
+        const token = jwt.sign(payload, accessSecret, {
+            noTimestamp: true,
+            expiresIn: "-1s",
+        });
+
+        const res = await request(app)
+            .get("/v1/profile")
+            .set("Authorization", `Bearer ${token}`);
+
+        expect(res.statusCode).toEqual(401);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "UNAUTHORIZED",
+            message: "Token Expired",
+        });
+        expect(res.body.fieldErrors).toBeUndefined();
     });
 
     it("should return 401 if user status is Pending (P)", async () => {
