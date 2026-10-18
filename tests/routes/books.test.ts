@@ -1715,4 +1715,46 @@ describe("Get book recipes", () => {
             ),
         ).toBe(true);
     });
+
+    it("should return results when the search term contains reserved characters", async () => {
+        const [token, user] = await PrepareAuthenticatedUser(database);
+
+        const {
+            books: [book],
+        } = await KnexBookRepository.create(database, {
+            userId: user.userId,
+            books: [{ name: uuid() }],
+        });
+
+        const {
+            recipes: [recipe],
+        } = await KnexRecipeRepository.create(database, {
+            userId: user.userId,
+            recipes: [
+                {
+                    name: "Chipotle peppers (in adobo sauce), minced",
+                    public: true,
+                },
+            ],
+        });
+
+        await KnexBookRepository.saveRecipes(database, {
+            bookId: book!.bookId,
+            recipes: [recipe!],
+        });
+
+        const res = await request(app)
+            .get(
+                `/v1/books/${book!.bookId}/recipes?search=${encodeURIComponent(recipe!.name)}`,
+            )
+            .set(token);
+
+        expect(res.statusCode).toEqual(200);
+
+        const data =
+            res.body as paths["/books/{bookId}/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
+
+        expect(data.recipes.length).toEqual(1);
+        expect(data.recipes[0]!.recipeId).toEqual(recipe!.recipeId);
+    });
 });

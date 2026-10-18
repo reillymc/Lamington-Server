@@ -463,6 +463,34 @@ describe("Get recipes", () => {
             expect(dataMiddle![0]!.recipeId).toEqual(recipe!.recipeId);
         });
 
+        it("should return results when the search term contains reserved characters", async () => {
+            const [token, user] = await PrepareAuthenticatedUser(database);
+
+            const {
+                recipes: [recipe],
+            } = await KnexRecipeRepository.create(database, {
+                userId: user.userId,
+                recipes: [
+                    {
+                        name: "Chipotle peppers (in adobo sauce), minced",
+                        public: true,
+                    },
+                ],
+            });
+
+            const res = await request(app)
+                .get(`/v1/recipes?search=${encodeURIComponent(recipe!.name)}`)
+                .set(token);
+
+            expect(res.statusCode).toEqual(200);
+
+            const { recipes: data } =
+                res.body as paths["/recipes"]["get"]["responses"]["200"]["content"]["application/json"];
+
+            expect(data!.length).toEqual(1);
+            expect(data![0]!.recipeId).toEqual(recipe!.recipeId);
+        });
+
         it("should return results by category", async () => {
             const [token, user] = await PrepareAuthenticatedUser(database);
 

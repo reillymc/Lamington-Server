@@ -158,6 +158,7 @@ paths:
             type: integer
         - name: search
           in: query
+          allowReserved: true
           schema:
             type: string
         - name: sort
@@ -500,6 +501,7 @@ paths:
             type: integer
         - name: search
           in: query
+          allowReserved: true
           schema:
             type: string
         - name: sort
