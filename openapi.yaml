@@ -2037,6 +2037,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        415:
+          $ref: "#/components/responses/UnsupportedMediaType"
         429:
           $ref: "#/components/responses/TooManyRequests"
         500:
@@ -2067,6 +2069,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        415:
+          $ref: "#/components/responses/UnsupportedMediaType"
         429:
           $ref: "#/components/responses/TooManyRequests"
         500:

@@ -94,6 +94,19 @@ describe("safeFetchText", () => {
         expect(result).toEqual({ ok: false, status: 404, text: "nope" });
     });
 
+    it("validates response type", async () => {
+        mockFetch(async () => new Response("not html", { status: 200 }));
+
+        await expectRejection(
+            safeFetchText("https://example.com/image.jpg", {
+                validateResponse: () => {
+                    throw new Error("Unsupported media type");
+                },
+            }),
+            "Unsupported media type",
+        );
+    });
+
     it("rejects unsupported protocols", async () => {
         await expectRejection(
             safeFetchText("ftp://example.com/recipe"),

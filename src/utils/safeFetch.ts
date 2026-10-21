@@ -165,6 +165,10 @@ type SafeFetchBufferResult = {
     body: Buffer;
 };
 
+type SafeFetchTextOptions = {
+    validateResponse?: (response: Response) => void;
+};
+
 type SafeFetchBufferOptions = {
     maxBytes?: number;
     validateResponse?: (response: Response) => void;
@@ -268,11 +272,15 @@ export const createSafeFetchText = (
     fetchImplementation: FetchImplementation = defaultFetch,
     dispatcher: Dispatcher = safeDispatcher,
 ) => {
-    return async (input: string): Promise<SafeFetchResult> => {
+    return async (
+        input: string,
+        { validateResponse }: SafeFetchTextOptions = {},
+    ): Promise<SafeFetchResult> => {
         const response = await fetchWithSafeRedirects(
             input,
             fetchImplementation,
             dispatcher,
+            validateResponse,
         );
         const text = await readCappedText(response);
 
