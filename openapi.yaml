@@ -73,6 +73,37 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
+  /attachments/image/import:
+    post:
+      tags:
+        - Attachments
+      summary: Import an image from a URL
+      operationId: postAttachmentImageImport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImageImportRequest"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageAttachment"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        413:
+          $ref: "#/components/responses/RequestEntityTooLarge"
+        415:
+          $ref: "#/components/responses/UnsupportedMediaType"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
+        500:
+          $ref: "#/components/responses/InternalServerError"
   /attachments/image/{attachmentId}:
     parameters:
       - name: attachmentId
@@ -3340,6 +3371,16 @@ components:
       required:
         - attachmentId
         - uri
+      unevaluatedProperties: false
+    ImageImportRequest:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+      required:
+        - url
       unevaluatedProperties: false
     Password:
       type: string

@@ -59,6 +59,20 @@ export class ExtractionLimitError extends AppError {
     }
 }
 
+export class InvalidImageUrlError extends AppError {
+    constructor(
+        reason = "The image URL could not be fetched",
+        innerError?: unknown,
+    ) {
+        super({
+            status: 400,
+            code: "INVALID_IMAGE_URL",
+            message: reason,
+            innerError,
+        });
+    }
+}
+
 export class UnsupportedMediaTypeError extends AppError {
     constructor(reason = "Unsupported media type") {
         super({

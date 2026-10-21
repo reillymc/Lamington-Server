@@ -159,13 +159,28 @@ type SafeFetchResult = {
     text: string;
 };
 
-const readCappedText = async (response: Response): Promise<string> => {
+type SafeFetchBufferResult = {
+    ok: boolean;
+    status: number;
+    body: Buffer;
+};
+
+type SafeFetchBufferOptions = {
+    maxBytes?: number;
+    validateResponse?: (response: Response) => void;
+};
+
+const readCappedBody = async (
+    response: Response,
+    maxBytes: number,
+): Promise<Buffer> => {
     const declaredLength = Number(response.headers.get("content-length"));
-    if (Number.isFinite(declaredLength) && declaredLength > DEFAULT_MAX_BYTES) {
+    if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+        await response.body?.cancel().catch(() => undefined);
         throw new ExtractionLimitError("Response exceeds size limit");
     }
 
-    if (!response.body) return "";
+    if (!response.body) return Buffer.alloc(0);
 
     const reader = response.body.getReader();
     const chunks: Array<Uint8Array> = [];
@@ -177,7 +192,7 @@ const readCappedText = async (response: Response): Promise<string> => {
 
         if (value) {
             total += value.byteLength;
-            if (total > DEFAULT_MAX_BYTES) {
+            if (total > maxBytes) {
                 await reader.cancel();
                 throw new ExtractionLimitError("Response exceeds size limit");
             }
@@ -185,7 +200,68 @@ const readCappedText = async (response: Response): Promise<string> => {
         }
     }
 
-    return Buffer.concat(chunks).toString("utf8");
+    return Buffer.concat(chunks);
+};
+
+const readCappedText = async (response: Response): Promise<string> =>
+    (await readCappedBody(response, DEFAULT_MAX_BYTES)).toString("utf8");
+
+const fetchWithSafeRedirects = async (
+    input: string,
+    fetchImplementation: FetchImplementation,
+    dispatcher: Dispatcher,
+    validateResponse?: (response: Response) => void,
+): Promise<Response> => {
+    let current: URL;
+    try {
+        current = new URL(input);
+    } catch {
+        throw new Error("Invalid URL");
+    }
+
+    const signal = AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
+
+    for (let redirectCount = 0; ; redirectCount += 1) {
+        assertSafeTarget(current);
+
+        const response = await fetchImplementation(current, {
+            redirect: "manual",
+            signal,
+            headers: { "user-agent": USER_AGENT },
+            dispatcher,
+        });
+
+        if (REDIRECT_STATUSES.has(response.status)) {
+            await response.body?.cancel().catch(() => undefined);
+
+            if (redirectCount >= DEFAULT_MAX_REDIRECTS) {
+                throw new Error("Too many redirects");
+            }
+
+            const location = response.headers.get("location");
+            if (!location) {
+                throw new Error("Redirect missing Location header");
+            }
+
+            try {
+                current = new URL(location, current);
+            } catch {
+                throw new Error("Invalid redirect location");
+            }
+            continue;
+        }
+
+        if (validateResponse) {
+            try {
+                validateResponse(response);
+            } catch (error) {
+                await response.body?.cancel().catch(() => undefined);
+                throw error;
+            }
+        }
+
+        return response;
+    }
 };
 
 export const createSafeFetchText = (
@@ -193,49 +269,39 @@ export const createSafeFetchText = (
     dispatcher: Dispatcher = safeDispatcher,
 ) => {
     return async (input: string): Promise<SafeFetchResult> => {
-        let current: URL;
-        try {
-            current = new URL(input);
-        } catch {
-            throw new Error("Invalid URL");
-        }
+        const response = await fetchWithSafeRedirects(
+            input,
+            fetchImplementation,
+            dispatcher,
+        );
+        const text = await readCappedText(response);
 
-        const signal = AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
+        return { ok: response.ok, status: response.status, text };
+    };
+};
 
-        for (let redirectCount = 0; ; redirectCount += 1) {
-            assertSafeTarget(current);
+export const createSafeFetchBuffer = (
+    fetchImplementation: FetchImplementation = defaultFetch,
+    dispatcher: Dispatcher = safeDispatcher,
+) => {
+    return async (
+        input: string,
+        {
+            maxBytes = DEFAULT_MAX_BYTES,
+            validateResponse,
+        }: SafeFetchBufferOptions = {},
+    ): Promise<SafeFetchBufferResult> => {
+        const response = await fetchWithSafeRedirects(
+            input,
+            fetchImplementation,
+            dispatcher,
+            validateResponse,
+        );
+        const body = await readCappedBody(response, maxBytes);
 
-            const response = await fetchImplementation(current, {
-                redirect: "manual",
-                signal,
-                headers: { "user-agent": USER_AGENT },
-                dispatcher,
-            });
-
-            if (REDIRECT_STATUSES.has(response.status)) {
-                await response.body?.cancel().catch(() => undefined);
-
-                if (redirectCount >= DEFAULT_MAX_REDIRECTS) {
-                    throw new Error("Too many redirects");
-                }
-
-                const location = response.headers.get("location");
-                if (!location) {
-                    throw new Error("Redirect missing Location header");
-                }
-
-                try {
-                    current = new URL(location, current);
-                } catch {
-                    throw new Error("Invalid redirect location");
-                }
-                continue;
-            }
-
-            const text = await readCappedText(response);
-            return { ok: response.ok, status: response.status, text };
-        }
+        return { ok: response.ok, status: response.status, body };
     };
 };
 
 export const safeFetchText = createSafeFetchText();
+export const safeFetchBuffer = createSafeFetchBuffer();
