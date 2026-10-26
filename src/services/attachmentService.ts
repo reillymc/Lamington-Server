@@ -1,6 +1,7 @@
 import type { components } from "../routes/spec/schema.js";
 import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
 import { compressImage, computePreviewHash } from "../utils/image.ts";
+import { fetchRemoteImage } from "../utils/remoteImage.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
@@ -11,6 +12,10 @@ export interface AttachmentService {
     create: (
         userId: string,
         file: { buffer: Buffer } | undefined,
+    ) => Promise<components["schemas"]["ImageAttachment"]>;
+    importFromUrl: (
+        userId: string,
+        url: string,
     ) => Promise<components["schemas"]["ImageAttachment"]>;
 }
 
@@ -23,15 +28,14 @@ export const createAttachmentService: CreateService<
     database,
     { attachmentRepository, fileRepository },
     { populateAttachmentUri },
-) => ({
-    create: async (userId, file) => {
-        if (!file) {
-            throw new InsufficientDataError("attachment");
-        }
-
+) => {
+    const persistImage = async (
+        userId: string,
+        file: Buffer,
+    ): Promise<components["schemas"]["ImageAttachment"]> => {
         const [compressedImage, previewHash] = await Promise.all([
-            compressImage(file.buffer),
-            computePreviewHash(file.buffer).catch(() => undefined),
+            compressImage(file),
+            computePreviewHash(file).catch(() => undefined),
         ]);
 
         const {
@@ -71,5 +75,20 @@ export const createAttachmentService: CreateService<
                 .catch(() => undefined);
             throw error;
         }
-    },
-});
+    };
+
+    return {
+        create: async (userId, file) => {
+            if (!file) {
+                throw new InsufficientDataError("attachment");
+            }
+
+            return persistImage(userId, file.buffer);
+        },
+        importFromUrl: async (userId, url) => {
+            const buffer = await fetchRemoteImage(url);
+
+            return persistImage(userId, buffer);
+        },
+    };
+};

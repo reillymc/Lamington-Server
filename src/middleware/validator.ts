@@ -124,6 +124,13 @@ export const createValidatorMiddleware: CreateMiddleware<
                         ) {
                             return next(new UnsupportedMediaTypeError());
                         }
+                        if (
+                            error instanceof OpenApiValidator.error.Unauthorized
+                        ) {
+                            return next(
+                                new UnauthorizedError(error.message, error),
+                            );
+                        }
                         return next(new ValidationError(error));
                     }
                     next();

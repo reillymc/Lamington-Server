@@ -113,9 +113,13 @@ export class InvalidOperationError extends ServiceError {
 }
 
 export class UnknownError extends ServiceError {
-    constructor(innerError: unknown) {
+    constructor({
+        message,
+        innerError,
+    }: { message?: string; innerError?: unknown } = {}) {
         super({
             status: 500,
+            message,
             innerError,
         });
     }

@@ -1,6 +1,9 @@
 import { load } from "cheerio";
 import type { components } from "../routes/spec/index.ts";
-import { ExtractionLimitError } from "../utils/errors.ts";
+import {
+    ExtractionLimitError,
+    UnsupportedMediaTypeError,
+} from "../utils/errors.ts";
 import { matchRecipeIngredients } from "../utils/ingredientMatcher.ts";
 import { AppError } from "../utils/logger.ts";
 import {
@@ -10,6 +13,22 @@ import {
 } from "../utils/recipeConverter.ts";
 import { safeFetchText } from "../utils/safeFetch.ts";
 import { type CreateService, UnknownError } from "./service.ts";
+
+const HTML_CONTENT_TYPES = new Set(["text/html", "application/xhtml+xml"]);
+
+const assertHtmlResponse = (response: Response): void => {
+    if (!response.ok) return;
+
+    const contentType = response.headers.get("content-type");
+    if (!contentType) return;
+
+    const [mediaType] = contentType.split(";", 1);
+    if (!HTML_CONTENT_TYPES.has(mediaType?.trim().toLowerCase() ?? "")) {
+        throw new UnsupportedMediaTypeError(
+            "The URL does not point to an HTML page",
+        );
+    }
+};
 
 export interface ContentExtractionService {
     extractRecipeMetadata: (
@@ -27,7 +46,9 @@ export const createContentExtractionService: CreateService<
 > = (database, { ingredientRepository }) => ({
     extractRecipeMetadata: async (url: string) => {
         try {
-            const response = await safeFetchText(url);
+            const response = await safeFetchText(url, {
+                validateResponse: assertHtmlResponse,
+            });
             if (!response.ok) {
                 throw new UnknownError({
                     message: `Request failed with status ${response.status}`,
@@ -48,19 +69,22 @@ export const createContentExtractionService: CreateService<
 
             return { name, imageUrl };
         } catch (error) {
-            if (error instanceof ExtractionLimitError) {
+            if (error instanceof AppError) {
                 throw error;
             }
             throw new UnknownError({
                 message:
                     "Failed to fetch or parse content from the provided URL.",
+                innerError: error,
             });
         }
     },
     extractRecipe: async (url: string, userId: string) => {
         try {
             let response: Awaited<ReturnType<typeof safeFetchText>>;
-            response = await safeFetchText(url);
+            response = await safeFetchText(url, {
+                validateResponse: assertHtmlResponse,
+            });
 
             if (!response.ok) {
                 throw new UnknownError({
@@ -111,7 +135,7 @@ export const createContentExtractionService: CreateService<
                 throw e;
             }
 
-            throw new UnknownError(e);
+            throw new UnknownError({ innerError: e });
         }
     },
 });

@@ -241,6 +241,216 @@ describe("Upload an image", () => {
     });
 });
 
+describe("Import an image from a URL", () => {
+    afterEach(() => {
+        mock.restoreAll();
+    });
+
+    const mockImageFetch = async () => {
+        const image = await createImage();
+        return mock.method(
+            globalThis,
+            "fetch",
+            async () =>
+                new Response(new Uint8Array(image), {
+                    status: 200,
+                    headers: { "content-type": "image/jpeg" },
+                }),
+        );
+    };
+
+    it("should respect controlled rate limit", async () => {
+        const fetchMock = await mockImageFetch();
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const responses = await Promise.all(
+            Array.from({ length: 20 }).map(() =>
+                request(app)
+                    .post("/v1/attachments/image/import")
+                    .set(token)
+                    .send({ url: "https://example.com/image.jpg" }),
+            ),
+        );
+
+        responses.map(({ statusCode }) => expect(statusCode).not.toEqual(429));
+
+        const res = await request(app)
+            .post("/v1/attachments/image/import")
+            .set(token)
+            .send({ url: "https://example.com/image.jpg" });
+
+        expect(res.statusCode).toEqual(429);
+        expect(fetchMock.mock.callCount()).toEqual(20);
+    });
+
+    it("should import a valid image", async () => {
+        await mockImageFetch();
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/attachments/image/import")
+            .set(token)
+            .send({ url: "https://example.com/image.jpg" });
+
+        expect(res.statusCode).toEqual(200);
+
+        const data = res.body as components["schemas"]["ImageAttachment"];
+
+        expect(data.attachmentId).toBeTruthy();
+        expect(data.uri).toEqual(`/attachments/image/${data.attachmentId}`);
+        expect(data.preview).toBeTruthy();
+
+        const attachmentReadResponse = await readAllAttachments(database);
+        expect(attachmentReadResponse).toHaveLength(1);
+        expect(data.attachmentId).toEqual(
+            attachmentReadResponse[0]!.attachmentId,
+        );
+
+        const { w, h, rgba } = thumbHashToRGBA(
+            Buffer.from(data.preview!, "base64"),
+        );
+
+        expect(w).toBeGreaterThan(0);
+        expect(h).toBeGreaterThan(0);
+        expect(rgba).toHaveLength(w * h * 4);
+    });
+
+    it("should reject a blocked URL", async () => {
+        const fetchMock = mock.method(
+            globalThis,
+            "fetch",
+            async () => new Response(null, { status: 200 }),
+        );
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/attachments/image/import")
+            .set(token)
+            .send({ url: "http://127.0.0.1/image.jpg" });
+
+        expect(res.statusCode).toEqual(400);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "INVALID_IMAGE_URL",
+        });
+        expect(fetchMock.mock.callCount()).toEqual(0);
+    });
+
+    it("should reject a non-image response", async () => {
+        mock.method(
+            globalThis,
+            "fetch",
+            async () =>
+                new Response("<html></html>", {
+                    status: 200,
+                    headers: { "content-type": "text/html" },
+                }),
+        );
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/attachments/image/import")
+            .set(token)
+            .send({ url: "https://example.com/image.jpg" });
+
+        expect(res.statusCode).toEqual(415);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "UNSUPPORTED_MEDIA_TYPE",
+        });
+    });
+
+    it("should reject an image with invalid magic bytes", async () => {
+        mock.method(
+            globalThis,
+            "fetch",
+            async () =>
+                new Response("not an image", {
+                    status: 200,
+                    headers: { "content-type": "image/jpeg" },
+                }),
+        );
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/attachments/image/import")
+            .set(token)
+            .send({ url: "https://example.com/image.jpg" });
+
+        expect(res.statusCode).toEqual(415);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "UNSUPPORTED_MEDIA_TYPE",
+        });
+    });
+
+    it("should reject an oversized remote image", async () => {
+        mock.method(
+            globalThis,
+            "fetch",
+            async () =>
+                new Response(Buffer.alloc(4), {
+                    status: 200,
+                    headers: {
+                        "content-type": "image/jpeg",
+                        "content-length": String(6 * 1024 * 1024),
+                    },
+                }),
+        );
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/attachments/image/import")
+            .set(token)
+            .send({ url: "https://example.com/image.jpg" });
+
+        expect(res.statusCode).toEqual(400);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "EXTRACTION_LIMIT",
+        });
+    });
+
+    it("should reject a failed remote request", async () => {
+        mock.method(
+            globalThis,
+            "fetch",
+            async () => new Response("missing", { status: 404 }),
+        );
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/attachments/image/import")
+            .set(token)
+            .send({ url: "https://example.com/image.jpg" });
+
+        expect(res.statusCode).toEqual(400);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "INVALID_IMAGE_URL",
+        });
+    });
+
+    it("should not save to db when the imported file fails", async () => {
+        app = createTestApp({
+            database,
+            repositories: { fileRepository: MockFailingFileRepository },
+        });
+        await mockImageFetch();
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const res = await request(app)
+            .post("/v1/attachments/image/import")
+            .set(token)
+            .send({ url: "https://example.com/image.jpg" });
+
+        expect(res.statusCode).toEqual(500);
+
+        const attachmentReadResponse = await readAllAttachments(database);
+        expect(attachmentReadResponse).toHaveLength(0);
+    });
+});
+
 describe("Get an image", () => {
     const withAttachmentDirectory = (attachmentDirectory?: string) =>
         createTestApp({

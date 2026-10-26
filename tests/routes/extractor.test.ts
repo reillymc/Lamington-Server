@@ -99,6 +99,55 @@ describe("Extract recipe metadata", () => {
 
         expect(res.statusCode).toEqual(500);
     });
+
+    it("should return 415 when the URL points to invalid content", async () => {
+        mock.method(
+            globalThis,
+            "fetch",
+            async () =>
+                new Response(Buffer.from("not html"), {
+                    status: 200,
+                    headers: { "content-type": "image/jpeg" },
+                }),
+        );
+
+        const [token] = await PrepareAuthenticatedUser(database);
+        const res = await request(app)
+            .get("/v1/extractor/recipeMetadata")
+            .query({ url: "https://example.com/image.jpg" })
+            .set(token);
+
+        expect(res.statusCode).toEqual(415);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "UNSUPPORTED_MEDIA_TYPE",
+        });
+    });
+
+    it("should surface a controlled extraction failure message", async () => {
+        mock.method(
+            globalThis,
+            "fetch",
+            async () =>
+                new Response("<html></html>", {
+                    status: 200,
+                    headers: { "content-type": "text/html" },
+                }),
+        );
+
+        const [token] = await PrepareAuthenticatedUser(database);
+        const res = await request(app)
+            .get("/v1/extractor/recipeMetadata")
+            .query({ url: "https://example.com/recipe" })
+            .set(token);
+
+        expect(res.statusCode).toEqual(500);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "LAMINGTON_ERROR",
+            message: "Could not extract a name from the URL.",
+        });
+    });
 });
 
 describe("Extract full recipe", () => {
@@ -170,6 +219,30 @@ describe("Extract full recipe", () => {
 
         expect(res.statusCode).toEqual(500);
     });
+
+    it("should return 415 when the URL points to invalid content", async () => {
+        mock.method(
+            globalThis,
+            "fetch",
+            async () =>
+                new Response(Buffer.from("not html"), {
+                    status: 200,
+                    headers: { "content-type": "image/jpeg" },
+                }),
+        );
+
+        const [token] = await PrepareAuthenticatedUser(database);
+        const res = await request(app)
+            .get("/v1/extractor/recipe")
+            .query({ url: "https://example.com/image.jpg" })
+            .set(token);
+
+        expect(res.statusCode).toEqual(415);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "UNSUPPORTED_MEDIA_TYPE",
+        });
+    });
 });
 
 describe("Extract full recipe limits", () => {
@@ -186,7 +259,11 @@ describe("Extract full recipe limits", () => {
         mock.method(
             globalThis,
             "fetch",
-            async () => new Response(html, { status: 200 }),
+            async () =>
+                new Response(html, {
+                    status: 200,
+                    headers: { "content-type": "text/html" },
+                }),
         );
 
         const [token] = await PrepareAuthenticatedUser(database);
@@ -209,7 +286,10 @@ describe("Extract full recipe limits", () => {
             async () =>
                 new Response("small body", {
                     status: 200,
-                    headers: { "content-length": String(5 * 1024 * 1024) },
+                    headers: {
+                        "content-length": String(5 * 1024 * 1024),
+                        "content-type": "text/html",
+                    },
                 }),
         );
 
@@ -246,7 +326,11 @@ describe("Extract full recipe limits", () => {
         mock.method(
             globalThis,
             "fetch",
-            async () => new Response(html, { status: 200 }),
+            async () =>
+                new Response(html, {
+                    status: 200,
+                    headers: { "content-type": "text/html" },
+                }),
         );
 
         const [token] = await PrepareAuthenticatedUser(database);

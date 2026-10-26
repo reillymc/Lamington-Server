@@ -35,6 +35,24 @@ export const createAttachmentsRouter: CreateRouter<
 
                 return res.status(200).json(attachmentEntry);
             },
+        )
+        .post<
+            routes,
+            paths["/attachments/image/import"]["post"]["parameters"]["path"],
+            paths["/attachments/image/import"]["post"]["responses"]["200"]["content"]["application/json"],
+            paths["/attachments/image/import"]["post"]["requestBody"]["content"]["application/json"],
+            paths["/attachments/image/import"]["post"]["parameters"]["query"]
+        >(
+            "/attachments/image/import",
+            ...middleware.rateLimiterControlled,
+            async ({ session, body }, res) => {
+                const attachmentEntry = await attachmentService.importFromUrl(
+                    session.userId,
+                    body.url,
+                );
+
+                return res.status(200).json(attachmentEntry);
+            },
         );
 
     if (attachmentDirectory) {

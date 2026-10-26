@@ -1,6 +1,28 @@
 import sharp from "sharp";
 import { rgbaToThumbHash } from "thumbhash";
 
+export const MAX_REMOTE_IMAGE_BYTES = 5 * 1024 * 1024;
+
+const SUPPORTED_IMAGE_CONTENT_TYPES = new Set([
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/avif",
+]);
+
+export const isSupportedImageContentType = (
+    contentType: string | null,
+): boolean => {
+    if (!contentType) return false;
+
+    const [mediaType] = contentType.split(";", 1);
+    return SUPPORTED_IMAGE_CONTENT_TYPES.has(
+        mediaType?.trim().toLowerCase() ?? "",
+    );
+};
+
 export const compressImage = (file: Buffer): Promise<Buffer> =>
     sharp(file)
         .rotate()

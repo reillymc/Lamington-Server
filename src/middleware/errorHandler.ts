@@ -51,7 +51,11 @@ export const createErrorHandlerMiddleware: CreateMiddleware<
 
         const hasFieldErrors = !!fieldErrors && fieldErrors.length > 0;
 
-        if (error instanceof ValidationError && hasFieldErrors) {
+        if (
+            error instanceof ValidationError &&
+            status === 400 &&
+            hasFieldErrors
+        ) {
             message = "Some fields are not valid";
         }
 

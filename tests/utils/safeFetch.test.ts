@@ -2,9 +2,11 @@ import { afterEach, describe, it, mock } from "node:test";
 import { expect } from "expect";
 import { ExtractionLimitError } from "../../src/utils/errors.ts";
 import {
+    createSafeFetchBuffer,
     createSafeFetchText,
     createSafeLookup,
     isPublicAddress,
+    safeFetchBuffer,
     safeFetchText,
 } from "../../src/utils/safeFetch.ts";
 
@@ -90,6 +92,19 @@ describe("safeFetchText", () => {
         const result = await safeFetchText("https://example.com/recipe");
 
         expect(result).toEqual({ ok: false, status: 404, text: "nope" });
+    });
+
+    it("validates response type", async () => {
+        mockFetch(async () => new Response("not html", { status: 200 }));
+
+        await expectRejection(
+            safeFetchText("https://example.com/image.jpg", {
+                validateResponse: () => {
+                    throw new Error("Unsupported media type");
+                },
+            }),
+            "Unsupported media type",
+        );
     });
 
     it("rejects unsupported protocols", async () => {
@@ -238,5 +253,75 @@ describe("safeFetchText", () => {
         await expect(
             safeFetchText("https://example.com/recipe"),
         ).rejects.toThrow(ExtractionLimitError);
+    });
+});
+
+describe("safeFetchBuffer", () => {
+    it("fetches a binary response", async () => {
+        const body = Buffer.from([0xff, 0xd8, 0xff, 0x01]);
+        mockFetch(async () => new Response(body, { status: 200 }));
+
+        const result = await safeFetchBuffer("https://example.com/image.jpg");
+
+        expect(result).toEqual({ ok: true, status: 200, body });
+    });
+
+    it("returns an empty buffer when there is no response body", async () => {
+        mockFetch(async () => new Response(null, { status: 200 }));
+
+        const result = await safeFetchBuffer("https://example.com/image.jpg");
+
+        expect(result.body).toEqual(Buffer.alloc(0));
+    });
+
+    it("validates the response before reading the body", async () => {
+        mockFetch(
+            async () =>
+                new Response(Buffer.alloc(4), {
+                    status: 200,
+                    headers: { "content-length": "4" },
+                }),
+        );
+
+        await expectRejection(
+            safeFetchBuffer("https://example.com/image.jpg", {
+                validateResponse: () => {
+                    throw new Error("Invalid response");
+                },
+            }),
+            "Invalid response",
+        );
+    });
+
+    it("rejects a declared oversized response", async () => {
+        mockFetch(
+            async () =>
+                new Response(Buffer.alloc(4), {
+                    status: 200,
+                    headers: { "content-length": "5" },
+                }),
+        );
+
+        await expect(
+            safeFetchBuffer("https://example.com/image.jpg", { maxBytes: 4 }),
+        ).rejects.toThrow(ExtractionLimitError);
+    });
+
+    it("rejects a streamed oversized response", async () => {
+        mockFetch(async () => new Response(Buffer.alloc(5), { status: 200 }));
+
+        await expect(
+            safeFetchBuffer("https://example.com/image.jpg", { maxBytes: 4 }),
+        ).rejects.toThrow(ExtractionLimitError);
+    });
+
+    it("supports an injected fetch implementation", async () => {
+        const fetchImplementation = async () =>
+            new Response(Buffer.from("injected"), { status: 200 });
+        const fetchBuffer = createSafeFetchBuffer(fetchImplementation);
+
+        const result = await fetchBuffer("https://example.com/image.jpg");
+
+        expect(result.body.toString("utf8")).toBe("injected");
     });
 });
