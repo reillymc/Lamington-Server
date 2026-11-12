@@ -1,5 +1,4 @@
 import { S3Client } from "@aws-sdk/client-s3";
-import { Undefined } from "@reillymc/es-utils";
 import knex from "knex";
 import ms, { type StringValue } from "ms";
 import { createLogger, format, transports } from "winston";
@@ -101,20 +100,24 @@ const AccessLogFileTransport = new transports.DailyRotateFile({
     ),
 });
 
-const ConsoleLogTransport =
-    process.env.NODE_ENV !== "production"
-        ? new transports.Console({
-              level: "http",
-              format: format.combine(format.colorize(), format.simple()),
-          })
-        : undefined;
+const ConsoleLogTransport = new transports.Console({
+    level: process.env.LOG_LEVEL ?? "info",
+    format:
+        process.env.NODE_ENV === "production"
+            ? format.combine(
+                  format.errors({ stack: true }),
+                  format.splat(),
+                  format.simple(),
+              )
+            : format.combine(format.colorize(), format.simple()),
+});
 
 export const logger = createLogger({
     transports: [
         ErrorLogFileTransport,
         AccessLogFileTransport,
         ConsoleLogTransport,
-    ].filter(Undefined),
+    ],
 });
 
 const selectDatabaseConfig = () => {
