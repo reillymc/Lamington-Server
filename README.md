@@ -21,3 +21,19 @@ Deploying Lamington Server is simple with just a few steps to get set up. A `.en
 ```
 
 See the [example env file](./.env.example) for details on required and optional variables.
+
+### Logs
+
+The server logs to stdout/stderr, which Docker captures and exposes through `docker compose logs`, and to rotating files in `LOG_DIRECTORY` (default `logs`).
+
+View recent logs:
+
+```sh
+docker compose logs -f lamington_server
+docker compose logs --since 1h -t lamington_server
+```
+
+For longer-term history, see the bind-mounted files:
+
+- `./lamington-data/logs/error-*.log`
+- `./lamington-data/logs/access-*.log`
