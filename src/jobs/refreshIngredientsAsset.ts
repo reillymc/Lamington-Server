@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { Logger } from "winston";
 import type { AppRepositories, Database } from "../repositories/index.ts";
-import type { Logger } from "../utils/logger.ts";
 import type { CreateJob } from "./job.ts";
 
 interface CreateRefreshIngredientsAssetJobParams {

@@ -1,6 +1,8 @@
 import type { ErrorRequestHandler } from "express";
-import { type FieldError, ValidationError } from "../utils/errors.ts";
-import { AppError, type Logger } from "../utils/logger.ts";
+import type { Logger } from "winston";
+import { AppError } from "../utils/errors.ts";
+import { ValidationError } from "../utils/fieldErrors.ts";
+import type { FieldError } from "../utils/fieldErrorTypes.ts";
 import type { CreateMiddleware, Middleware } from "./middleware.ts";
 
 type CreateErrorHandlerMiddlewareConfig = {

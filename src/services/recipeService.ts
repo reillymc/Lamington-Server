@@ -2,11 +2,11 @@ import type { RecipeExtractor } from "../integrations/extractor/types.ts";
 import type { AppRepositories, Database } from "../repositories/index.ts";
 import type { components } from "../routes/spec/index.ts";
 import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
-import { referenceFieldErrors } from "../utils/errors.ts";
-import type { FieldReference } from "../utils/errorTypes.ts";
-import { matchRecipeIngredients } from "../utils/ingredientMatcher.ts";
-import { AppError } from "../utils/logger.ts";
-import { mapTagCandidates } from "../utils/recipeTags.ts";
+import { AppError } from "../utils/errors.ts";
+import { referenceFieldErrors } from "../utils/fieldErrors.ts";
+import type { FieldReference } from "../utils/fieldErrorTypes.ts";
+import { matchRecipeIngredients } from "../utils/ingredientMatching.ts";
+import { mapTagCandidates } from "../utils/mapTagCandidates.ts";
 import {
     CreatedDataFetchError,
     type CreateService,

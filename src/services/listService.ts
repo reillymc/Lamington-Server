@@ -3,7 +3,7 @@ import type { components } from "../routes/spec/index.ts";
 import {
     referenceFieldErrors,
     unknownReferenceFieldError,
-} from "../utils/errors.ts";
+} from "../utils/fieldErrors.ts";
 import {
     CreatedDataFetchError,
     type CreateService,

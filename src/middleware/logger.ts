@@ -1,5 +1,5 @@
 import morgan from "morgan";
-import type { Logger } from "../utils/logger.ts";
+import type { Logger } from "winston";
 import type { CreateMiddleware } from "./middleware.ts";
 
 type CreateLoggerMiddlewareConfig = {

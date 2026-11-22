@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import { expect } from "expect";
 import { ExtractionLimitError } from "../../src/utils/errors.ts";
 import { MAX_TAG_CANDIDATES } from "../../src/utils/extractionLimits.ts";
-import { mapTagCandidates } from "../../src/utils/recipeTags.ts";
+import { mapTagCandidates } from "../../src/utils/mapTagCandidates.ts";
 
 const tags = [
     { tagId: "group-cuisine", name: "Cuisine", parentId: undefined },

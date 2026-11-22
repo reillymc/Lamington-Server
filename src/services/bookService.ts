@@ -1,7 +1,7 @@
 import { ForeignKeyViolationError } from "../repositories/common/errors.ts";
 import type { components } from "../routes/spec/index.ts";
 import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
-import { unknownReferenceFieldError } from "../utils/errors.ts";
+import { unknownReferenceFieldError } from "../utils/fieldErrors.ts";
 import {
     CreatedDataFetchError,
     type CreateService,

@@ -1,15 +1,15 @@
+import type { AppError } from "../../utils/errors.ts";
 import {
     InvalidImageUrlError,
     PayloadTooLargeError,
     UnsupportedMediaTypeError,
 } from "../../utils/errors.ts";
-import { MAX_REMOTE_IMAGE_BYTES } from "../../utils/image.ts";
-import type { AppError } from "../../utils/logger.ts";
 import {
     ResponseTooLargeError,
     readCappedBody,
     readCappedText,
-} from "../../utils/readCappedText.ts";
+} from "../../utils/readCappedResponse.ts";
+import { MAX_REMOTE_IMAGE_BYTES } from "../../utils/remoteImage.ts";
 import {
     ExtractorFailureError,
     ExtractorRecipeError,

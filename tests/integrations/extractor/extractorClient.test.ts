@@ -13,7 +13,7 @@ import {
     PayloadTooLargeError,
     UnsupportedMediaTypeError,
 } from "../../../src/utils/errors.ts";
-import { MAX_REMOTE_IMAGE_BYTES } from "../../../src/utils/image.ts";
+import { MAX_REMOTE_IMAGE_BYTES } from "../../../src/utils/remoteImage.ts";
 import { runTestCases, type TestCase } from "../../helpers/index.ts";
 
 let server: Server | undefined;

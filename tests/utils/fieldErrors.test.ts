@@ -3,7 +3,7 @@ import { expect } from "expect";
 import {
     normalizeFieldErrors,
     referenceFieldErrors,
-} from "../../src/utils/errors.ts";
+} from "../../src/utils/fieldErrors.ts";
 
 const ERROR_LIMIT = 10;
 

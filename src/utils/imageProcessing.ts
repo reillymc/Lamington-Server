@@ -1,8 +1,6 @@
 import sharp from "sharp";
 import { rgbaToThumbHash } from "thumbhash";
 
-export const MAX_REMOTE_IMAGE_BYTES = 5 * 1024 * 1024;
-
 export const compressImage = (file: Buffer): Promise<Buffer> =>
     sharp(file)
         .rotate()

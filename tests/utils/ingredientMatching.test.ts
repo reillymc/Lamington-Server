@@ -12,7 +12,7 @@ import {
     normalizeIngredientName,
     rankMatches,
     scoreIngredient,
-} from "../../src/utils/ingredientMatcher.ts";
+} from "../../src/utils/ingredientMatching.ts";
 import { runTestCases, type TestCase } from "../helpers/index.ts";
 
 const candidate = (

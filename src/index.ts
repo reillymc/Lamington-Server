@@ -1,3 +1,4 @@
+import path from "node:path";
 import { S3Client } from "@aws-sdk/client-s3";
 import knex from "knex";
 import ms, { type StringValue } from "ms";
@@ -49,7 +50,6 @@ import { createPlannerService } from "./services/plannerService.ts";
 import { createRecipeService } from "./services/recipeService.ts";
 import { createTagService } from "./services/tagService.ts";
 import { createUserService } from "./services/userService.ts";
-import { buildAttachmentDirectory } from "./utils/attachmentPath.ts";
 import {
     type AttachmentUri,
     createPopulateAttachmentUri,
@@ -204,7 +204,7 @@ attachmentPath: ${attachmentPath ?? "(none)"}`,
 const attachmentDirectory =
     storageService === "s3"
         ? undefined
-        : buildAttachmentDirectory(uploadDirectory, attachmentPath);
+        : path.join(uploadDirectory, attachmentPath ?? "");
 
 const populateAttachmentUri = createPopulateAttachmentUri(attachmentUri);
 

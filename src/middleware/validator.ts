@@ -8,8 +8,8 @@ import {
     PayloadTooLargeError,
     UnauthorizedError,
     UnsupportedMediaTypeError,
-    ValidationError,
 } from "../utils/errors.ts";
+import { ValidationError } from "../utils/fieldErrors.ts";
 import { verifyAccessToken } from "../utils/token.ts";
 import type { CreateMiddleware, Middleware } from "./middleware.ts";
 

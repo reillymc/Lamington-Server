@@ -3,7 +3,7 @@ import { expect } from "expect";
 import {
     ResponseTooLargeError,
     readCappedText,
-} from "../../src/utils/readCappedText.ts";
+} from "../../src/utils/readCappedResponse.ts";
 
 describe("readCappedText", () => {
     it("returns text below the cap", async () => {

@@ -1,4 +1,4 @@
-import { AppError } from "../../utils/logger.ts";
+import { AppError } from "../../utils/errors.ts";
 
 export class ExtractorRequestError extends AppError {
     constructor(message = "Invalid extraction request", innerError?: unknown) {

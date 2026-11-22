@@ -1,6 +1,8 @@
 import sharp, { type Metadata } from "sharp";
 import { UnsupportedMediaTypeError } from "./errors.ts";
 
+export const MAX_REMOTE_IMAGE_BYTES = 5 * 1024 * 1024;
+
 const SUPPORTED_IMAGE_FORMATS = new Set(["jpeg", "png", "webp", "gif"]);
 
 export const isSupportedImageFormat = (metadata: Metadata): boolean =>

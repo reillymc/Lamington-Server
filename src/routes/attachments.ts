@@ -1,5 +1,5 @@
 import express from "express";
-import { ATTACHMENTS_IMAGE_PATH } from "../utils/attachmentPath.ts";
+import { ATTACHMENTS_IMAGE_PATH } from "../utils/attachmentUri.ts";
 import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 

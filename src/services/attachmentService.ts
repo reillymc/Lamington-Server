@@ -1,7 +1,7 @@
 import type { ImageFetcher } from "../integrations/extractor/types.ts";
 import type { components } from "../routes/spec/index.ts";
 import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
-import { compressImage, computePreviewHash } from "../utils/image.ts";
+import { compressImage, computePreviewHash } from "../utils/imageProcessing.ts";
 import { validateRemoteImage } from "../utils/remoteImage.ts";
 import {
     CreatedDataFetchError,

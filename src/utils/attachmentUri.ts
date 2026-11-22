@@ -1,4 +1,4 @@
-import { ATTACHMENTS_IMAGE_PATH } from "./attachmentPath.ts";
+export const ATTACHMENTS_IMAGE_PATH = "/attachments/image";
 
 export type AttachmentUri = (attachmentId: string) => string;
 
