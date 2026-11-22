@@ -32,6 +32,8 @@ import { createAuthenticationService } from "../../src/services/authenticationSe
 import { createBookService } from "../../src/services/bookService.ts";
 import { createContentExtractionService } from "../../src/services/contentExtractionService.ts";
 import { createCooklistService } from "../../src/services/cooklistService.ts";
+import { ExtractorUnavailableError } from "../../src/services/extractor/errors.ts";
+import type { RecipeExtractor } from "../../src/services/extractor/types.ts";
 import type { AppServices } from "../../src/services/index.ts";
 import { createIngredientService } from "../../src/services/ingredientService.ts";
 import { createListService } from "../../src/services/listService.ts";
@@ -96,6 +98,19 @@ const defaultAppJobs: AppJobs = {
     },
 };
 
+const defaultExtractor: RecipeExtractor = {
+    extractRecipeMetadata: async () => {
+        throw new ExtractorUnavailableError(
+            "Recipe extractor is not configured in tests",
+        );
+    },
+    extractRecipe: async () => {
+        throw new ExtractorUnavailableError(
+            "Recipe extractor is not configured in tests",
+        );
+    },
+};
+
 export const db = knex(testConfig);
 
 export const createTestApp = ({
@@ -105,6 +120,7 @@ export const createTestApp = ({
     services,
     jobs,
     config,
+    extractor,
 }: {
     database: Database;
     repositories?: Partial<AppRepositories>;
@@ -112,6 +128,7 @@ export const createTestApp = ({
     services?: Partial<AppServices>;
     jobs?: Partial<AppJobs>;
     config?: Partial<AppConfig>;
+    extractor?: RecipeExtractor;
 }) => {
     const appRepositories = {
         ...defaultAppRepositories,
@@ -146,6 +163,7 @@ export const createTestApp = ({
             contentExtractionService: createContentExtractionService(
                 database,
                 appRepositories,
+                { extractor: extractor ?? defaultExtractor },
             ),
             cooklistService: createCooklistService(database, appRepositories, {
                 populateAttachmentUri,

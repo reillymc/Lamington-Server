@@ -4,7 +4,11 @@ import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { PrepareAuthenticatedUser } from "../helpers/index.ts";
+import {
+    PrepareAuthenticatedUser,
+    runTestCases,
+    type TestCase,
+} from "../helpers/index.ts";
 import { readOpenApiOperations } from "../helpers/openapi.ts";
 import { createTestApp, db } from "../helpers/setup.ts";
 
@@ -151,6 +155,20 @@ const validationCases: ValidationCase[] = [
     },
 ];
 
+type ValidationInput = {
+    method: Method;
+    path: string;
+    authenticated?: boolean;
+    body?: string | object;
+};
+
+const testCases: TestCase<LocatedFieldError[] | undefined, ValidationInput>[] =
+    validationCases.map(({ name, expected, ...input }) => ({
+        name: `should reject ${name} with a structured payload`,
+        input,
+        expected,
+    }));
+
 describe("Route request validation", () => {
     let database: KnexDatabase;
     let app: Express;
@@ -168,40 +186,36 @@ describe("Route request validation", () => {
         await db.destroy();
     });
 
-    for (const testCase of validationCases) {
-        it(`should reject ${testCase.name} with a structured payload`, async () => {
-            const http = request(app)[testCase.method](testCase.path);
+    runTestCases(testCases, async ({ input, expected }) => {
+        const http = request(app)[input.method](input.path);
 
-            if (testCase.authenticated) {
-                const [token] = await PrepareAuthenticatedUser(database);
-                http.set(token);
-            }
+        if (input.authenticated) {
+            const [token] = await PrepareAuthenticatedUser(database);
+            http.set(token);
+        }
 
-            if (testCase.body !== undefined) {
-                http.send(testCase.body);
-            }
+        if (input.body !== undefined) {
+            http.send(input.body);
+        }
 
-            const res = await http;
+        const res = await http;
 
-            expect(res.statusCode).toEqual(400);
-            expect(res.body).toMatchObject({
-                error: true,
-                code: "VALIDATION_FAILED",
-                message: "Some fields are not valid",
-            });
-            expect(Array.isArray(res.body.fieldErrors)).toEqual(true);
-
-            if (testCase.expected) {
-                expect(res.body.fieldErrors).toEqual(
-                    expect.arrayContaining(
-                        testCase.expected.map((error) =>
-                            expect.objectContaining(error),
-                        ),
-                    ),
-                );
-            }
+        expect(res.statusCode).toEqual(400);
+        expect(res.body).toMatchObject({
+            error: true,
+            code: "VALIDATION_FAILED",
+            message: "Some fields are not valid",
         });
-    }
+        expect(Array.isArray(res.body.fieldErrors)).toEqual(true);
+
+        if (expected) {
+            expect(res.body.fieldErrors).toEqual(
+                expect.arrayContaining(
+                    expected.map((error) => expect.objectContaining(error)),
+                ),
+            );
+        }
+    });
 
     it("should document a 400 response on every input-validating operation", () => {
         const missing = readOpenApiOperations()

@@ -9,13 +9,13 @@ Knip and the test suite. The same checks run continuously as VS Code background
 tasks and write their output to files under `.quality/logs/` so agents can read
 them:
 
-| Check      | Log file                       | Pipeline equivalent            |
-| ---------- | ------------------------------ | ------------------------------ |
+| Check      | Log file                       | Pipeline equivalent              |
+| ---------- | ------------------------------ | -------------------------------- |
 | Biome      | `.quality/logs/lint.log`       | `biome ci . --error-on-warnings` |
-| TypeScript | `.quality/logs/typecheck.log`  | `npm run typecheck`            |
-| Knip       | `.quality/logs/knip.log`       | `npm run knip`                 |
-| Tests      | `.quality/logs/tests.log`      | `npm run test:coverage`        |
-| OpenAPI    | `.quality/logs/spec.log`       | `npm run generate:spec`        |
+| TypeScript | `.quality/logs/typecheck.log`  | `npm run typecheck`              |
+| Knip       | `.quality/logs/knip.log`       | `npm run knip`                   |
+| Tests      | `.quality/logs/tests.log`      | `npm run test:coverage`          |
+| OpenAPI    | `.quality/logs/spec.log`       | `npm ci` (postinstall)           |
 
 These logs only update while the folder is open in VS Code. A log is **fresh**
 only when its modification time is newer than the most recent change under

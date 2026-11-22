@@ -2037,12 +2037,16 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
-        415:
-          $ref: "#/components/responses/UnsupportedMediaType"
+        422:
+          $ref: "#/components/responses/UnprocessableEntity"
         429:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
+        502:
+          $ref: "#/components/responses/BadGateway"
+        503:
+          $ref: "#/components/responses/ServiceUnavailable"
   /extractor/recipe:
     get:
       tags:
@@ -2069,12 +2073,16 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
-        415:
-          $ref: "#/components/responses/UnsupportedMediaType"
+        422:
+          $ref: "#/components/responses/UnprocessableEntity"
         429:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
+        502:
+          $ref: "#/components/responses/BadGateway"
+        503:
+          $ref: "#/components/responses/ServiceUnavailable"
   /profile:
     get:
       tags:
@@ -2272,6 +2280,24 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     UnsupportedMediaType:
       description: Media type not specified or unsupported
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnprocessableEntity:
+      description: Unprocessable Content
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    BadGateway:
+      description: Bad Gateway
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ServiceUnavailable:
+      description: Service Unavailable
       content:
         application/json:
           schema:

@@ -88,7 +88,10 @@ const toRequestPath = (specPath: string) =>
  * back to the document-level default) is an empty array.
  */
 export const readOpenApiOperations = (): OpenApiOperation[] => {
-    const openApiPath = path.join(process.cwd(), "openapi.yaml");
+    const openApiPath = path.join(
+        process.cwd(),
+        "specs/lamington/openapi.yaml",
+    );
     const document = parse(
         fs.readFileSync(openApiPath, "utf-8"),
     ) as OpenApiDocument;

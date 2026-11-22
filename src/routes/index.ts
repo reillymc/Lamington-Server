@@ -60,7 +60,7 @@ export const createAppRouter: CreateRouter<
                 .use(createAuthRouter(services, middleware))
                 .use(createBookRouter(services))
                 .use(createCooklistRouter(services))
-                .use(createExtractorRouter(services))
+                .use(createExtractorRouter(services, middleware))
                 .use(createIngredientRouter(services))
                 .use(createListRouter(services))
                 .use(createMealRouter(services))

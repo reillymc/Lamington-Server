@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import { expect } from "expect";
-import type { components } from "../../src/routes/spec/schema.js";
+import type { components } from "../../src/routes/spec/index.ts";
 import { ExtractionLimitError } from "../../src/utils/errors.ts";
 import { MAX_MATCH_CANDIDATES } from "../../src/utils/extractionLimits.ts";
 import {

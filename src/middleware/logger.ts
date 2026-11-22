@@ -9,7 +9,7 @@ type CreateLoggerMiddlewareConfig = {
 export const createLoggerMiddleware: CreateMiddleware<
     CreateLoggerMiddlewareConfig
 > = ({ logger }) => [
-    morgan("dev", {
+    morgan("short", {
         stream: {
             write: (message) => logger.http(message.trim()),
         },

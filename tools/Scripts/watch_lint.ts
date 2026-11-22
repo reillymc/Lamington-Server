@@ -2,8 +2,8 @@ import { exec } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-const dirs = ["src", "tests", "tools"];
-const files = ["biome.json", "package.json", "openapi.yaml"];
+const dirs = ["src", "tests", "tools", "specs"];
+const files = ["biome.json", "package.json"];
 const debounceMs = 300;
 
 let timer: NodeJS.Timeout | null = null;

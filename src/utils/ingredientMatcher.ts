@@ -1,4 +1,4 @@
-import type { components } from "../routes/spec/schema.js";
+import type { components } from "../routes/spec/index.ts";
 import { ExtractionLimitError } from "./errors.ts";
 import {
     MAX_EXTRACTED_INGREDIENTS,

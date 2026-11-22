@@ -41,6 +41,7 @@ import { createAuthenticationService } from "./services/authenticationService.ts
 import { createBookService } from "./services/bookService.ts";
 import { createContentExtractionService } from "./services/contentExtractionService.ts";
 import { createCooklistService } from "./services/cooklistService.ts";
+import { createHttpRecipeExtractor } from "./services/extractor/extractorClient.ts";
 import type { AppServices } from "./services/index.ts";
 import { createIngredientService } from "./services/ingredientService.ts";
 import { createListService } from "./services/listService.ts";
@@ -65,6 +66,8 @@ const uploadDirectory = process.env.UPLOAD_DIRECTORY ?? "uploads";
 const assetDirectory = process.env.ASSET_DIRECTORY ?? "assets";
 const logDirectory = process.env.LOG_DIRECTORY ?? "logs";
 const attachmentPath = process.env.ATTACHMENT_PATH;
+const extractorUrl = process.env.EXTRACTOR_URL?.trim() || undefined;
+const extractorApiKey = process.env.EXTRACTOR_API_KEY?.trim() || undefined;
 
 const ErrorLogFileTransport = new transports.DailyRotateFile({
     level: "error",
@@ -118,6 +121,17 @@ export const logger = createLogger({
         AccessLogFileTransport,
         ConsoleLogTransport,
     ],
+});
+
+if (!extractorUrl) {
+    logger.warn(
+        "EXTRACTOR_URL is not configured; recipe extraction requests will fail with EXTRACTOR_UNAVAILABLE",
+    );
+}
+
+const extractor = createHttpRecipeExtractor({
+    baseUrl: extractorUrl,
+    apiKey: extractorApiKey,
 });
 
 const selectDatabaseConfig = () => {
@@ -262,7 +276,9 @@ const services: AppServices = {
     bookService: createBookService(db, repositories, {
         populateAttachmentUri,
     }),
-    contentExtractionService: createContentExtractionService(db, repositories),
+    contentExtractionService: createContentExtractionService(db, repositories, {
+        extractor,
+    }),
     cooklistService: createCooklistService(db, repositories, {
         populateAttachmentUri,
     }),

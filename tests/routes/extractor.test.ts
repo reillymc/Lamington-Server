@@ -1,28 +1,100 @@
+import { createServer, type Server } from "node:http";
 import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
-import { v4 } from "uuid";
+import type { IngredientRepository } from "../../src/repositories/ingredientRepository.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
-import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
-import type { components } from "../../src/routes/spec/index.ts";
-import type { ContentExtractionService } from "../../src/services/contentExtractionService.ts";
+import type { TagRepository } from "../../src/repositories/tagRepository.ts";
+import { createHttpRecipeExtractor } from "../../src/services/extractor/extractorClient.ts";
 import {
-    CreateSystemIngredients,
     PrepareAuthenticatedUser,
-    randomNumber,
+    runTestCases,
+    type TestCase,
 } from "../helpers/index.ts";
 import { createTestApp, db } from "../helpers/setup.ts";
 
 let database: KnexDatabase;
 let app: Express;
+let server: Server | undefined;
+let receivedAuthorization: string | undefined;
+
+const tagRepository: TagRepository = {
+    readAll: async () => [
+        {
+            tagId: "11111111-1111-4111-8111-111111111111",
+            name: "Cuisine",
+            description: undefined,
+            parentId: undefined,
+        },
+        {
+            tagId: "22222222-2222-4222-8222-222222222222",
+            name: "Italian",
+            description: undefined,
+            parentId: "11111111-1111-4111-8111-111111111111",
+        },
+    ],
+    create: async () => [],
+    verifyExists: async () => ({ tags: [] }),
+};
+
+const ingredientRepository: IngredientRepository = {
+    readAll: async () => ({
+        ingredients: [
+            {
+                ingredientId: "33333333-3333-4333-8333-333333333333",
+                name: "flour",
+                namePlural: undefined,
+                description: undefined,
+                owner: undefined,
+            },
+        ],
+    }),
+    create: async () => ({ userId: "user-id", ingredients: [] }),
+    verifyPermissions: async () => ({
+        userId: "user-id",
+        ingredients: [],
+    }),
+};
+
+const createApp = (baseUrl: string | undefined, apiKey?: string) => {
+    const extractor = createHttpRecipeExtractor({ baseUrl, apiKey });
+    return createTestApp({
+        database,
+        repositories: { ingredientRepository, tagRepository },
+        extractor,
+    });
+};
+
+const startServer = (
+    handler: Parameters<typeof createServer>[1],
+): Promise<string> =>
+    new Promise((resolve) => {
+        server = createServer(handler);
+        server.listen(0, "127.0.0.1", () => {
+            const address = server?.address();
+            if (!address || typeof address === "string") {
+                throw new Error("Unable to bind test server");
+            }
+            resolve(`http://127.0.0.1:${address.port}`);
+        });
+    });
+
+const stopServer = async () => {
+    if (!server) return;
+    await new Promise<void>((resolve) => {
+        server?.close(() => resolve());
+    });
+    server = undefined;
+};
 
 beforeEach(async () => {
     database = await db.transaction();
-    app = createTestApp({ database });
+    receivedAuthorization = undefined;
 });
 
 afterEach(async () => {
+    await stopServer();
     await database.rollback();
     mock.restoreAll();
 });
@@ -31,461 +103,308 @@ after(async () => {
     await db.destroy();
 });
 
+const successfulRecipe = {
+    name: "Test Recipe",
+    ingredients: [
+        {
+            name: "Ingredients",
+            items: [{ name: "flour" }],
+        },
+    ],
+    method: [
+        {
+            name: "Method",
+            items: [{ content: "Cook it." }],
+        },
+    ],
+    tagCandidates: { cuisine: ["italian"] },
+};
+
 describe("Extract recipe metadata", () => {
-    it("should extract metadata from a URL", async () => {
-        const extractRecipeMetadataMock = mock.fn(
-            async (): ReturnType<
-                ContentExtractionService["extractRecipeMetadata"]
-            > => ({
-                name: "Test Recipe",
-                imageUrl: "http://example.com/image.jpg",
-            }),
-        );
-
-        app = createTestApp({
-            database,
-            services: {
-                contentExtractionService: {
-                    extractRecipeMetadata: extractRecipeMetadataMock,
-                    extractRecipe: mock.fn(),
-                },
-            },
+    it("extracts metadata over HTTP", async () => {
+        const url = await startServer((_request, response) => {
+            response.writeHead(200, { "content-type": "application/json" });
+            response.end(JSON.stringify({ name: "Test Recipe" }));
         });
 
-        const [token] = await PrepareAuthenticatedUser(database);
-        const url = "https://example.com/recipe";
-
-        const res = await request(app)
-            .get("/v1/extractor/recipeMetadata")
-            .query({ url })
-            .set(token);
-
-        expect(res.statusCode).toEqual(200);
-        expect(res.body).toEqual({
-            name: "Test Recipe",
-            imageUrl: "http://example.com/image.jpg",
-        });
-        expect(extractRecipeMetadataMock.mock.calls.length).toBe(1);
-        expect(
-            extractRecipeMetadataMock.mock.calls[0]!.arguments.at(0),
-        ).toEqual(url);
-    });
-
-    it("should return 500 if extraction fails", async () => {
-        const extractRecipeMetadataMock = mock.fn(
-            async (): ReturnType<
-                ContentExtractionService["extractRecipeMetadata"]
-            > => {
-                throw new Error("Extraction failed");
-            },
-        );
-
-        app = createTestApp({
-            database,
-            services: {
-                contentExtractionService: {
-                    extractRecipeMetadata: extractRecipeMetadataMock,
-                    extractRecipe: mock.fn(),
-                },
-            },
-        });
-
+        app = createApp(url);
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app)
-            .get("/v1/extractor/recipeMetadata")
-            .query({ url: "http://fail.com" })
-            .set(token);
-
-        expect(res.statusCode).toEqual(500);
-    });
-
-    it("should return 415 when the URL points to invalid content", async () => {
-        mock.method(
-            globalThis,
-            "fetch",
-            async () =>
-                new Response(Buffer.from("not html"), {
-                    status: 200,
-                    headers: { "content-type": "image/jpeg" },
-                }),
-        );
-
-        const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app)
-            .get("/v1/extractor/recipeMetadata")
-            .query({ url: "https://example.com/image.jpg" })
-            .set(token);
-
-        expect(res.statusCode).toEqual(415);
-        expect(res.body).toMatchObject({
-            error: true,
-            code: "UNSUPPORTED_MEDIA_TYPE",
-        });
-    });
-
-    it("should surface a controlled extraction failure message", async () => {
-        mock.method(
-            globalThis,
-            "fetch",
-            async () =>
-                new Response("<html></html>", {
-                    status: 200,
-                    headers: { "content-type": "text/html" },
-                }),
-        );
-
-        const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app)
+        const response = await request(app)
             .get("/v1/extractor/recipeMetadata")
             .query({ url: "https://example.com/recipe" })
             .set(token);
 
-        expect(res.statusCode).toEqual(500);
-        expect(res.body).toMatchObject({
-            error: true,
-            code: "LAMINGTON_ERROR",
-            message: "Could not extract a name from the URL.",
-        });
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toEqual({ name: "Test Recipe" });
     });
 });
 
 describe("Extract full recipe", () => {
-    it("should extract full recipe from a URL", async () => {
-        const mockRecipe: Awaited<
-            ReturnType<ContentExtractionService["extractRecipe"]>
-        > = {
-            name: v4(),
-            cookTime: randomNumber(),
-            prepTime: randomNumber(),
-            source: v4(),
-        };
-
-        const extractRecipeMock = mock.fn(
-            async (): ReturnType<ContentExtractionService["extractRecipe"]> =>
-                mockRecipe,
-        );
-
-        app = createTestApp({
-            database,
-            services: {
-                contentExtractionService: {
-                    extractRecipeMetadata: mock.fn(),
-                    extractRecipe: extractRecipeMock,
-                },
-            },
+    it("extracts and enriches a recipe over HTTP", async () => {
+        const url = await startServer((request_, response) => {
+            receivedAuthorization = request_.headers.authorization;
+            response.writeHead(200, { "content-type": "application/json" });
+            response.end(JSON.stringify(successfulRecipe));
         });
 
-        const [token, user] = await PrepareAuthenticatedUser(database);
-        const url = "https://example.com/recipe";
-
-        const res = await request(app)
-            .get("/v1/extractor/recipe")
-            .query({ url })
-            .set(token);
-
-        expect(res.statusCode).toEqual(200);
-        expect(res.body).toEqual(mockRecipe);
-        expect(extractRecipeMock.mock.calls.length).toBe(1);
-        expect(extractRecipeMock.mock.calls[0]!.arguments.at(0)).toEqual(url);
-        expect(extractRecipeMock.mock.calls[0]!.arguments.at(1)).toEqual(
-            user.userId,
-        );
-    });
-
-    it("should return 500 if extraction fails", async () => {
-        const extractRecipeMock = mock.fn(
-            async (): ReturnType<ContentExtractionService["extractRecipe"]> => {
-                throw new Error("Extraction failed");
-            },
-        );
-
-        app = createTestApp({
-            database,
-            services: {
-                contentExtractionService: {
-                    extractRecipeMetadata: mock.fn(),
-                    extractRecipe: extractRecipeMock,
-                },
-            },
-        });
-
+        app = createApp(url, "secret");
         const [token] = await PrepareAuthenticatedUser(database);
 
-        const res = await request(app)
-            .get("/v1/extractor/recipe")
-            .query({ url: "http://fail.com" })
-            .set(token);
-
-        expect(res.statusCode).toEqual(500);
-    });
-
-    it("should return 415 when the URL points to invalid content", async () => {
-        mock.method(
-            globalThis,
-            "fetch",
-            async () =>
-                new Response(Buffer.from("not html"), {
-                    status: 200,
-                    headers: { "content-type": "image/jpeg" },
-                }),
-        );
-
-        const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app)
-            .get("/v1/extractor/recipe")
-            .query({ url: "https://example.com/image.jpg" })
-            .set(token);
-
-        expect(res.statusCode).toEqual(415);
-        expect(res.body).toMatchObject({
-            error: true,
-            code: "UNSUPPORTED_MEDIA_TYPE",
-        });
-    });
-});
-
-describe("Extract full recipe limits", () => {
-    it("should return a controlled error for an oversized recipe graph", async () => {
-        let recipeGraph: unknown = { "@type": "Person" };
-        for (let depth = 0; depth < 51; depth += 1) {
-            recipeGraph = [recipeGraph];
-        }
-
-        const html = `<!DOCTYPE html><html><head><script type="application/ld+json">${JSON.stringify(
-            recipeGraph,
-        )}</script></head><body></body></html>`;
-
-        mock.method(
-            globalThis,
-            "fetch",
-            async () =>
-                new Response(html, {
-                    status: 200,
-                    headers: { "content-type": "text/html" },
-                }),
-        );
-
-        const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app)
+        const response = await request(app)
             .get("/v1/extractor/recipe")
             .query({ url: "https://example.com/recipe" })
             .set(token);
 
-        expect(res.statusCode).toEqual(400);
-        expect(res.body).toMatchObject({
-            error: true,
-            code: "EXTRACTION_LIMIT",
+        expect(response.statusCode).toBe(200);
+        expect(receivedAuthorization).toBe("Bearer secret");
+        expect(response.body).toMatchObject({
+            name: "Test Recipe",
+            tags: [{ tagId: "22222222-2222-4222-8222-222222222222" }],
+        });
+        expect(response.body.ingredients[0].items[0]).toMatchObject({
+            ingredient: {
+                ingredientId: "33333333-3333-4333-8333-333333333333",
+                name: "flour",
+            },
         });
     });
 
-    it("should return a controlled error for an oversized fetched page", async () => {
+    describe("sidecar error mapping", () => {
+        type SidecarErrorInput = {
+            sidecarStatus: number;
+            body: Record<string, unknown>;
+        };
+
+        type SidecarErrorExpected = {
+            status: number;
+            code: string;
+        };
+
+        const testCases: TestCase<SidecarErrorExpected, SidecarErrorInput>[] = [
+            {
+                name: "maps sidecar 400 to INVALID_REQUEST",
+                input: { sidecarStatus: 400, body: { message: "invalid" } },
+                expected: { status: 400, code: "INVALID_REQUEST" },
+            },
+            {
+                name: "maps sidecar 413 to INVALID_RECIPE",
+                input: { sidecarStatus: 413, body: { message: "limit" } },
+                expected: { status: 422, code: "INVALID_RECIPE" },
+            },
+            {
+                name: "maps sidecar 422 to INVALID_RECIPE",
+                input: { sidecarStatus: 422, body: { message: "no recipe" } },
+                expected: { status: 422, code: "INVALID_RECIPE" },
+            },
+            {
+                name: "maps an invalid sidecar error body by status",
+                input: { sidecarStatus: 422, body: {} },
+                expected: { status: 422, code: "INVALID_RECIPE" },
+            },
+            {
+                name: "maps sidecar 502 to EXTRACTION_FAILED",
+                input: {
+                    sidecarStatus: 502,
+                    body: { message: "fetch failed" },
+                },
+                expected: { status: 502, code: "EXTRACTION_FAILED" },
+            },
+            {
+                name: "maps sidecar 500 to EXTRACTION_FAILED",
+                input: { sidecarStatus: 500, body: { message: "internal" } },
+                expected: { status: 502, code: "EXTRACTION_FAILED" },
+            },
+            {
+                name: "maps sidecar 401 to EXTRACTOR_UNAVAILABLE",
+                input: {
+                    sidecarStatus: 401,
+                    body: { message: "unauthorized" },
+                },
+                expected: { status: 503, code: "EXTRACTOR_UNAVAILABLE" },
+            },
+            {
+                name: "maps sidecar 429 to EXTRACTOR_UNAVAILABLE",
+                input: {
+                    sidecarStatus: 429,
+                    body: { message: "too many requests" },
+                },
+                expected: { status: 503, code: "EXTRACTOR_UNAVAILABLE" },
+            },
+            {
+                name: "maps sidecar 504 to EXTRACTOR_UNAVAILABLE",
+                input: { sidecarStatus: 504, body: { message: "timeout" } },
+                expected: { status: 503, code: "EXTRACTOR_UNAVAILABLE" },
+            },
+        ];
+
+        runTestCases(testCases, async ({ input, expected }) => {
+            const url = await startServer((_request, response) => {
+                response.writeHead(input.sidecarStatus, {
+                    "content-type": "application/json",
+                });
+                response.end(JSON.stringify({ error: true, ...input.body }));
+            });
+
+            app = createApp(url);
+            const [token] = await PrepareAuthenticatedUser(database);
+
+            const response = await request(app)
+                .get("/v1/extractor/recipe")
+                .query({ url: "https://example.com/recipe" })
+                .set(token);
+
+            expect(response.statusCode).toBe(expected.status);
+            expect(response.body).toMatchObject({
+                error: true,
+                code: expected.code,
+            });
+        });
+    });
+
+    describe("malformed success responses", () => {
+        type MalformedResponseInput = {
+            contentType: string;
+            body: string;
+        };
+
+        type MalformedResponseExpected = {
+            status: number;
+            code: string;
+        };
+
+        const testCases: TestCase<
+            MalformedResponseExpected,
+            MalformedResponseInput
+        >[] = [
+            {
+                name: "rejects a contract-failing sidecar response",
+                input: {
+                    contentType: "application/json",
+                    body: JSON.stringify({ name: "Test", extra: true }),
+                },
+                expected: { status: 502, code: "EXTRACTION_FAILED" },
+            },
+            {
+                name: "rejects a non-JSON sidecar response",
+                input: { contentType: "text/plain", body: "not json" },
+                expected: { status: 502, code: "EXTRACTION_FAILED" },
+            },
+            {
+                name: "rejects invalid JSON from the sidecar",
+                input: { contentType: "application/json", body: "{" },
+                expected: { status: 502, code: "EXTRACTION_FAILED" },
+            },
+        ];
+
+        runTestCases(testCases, async ({ input, expected }) => {
+            const url = await startServer((_request, response) => {
+                response.writeHead(200, {
+                    "content-type": input.contentType,
+                });
+                response.end(input.body);
+            });
+
+            app = createApp(url);
+            const [token] = await PrepareAuthenticatedUser(database);
+
+            const response = await request(app)
+                .get("/v1/extractor/recipe")
+                .query({ url: "https://example.com/recipe" })
+                .set(token);
+
+            expect(response.statusCode).toBe(expected.status);
+            expect(response.body).toMatchObject({
+                error: true,
+                code: expected.code,
+            });
+        });
+    });
+
+    it("maps sidecar redirects to unavailable", async () => {
+        const url = await startServer((_request, response) => {
+            response.writeHead(302, {
+                location: "http://127.0.0.1:1/redirected",
+            });
+            response.end();
+        });
+
+        app = createApp(url);
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const response = await request(app)
+            .get("/v1/extractor/recipe")
+            .query({ url: "https://example.com/recipe" })
+            .set(token);
+
+        expect(response.statusCode).toBe(503);
+        expect(response.body).toMatchObject({
+            error: true,
+            code: "EXTRACTOR_UNAVAILABLE",
+        });
+    });
+
+    it("maps an oversized sidecar response to extraction failure", async () => {
         mock.method(
             globalThis,
             "fetch",
             async () =>
-                new Response("small body", {
-                    status: 200,
+                new Response("small", {
                     headers: {
-                        "content-length": String(5 * 1024 * 1024),
-                        "content-type": "text/html",
+                        "content-length": String(16 * 1024 * 1024 + 1),
                     },
                 }),
         );
 
+        app = createApp("http://extractor:3001");
         const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app)
-            .get("/v1/extractor/recipeMetadata")
+
+        const response = await request(app)
+            .get("/v1/extractor/recipe")
             .query({ url: "https://example.com/recipe" })
             .set(token);
 
-        expect(res.statusCode).toEqual(400);
-        expect(res.body).toMatchObject({
+        expect(response.statusCode).toBe(502);
+        expect(response.body).toMatchObject({
             error: true,
-            code: "EXTRACTION_LIMIT",
+            code: "EXTRACTION_FAILED",
         });
     });
 
-    it("should return schema-valid sectioned output at the extraction limits", async () => {
-        const recipe = {
-            "@type": "Recipe",
-            name: "Bounded Recipe",
-            recipeIngredient: Array.from(
-                { length: 51 },
-                (_, index) => `Ingredient ${index}`,
-            ),
-            recipeInstructions: Array.from(
-                { length: 51 },
-                (_, index) => `Step ${index}`,
-            ),
-        };
-        const html = `<!DOCTYPE html><html><head><script type="application/ld+json">${JSON.stringify(
-            recipe,
-        )}</script></head><body></body></html>`;
-
-        mock.method(
-            globalThis,
-            "fetch",
-            async () =>
-                new Response(html, {
-                    status: 200,
-                    headers: { "content-type": "text/html" },
-                }),
-        );
-
+    it("maps an unreachable extractor to unavailable", async () => {
+        app = createApp("http://127.0.0.1:1");
         const [token] = await PrepareAuthenticatedUser(database);
-        const res = await request(app)
+
+        const response = await request(app)
             .get("/v1/extractor/recipe")
             .query({ url: "https://example.com/recipe" })
             .set(token);
 
-        expect(res.statusCode).toEqual(200);
-        const body = res.body as components["schemas"]["ExtractedRecipe"];
-        expect(body.ingredients).toHaveLength(2);
-        expect(
-            body.ingredients?.every((section) => section.items.length <= 50),
-        ).toBe(true);
-        expect(body.method).toHaveLength(2);
-        expect(
-            body.method?.every((section) => section.items.length <= 50),
-        ).toBe(true);
-    });
-});
-
-describe("Extract full recipe with ingredient matching", () => {
-    it("should include matched system and user ingredients and candidates", async () => {
-        const systemIngredients = await CreateSystemIngredients(database, [
-            { name: "garlic" },
-            { name: "all-purpose flour" },
-            { name: "corn flour" },
-            { name: "soy sauce" },
-        ]);
-
-        const [token, user] = await PrepareAuthenticatedUser(database);
-
-        const {
-            ingredients: [userIngredient],
-        } = await KnexIngredientRepository.create(database, {
-            userId: user.userId,
-            ingredients: [
-                { name: "Aged cheddar", namePlural: "Aged cheddars" },
-            ],
-        });
-
-        const html = `<!DOCTYPE html><html><head><script type="application/ld+json">${JSON.stringify(
-            {
-                "@context": "https://schema.org",
-                "@type": "Recipe",
-                name: "Test Recipe",
-                recipeIngredient: [
-                    "1 Garlic",
-                    "2 cups Flour",
-                    "2 tbsp Soy sauce",
-                    "100 g Aged cheddar",
-                ],
-            },
-        )}</script></head><body></body></html>`;
-
-        mock.method(
-            globalThis,
-            "fetch",
-            async () =>
-                new Response(html, {
-                    status: 200,
-                    headers: { "content-type": "text/html" },
-                }),
-        );
-
-        const url = "https://example.com/recipe";
-
-        const res = await request(app)
-            .get("/v1/extractor/recipe")
-            .query({ url })
-            .set(token);
-
-        expect(res.statusCode).toEqual(200);
-
-        const { ingredients } =
-            res.body as components["schemas"]["ExtractedRecipe"];
-        const items = ingredients?.[0]?.items ?? [];
-
-        const garlicItem = items.find((item) => item.name === "Garlic");
-        const flourItem = items.find((item) => item.name === "Flour");
-        const soySauceItem = items.find((item) => item.name === "Soy sauce");
-        const cheddarItem = items.find((item) => item.name === "Aged cheddar");
-
-        expect(garlicItem).toBeDefined();
-        expect(garlicItem!.ingredient).toEqual({
-            ingredientId: systemIngredients[0]!.ingredientId,
-            name: "garlic",
-        });
-        expect(garlicItem!.ingredientCandidates?.[0]).toMatchObject({
-            ingredientId: systemIngredients[0]!.ingredientId,
-            name: "garlic",
-            score: 1,
-        });
-
-        expect(flourItem).toBeDefined();
-        expect(flourItem!.ingredient).toBeUndefined();
-        expect(flourItem!.unit).toBe("cups");
-        expect(
-            flourItem!.ingredientCandidates?.map(({ name }) => name).sort(),
-        ).toEqual(["all-purpose flour", "corn flour"]);
-        for (const candidate of flourItem!.ingredientCandidates!) {
-            expect(candidate.score).toBeLessThan(1);
-        }
-
-        expect(soySauceItem).toBeDefined();
-        expect(soySauceItem!.ingredient).toEqual({
-            ingredientId: systemIngredients[3]!.ingredientId,
-            name: "soy sauce",
-        });
-
-        expect(cheddarItem).toBeDefined();
-        expect(cheddarItem!.ingredient).toEqual({
-            ingredientId: userIngredient!.ingredientId,
-            name: "Aged cheddar",
-            namePlural: "Aged cheddars",
+        expect(response.statusCode).toBe(503);
+        expect(response.body).toMatchObject({
+            error: true,
+            code: "EXTRACTOR_UNAVAILABLE",
         });
     });
 
-    it("should not include matched ingredients when no ingredients exist", async () => {
-        const html = `<!DOCTYPE html><html><head><script type="application/ld+json">${JSON.stringify(
-            {
-                "@context": "https://schema.org",
-                "@type": "Recipe",
-                name: "Test Recipe",
-                recipeIngredient: ["1 Garlic"],
-            },
-        )}</script></head><body></body></html>`;
+    it("maps extractor timeouts", async () => {
+        mock.method(globalThis, "fetch", async () => {
+            throw new DOMException("The operation timed out", "TimeoutError");
+        });
 
-        mock.method(
-            globalThis,
-            "fetch",
-            async () =>
-                new Response(html, {
-                    status: 200,
-                    headers: { "content-type": "text/html" },
-                }),
-        );
-
+        app = createApp("http://extractor:3001");
         const [token] = await PrepareAuthenticatedUser(database);
-        const url = "https://example.com/recipe";
 
-        const res = await request(app)
+        const response = await request(app)
             .get("/v1/extractor/recipe")
-            .query({ url })
+            .query({ url: "https://example.com/recipe" })
             .set(token);
 
-        expect(res.statusCode).toEqual(200);
-
-        const { ingredients } =
-            res.body as components["schemas"]["ExtractedRecipe"];
-        const items = ingredients?.[0]?.items ?? [];
-        const garlicItem = items.find((item) => item.name === "Garlic");
-
-        expect(garlicItem).toBeDefined();
-        expect(garlicItem!.ingredient).toBeUndefined();
-        expect(garlicItem!.ingredientCandidates).toBeUndefined();
+        expect(response.statusCode).toBe(503);
+        expect(response.body).toMatchObject({
+            error: true,
+            code: "EXTRACTOR_UNAVAILABLE",
+            message: "Recipe extractor timed out",
+        });
     });
 });

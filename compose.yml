@@ -2,8 +2,10 @@ services:
     lamington_server:
         image: ghcr.io/reillymc/lamington-server:latest
         container_name: lamington_server
+        init: true
         depends_on:
-            - lamington_db
+            lamington_db:
+                condition: service_healthy
         restart: unless-stopped
         env_file: .env
         ports:
@@ -11,20 +13,81 @@ services:
         volumes:
             - ./lamington-data/uploads:/home/node/app/uploads
             - ./lamington-data/logs:/home/node/app/logs
+            - ./lamington-data/assets:/home/node/app/assets
         logging:
             driver: json-file
             options:
                 max-size: "10m"
                 max-file: "3"
                 compress: "true"
+        read_only: true
+        tmpfs:
+            - /tmp:rw,noexec,nosuid,nodev,size=64m
+        cap_drop:
+            - ALL
+        security_opt:
+            - no-new-privileges:true
+        pids_limit: 256
+        mem_limit: 1g
+        cpus: 2.0
+        user: node
+        stop_grace_period: 30s
         networks:
             - lamington-network
+            - extractor-internal
+
+    lamington_extractor:
+        image: ghcr.io/reillymc/lamington-extractor:latest
+        container_name: lamington_extractor
+        init: true
+        environment:
+            EXTRACTOR_API_KEY: ${EXTRACTOR_API_KEY}
+        expose:
+            - "3001"
+        restart: unless-stopped
+        read_only: true
+        tmpfs:
+            - /tmp:rw,noexec,nosuid,nodev,size=64m
+        cap_drop:
+            - ALL
+        security_opt:
+            - no-new-privileges:true
+        pids_limit: 256
+        mem_limit: 512m
+        cpus: 1.0
+        user: node
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "wget -qO- http://localhost:$${PORT:-3001}/health",
+                ]
+            interval: 10s
+            timeout: 3s
+            retries: 5
+            start_period: 10s
+        networks:
+            - extractor-internal
+            - extractor-egress
 
     lamington_db:
         container_name: lamington_db
         image: postgres:16.4
         restart: unless-stopped
-        env_file: .env
+        environment:
+            POSTGRES_DB: ${POSTGRES_DB}
+            POSTGRES_USER: ${POSTGRES_USER}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}",
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
         expose:
             - $PGPORT
         volumes:
@@ -34,4 +97,9 @@ services:
 
 networks:
     lamington-network:
+        driver: bridge
+    extractor-internal:
+        driver: bridge
+        internal: true
+    extractor-egress:
         driver: bridge

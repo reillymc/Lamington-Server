@@ -3,16 +3,41 @@ services:
     app:
         image: app:latest-${WORKTREE_SLUG:-master}
         depends_on:
-            - db_development
-            - db_testing
+            db_development:
+                condition: service_started
+            db_testing:
+                condition: service_started
         build: .
         restart: unless-stopped
         env_file: .env
+        environment:
+            - EXTRACTOR_URL=${EXTRACTOR_URL:-http://lamington_extractor:3001}
+            - EXTRACTOR_API_KEY=${EXTRACTOR_API_KEY:-dev-only-extractor-key-change-me-32chars}
         volumes:
             - ..:/workspace:cached
             - ${GIT_REPO}:${GIT_REPO}
         stdin_open: true
         tty: true
+
+    lamington_extractor:
+        image: ${EXTRACTOR_IMAGE:-ghcr.io/reillymc/lamington-extractor:latest}
+        container_name: lamington_extractor-${WORKTREE_SLUG:-master}
+        init: true
+        restart: unless-stopped
+        environment:
+            - EXTRACTOR_API_KEY=${EXTRACTOR_API_KEY:-dev-only-extractor-key-change-me-32chars}
+        expose:
+            - "3001"
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "wget -qO- http://localhost:$${PORT:-3001}/health",
+                ]
+            interval: 10s
+            timeout: 3s
+            retries: 5
+            start_period: 10s
 
     db_development:
         image: postgres:16.4

@@ -1,34 +1,9 @@
-import { load } from "cheerio";
 import type { components } from "../routes/spec/index.ts";
-import {
-    ExtractionLimitError,
-    UnsupportedMediaTypeError,
-} from "../utils/errors.ts";
 import { matchRecipeIngredients } from "../utils/ingredientMatcher.ts";
 import { AppError } from "../utils/logger.ts";
-import {
-    convertRecipe,
-    findRecipe,
-    isRecipe,
-} from "../utils/recipeConverter.ts";
-import { safeFetchText } from "../utils/safeFetch.ts";
+import { mapTagCandidates } from "../utils/recipeTags.ts";
+import type { RecipeExtractor } from "./extractor/types.ts";
 import { type CreateService, UnknownError } from "./service.ts";
-
-const HTML_CONTENT_TYPES = new Set(["text/html", "application/xhtml+xml"]);
-
-const assertHtmlResponse = (response: Response): void => {
-    if (!response.ok) return;
-
-    const contentType = response.headers.get("content-type");
-    if (!contentType) return;
-
-    const [mediaType] = contentType.split(";", 1);
-    if (!HTML_CONTENT_TYPES.has(mediaType?.trim().toLowerCase() ?? "")) {
-        throw new UnsupportedMediaTypeError(
-            "The URL does not point to an HTML page",
-        );
-    }
-};
 
 export interface ContentExtractionService {
     extractRecipeMetadata: (
@@ -40,86 +15,24 @@ export interface ContentExtractionService {
     ) => Promise<components["schemas"]["ExtractedRecipe"]>;
 }
 
+type ContentExtractionServiceConfig = {
+    extractor: RecipeExtractor;
+};
+
 export const createContentExtractionService: CreateService<
     ContentExtractionService,
-    "ingredientRepository"
-> = (database, { ingredientRepository }) => ({
-    extractRecipeMetadata: async (url: string) => {
-        try {
-            const response = await safeFetchText(url, {
-                validateResponse: assertHtmlResponse,
-            });
-            if (!response.ok) {
-                throw new UnknownError({
-                    message: `Request failed with status ${response.status}`,
-                });
-            }
-            const page = load(response.text);
-
-            const name =
-                page('meta[property="og:title"]').attr("content") ??
-                page("title").text();
-            const imageUrl = page('meta[property="og:image"]').attr("content");
-
-            if (!name) {
-                throw new UnknownError({
-                    message: "Could not extract a name from the URL.",
-                });
-            }
-
-            return { name, imageUrl };
-        } catch (error) {
-            if (error instanceof AppError) {
-                throw error;
-            }
-            throw new UnknownError({
-                message:
-                    "Failed to fetch or parse content from the provided URL.",
-                innerError: error,
-            });
-        }
-    },
+    "ingredientRepository" | "tagRepository",
+    never,
+    ContentExtractionServiceConfig
+> = (database, { ingredientRepository, tagRepository }, { extractor }) => ({
+    extractRecipeMetadata: extractor.extractRecipeMetadata,
     extractRecipe: async (url: string, userId: string) => {
         try {
-            let response: Awaited<ReturnType<typeof safeFetchText>>;
-            response = await safeFetchText(url, {
-                validateResponse: assertHtmlResponse,
-            });
+            const extracted = await extractor.extractRecipe(url);
+            const { tagCandidates, ...recipe } = extracted;
 
-            if (!response.ok) {
-                throw new UnknownError({
-                    message: `Request failed with status ${response.status}`,
-                });
-            }
-            const page = load(response.text);
-
-            let recipeData: unknown = null;
-            const graphBudget = { visited: 0 };
-
-            page('script[type="application/ld+json"]').each((_, element) => {
-                const scriptContent = page(element).html();
-                if (!scriptContent) return;
-
-                try {
-                    const json = JSON.parse(scriptContent);
-                    const recipe = findRecipe(json, graphBudget);
-                    if (recipe) {
-                        recipeData = recipe;
-                        return false;
-                    }
-                } catch (error) {
-                    if (error instanceof ExtractionLimitError) {
-                        throw error;
-                    }
-                }
-            });
-
-            if (!isRecipe(recipeData)) {
-                throw new UnknownError({
-                    message:
-                        "No valid JSON-LD recipe object found on the page.",
-                });
-            }
+            const tags = await tagRepository.readAll(database, undefined);
+            const recipeTags = mapTagCandidates(tagCandidates, tags);
 
             const { ingredients } = await ingredientRepository.readAll(
                 database,
@@ -127,15 +40,14 @@ export const createContentExtractionService: CreateService<
             );
 
             return matchRecipeIngredients(
-                convertRecipe(recipeData),
+                recipeTags ? { ...recipe, tags: recipeTags } : recipe,
                 ingredients,
             );
-        } catch (e) {
-            if (e instanceof AppError) {
-                throw e;
+        } catch (error) {
+            if (error instanceof AppError) {
+                throw error;
             }
-
-            throw new UnknownError({ innerError: e });
+            throw new UnknownError({ innerError: error });
         }
     },
 });

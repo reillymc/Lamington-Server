@@ -1,4 +1,4 @@
-import type { components } from "../routes/spec/schema.js";
+import type { components } from "../routes/spec/index.ts";
 import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
 import { compressImage, computePreviewHash } from "../utils/image.ts";
 import { fetchRemoteImage } from "../utils/remoteImage.ts";
