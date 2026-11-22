@@ -36,6 +36,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         413:
           $ref: "#/components/responses/PayloadTooLarge"
+        415:
+          $ref: "#/components/responses/UnsupportedMediaType"
         422:
           $ref: "#/components/responses/UnprocessableEntity"
         429:
@@ -66,8 +68,41 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         413:
           $ref: "#/components/responses/PayloadTooLarge"
+        415:
+          $ref: "#/components/responses/UnsupportedMediaType"
         422:
           $ref: "#/components/responses/UnprocessableEntity"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+        502:
+          $ref: "#/components/responses/BadGateway"
+  /v1/image:
+    post:
+      operationId: postImage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtractRequest"
+      responses:
+        200:
+          description: Successful image response
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        413:
+          $ref: "#/components/responses/PayloadTooLarge"
+        415:
+          $ref: "#/components/responses/UnsupportedMediaType"
         429:
           $ref: "#/components/responses/TooManyRequests"
         500:
@@ -93,7 +128,13 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     PayloadTooLarge:
-      description: Request body is too large
+      description: Content exceeds size limits
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnsupportedMediaType:
+      description: Unsupported media type
       content:
         application/json:
           schema:

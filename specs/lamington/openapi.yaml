@@ -17,8 +17,6 @@ tags:
     description: Attachment operations
   - name: Tags
     description: Tag operations
-  - name: Extractor
-    description: Recipe extraction operations
   - name: Planners
     description: Planner operations
   - name: CookList
@@ -104,6 +102,10 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
+        502:
+          $ref: "#/components/responses/BadGateway"
+        503:
+          $ref: "#/components/responses/ServiceUnavailable"
   /attachments/image/{attachmentId}:
     parameters:
       - name: attachmentId
@@ -2011,10 +2013,10 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
-  /extractor/recipeMetadata:
+  /recipes/extract/metadata:
     get:
       tags:
-        - Extractor
+        - Recipes
       summary: Extract recipe metadata
       operationId: getExtractRecipeMetadata
       parameters:
@@ -2037,6 +2039,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        415:
+          $ref: "#/components/responses/UnsupportedMediaType"
         422:
           $ref: "#/components/responses/UnprocessableEntity"
         429:
@@ -2047,10 +2051,10 @@ paths:
           $ref: "#/components/responses/BadGateway"
         503:
           $ref: "#/components/responses/ServiceUnavailable"
-  /extractor/recipe:
+  /recipes/extract:
     get:
       tags:
-        - Extractor
+        - Recipes
       summary: Extract full recipe
       operationId: getExtractRecipe
       parameters:
@@ -2073,6 +2077,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         401:
           $ref: "#/components/responses/Unauthorized"
+        415:
+          $ref: "#/components/responses/UnsupportedMediaType"
         422:
           $ref: "#/components/responses/UnprocessableEntity"
         429:

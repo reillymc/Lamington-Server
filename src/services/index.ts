@@ -1,7 +1,6 @@
 import type { AttachmentService } from "./attachmentService.ts";
 import type { AuthenticationService } from "./authenticationService.ts";
 import type { BookService } from "./bookService.ts";
-import type { ContentExtractionService } from "./contentExtractionService.ts";
 import type { CooklistService } from "./cooklistService.ts";
 import type { IngredientService } from "./ingredientService.ts";
 import type { ListService } from "./listService.ts";
@@ -15,7 +14,6 @@ export type AppServices = {
     attachmentService: AttachmentService;
     authenticationService: AuthenticationService;
     bookService: BookService;
-    contentExtractionService: ContentExtractionService;
     cooklistService: CooklistService;
     ingredientService: IngredientService;
     listService: ListService;

@@ -135,14 +135,14 @@ const validationCases: ValidationCase[] = [
     {
         name: "a missing required query parameter",
         method: "get",
-        path: "/v1/extractor/recipe",
+        path: "/v1/recipes/extract",
         authenticated: true,
         expected: [{ path: ["url"], location: "query", code: "required" }],
     },
     {
         name: "a malformed query parameter",
         method: "get",
-        path: "/v1/extractor/recipe?url=not-a-uri",
+        path: "/v1/recipes/extract?url=not-a-uri",
         authenticated: true,
         expected: [{ path: ["url"], location: "query", code: "format" }],
     },

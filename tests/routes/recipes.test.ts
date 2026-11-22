@@ -1,14 +1,18 @@
+import { createServer, type Server } from "node:http";
 import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import type { Express } from "express";
 import request from "supertest";
 import { v4 as uuid } from "uuid";
+import { createHttpExtractorClient } from "../../src/integrations/extractor/extractorClient.ts";
+import type { IngredientRepository } from "../../src/repositories/ingredientRepository.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexAttachmentRepository } from "../../src/repositories/knex/knexAttachmentRepository.ts";
 import { KnexBookRepository } from "../../src/repositories/knex/knexBookRepository.ts";
 import { KnexIngredientRepository } from "../../src/repositories/knex/knexIngredientRepository.ts";
 import { KnexRecipeRepository } from "../../src/repositories/knex/knexRecipeRepository.ts";
 import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
+import type { TagRepository } from "../../src/repositories/tagRepository.ts";
 import type { components, paths } from "../../src/routes/spec/index.ts";
 import { SYSTEM_USER_ID } from "../../src/utils/systemUser.ts";
 import {
@@ -33,6 +37,7 @@ import { createTestApp, db } from "../helpers/setup.ts";
 
 let database: KnexDatabase;
 let app: Express;
+let server: Server | undefined;
 
 beforeEach(async () => {
     database = await db.transaction();
@@ -40,12 +45,102 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+    await stopServer();
     await database.rollback();
 });
 
 after(async () => {
     await db.destroy();
 });
+
+const tagRepository: TagRepository = {
+    readAll: async () => [
+        {
+            tagId: "11111111-1111-4111-8111-111111111111",
+            name: "Cuisine",
+            description: undefined,
+            parentId: undefined,
+        },
+        {
+            tagId: "22222222-2222-4222-8222-222222222222",
+            name: "Italian",
+            description: undefined,
+            parentId: "11111111-1111-4111-8111-111111111111",
+        },
+    ],
+    create: async () => [],
+    verifyExists: async () => ({ tags: [] }),
+};
+
+const ingredientRepository: IngredientRepository = {
+    readAll: async () => ({
+        ingredients: [
+            {
+                ingredientId: "33333333-3333-4333-8333-333333333333",
+                name: "flour",
+                namePlural: undefined,
+                description: undefined,
+                owner: undefined,
+            },
+        ],
+    }),
+    create: async () => ({ userId: "user-id", ingredients: [] }),
+    verifyPermissions: async () => ({
+        userId: "user-id",
+        ingredients: [],
+    }),
+};
+
+const createRecipeExtractionApp = (
+    baseUrl: string | undefined,
+    apiKey?: string,
+) => {
+    const extractor = createHttpExtractorClient({ baseUrl, apiKey });
+    return createTestApp({
+        database,
+        repositories: { ingredientRepository, tagRepository },
+        extractor,
+    });
+};
+
+const startServer = (
+    handler: Parameters<typeof createServer>[1],
+): Promise<string> =>
+    new Promise((resolve) => {
+        server = createServer(handler);
+        server.listen(0, "127.0.0.1", () => {
+            const address = server?.address();
+            if (!address || typeof address === "string") {
+                throw new Error("Unable to bind test server");
+            }
+            resolve(`http://127.0.0.1:${address.port}`);
+        });
+    });
+
+const stopServer = async () => {
+    if (!server) return;
+    await new Promise<void>((resolve) => {
+        server?.close(() => resolve());
+    });
+    server = undefined;
+};
+
+const successfulRecipe = {
+    name: "Test Recipe",
+    ingredients: [
+        {
+            name: "Ingredients",
+            items: [{ name: "flour" }],
+        },
+    ],
+    method: [
+        {
+            name: "Method",
+            items: [{ content: "Cook it." }],
+        },
+    ],
+    tagCandidates: { cuisine: ["italian"] },
+};
 
 describe("Get recipes", () => {
     it("should return correct recipe details", async () => {
@@ -3796,6 +3891,55 @@ describe("Get a recipe", () => {
             .set(token);
 
         expect(res.statusCode).toEqual(404);
+    });
+});
+
+describe("Extract recipe metadata", () => {
+    it("extracts metadata over HTTP", async () => {
+        const url = await startServer((_request, response) => {
+            response.writeHead(200, { "content-type": "application/json" });
+            response.end(JSON.stringify({ name: "Test Recipe" }));
+        });
+
+        app = createRecipeExtractionApp(url);
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const response = await request(app)
+            .get("/v1/recipes/extract/metadata")
+            .query({ url: "https://example.com/recipe" })
+            .set(token);
+
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toEqual({ name: "Test Recipe" });
+    });
+});
+
+describe("Extract full recipe", () => {
+    it("extracts and enriches a recipe over HTTP", async () => {
+        const url = await startServer((_request, response) => {
+            response.writeHead(200, { "content-type": "application/json" });
+            response.end(JSON.stringify(successfulRecipe));
+        });
+
+        app = createRecipeExtractionApp(url);
+        const [token] = await PrepareAuthenticatedUser(database);
+
+        const response = await request(app)
+            .get("/v1/recipes/extract")
+            .query({ url: "https://example.com/recipe" })
+            .set(token);
+
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toMatchObject({
+            name: "Test Recipe",
+            tags: [{ tagId: "22222222-2222-4222-8222-222222222222" }],
+        });
+        expect(response.body.ingredients[0].items[0]).toMatchObject({
+            ingredient: {
+                ingredientId: "33333333-3333-4333-8333-333333333333",
+                name: "flour",
+            },
+        });
     });
 });
 

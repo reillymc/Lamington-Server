@@ -5,6 +5,7 @@ import { createLogger, format, transports } from "winston";
 import { type AppConfig, setupApp } from "./app.ts";
 import development from "./database/knexfile.development.ts";
 import production from "./database/knexfile.production.ts";
+import { createHttpExtractorClient } from "./integrations/extractor/extractorClient.ts";
 import { createUserStarterDataJob } from "./jobs/createUserStarterData.ts";
 import {
     type AppJobs,
@@ -39,9 +40,7 @@ import { createObjectStorageFileRepository } from "./repositories/objectStorage/
 import { createAttachmentService } from "./services/attachmentService.ts";
 import { createAuthenticationService } from "./services/authenticationService.ts";
 import { createBookService } from "./services/bookService.ts";
-import { createContentExtractionService } from "./services/contentExtractionService.ts";
 import { createCooklistService } from "./services/cooklistService.ts";
-import { createHttpRecipeExtractor } from "./services/extractor/extractorClient.ts";
 import type { AppServices } from "./services/index.ts";
 import { createIngredientService } from "./services/ingredientService.ts";
 import { createListService } from "./services/listService.ts";
@@ -129,7 +128,7 @@ if (!extractorUrl) {
     );
 }
 
-const extractor = createHttpRecipeExtractor({
+const extractor = createHttpExtractorClient({
     baseUrl: extractorUrl,
     apiKey: extractorApiKey,
 });
@@ -266,6 +265,7 @@ const jobs: AppJobs = {
 const services: AppServices = {
     attachmentService: createAttachmentService(db, repositories, {
         populateAttachmentUri,
+        imageFetcher: extractor,
     }),
     authenticationService: createAuthenticationService(db, repositories, {
         accessExpiration,
@@ -275,9 +275,6 @@ const services: AppServices = {
     }),
     bookService: createBookService(db, repositories, {
         populateAttachmentUri,
-    }),
-    contentExtractionService: createContentExtractionService(db, repositories, {
-        extractor,
     }),
     cooklistService: createCooklistService(db, repositories, {
         populateAttachmentUri,
@@ -292,6 +289,7 @@ const services: AppServices = {
     }),
     recipeService: createRecipeService(db, repositories, {
         populateAttachmentUri,
+        extractor,
     }),
     tagService: createTagService(db, repositories),
     userService: createUserService(db, repositories, jobs),

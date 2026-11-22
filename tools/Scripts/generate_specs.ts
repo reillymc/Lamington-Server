@@ -30,7 +30,7 @@ const targets = [
     },
     {
         input: "specs/extractor/openapi.yaml",
-        output: "src/services/extractor/spec/schema.d.ts",
+        output: "src/integrations/extractor/spec/schema.d.ts",
     },
 ] as const;
 

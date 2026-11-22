@@ -2,6 +2,21 @@
 
 Guidance for coding agents working in this repository.
 
+## Structure
+
+- `routes` — HTTP boundary and OpenAPI response mapping
+- `services` — application/use-case orchestration, one service per route domain
+- `repositories` — persistence abstractions and adapters (Knex, local disk, object storage)
+- `integrations` — outbound remote-system adapters
+- `middleware` — Express request pipeline concerns
+- `jobs` — background and startup work
+- `utils` — general-purpose helpers
+
+Dependencies point inward: routes depend on services; services depend on
+repository interfaces and type-only integration ports. Concrete repositories
+and integrations are constructed in the composition root (`src/index.ts`).
+Integrations must not import routes, services, repositories, middleware or jobs.
+
 ## Quality checks
 
 The pipeline (`.github/workflows/build.yml`) gates changes on Biome, TypeScript,

@@ -1,16 +1,28 @@
+import type { RecipeExtractor } from "../integrations/extractor/types.ts";
 import type { AppRepositories, Database } from "../repositories/index.ts";
 import type { components } from "../routes/spec/index.ts";
 import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
 import { referenceFieldErrors } from "../utils/errors.ts";
 import type { FieldReference } from "../utils/errorTypes.ts";
+import { matchRecipeIngredients } from "../utils/ingredientMatcher.ts";
+import { AppError } from "../utils/logger.ts";
+import { mapTagCandidates } from "../utils/recipeTags.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
     NotFoundError,
+    UnknownError,
     UpdatedDataFetchError,
 } from "./service.ts";
 
 export interface RecipeService {
+    extractRecipeMetadata: (
+        url: string,
+    ) => Promise<components["schemas"]["ExtractedRecipeMetadata"]>;
+    extractRecipe: (
+        userId: string,
+        url: string,
+    ) => Promise<components["schemas"]["ExtractedRecipe"]>;
     get: (
         userId: string,
         recipeId: string,
@@ -139,7 +151,10 @@ export const createRecipeService: CreateService<
     | "attachmentRepository"
     | "tagRepository",
     never,
-    { populateAttachmentUri: PopulateAttachmentUri }
+    {
+        populateAttachmentUri: PopulateAttachmentUri;
+        extractor: RecipeExtractor;
+    }
 > = (
     database,
     {
@@ -148,8 +163,33 @@ export const createRecipeService: CreateService<
         attachmentRepository,
         tagRepository,
     },
-    { populateAttachmentUri },
+    { populateAttachmentUri, extractor },
 ) => ({
+    extractRecipeMetadata: extractor.extractRecipeMetadata,
+    extractRecipe: async (userId, url) => {
+        try {
+            const extracted = await extractor.extractRecipe(url);
+            const { tagCandidates, ...recipe } = extracted;
+
+            const tags = await tagRepository.readAll(database, undefined);
+            const recipeTags = mapTagCandidates(tagCandidates, tags);
+
+            const { ingredients } = await ingredientRepository.readAll(
+                database,
+                { userId },
+            );
+
+            return matchRecipeIngredients(
+                recipeTags ? { ...recipe, tags: recipeTags } : recipe,
+                ingredients,
+            );
+        } catch (error) {
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw new UnknownError({ innerError: error });
+        }
+    },
     getAll: async (
         userId,
         page,

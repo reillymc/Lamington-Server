@@ -1,7 +1,12 @@
 import type { components } from "../routes/spec/index.ts";
-import type { TagCandidates } from "../services/extractor/spec/index.ts";
 import { ExtractionLimitError } from "./errors.ts";
 import { MAX_TAG_CANDIDATES } from "./extractionLimits.ts";
+
+type TagCandidates = {
+    cuisine?: readonly string[];
+    category?: readonly string[];
+    keywords?: readonly string[];
+};
 
 type TagRow = {
     tagId: string;

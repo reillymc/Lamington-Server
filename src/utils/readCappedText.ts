@@ -4,17 +4,17 @@ export class ResponseTooLargeError extends Error {
     }
 }
 
-export const readCappedText = async (
+export const readCappedBody = async (
     response: Response,
     maxBytes: number,
-): Promise<string> => {
+): Promise<Buffer> => {
     const declaredLength = Number(response.headers.get("content-length"));
     if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
         await response.body?.cancel().catch(() => undefined);
         throw new ResponseTooLargeError();
     }
 
-    if (!response.body) return "";
+    if (!response.body) return Buffer.alloc(0);
 
     const reader = response.body.getReader();
     const chunks: Array<Uint8Array> = [];
@@ -34,5 +34,11 @@ export const readCappedText = async (
         }
     }
 
-    return Buffer.concat(chunks).toString("utf8");
+    return Buffer.concat(chunks);
 };
+
+export const readCappedText = async (
+    response: Response,
+    maxBytes: number,
+): Promise<string> =>
+    (await readCappedBody(response, maxBytes)).toString("utf8");
