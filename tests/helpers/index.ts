@@ -3,6 +3,7 @@ import { it } from "node:test";
 export * from "./auth.ts";
 export * from "./data.ts";
 export * from "./database.ts";
+export * from "./ingredient.ts";
 export * from "./recipe.ts";
 
 export type TestCase<TExpected = unknown, TInput = object, TUpdate = object> = {

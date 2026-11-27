@@ -1,7 +1,4 @@
-import type {
-    ExtractedRecipeMetadata,
-    NormalizedExtractedRecipe,
-} from "./spec/index.ts";
+import type { components } from "./spec/index.ts";
 
 export type FetchedImage = {
     body: Buffer;
@@ -9,8 +6,12 @@ export type FetchedImage = {
 };
 
 export interface RecipeExtractor {
-    extractRecipeMetadata(url: string): Promise<ExtractedRecipeMetadata>;
-    extractRecipe(url: string): Promise<NormalizedExtractedRecipe>;
+    extractRecipeMetadata(
+        url: string,
+    ): Promise<components["schemas"]["ExtractedRecipeMetadata"]>;
+    extractRecipe(
+        url: string,
+    ): Promise<components["schemas"]["ExtractedRecipe"]>;
 }
 
 export interface ImageFetcher {

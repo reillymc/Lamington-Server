@@ -29,6 +29,28 @@ const TAG_GROUPS = [
     },
 ] as const;
 
+const buildTagIdsByName = (
+    groups: ReadonlyArray<string>,
+    parentsByName: ReadonlyMap<string, TagRow>,
+    childrenByParentId: ReadonlyMap<string, ReadonlyArray<TagRow>>,
+): ReadonlyMap<string, ReadonlyArray<string>> => {
+    const tagIdsByName = new Map<string, string[]>();
+
+    for (const group of groups) {
+        const parent = parentsByName.get(group.toLowerCase());
+        if (!parent) continue;
+
+        for (const tag of childrenByParentId.get(parent.tagId) ?? []) {
+            const name = tag.name.toLowerCase();
+            const tagIds = tagIdsByName.get(name) ?? [];
+            tagIds.push(tag.tagId);
+            tagIdsByName.set(name, tagIds);
+        }
+    }
+
+    return tagIdsByName;
+};
+
 export const mapTagCandidates = (
     candidates: TagCandidates | undefined,
     tags: ReadonlyArray<TagRow>,
@@ -48,19 +70,23 @@ export const mapTagCandidates = (
         }
     }
 
+    const groupsBySource = TAG_GROUPS.map((config) => ({
+        source: config.source,
+        tagIdsByName: buildTagIdsByName(
+            config.groups,
+            parentsByName,
+            childrenByParentId,
+        ),
+    }));
+
     const matchedTags = new Map<
         string,
         components["schemas"]["RecipeTagRef"]
     >();
     let candidateCount = 0;
 
-    for (const config of TAG_GROUPS) {
-        const groupChildren = config.groups.flatMap((group) => {
-            const parent = parentsByName.get(group.toLowerCase());
-            return parent ? (childrenByParentId.get(parent.tagId) ?? []) : [];
-        });
-
-        for (const candidate of candidates[config.source] ?? []) {
+    for (const { source, tagIdsByName } of groupsBySource) {
+        for (const candidate of candidates[source] ?? []) {
             candidateCount += 1;
             if (candidateCount > MAX_TAG_CANDIDATES) {
                 throw new ExtractionLimitError(
@@ -71,10 +97,8 @@ export const mapTagCandidates = (
             const normalized = candidate.trim().toLowerCase();
             if (!normalized) continue;
 
-            for (const tag of groupChildren) {
-                if (tag.name.toLowerCase() === normalized) {
-                    matchedTags.set(tag.tagId, { tagId: tag.tagId });
-                }
+            for (const tagId of tagIdsByName.get(normalized) ?? []) {
+                matchedTags.set(tagId, { tagId });
             }
         }
     }

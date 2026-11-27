@@ -16,10 +16,7 @@ import {
     ExtractorRequestError,
     ExtractorUnavailableError,
 } from "./errors.ts";
-import type {
-    ExtractedRecipeMetadata,
-    NormalizedExtractedRecipe,
-} from "./spec/index.ts";
+import type { components } from "./spec/index.ts";
 import {
     validateNormalizedRecipe,
     validateRecipeMetadata,
@@ -248,9 +245,11 @@ export const createHttpExtractorClient = ({
     return {
         extractRecipeMetadata: (
             url: string,
-        ): Promise<ExtractedRecipeMetadata> =>
+        ): Promise<components["schemas"]["ExtractedRecipeMetadata"]> =>
             request("/v1/recipeMetadata", url, validateRecipeMetadata),
-        extractRecipe: (url: string): Promise<NormalizedExtractedRecipe> =>
+        extractRecipe: (
+            url: string,
+        ): Promise<components["schemas"]["ExtractedRecipe"]> =>
             request("/v1/recipe", url, validateNormalizedRecipe),
         fetchImage,
     };

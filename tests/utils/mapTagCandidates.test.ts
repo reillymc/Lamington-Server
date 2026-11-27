@@ -54,6 +54,32 @@ describe("mapTagCandidates", () => {
         expect(result).toStrictEqual([{ tagId: "tag-italian" }]);
     });
 
+    it("maps a name to every matching tag in the configured groups", () => {
+        const duplicateNameTags = [
+            { tagId: "group-meal", name: "Meal", parentId: undefined },
+            { tagId: "tag-dinner", name: "Dinner", parentId: "group-meal" },
+            { tagId: "group-season", name: "Season", parentId: undefined },
+            {
+                tagId: "tag-seasonal-dinner",
+                name: "Dinner",
+                parentId: "group-season",
+            },
+        ];
+
+        const result = mapTagCandidates(
+            { keywords: ["dinner"] },
+            duplicateNameTags,
+        );
+
+        expect(result).toEqual(
+            expect.arrayContaining([
+                { tagId: "tag-dinner" },
+                { tagId: "tag-seasonal-dinner" },
+            ]),
+        );
+        expect(result).toHaveLength(2);
+    });
+
     it("does not map a candidate outside its configured groups", () => {
         expect(
             mapTagCandidates({ category: ["italian"] }, tags),

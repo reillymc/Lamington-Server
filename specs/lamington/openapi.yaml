@@ -3703,7 +3703,16 @@ components:
           type: string
           maxLength: 50
 
+        raw:
+          description: Decoded, trimmed ingredient line before parsing.
+          type: string
+          maxLength: 1024
+
         name:
+          type: string
+          maxLength: 255
+
+        description:
           type: string
           maxLength: 255
 

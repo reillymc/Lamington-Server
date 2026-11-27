@@ -2,10 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { parse } from "yaml";
-import type {
-    ExtractedRecipeMetadata,
-    NormalizedExtractedRecipe,
-} from "./index.ts";
+import type { components } from "./index.ts";
 
 type OpenApiContract = {
     components?: {
@@ -45,8 +42,10 @@ const validateMetadataSchema = ajv.compile({
 
 export const validateNormalizedRecipe = (
     value: unknown,
-): value is NormalizedExtractedRecipe => validateRecipeSchema(value) === true;
+): value is components["schemas"]["ExtractedRecipe"] =>
+    validateRecipeSchema(value) === true;
 
 export const validateRecipeMetadata = (
     value: unknown,
-): value is ExtractedRecipeMetadata => validateMetadataSchema(value) === true;
+): value is components["schemas"]["ExtractedRecipeMetadata"] =>
+    validateMetadataSchema(value) === true;

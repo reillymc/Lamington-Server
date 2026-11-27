@@ -137,7 +137,14 @@ const successfulRecipe = {
     ingredients: [
         {
             name: "Ingredients",
-            items: [{ name: "flour" }],
+            items: [
+                {
+                    raw: "2 cups plain flour, sifted",
+                    name: "flour",
+                    variants: ["plain flour", "all-purpose flour"],
+                    preparation: "sifted",
+                },
+            ],
         },
     ],
     method: [

@@ -171,13 +171,13 @@ export const createRecipeService: CreateService<
             const extracted = await extractor.extractRecipe(url);
             const { tagCandidates, ...recipe } = extracted;
 
-            const tags = await tagRepository.readAll(database, undefined);
+            const [tags, { ingredients }] = await Promise.all([
+                tagRepository.readAll(database, undefined),
+                ingredientRepository.readAll(database, {
+                    userId,
+                }),
+            ]);
             const recipeTags = mapTagCandidates(tagCandidates, tags);
-
-            const { ingredients } = await ingredientRepository.readAll(
-                database,
-                { userId },
-            );
 
             return matchRecipeIngredients(
                 recipeTags ? { ...recipe, tags: recipeTags } : recipe,

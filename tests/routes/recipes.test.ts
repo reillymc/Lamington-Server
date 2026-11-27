@@ -130,7 +130,14 @@ const successfulRecipe = {
     ingredients: [
         {
             name: "Ingredients",
-            items: [{ name: "flour" }],
+            items: [
+                {
+                    raw: "2 cups plain flour, sifted",
+                    name: "flour",
+                    variants: ["plain flour", "all-purpose flour"],
+                    preparation: "sifted",
+                },
+            ],
         },
     ],
     method: [
@@ -3935,6 +3942,8 @@ describe("Extract full recipe", () => {
             tags: [{ tagId: "22222222-2222-4222-8222-222222222222" }],
         });
         expect(response.body.ingredients[0].items[0]).toMatchObject({
+            raw: "2 cups plain flour, sifted",
+            preparation: "sifted",
             ingredient: {
                 ingredientId: "33333333-3333-4333-8333-333333333333",
                 name: "flour",
