@@ -1,3 +1,4 @@
+import path from "node:path";
 import { S3Client } from "@aws-sdk/client-s3";
 import knex from "knex";
 import ms, { type StringValue } from "ms";
@@ -5,6 +6,7 @@ import { createLogger, format, transports } from "winston";
 import { type AppConfig, setupApp } from "./app.ts";
 import development from "./database/knexfile.development.ts";
 import production from "./database/knexfile.production.ts";
+import { createHttpExtractorClient } from "./integrations/extractor/extractorClient.ts";
 import { createUserStarterDataJob } from "./jobs/createUserStarterData.ts";
 import {
     type AppJobs,
@@ -39,7 +41,6 @@ import { createObjectStorageFileRepository } from "./repositories/objectStorage/
 import { createAttachmentService } from "./services/attachmentService.ts";
 import { createAuthenticationService } from "./services/authenticationService.ts";
 import { createBookService } from "./services/bookService.ts";
-import { createContentExtractionService } from "./services/contentExtractionService.ts";
 import { createCooklistService } from "./services/cooklistService.ts";
 import type { AppServices } from "./services/index.ts";
 import { createIngredientService } from "./services/ingredientService.ts";
@@ -49,7 +50,6 @@ import { createPlannerService } from "./services/plannerService.ts";
 import { createRecipeService } from "./services/recipeService.ts";
 import { createTagService } from "./services/tagService.ts";
 import { createUserService } from "./services/userService.ts";
-import { buildAttachmentDirectory } from "./utils/attachmentPath.ts";
 import {
     type AttachmentUri,
     createPopulateAttachmentUri,
@@ -65,6 +65,8 @@ const uploadDirectory = process.env.UPLOAD_DIRECTORY ?? "uploads";
 const assetDirectory = process.env.ASSET_DIRECTORY ?? "assets";
 const logDirectory = process.env.LOG_DIRECTORY ?? "logs";
 const attachmentPath = process.env.ATTACHMENT_PATH;
+const extractorUrl = process.env.EXTRACTOR_URL?.trim() || undefined;
+const extractorApiKey = process.env.EXTRACTOR_API_KEY?.trim() || undefined;
 
 const ErrorLogFileTransport = new transports.DailyRotateFile({
     level: "error",
@@ -118,6 +120,17 @@ export const logger = createLogger({
         AccessLogFileTransport,
         ConsoleLogTransport,
     ],
+});
+
+if (!extractorUrl) {
+    logger.warn(
+        "EXTRACTOR_URL is not configured; recipe extraction requests will fail with EXTRACTOR_UNAVAILABLE",
+    );
+}
+
+const extractor = createHttpExtractorClient({
+    baseUrl: extractorUrl,
+    apiKey: extractorApiKey,
 });
 
 const selectDatabaseConfig = () => {
@@ -191,7 +204,7 @@ attachmentPath: ${attachmentPath ?? "(none)"}`,
 const attachmentDirectory =
     storageService === "s3"
         ? undefined
-        : buildAttachmentDirectory(uploadDirectory, attachmentPath);
+        : path.join(uploadDirectory, attachmentPath ?? "");
 
 const populateAttachmentUri = createPopulateAttachmentUri(attachmentUri);
 
@@ -252,6 +265,7 @@ const jobs: AppJobs = {
 const services: AppServices = {
     attachmentService: createAttachmentService(db, repositories, {
         populateAttachmentUri,
+        imageFetcher: extractor,
     }),
     authenticationService: createAuthenticationService(db, repositories, {
         accessExpiration,
@@ -262,7 +276,6 @@ const services: AppServices = {
     bookService: createBookService(db, repositories, {
         populateAttachmentUri,
     }),
-    contentExtractionService: createContentExtractionService(db, repositories),
     cooklistService: createCooklistService(db, repositories, {
         populateAttachmentUri,
     }),
@@ -276,6 +289,7 @@ const services: AppServices = {
     }),
     recipeService: createRecipeService(db, repositories, {
         populateAttachmentUri,
+        extractor,
     }),
     tagService: createTagService(db, repositories),
     userService: createUserService(db, repositories, jobs),

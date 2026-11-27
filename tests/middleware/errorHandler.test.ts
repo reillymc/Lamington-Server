@@ -3,7 +3,7 @@ import { expect } from "expect";
 import express from "express";
 import request from "supertest";
 import { createErrorHandlerMiddleware } from "../../src/middleware/errorHandler.ts";
-import { ValidationError } from "../../src/utils/errors.ts";
+import { ValidationError } from "../../src/utils/fieldErrors.ts";
 import { silentLogger } from "../helpers/setup.ts";
 
 const buildApp = (error: unknown) => {

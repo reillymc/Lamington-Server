@@ -8,10 +8,17 @@ import type { Express } from "express";
 import request from "supertest";
 import { thumbHashToRGBA } from "thumbhash";
 import { v4 as uuid } from "uuid";
+import { ExtractorUnavailableError } from "../../src/integrations/extractor/errors.ts";
+import type { ExtractorClient } from "../../src/integrations/extractor/types.ts";
 import type { AttachmentRepository } from "../../src/repositories/attachmentRepository.ts";
 import type { FileRepository } from "../../src/repositories/fileRepository.ts";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import type { components } from "../../src/routes/spec/index.ts";
+import {
+    InvalidImageUrlError,
+    PayloadTooLargeError,
+    UnsupportedMediaTypeError,
+} from "../../src/utils/errors.ts";
 import { readAllAttachments } from "../helpers/attachment.ts";
 import { createImage } from "../helpers/image.ts";
 import { PrepareAuthenticatedUser } from "../helpers/index.ts";
@@ -56,6 +63,18 @@ const MockFailingFileRepository: FileRepository = {
     create: mockCreateFailingFile,
     delete: mockDeleteFailingFile,
 };
+
+const createImageExtractor = (
+    fetchImage: ExtractorClient["fetchImage"],
+): ExtractorClient => ({
+    extractRecipeMetadata: async () => {
+        throw new ExtractorUnavailableError("Not configured in tests");
+    },
+    extractRecipe: async () => {
+        throw new ExtractorUnavailableError("Not configured in tests");
+    },
+    fetchImage,
+});
 
 const MockFailingAttachmentRepository: AttachmentRepository = {
     create: async () => {
@@ -242,25 +261,19 @@ describe("Upload an image", () => {
 });
 
 describe("Import an image from a URL", () => {
-    afterEach(() => {
-        mock.restoreAll();
-    });
-
-    const mockImageFetch = async () => {
-        const image = await createImage();
-        return mock.method(
-            globalThis,
-            "fetch",
-            async () =>
-                new Response(new Uint8Array(image), {
-                    status: 200,
-                    headers: { "content-type": "image/jpeg" },
-                }),
-        );
-    };
+    const createImageApp = (fetchImage: ExtractorClient["fetchImage"]) =>
+        createTestApp({
+            database,
+            repositories: { fileRepository: MockSuccessfulFileRepository },
+            extractor: createImageExtractor(fetchImage),
+        });
 
     it("should respect controlled rate limit", async () => {
-        const fetchMock = await mockImageFetch();
+        const fetchImage = mock.fn(async () => ({
+            body: await createImage(),
+            contentType: "image/jpeg",
+        }));
+        app = createImageApp(fetchImage);
         const [token] = await PrepareAuthenticatedUser(database);
 
         const responses = await Promise.all(
@@ -280,11 +293,14 @@ describe("Import an image from a URL", () => {
             .send({ url: "https://example.com/image.jpg" });
 
         expect(res.statusCode).toEqual(429);
-        expect(fetchMock.mock.callCount()).toEqual(20);
+        expect(fetchImage.mock.callCount()).toEqual(20);
     });
 
     it("should import a valid image", async () => {
-        await mockImageFetch();
+        app = createImageApp(async () => ({
+            body: await createImage(),
+            contentType: "image/jpeg",
+        }));
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
@@ -316,11 +332,9 @@ describe("Import an image from a URL", () => {
     });
 
     it("should reject a blocked URL", async () => {
-        const fetchMock = mock.method(
-            globalThis,
-            "fetch",
-            async () => new Response(null, { status: 200 }),
-        );
+        app = createImageApp(async () => {
+            throw new InvalidImageUrlError("Blocked image URL");
+        });
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
@@ -333,19 +347,14 @@ describe("Import an image from a URL", () => {
             error: true,
             code: "INVALID_IMAGE_URL",
         });
-        expect(fetchMock.mock.callCount()).toEqual(0);
     });
 
     it("should reject a non-image response", async () => {
-        mock.method(
-            globalThis,
-            "fetch",
-            async () =>
-                new Response("<html></html>", {
-                    status: 200,
-                    headers: { "content-type": "text/html" },
-                }),
-        );
+        app = createImageApp(async () => {
+            throw new UnsupportedMediaTypeError(
+                "Unsupported image content type",
+            );
+        });
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
@@ -361,15 +370,10 @@ describe("Import an image from a URL", () => {
     });
 
     it("should reject an image with invalid magic bytes", async () => {
-        mock.method(
-            globalThis,
-            "fetch",
-            async () =>
-                new Response("not an image", {
-                    status: 200,
-                    headers: { "content-type": "image/jpeg" },
-                }),
-        );
+        app = createImageApp(async () => ({
+            body: Buffer.from("not an image"),
+            contentType: "image/jpeg",
+        }));
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
@@ -385,18 +389,9 @@ describe("Import an image from a URL", () => {
     });
 
     it("should reject an oversized remote image", async () => {
-        mock.method(
-            globalThis,
-            "fetch",
-            async () =>
-                new Response(Buffer.alloc(4), {
-                    status: 200,
-                    headers: {
-                        "content-type": "image/jpeg",
-                        "content-length": String(6 * 1024 * 1024),
-                    },
-                }),
-        );
+        app = createImageApp(async () => {
+            throw new PayloadTooLargeError("Image exceeds the 5MB limit");
+        });
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
@@ -404,19 +399,17 @@ describe("Import an image from a URL", () => {
             .set(token)
             .send({ url: "https://example.com/image.jpg" });
 
-        expect(res.statusCode).toEqual(400);
+        expect(res.statusCode).toEqual(413);
         expect(res.body).toMatchObject({
             error: true,
-            code: "EXTRACTION_LIMIT",
+            code: "PAYLOAD_TOO_LARGE",
         });
     });
 
     it("should reject a failed remote request", async () => {
-        mock.method(
-            globalThis,
-            "fetch",
-            async () => new Response("missing", { status: 404 }),
-        );
+        app = createImageApp(async () => {
+            throw new InvalidImageUrlError("Image request failed");
+        });
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)
@@ -435,8 +428,11 @@ describe("Import an image from a URL", () => {
         app = createTestApp({
             database,
             repositories: { fileRepository: MockFailingFileRepository },
+            extractor: createImageExtractor(async () => ({
+                body: await createImage(),
+                contentType: "image/jpeg",
+            })),
         });
-        await mockImageFetch();
         const [token] = await PrepareAuthenticatedUser(database);
 
         const res = await request(app)

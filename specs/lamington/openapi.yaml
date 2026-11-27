@@ -17,8 +17,6 @@ tags:
     description: Attachment operations
   - name: Tags
     description: Tag operations
-  - name: Extractor
-    description: Recipe extraction operations
   - name: Planners
     description: Planner operations
   - name: CookList
@@ -104,6 +102,10 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
+        502:
+          $ref: "#/components/responses/BadGateway"
+        503:
+          $ref: "#/components/responses/ServiceUnavailable"
   /attachments/image/{attachmentId}:
     parameters:
       - name: attachmentId
@@ -2011,10 +2013,10 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
-  /extractor/recipeMetadata:
+  /recipes/extract/metadata:
     get:
       tags:
-        - Extractor
+        - Recipes
       summary: Extract recipe metadata
       operationId: getExtractRecipeMetadata
       parameters:
@@ -2039,14 +2041,20 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         415:
           $ref: "#/components/responses/UnsupportedMediaType"
+        422:
+          $ref: "#/components/responses/UnprocessableEntity"
         429:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
-  /extractor/recipe:
+        502:
+          $ref: "#/components/responses/BadGateway"
+        503:
+          $ref: "#/components/responses/ServiceUnavailable"
+  /recipes/extract:
     get:
       tags:
-        - Extractor
+        - Recipes
       summary: Extract full recipe
       operationId: getExtractRecipe
       parameters:
@@ -2071,10 +2079,16 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         415:
           $ref: "#/components/responses/UnsupportedMediaType"
+        422:
+          $ref: "#/components/responses/UnprocessableEntity"
         429:
           $ref: "#/components/responses/TooManyRequests"
         500:
           $ref: "#/components/responses/InternalServerError"
+        502:
+          $ref: "#/components/responses/BadGateway"
+        503:
+          $ref: "#/components/responses/ServiceUnavailable"
   /profile:
     get:
       tags:
@@ -2272,6 +2286,24 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     UnsupportedMediaType:
       description: Media type not specified or unsupported
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnprocessableEntity:
+      description: Unprocessable Content
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    BadGateway:
+      description: Bad Gateway
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ServiceUnavailable:
+      description: Service Unavailable
       content:
         application/json:
           schema:
@@ -3671,7 +3703,16 @@ components:
           type: string
           maxLength: 50
 
+        raw:
+          description: Decoded, trimmed ingredient line before parsing.
+          type: string
+          maxLength: 1024
+
         name:
+          type: string
+          maxLength: 255
+
+        description:
           type: string
           maxLength: 255
 

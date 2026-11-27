@@ -1,6 +1,6 @@
 import type { AppRepositories, Database } from "../../repositories/index.ts";
-import { referenceFieldErrors } from "../../utils/errors.ts";
-import type { FieldReference } from "../../utils/errorTypes.ts";
+import { referenceFieldErrors } from "../../utils/fieldErrors.ts";
+import type { FieldReference } from "../../utils/fieldErrorTypes.ts";
 import { NotFoundError } from "../service.ts";
 
 type MealReferenceInput = {

@@ -1,0 +1,415 @@
+openapi: 3.1.0
+info:
+  title: Lamington Extractor
+  version: 1.3.0
+servers:
+  - url: http://localhost:3001
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      security: []
+      responses:
+        204:
+          description: Healthy
+  /v1/recipeMetadata:
+    post:
+      operationId: postRecipeMetadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtractRequest"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractedRecipeMetadata"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        413:
+          $ref: "#/components/responses/PayloadTooLarge"
+        415:
+          $ref: "#/components/responses/UnsupportedMediaType"
+        422:
+          $ref: "#/components/responses/UnprocessableEntity"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+        502:
+          $ref: "#/components/responses/BadGateway"
+  /v1/recipe:
+    post:
+      operationId: postRecipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtractRequest"
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractedRecipe"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        413:
+          $ref: "#/components/responses/PayloadTooLarge"
+        415:
+          $ref: "#/components/responses/UnsupportedMediaType"
+        422:
+          $ref: "#/components/responses/UnprocessableEntity"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+        502:
+          $ref: "#/components/responses/BadGateway"
+  /v1/image:
+    post:
+      operationId: postImage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtractRequest"
+      responses:
+        200:
+          description: Successful image response
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        400:
+          $ref: "#/components/responses/BadRequest"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        413:
+          $ref: "#/components/responses/PayloadTooLarge"
+        415:
+          $ref: "#/components/responses/UnsupportedMediaType"
+        429:
+          $ref: "#/components/responses/TooManyRequests"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+        502:
+          $ref: "#/components/responses/BadGateway"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    PayloadTooLarge:
+      description: Content exceeds size limits
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnsupportedMediaType:
+      description: Unsupported media type
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnprocessableEntity:
+      description: No recipe found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    TooManyRequests:
+      description: Too many concurrent requests
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalServerError:
+      description: Internal error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    BadGateway:
+      description: Upstream fetch failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    ExtractRequest:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+      required:
+        - url
+      unevaluatedProperties: false
+    ExtractedRecipeMetadata:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        imageUrl:
+          type: string
+          maxLength: 2048
+      required:
+        - name
+      unevaluatedProperties: false
+    ExtractedRecipe:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        source:
+          type: string
+          maxLength: 255
+        summary:
+          type: string
+          maxLength: 4096
+        rating:
+          type: number
+        cookTime:
+          type: integer
+        prepTime:
+          type: integer
+        servings:
+          $ref: "#/components/schemas/Servings"
+        nutritionalInformation:
+          type: string
+          maxLength: 4096
+        ingredients:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/ExtractedRecipeIngredientSection"
+        method:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/RecipeMethodSection"
+        tagCandidates:
+          $ref: "#/components/schemas/TagCandidates"
+        additionalData:
+          type: object
+          properties:
+            imageUrl:
+              type: string
+              maxLength: 2048
+          unevaluatedProperties: false
+      required:
+        - name
+      unevaluatedProperties: false
+    AmountFraction:
+      type: object
+      properties:
+        representation:
+          type: string
+          enum: [fraction]
+        value:
+          type: array
+          items:
+            type: string
+            maxLength: 4
+          minItems: 3
+          maxItems: 3
+      required:
+        - representation
+        - value
+      unevaluatedProperties: false
+    AmountRange:
+      type: object
+      properties:
+        representation:
+          type: string
+          enum: [range]
+        value:
+          type: array
+          items:
+            type: string
+            maxLength: 4
+          minItems: 2
+          maxItems: 2
+      required:
+        - representation
+        - value
+      unevaluatedProperties: false
+    AmountNumber:
+      type: object
+      properties:
+        representation:
+          type: string
+          enum: [number]
+        value:
+          type: string
+          maxLength: 4
+      required:
+        - representation
+        - value
+      unevaluatedProperties: false
+    ItemAmount:
+      oneOf:
+        - $ref: "#/components/schemas/AmountFraction"
+        - $ref: "#/components/schemas/AmountRange"
+        - $ref: "#/components/schemas/AmountNumber"
+    Servings:
+      type: object
+      properties:
+        unit:
+          type: string
+          maxLength: 255
+        count:
+          oneOf:
+            - $ref: "#/components/schemas/AmountRange"
+            - $ref: "#/components/schemas/AmountNumber"
+      required:
+        - unit
+        - count
+      unevaluatedProperties: false
+    RecipeSectionBase:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 255
+    ExtractedRecipeIngredientItem:
+      type: object
+      properties:
+        amount:
+          $ref: "#/components/schemas/ItemAmount"
+        unit:
+          type: string
+          maxLength: 50
+        raw:
+          description: Decoded, trimmed ingredient line before parsing.
+          type: string
+          maxLength: 1024
+        name:
+          description: Ingredient identity, excluding pure preparation modifiers.
+          type: string
+          maxLength: 255
+        variants:
+          description: Identity alternatives, excluding preparation modifiers. Supports "or" and "/" phrasing. The first entry is the preferred variant.
+          type: array
+          items:
+            type: string
+            maxLength: 255
+          maxItems: 10
+        description:
+          description: Size/descriptive qualifiers.
+          type: string
+          maxLength: 255
+        preparation:
+          description: Preparation actions/details only.
+          type: string
+          maxLength: 255
+      unevaluatedProperties: false
+    ExtractedRecipeIngredientSection:
+      allOf:
+        - $ref: "#/components/schemas/RecipeSectionBase"
+        - type: object
+          properties:
+            items:
+              type: array
+              maxItems: 50
+              items:
+                $ref: "#/components/schemas/ExtractedRecipeIngredientItem"
+          required:
+            - items
+      unevaluatedProperties: false
+    RecipeMethodStep:
+      type: object
+      properties:
+        content:
+          type: string
+          maxLength: 4096
+      required:
+        - content
+      unevaluatedProperties: false
+    RecipeMethodSection:
+      allOf:
+        - $ref: "#/components/schemas/RecipeSectionBase"
+        - type: object
+          properties:
+            items:
+              type: array
+              maxItems: 50
+              items:
+                $ref: "#/components/schemas/RecipeMethodStep"
+          required:
+            - items
+      unevaluatedProperties: false
+    TagCandidates:
+      type: object
+      properties:
+        cuisine:
+          type: array
+          maxItems: 1000
+          items:
+            type: string
+            maxLength: 255
+        category:
+          type: array
+          maxItems: 1000
+          items:
+            type: string
+            maxLength: 255
+        keywords:
+          type: array
+          maxItems: 1000
+          items:
+            type: string
+            maxLength: 255
+      unevaluatedProperties: false
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: boolean
+        message:
+          type: string
+      required:
+        - error
+        - message
+      unevaluatedProperties: false

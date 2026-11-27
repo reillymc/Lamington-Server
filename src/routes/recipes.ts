@@ -2,9 +2,10 @@ import express from "express";
 import type { CreateRouter } from "./route.ts";
 import type { paths, routes } from "./spec/index.ts";
 
-export const createRecipeRouter: CreateRouter<"recipeService"> = ({
-    recipeService,
-}) =>
+export const createRecipeRouter: CreateRouter<
+    "recipeService",
+    "rateLimiterControlled"
+> = ({ recipeService }, middleware) =>
     express
         .Router()
         .get<
@@ -26,6 +27,39 @@ export const createRecipeRouter: CreateRouter<"recipeService"> = ({
             );
             return res.status(200).json(data);
         })
+        .get<
+            routes,
+            paths["/recipes/extract/metadata"]["get"]["parameters"]["path"],
+            paths["/recipes/extract/metadata"]["get"]["responses"]["200"]["content"]["application/json"],
+            paths["/recipes/extract/metadata"]["get"]["requestBody"],
+            paths["/recipes/extract/metadata"]["get"]["parameters"]["query"]
+        >(
+            "/recipes/extract/metadata",
+            ...middleware.rateLimiterControlled,
+            async ({ query }, res) => {
+                const data = await recipeService.extractRecipeMetadata(
+                    query.url,
+                );
+                return res.status(200).json(data);
+            },
+        )
+        .get<
+            routes,
+            paths["/recipes/extract"]["get"]["parameters"]["path"],
+            paths["/recipes/extract"]["get"]["responses"]["200"]["content"]["application/json"],
+            paths["/recipes/extract"]["get"]["requestBody"],
+            paths["/recipes/extract"]["get"]["parameters"]["query"]
+        >(
+            "/recipes/extract",
+            ...middleware.rateLimiterControlled,
+            async ({ query, session }, res) => {
+                const data = await recipeService.extractRecipe(
+                    session.userId,
+                    query.url,
+                );
+                return res.status(200).json(data);
+            },
+        )
         .get<
             routes,
             paths["/recipes/{recipeId}"]["get"]["parameters"]["path"],

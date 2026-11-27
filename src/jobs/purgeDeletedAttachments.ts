@@ -1,5 +1,5 @@
+import type { Logger } from "winston";
 import type { AppRepositories, Database } from "../repositories/index.ts";
-import type { Logger } from "../utils/logger.ts";
 import type { CreateJob } from "./job.ts";
 
 const BATCH_SIZE = 100;

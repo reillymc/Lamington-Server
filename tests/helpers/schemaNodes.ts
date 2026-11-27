@@ -37,7 +37,10 @@ type OpenApiDocument = {
 
 export const readOpenApiDocument = (): OpenApiDocument =>
     parse(
-        readFileSync(path.join(process.cwd(), "openapi.yaml"), "utf-8"),
+        readFileSync(
+            path.join(process.cwd(), "specs/lamington/openapi.yaml"),
+            "utf-8",
+        ),
     ) as OpenApiDocument;
 
 const addContentSchemas = (

@@ -2,19 +2,21 @@ import { exec } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-const target = path.resolve(process.cwd(), "openapi.yaml");
-const dir = path.dirname(target);
-const base = path.basename(target);
+const target = path.resolve(process.cwd(), "specs");
 const debounceMs = 200;
 
 let timer: NodeJS.Timeout | null = null;
 let running = false;
+let pending = false;
 
 function runGenerate(): void {
-    if (running) return;
+    if (running) {
+        pending = true;
+        return;
+    }
     running = true;
-    console.log("[watch-spec] running: npm run generate:spec");
-    const child = exec("npm run generate:spec", { cwd: process.cwd() });
+    console.log("[watch-spec] running: npm run generate:specs");
+    const child = exec("npm run generate:specs", { cwd: process.cwd() });
 
     if (child.stdout) child.stdout.pipe(process.stdout);
     if (child.stderr) child.stderr.pipe(process.stderr);
@@ -22,6 +24,10 @@ function runGenerate(): void {
     child.on("exit", (code, signal) => {
         running = false;
         console.log(`[watch-spec] finished (code=${code}, signal=${signal})`);
+        if (pending) {
+            pending = false;
+            scheduleRun();
+        }
     });
 }
 
@@ -39,10 +45,7 @@ if (fs.existsSync(target)) {
 }
 
 try {
-    fs.watch(dir, (_evt, filename) => {
-        if (!filename) return;
-        if (filename === base) scheduleRun();
-    });
+    fs.watch(target, { recursive: true }, () => scheduleRun());
     console.log(`[watch-spec] watching ${target}`);
 } catch (err) {
     console.error("[watch-spec] fs.watch failed:", err);

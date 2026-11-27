@@ -1,8 +1,8 @@
 import { EnsureArray } from "@reillymc/es-utils";
 import type { AppJobs } from "../jobs/index.ts";
 import type { AppRepositories, Database } from "../repositories/index.ts";
-import type { FieldError } from "../utils/errors.ts";
-import { AppError } from "../utils/logger.ts";
+import { AppError } from "../utils/errors.ts";
+import type { FieldError } from "../utils/fieldErrorTypes.ts";
 
 export type CreateService<
     T,

@@ -1,7 +1,8 @@
-import type { components } from "../routes/spec/schema.js";
+import type { ImageFetcher } from "../integrations/extractor/types.ts";
+import type { components } from "../routes/spec/index.ts";
 import type { PopulateAttachmentUri } from "../utils/attachmentUri.ts";
-import { compressImage, computePreviewHash } from "../utils/image.ts";
-import { fetchRemoteImage } from "../utils/remoteImage.ts";
+import { compressImage, computePreviewHash } from "../utils/imageProcessing.ts";
+import { validateRemoteImage } from "../utils/remoteImage.ts";
 import {
     CreatedDataFetchError,
     type CreateService,
@@ -23,11 +24,14 @@ export const createAttachmentService: CreateService<
     AttachmentService,
     "attachmentRepository" | "fileRepository",
     never,
-    { populateAttachmentUri: PopulateAttachmentUri }
+    {
+        populateAttachmentUri: PopulateAttachmentUri;
+        imageFetcher: ImageFetcher;
+    }
 > = (
     database,
     { attachmentRepository, fileRepository },
-    { populateAttachmentUri },
+    { populateAttachmentUri, imageFetcher },
 ) => {
     const persistImage = async (
         userId: string,
@@ -86,9 +90,9 @@ export const createAttachmentService: CreateService<
             return persistImage(userId, file.buffer);
         },
         importFromUrl: async (userId, url) => {
-            const buffer = await fetchRemoteImage(url);
+            const { body } = await imageFetcher.fetchImage(url);
 
-            return persistImage(userId, buffer);
+            return persistImage(userId, await validateRemoteImage(body));
         },
     };
 };

@@ -1,7 +1,7 @@
 import { v4 as uuid } from "uuid";
 import type { KnexDatabase } from "../../src/repositories/knex/knex.ts";
 import { KnexTagRepository } from "../../src/repositories/knex/knexTagRepository.ts";
-import type { components } from "../../src/routes/spec/schema.ts";
+import type { components } from "../../src/routes/spec/index.ts";
 import { randomBoolean, randomNumber } from "./data.ts";
 
 const generateRandomAmount = [
